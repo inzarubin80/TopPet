@@ -1,0 +1,115 @@
+.participant-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.participant-page-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.participant-page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.participant-page-header h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 32px;
+}
+
+.participant-page-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.participant-page-media {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.participant-page-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.participant-page-photos img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.participant-page-video video {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.participant-page-info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.participant-page-description h2,
+.participant-page-comments h2 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+}
+
+.participant-page-description p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.participant-page-votes {
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.participant-page-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.participant-page-comment {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: white;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.comment-header span:first-child {
+  font-weight: 500;
+}
+
+.participant-page-comment p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .participant-page-content {
+    grid-template-columns: 1fr;
+  }
+}

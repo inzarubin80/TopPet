@@ -1,0 +1,23 @@
+.create-contest-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.create-contest-page-content h1 {
+  margin: 0 0 24px 0;
+  font-size: 32px;
+}
+
+.create-contest-page-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.create-contest-page-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}

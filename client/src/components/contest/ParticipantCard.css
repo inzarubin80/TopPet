@@ -1,0 +1,73 @@
+.participant-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.participant-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.participant-card-image {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+}
+
+.participant-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.participant-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+}
+
+.participant-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.participant-card-name {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.participant-card-description {
+  margin: 0 0 12px 0;
+  color: #666;
+  font-size: 14px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.participant-card-footer {
+  margin-top: auto;
+  font-size: 12px;
+  color: #999;
+}
+
+.participant-card-votes {
+  font-weight: 500;
+}
