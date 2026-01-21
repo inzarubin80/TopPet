@@ -31,6 +31,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, name string) (*User, error)
 	DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) error
 	DeleteComment(ctx context.Context, arg *DeleteCommentParams) error
+	DeleteContest(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantVideo(ctx context.Context, participantID pgtype.UUID) error
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)

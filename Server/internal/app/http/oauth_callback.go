@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -52,19 +53,25 @@ func (h *OAuthCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	errorParam := r.URL.Query().Get("error")
 	errorDescription := r.URL.Query().Get("error_description")
 
+	// Get frontend URL from environment or use default
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+
 	if errorParam != "" {
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=%s", provider, url.QueryEscape(errorParam))
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=%s", frontendURL, provider, url.QueryEscape(errorParam))
 		if errorDescription != "" {
-			mobileRedirect += fmt.Sprintf("&error_description=%s", url.QueryEscape(errorDescription))
+			redirectURL += fmt.Sprintf("&error_description=%s", url.QueryEscape(errorDescription))
 		}
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
 	if code == "" || state == "" {
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=invalid_request&error_description=%s",
-			provider, url.QueryEscape("missing_code_or_state"))
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=invalid_request&error_description=%s",
+			frontendURL, provider, url.QueryEscape("missing_code_or_state"))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
@@ -72,27 +79,27 @@ func (h *OAuthCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	stateInfo, ok := h.loginStateStore[state]
 	if !ok {
 		h.loginStateStoreMu.Unlock()
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=invalid_state&error_description=%s",
-			provider, url.QueryEscape("state_not_found"))
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=invalid_state&error_description=%s",
+			frontendURL, provider, url.QueryEscape("state_not_found"))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
 	if time.Now().After(stateInfo.Expiry) {
 		delete(h.loginStateStore, state)
 		h.loginStateStoreMu.Unlock()
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=expired_state&error_description=%s",
-			provider, url.QueryEscape("state_expired"))
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=expired_state&error_description=%s",
+			frontendURL, provider, url.QueryEscape("state_expired"))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
 	if stateInfo.Provider != provider {
 		delete(h.loginStateStore, state)
 		h.loginStateStoreMu.Unlock()
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=invalid_provider&error_description=%s",
-			provider, url.QueryEscape("provider_mismatch"))
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=invalid_provider&error_description=%s",
+			frontendURL, provider, url.QueryEscape("provider_mismatch"))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
@@ -108,33 +115,33 @@ func (h *OAuthCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		// Link provider - requires active session
 		session, err := h.store.Get(r, defenitions.SessionAuthenticationName)
 		if err != nil {
-			mobileRedirect := fmt.Sprintf("toppet://auth/callback?action=link&provider=%s&error=unauthorized&error_description=%s",
-				provider, url.QueryEscape("session_not_found"))
-			http.Redirect(w, r, mobileRedirect, http.StatusFound)
+			redirectURL := fmt.Sprintf("%s/login?action=link&provider=%s&error=unauthorized&error_description=%s",
+				frontendURL, provider, url.QueryEscape("session_not_found"))
+			http.Redirect(w, r, redirectURL, http.StatusFound)
 			return
 		}
 
 		userIDValue := session.Values[defenitions.UserID]
 		if userIDValue == nil {
-			mobileRedirect := fmt.Sprintf("toppet://auth/callback?action=link&provider=%s&error=unauthorized&error_description=%s",
-				provider, url.QueryEscape("user_not_authenticated"))
-			http.Redirect(w, r, mobileRedirect, http.StatusFound)
+			redirectURL := fmt.Sprintf("%s/login?action=link&provider=%s&error=unauthorized&error_description=%s",
+				frontendURL, provider, url.QueryEscape("user_not_authenticated"))
+			http.Redirect(w, r, redirectURL, http.StatusFound)
 			return
 		}
 
 		// For now, link is not implemented - just redirect with error
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?action=link&provider=%s&error=not_implemented",
-			provider)
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?action=link&provider=%s&error=not_implemented",
+			frontendURL, provider)
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
 	// Regular login
 	authData, err := h.service.Login(r.Context(), provider, code, codeVerifier)
 	if err != nil {
-		mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&error=exchange_failed&error_description=%s",
-			provider, url.QueryEscape(err.Error()))
-		http.Redirect(w, r, mobileRedirect, http.StatusFound)
+		redirectURL := fmt.Sprintf("%s/login?provider=%s&error=exchange_failed&error_description=%s",
+			frontendURL, provider, url.QueryEscape(err.Error()))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
@@ -146,8 +153,9 @@ func (h *OAuthCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		session.Save(r, w)
 	}
 
-	// Redirect to mobile app with tokens
-	mobileRedirect := fmt.Sprintf("toppet://auth/callback?provider=%s&access_token=%s&refresh_token=%s&user_id=%d",
-		provider, url.QueryEscape(authData.AccessToken), url.QueryEscape(authData.RefreshToken), authData.UserID)
-	http.Redirect(w, r, mobileRedirect, http.StatusFound)
+	// Redirect to web frontend with tokens
+	redirectURL := fmt.Sprintf("%s/login?provider=%s&access_token=%s&refresh_token=%s&user_id=%d",
+		frontendURL, provider, url.QueryEscape(authData.AccessToken), url.QueryEscape(authData.RefreshToken), authData.UserID)
+
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }

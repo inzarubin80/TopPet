@@ -81,6 +81,15 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 API_ROOT=http://localhost:8080
 ```
 
+### Frontend URL
+
+```bash
+# URL фронтенд приложения для OAuth callback redirect
+# Для разработки: http://localhost:3000
+# Для продакшена: https://yourdomain.com
+FRONTEND_URL=http://localhost:3000
+```
+
 ### OAuth Providers Configuration
 
 #### Yandex OAuth
@@ -103,6 +112,17 @@ CLIENT_ID_GOOGLE=
 
 # Client Secret из Google Cloud Console
 CLIENT_SECRET_GOOGLE=
+```
+
+#### VK OAuth
+
+```bash
+# Client ID (Application ID) из VK приложения
+# Получить можно здесь: https://vk.com/apps?act=manage
+CLIENT_ID_VK=
+
+# Client Secret (Secure Key) из VK приложения
+CLIENT_SECRET_VK=
 ```
 
 ## Пример полного файла .env

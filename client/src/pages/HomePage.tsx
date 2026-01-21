@@ -7,6 +7,7 @@ import { ContestCard } from '../components/contest/ContestCard';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ContestStatus } from '../types/models';
+import { buildLoginUrl } from '../utils/navigation';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -29,8 +30,18 @@ const HomePage: React.FC = () => {
     <div className="home-page">
       <div className="home-page-header">
         <h1>Конкурсы красоты животных</h1>
-        {isAuthenticated && (
+        {isAuthenticated ? (
           <Button onClick={() => navigate('/create-contest')}>Создать конкурс</Button>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => {
+              const returnUrl = '/create-contest';
+              navigate(buildLoginUrl(returnUrl));
+            }}
+          >
+            Войти для создания конкурса
+          </Button>
         )}
       </div>
 

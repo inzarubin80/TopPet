@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Button } from '../common/Button';
 import { vote, getVote } from '../../api/votesApi';
 import { ContestID, ParticipantID } from '../../types/models';
+import { buildLoginUrl } from '../../utils/navigation';
 import './VoteButton.css';
 
 interface VoteButtonProps {
@@ -17,6 +19,8 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   participantId,
   contestStatus,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const [currentVote, setCurrentVote] = useState<ParticipantID | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,7 +47,14 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   }, [isAuthenticated, contestId, contestStatus, loadVote]);
 
   const handleVote = async () => {
-    if (!isAuthenticated || contestStatus !== 'published' || voting) {
+    if (!isAuthenticated) {
+      // Redirect to login with return URL
+      const returnUrl = location.pathname + location.search;
+      navigate(buildLoginUrl(returnUrl));
+      return;
+    }
+
+    if (contestStatus !== 'published' || voting) {
       return;
     }
 
@@ -61,9 +72,13 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <div className="vote-button-unauthorized">
-        Войдите, чтобы проголосовать
-      </div>
+      <Button
+        variant="primary"
+        size="small"
+        onClick={handleVote}
+      >
+        Войти для голосования
+      </Button>
     );
   }
 

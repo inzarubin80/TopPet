@@ -1,0 +1,19 @@
+.delete-contest-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.delete-contest-modal-content {
+  padding: 8px 0;
+}
+
+.delete-contest-modal-content p {
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.delete-contest-modal-warning {
+  color: #d32f2f;
+  font-weight: 500;
+}

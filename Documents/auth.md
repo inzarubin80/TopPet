@@ -5,14 +5,11 @@
 - Refresh token (длинный TTL)\n
 - Auth middleware проверяет access token из `Authorization: Bearer ...` или query `accessToken=...`\n
 
-## Режимы
-### MVP (dev)
-Для ускорения разработки используется `POST /api/auth/dev-login`:\n
-- создает пользователя (если нужно)\n
-- выдает access + refresh\n
-
-### Prod (позже)
-Переносим OAuth flow (login -> callback -> exchange -> refresh) по GreenWarden.\n
+## OAuth Flow
+Используется OAuth flow (login -> callback -> exchange -> refresh) по GreenWarden.\n
+- Поддерживаемые провайдеры: Yandex, Google, VK\n
+- PKCE (Proof Key for Code Exchange) для безопасности (кроме VK)\n
+- После авторизации выдается access + refresh токены\n
 
 ## Middleware
 - Для всех mutating endpoints подключаем auth middleware.\n

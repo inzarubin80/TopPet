@@ -34,13 +34,13 @@ SELECT * FROM contests WHERE id = $1;
 
 -- name: ListContests :many
 SELECT * FROM contests
-WHERE ($1::text IS NULL OR status = $1)
+WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: CountContests :one
 SELECT count(1) FROM contests
-WHERE ($1::text IS NULL OR status = $1);
+WHERE (COALESCE($1::text, '') = '' OR status = $1);
 
 -- name: UpdateContest :one
 UPDATE contests
@@ -53,6 +53,10 @@ UPDATE contests
 SET status = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteContest :exec
+DELETE FROM contests
+WHERE id = $1;
 
 -- Contest Participants
 

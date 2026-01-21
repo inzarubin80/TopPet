@@ -78,32 +78,22 @@ func (r *Repository) GetContest(ctx context.Context, contestID model.ContestID) 
 func (r *Repository) ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 
-	var statusStr *string
+	var statusStr string
 	if status != nil {
-		s := string(*status)
-		statusStr = &s
+		statusStr = string(*status)
 	}
 
+	// Use empty string for "all contests" - SQL query handles this with: WHERE ($1::text IS NULL OR $1::text = '' OR status = $1)
 	contests, err := reposqlc.ListContests(ctx, &sqlc_repository.ListContestsParams{
-		Column1: func() string {
-			if statusStr != nil {
-				return *statusStr
-			}
-			return ""
-		}(),
-		Limit:  int32(limit),
-		Offset: int32(offset),
+		Column1: statusStr,
+		Limit:   int32(limit),
+		Offset:  int32(offset),
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 
-	total, err := reposqlc.CountContests(ctx, func() string {
-		if statusStr != nil {
-			return *statusStr
-		}
-		return ""
-	}())
+	total, err := reposqlc.CountContests(ctx, statusStr)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -190,4 +180,14 @@ func (r *Repository) UpdateContestStatus(ctx context.Context, contestID model.Co
 		CreatedAt:       contest.CreatedAt.Time,
 		UpdatedAt:       contest.UpdatedAt.Time,
 	}, nil
+}
+
+func (r *Repository) DeleteContest(ctx context.Context, contestID model.ContestID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return err
+	}
+
+	return reposqlc.DeleteContest(ctx, pgtype.UUID{Bytes: contestUUID, Valid: true})
 }

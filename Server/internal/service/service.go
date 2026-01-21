@@ -35,6 +35,7 @@ type (
 		ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
 		UpdateContest(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error)
 		UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
+		DeleteContest(ctx context.Context, contestID model.ContestID) error
 
 		// Participant
 		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error)

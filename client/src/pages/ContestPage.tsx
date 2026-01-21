@@ -1,13 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
-import { fetchContest, publishContest, finishContest } from '../store/slices/contestsSlice';
+import { fetchContest, publishContest, finishContest, deleteContest } from '../store/slices/contestsSlice';
 import { fetchParticipantsByContest } from '../store/slices/participantsSlice';
 import { ParticipantCard } from '../components/contest/ParticipantCard';
+import { AddParticipantModal } from '../components/contest/AddParticipantModal';
+import { EditContestModal } from '../components/contest/EditContestModal';
+import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
+import { buildLoginUrl } from '../utils/navigation';
 import './ContestPage.css';
 
 const ContestPage: React.FC = () => {
@@ -19,9 +23,22 @@ const ContestPage: React.FC = () => {
     (state: RootState) => state.participants
   );
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const participantIds = useSelector((state: RootState) =>
     id ? state.participants.byContest[id] || [] : []
   );
+  const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [isEditContestModalOpen, setIsEditContestModalOpen] = useState(false);
+  const [isDeleteContestModalOpen, setIsDeleteContestModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Find current user's participant in this contest
+  const userParticipant = useMemo(() => {
+    if (!currentUserId || !id) return null;
+    return participantIds
+      .map((pid) => participants[pid])
+      .find((p) => p && p.user_id === currentUserId);
+  }, [participantIds, participants, currentUserId, id]);
 
   useEffect(() => {
     if (id) {
@@ -55,18 +72,26 @@ const ContestPage: React.FC = () => {
           {isAdmin && (
             <div className="contest-page-admin-actions">
               {currentContest.status === 'draft' && (
-                <Button
-                  onClick={async () => {
-                    try {
-                      await dispatch(publishContest(currentContest.id)).unwrap();
-                    } catch (error) {
-                      console.error('Failed to publish contest:', error);
-                      alert('Не удалось опубликовать конкурс');
-                    }
-                  }}
-                >
-                  Опубликовать
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsEditContestModalOpen(true)}
+                  >
+                    Редактировать
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await dispatch(publishContest(currentContest.id)).unwrap();
+                      } catch (error) {
+                        console.error('Failed to publish contest:', error);
+                        alert('Не удалось опубликовать конкурс');
+                      }
+                    }}
+                  >
+                    Опубликовать
+                  </Button>
+                </>
               )}
               {currentContest.status === 'published' && (
                 <Button
@@ -83,6 +108,12 @@ const ContestPage: React.FC = () => {
                   Завершить
                 </Button>
               )}
+              <Button
+                variant="danger"
+                onClick={() => setIsDeleteContestModalOpen(true)}
+              >
+                Удалить
+              </Button>
             </div>
           )}
         </div>
@@ -96,7 +127,37 @@ const ContestPage: React.FC = () => {
         </div>
 
         <div className="contest-page-participants">
-          <h2>Участники</h2>
+          <div className="contest-page-participants-header">
+            <h2>Участники</h2>
+            {currentContest.status !== 'finished' && (
+              <div className="contest-page-participants-actions">
+                {isAuthenticated ? (
+                  userParticipant ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => navigate(`/contests/${id}/participants/${userParticipant.id}`)}
+                    >
+                      Мой участник
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setIsAddParticipantModalOpen(true)}>
+                      Добавить участника
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      const returnUrl = `/contests/${id}`;
+                      navigate(buildLoginUrl(returnUrl));
+                    }}
+                  >
+                    Войти для участия
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           {participantsLoading ? (
             <div className="contest-page-participants-loading">
               <LoadingSpinner size="medium" />
@@ -119,6 +180,42 @@ const ContestPage: React.FC = () => {
       <div className="contest-page-sidebar">
         <ChatWindow contestId={currentContest.id} />
       </div>
+
+      {id && (
+        <AddParticipantModal
+          isOpen={isAddParticipantModalOpen}
+          onClose={() => setIsAddParticipantModalOpen(false)}
+          contestId={id}
+        />
+      )}
+
+      {currentContest && (
+        <>
+          <EditContestModal
+            isOpen={isEditContestModalOpen}
+            onClose={() => setIsEditContestModalOpen(false)}
+            contest={currentContest}
+          />
+          <DeleteContestModal
+            isOpen={isDeleteContestModalOpen}
+            onClose={() => setIsDeleteContestModalOpen(false)}
+            onConfirm={async () => {
+              if (!currentContest) return;
+              try {
+                setIsDeleting(true);
+                await dispatch(deleteContest(currentContest.id)).unwrap();
+                navigate('/');
+              } catch (error) {
+                console.error('Failed to delete contest:', error);
+                alert('Не удалось удалить конкурс');
+                setIsDeleting(false);
+              }
+            }}
+            contestTitle={currentContest.title}
+            loading={isDeleting}
+          />
+        </>
+      )}
     </div>
   );
 };

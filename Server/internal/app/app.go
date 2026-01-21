@@ -107,7 +107,28 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 	}
 
 	// CORS middleware
+	// Build allowed origins list
+	// Always include default dev origins
+	allowedOrigins := []string{"http://localhost:3000", "http://localhost:5173", "http://10.0.2.2"}
+	
+	// Add configured origins from environment
+	if len(config.CorsAllowedOrigins) > 0 {
+		seen := make(map[string]bool)
+		// Mark default origins as seen
+		for _, origin := range allowedOrigins {
+			seen[origin] = true
+		}
+		// Add configured origins (avoid duplicates)
+		for _, origin := range config.CorsAllowedOrigins {
+			if origin != "" && !seen[origin] {
+				seen[origin] = true
+				allowedOrigins = append(allowedOrigins, origin)
+			}
+		}
+	}
+
 	corsOptions := cors.Options{
+		AllowedOrigins: allowedOrigins,
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders: []string{
 			"Origin", "Content-Type", "Accept", "Authorization",
@@ -116,33 +137,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 		AllowCredentials: true,
 		ExposedHeaders:   []string{"Set-Cookie"},
 		MaxAge:           86400,
-	}
-
-	allowedOriginsMap := make(map[string]bool)
-	for _, origin := range config.CorsAllowedOrigins {
-		allowedOriginsMap[origin] = true
-	}
-
-	devOrigins := []string{"http://localhost:3000", "http://10.0.2.2"}
-	devOriginsMap := make(map[string]bool)
-	for _, origin := range devOrigins {
-		devOriginsMap[origin] = true
-	}
-
-	corsOptions.AllowOriginVaryRequestFunc = func(r *http.Request, origin string) (bool, []string) {
-		if origin == "" {
-			return false, nil
-		}
-		if len(config.CorsAllowedOrigins) > 0 {
-			if allowedOriginsMap[origin] {
-				return true, nil
-			}
-			return false, nil
-		}
-		if devOriginsMap[origin] {
-			return true, nil
-		}
-		return false, nil
+		Debug:            false,
 	}
 
 	corsMiddleware := cors.New(corsOptions)
@@ -179,7 +174,6 @@ func (a *App) registerRoutes() {
 	a.mux.Handle("GET /api/ping", appHttp.NewPingHandler("/api/ping"))
 
 	// Auth
-	a.mux.Handle("POST /api/auth/dev-login", appHttp.NewDevLoginHandler(a.service, "/api/auth/dev-login"))
 	a.mux.Handle("POST /api/auth/refresh", appHttp.NewRefreshTokenHandler(a.service, "/api/auth/refresh"))
 	a.mux.Handle("GET /api/auth/providers", appHttp.NewGetProvidersHandler(a.config.ProvidersConf, "/api/auth/providers"))
 	a.mux.Handle("POST /api/auth/login", appHttp.NewLoginHandler(a.config.ProvidersConf, "/api/auth/login", a.store, a.loginStateStore, &a.loginStateStoreMu))
@@ -196,6 +190,10 @@ func (a *App) registerRoutes() {
 	))
 	a.mux.Handle("PATCH /api/contests/{contestId}", middleware.NewAuthMiddleware(
 		appHttp.NewUpdateContestHandler("/api/contests/{contestId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/contests/{contestId}", middleware.NewAuthMiddleware(
+		appHttp.NewDeleteContestHandler("/api/contests/{contestId}", a.service),
 		a.service,
 	))
 	a.mux.Handle("POST /api/contests/{contestId}/publish", middleware.NewAuthMiddleware(

@@ -22,18 +22,6 @@ const initialState: AuthState = {
 };
 
 // Async thunks
-export const devLoginAsync = createAsyncThunk(
-  'auth/devLogin',
-  async (name: string, { rejectWithValue }) => {
-    try {
-      const response = await authApi.devLogin(name);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
-    }
-  }
-);
-
 export const refreshTokenAsync = createAsyncThunk(
   'auth/refreshToken',
   async (refreshToken: string, { rejectWithValue }) => {
@@ -73,22 +61,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // devLoginAsync
-      .addCase(devLoginAsync.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(devLoginAsync.fulfilled, (state, action) => {
-        state.loading = false;
-        state.accessToken = action.payload.token;
-        state.refreshToken = action.payload.refresh_token;
-        state.isAuthenticated = true;
-        tokenStorage.saveTokens(action.payload.token, action.payload.refresh_token);
-      })
-      .addCase(devLoginAsync.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
       // refreshTokenAsync
       .addCase(refreshTokenAsync.pending, (state) => {
         state.loading = true;

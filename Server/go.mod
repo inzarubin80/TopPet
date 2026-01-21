@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.92
 	github.com/rs/cors v1.11.1
 	golang.org/x/oauth2 v0.34.0

@@ -122,6 +122,39 @@ func LoadConfigFromEnv() Config {
 		}
 	}
 
+	// VK provider
+	if clientID := os.Getenv("CLIENT_ID_VK"); clientID != "" {
+		provaders["vk"] = &authinterface.ProviderOauthConf{
+			Oauth2Config: &oauth2.Config{
+				ClientID:     clientID,
+				ClientSecret: os.Getenv("CLIENT_SECRET_VK"),
+				RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=vk", apiRoot),
+				Scopes:       []string{"email"},
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://oauth.vk.com/authorize",
+					TokenURL: "https://oauth.vk.com/access_token",
+				},
+			},
+			UrlUserData: "https://api.vk.com/method/users.get?fields=photo_200&v=5.131",
+			IconSVG:     icons.GetProviderIcon("vk"),
+			DisplayName: "VK",
+			ProviderUserData: providerUserData.NewProviderUserData(
+				"https://api.vk.com/method/users.get?fields=photo_200&v=5.131",
+				&oauth2.Config{
+					ClientID:     clientID,
+					ClientSecret: os.Getenv("CLIENT_SECRET_VK"),
+					RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=vk", apiRoot),
+					Scopes:       []string{"email"},
+					Endpoint: oauth2.Endpoint{
+						AuthURL:  "https://oauth.vk.com/authorize",
+						TokenURL: "https://oauth.vk.com/access_token",
+					},
+				},
+				"vk",
+			),
+		}
+	}
+
 	cfg.ProvidersConf = provaders
 	return cfg
 }

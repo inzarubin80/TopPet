@@ -8,36 +8,6 @@ import (
 	"toppet/server/internal/model"
 )
 
-// DevLogin creates a user by name and returns access + refresh tokens.
-// This is a simplified login for MVP/development.
-func (s *TopPetService) DevLogin(ctx context.Context, name string) (*model.AuthData, error) {
-	if name == "" {
-		return nil, errors.New("name is required")
-	}
-
-	// Create or get user (simplified: always create new for MVP)
-	user, err := s.repository.CreateUser(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := s.refreshTokenService.GenerateToken(user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.accessTokenService.GenerateToken(user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.AuthData{
-		UserID:       user.ID,
-		RefreshToken: refreshToken,
-		AccessToken:  accessToken,
-	}, nil
-}
-
 // Login performs OAuth login flow: exchange code for user data, create/find user, return tokens.
 func (s *TopPetService) Login(ctx context.Context, providerKey string, authorizationCode string, codeVerifier string) (*model.AuthData, error) {
 	provider, ok := s.providersUserData[providerKey]

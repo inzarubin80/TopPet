@@ -100,7 +100,7 @@ func (q *Queries) CountCommentsByParticipant(ctx context.Context, participantID 
 
 const countContests = `-- name: CountContests :one
 SELECT count(1) FROM contests
-WHERE ($1::text IS NULL OR status = $1)
+WHERE (COALESCE($1::text, '') = '' OR status = $1)
 `
 
 func (q *Queries) CountContests(ctx context.Context, dollar_1 string) (int64, error) {
@@ -321,6 +321,16 @@ type DeleteCommentParams struct {
 
 func (q *Queries) DeleteComment(ctx context.Context, arg *DeleteCommentParams) error {
 	_, err := q.db.Exec(ctx, deleteComment, arg.ID, arg.UserID)
+	return err
+}
+
+const deleteContest = `-- name: DeleteContest :exec
+DELETE FROM contests
+WHERE id = $1
+`
+
+func (q *Queries) DeleteContest(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteContest, id)
 	return err
 }
 
@@ -645,7 +655,7 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 
 const listContests = `-- name: ListContests :many
 SELECT id, created_by_user_id, title, description, status, created_at, updated_at FROM contests
-WHERE ($1::text IS NULL OR status = $1)
+WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
 `

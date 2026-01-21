@@ -67,15 +67,20 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	state := randomURLSafe(24)
 
-	if req.CodeChallenge == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_challenge required from client")
-		return
-	}
-	if req.CodeVerifier == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_verifier required from client")
-		return
-	}
+	// VK doesn't support PKCE, so we allow empty code_challenge and code_verifier for VK
 	challenge := req.CodeChallenge
+	codeVerifier := req.CodeVerifier
+	
+	if req.Provider != "vk" {
+		if challenge == "" {
+			uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_challenge required from client")
+			return
+		}
+		if codeVerifier == "" {
+			uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_verifier required from client")
+			return
+		}
+	}
 
 	action := req.Action
 	if action == "" {
@@ -88,7 +93,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.loginStateStoreMu.Lock()
 	h.loginStateStore[state] = StateData{
-		CodeVerifier: req.CodeVerifier,
+		CodeVerifier: codeVerifier, // Can be empty for VK
 		Provider:     req.Provider,
 		Action:       action,
 		Expiry:       time.Now().Add(15 * time.Minute),
@@ -119,6 +124,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q.Set("redirect_uri", redirectURI)
 	q.Set("scope", scope)
 	q.Set("state", state)
+	// Only add PKCE parameters if challenge is provided (not for VK)
 	if challenge != "" {
 		q.Set("code_challenge", challenge)
 		q.Set("code_challenge_method", "S256")

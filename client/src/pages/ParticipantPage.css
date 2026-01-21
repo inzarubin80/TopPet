@@ -36,6 +36,20 @@
   gap: 16px;
 }
 
+.participant-page-media-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.participant-page-media-empty {
+  text-align: center;
+  padding: 48px;
+  color: #999;
+  font-style: italic;
+}
+
 .participant-page-photos {
   display: flex;
   flex-direction: column;

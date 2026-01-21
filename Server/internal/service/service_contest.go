@@ -116,3 +116,17 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 
 	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusFinished)
 }
+
+func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.ContestID, userID model.UserID) error {
+	contest, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return err
+	}
+
+	// Only admin can delete
+	if contest.CreatedByUserID != userID {
+		return errors.New("only contest admin can delete contest")
+	}
+
+	return s.repository.DeleteContest(ctx, contestID)
+}

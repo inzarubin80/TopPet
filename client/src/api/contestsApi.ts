@@ -12,7 +12,11 @@ export const getContests = async (
   offset?: number
 ): Promise<ContestsListResponse> => {
   const params: any = {};
-  if (status) params.status = status;
+  // Only include status if it's explicitly provided (not undefined)
+  // When status is undefined, we want to get all contests
+  if (status !== undefined && status !== null) {
+    params.status = status;
+  }
   if (limit) params.limit = limit;
   if (offset) params.offset = offset;
 
@@ -45,5 +49,10 @@ export const publishContest = async (contestId: ContestID): Promise<Contest> => 
 
 export const finishContest = async (contestId: ContestID): Promise<Contest> => {
   const response = await axiosClient.post<Contest>(`/contests/${contestId}/finish`);
+  return response.data;
+};
+
+export const deleteContest = async (contestId: ContestID): Promise<{ ok: boolean }> => {
+  const response = await axiosClient.delete<{ ok: boolean }>(`/contests/${contestId}`);
   return response.data;
 };

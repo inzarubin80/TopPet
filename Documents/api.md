@@ -2,12 +2,17 @@
 
 Базовый префикс: `/api`.
 
-## Auth (ориентир GreenWarden)
-В MVP сервер включает **dev-login** для локальной разработки; в продакшене заменяется на OAuth flow как в GreenWarden (`https://github.com/inzarubin80/GreenWarden/tree/main/Server`).
+## Auth (OAuth flow)
+Используется OAuth flow как в GreenWarden (`https://github.com/inzarubin80/GreenWarden/tree/main/Server`).
 
-- `POST /api/auth/dev-login` (auth: no)\n
-  - body: `{ \"name\": string }`\n
-  - resp: `{ \"token\": string, \"refresh_token\": string, \"user_id\": number }`\n
+- `GET /api/auth/providers` (auth: no)\n
+  - resp: `Provider[]` - список доступных OAuth провайдеров\n
+- `POST /api/auth/login` (auth: no)\n
+  - body: `{ \"provider\": string, \"code_challenge\": string, \"code_verifier\": string, \"action\": \"login\" }`\n
+  - resp: `{ \"auth_url\": string, \"state\": string }` - URL для редиректа на провайдера\n
+- `GET /api/auth/callback` (auth: no)\n
+  - query: `code`, `state`, `provider`\n
+  - redirect: на фронтенд с токенами в query параметрах\n
 - `POST /api/auth/refresh` (auth: no)\n
   - body: `{ \"refresh_token\": string }` (или cookie)\n
   - resp: `{ \"token\": string, \"refresh_token\": string, \"user_id\": number }`\n

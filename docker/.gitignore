@@ -1,0 +1,2 @@
+# Игнорируем локальные изменения в docker-compose, если они есть
+docker-compose.override.yml

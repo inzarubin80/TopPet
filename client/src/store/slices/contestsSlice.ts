@@ -101,6 +101,18 @@ export const finishContest = createAsyncThunk(
   }
 );
 
+export const deleteContest = createAsyncThunk(
+  'contests/deleteContest',
+  async (contestId: ContestID, { rejectWithValue }) => {
+    try {
+      await contestsApi.deleteContest(contestId);
+      return contestId;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to delete contest');
+    }
+  }
+);
+
 const contestsSlice = createSlice({
   name: 'contests',
   initialState,
@@ -183,6 +195,14 @@ const contestsSlice = createSlice({
         if (index >= 0) {
           state.items[index] = action.payload;
         }
+      })
+      // deleteContest
+      .addCase(deleteContest.fulfilled, (state, action) => {
+        if (state.currentContest?.id === action.payload) {
+          state.currentContest = null;
+        }
+        state.items = state.items.filter((c) => c.id !== action.payload);
+        state.total = Math.max(0, state.total - 1);
       });
   },
 });

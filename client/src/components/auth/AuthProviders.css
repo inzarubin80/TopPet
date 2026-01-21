@@ -1,0 +1,46 @@
+.auth-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.auth-provider-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 24px;
+  min-height: 48px;
+}
+
+.auth-provider-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.auth-provider-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-provider-name {
+  font-weight: 500;
+}
+
+.auth-providers-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.auth-providers-empty {
+  text-align: center;
+  padding: 24px;
+  color: #666;
+}

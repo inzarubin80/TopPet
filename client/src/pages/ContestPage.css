@@ -64,9 +64,21 @@
   color: #666;
 }
 
-.contest-page-participants h2 {
-  margin: 0 0 16px 0;
+.contest-page-participants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.contest-page-participants-header h2 {
+  margin: 0;
   font-size: 24px;
+}
+
+.contest-page-participants-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .contest-page-participants-loading {

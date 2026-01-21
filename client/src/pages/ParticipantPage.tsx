@@ -5,6 +5,8 @@ import { AppDispatch, RootState } from '../store';
 import { fetchParticipant } from '../store/slices/participantsSlice';
 import { fetchComments } from '../store/slices/commentsSlice';
 import { VoteButton } from '../components/contest/VoteButton';
+import { PhotoUpload } from '../components/participant/PhotoUpload';
+import { VideoUpload } from '../components/participant/VideoUpload';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import './ParticipantPage.css';
@@ -21,6 +23,8 @@ const ParticipantPage: React.FC = () => {
   );
   const { loading } = useSelector((state: RootState) => state.participants);
   const { currentContest } = useSelector((state: RootState) => state.contests);
+  const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
+  const isOwner = participant && currentUserId && participant.user_id === currentUserId;
 
   useEffect(() => {
     if (contestId && participantId) {
@@ -48,6 +52,12 @@ const ParticipantPage: React.FC = () => {
 
       <div className="participant-page-content">
         <div className="participant-page-media">
+          {isOwner && (
+            <div className="participant-page-media-upload">
+              <PhotoUpload participantId={participant.id} />
+              <VideoUpload participantId={participant.id} />
+            </div>
+          )}
           {participant.photos && participant.photos.length > 0 && (
             <div className="participant-page-photos">
               {participant.photos.map((photo) => (
@@ -59,6 +69,9 @@ const ParticipantPage: React.FC = () => {
             <div className="participant-page-video">
               <video controls src={participant.video.url} />
             </div>
+          )}
+          {!participant.photos?.length && !participant.video && !isOwner && (
+            <div className="participant-page-media-empty">Нет медиа</div>
           )}
         </div>
 
