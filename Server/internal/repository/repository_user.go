@@ -149,6 +149,26 @@ func (r *Repository) GetUser(ctx context.Context, userID model.UserID) (*model.U
 	}, nil
 }
 
+func (r *Repository) UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	user, err := reposqlc.UpdateUserName(ctx, &sqlc_repository.UpdateUserNameParams{
+		UserID: int64(userID),
+		Name:   name,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
+	}
+
+	return &model.User{
+		ID:        model.UserID(user.UserID),
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt.Time,
+	}, nil
+}
+
 func (r *Repository) SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error {
 	// This would require a migration to add avatar_url to users table
 	// For now, we'll skip this functionality

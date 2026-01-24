@@ -39,10 +39,19 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		participantIDStr = uuid.UUID(comment.ParticipantID.Bytes).String()
 	}
 
+	user, err := r.GetUser(ctx, model.UserID(comment.UserID))
+	userName := ""
+	if err == nil && user != nil {
+		userName = user.Name
+	} else {
+		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
 		UserID:        model.UserID(comment.UserID),
+		UserName:      userName,
 		Text:          comment.Text,
 		CreatedAt:     comment.CreatedAt.Time,
 		UpdatedAt:     comment.UpdatedAt.Time,
@@ -72,10 +81,19 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 		participantIDStr = uuid.UUID(comment.ParticipantID.Bytes).String()
 	}
 
+	user, err := r.GetUser(ctx, model.UserID(comment.UserID))
+	userName := ""
+	if err == nil && user != nil {
+		userName = user.Name
+	} else {
+		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
 		UserID:        model.UserID(comment.UserID),
+		UserName:      userName,
 		Text:          comment.Text,
 		CreatedAt:     comment.CreatedAt.Time,
 		UpdatedAt:     comment.UpdatedAt.Time,
@@ -118,6 +136,7 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 			ID:            model.CommentID(commentIDStr),
 			ParticipantID: model.ParticipantID(participantIDStr),
 			UserID:        model.UserID(c.UserID),
+			UserName:      c.UserName,
 			Text:          c.Text,
 			CreatedAt:     c.CreatedAt.Time,
 			UpdatedAt:     c.UpdatedAt.Time,
@@ -168,8 +187,5 @@ func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentI
 		return err
 	}
 
-	return reposqlc.DeleteComment(ctx, &sqlc_repository.DeleteCommentParams{
-		ID:     pgtype.UUID{Bytes: commentUUID, Valid: true},
-		UserID: int64(userID),
-	})
+	return reposqlc.DeleteComment(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
 }

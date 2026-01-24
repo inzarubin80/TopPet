@@ -94,6 +94,30 @@ func (r *Repository) GetContestVoteByUser(ctx context.Context, contestID model.C
 	}, nil
 }
 
+func (r *Repository) DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return "", err
+	}
+
+	participantID, err := reposqlc.DeleteContestVoteByUser(ctx, &sqlc_repository.DeleteContestVoteByUserParams{
+		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:    int64(userID),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return "", err
+	}
+
+	if participantID.Valid {
+		return model.ParticipantID(uuid.UUID(participantID.Bytes).String()), nil
+	}
+	return "", nil
+}
+
 func (r *Repository) CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))

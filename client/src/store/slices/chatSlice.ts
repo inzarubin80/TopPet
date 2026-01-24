@@ -37,6 +37,25 @@ const chatSlice = createSlice({
       const { contestId, messages } = action.payload;
       state.messages[contestId] = messages;
     },
+    updateMessage: (state, action: PayloadAction<{ contestId: ContestID; message: ChatMessage }>) => {
+      const { contestId, message } = action.payload;
+      const list = state.messages[contestId];
+      if (!list) {
+        return;
+      }
+      const index = list.findIndex((m) => m.id === message.id);
+      if (index >= 0) {
+        list[index] = message;
+      }
+    },
+    removeMessage: (state, action: PayloadAction<{ contestId: ContestID; messageId: string }>) => {
+      const { contestId, messageId } = action.payload;
+      const list = state.messages[contestId];
+      if (!list) {
+        return;
+      }
+      state.messages[contestId] = list.filter((m) => m.id !== messageId);
+    },
     setConnectionState: (state, action: PayloadAction<WSConnectionState>) => {
       state.connectionState = action.payload;
     },
@@ -55,6 +74,8 @@ const chatSlice = createSlice({
 export const {
   addMessage,
   setMessages,
+  updateMessage,
+  removeMessage,
   setConnectionState,
   setCurrentContestId,
   clearMessages,

@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
@@ -14,16 +15,22 @@ type (
 	serviceVote interface {
 		Vote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
 		GetUserVote(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error)
+		Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error)
 	}
 
 	VoteHandler struct {
 		name    string
 		service serviceVote
+		authService serviceOptionalAuth
 	}
 )
 
 func NewVoteHandler(name string, service serviceVote) *VoteHandler {
-	return &VoteHandler{name: name, service: service}
+	var authService serviceOptionalAuth
+	if svc, ok := service.(serviceOptionalAuth); ok {
+		authService = svc
+	}
+	return &VoteHandler{name: name, service: service, authService: authService}
 }
 
 func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +40,12 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Get user vote (optional auth)
 		userIDVal := r.Context().Value(defenitions.UserID)
 		if userIDVal == nil {
-			w.WriteHeader(http.StatusNoContent)
-			return
+			optionalUserID, hasUser, authErr := getOptionalUserID(r, h.authService)
+			if authErr != nil || !hasUser {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			userIDVal = optionalUserID
 		}
 		userID := userIDVal.(model.UserID)
 		vote, err := h.service.GetUserVote(r.Context(), contestID, userID)
@@ -46,6 +57,29 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ParticipantID string `json:"participant_id"`
 		}
 		jsonData, _ := json.Marshal(resp{ParticipantID: string(vote.ParticipantID)})
+		uhttp.SendSuccessfulResponse(w, jsonData)
+		return
+	}
+
+	if r.Method == http.MethodDelete {
+		userID := r.Context().Value(defenitions.UserID).(model.UserID)
+		participantID, err := h.service.Unvote(r.Context(), contestID, userID)
+		if err != nil {
+			if errors.Is(err, model.ErrorNotFound) {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if participantID == "" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		type resp struct {
+			ParticipantID string `json:"participant_id"`
+		}
+		jsonData, _ := json.Marshal(resp{ParticipantID: string(participantID)})
 		uhttp.SendSuccessfulResponse(w, jsonData)
 		return
 	}

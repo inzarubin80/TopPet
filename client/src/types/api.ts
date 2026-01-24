@@ -1,6 +1,6 @@
 // API types and utilities
 
-import { Contest, Participant, Comment, ChatMessage, VoteResponse } from './models';
+import { Contest, Participant, Comment, ChatMessage, VoteResponse, ContestStatus } from './models';
 
 export interface ContestsListResponse {
   items: Contest[];
@@ -48,7 +48,16 @@ export interface UpdateContestRequest {
   description?: string;
 }
 
+export interface UpdateContestStatusRequest {
+  status: ContestStatus;
+}
+
 export interface CreateParticipantRequest {
+  pet_name: string;
+  pet_description: string;
+}
+
+export interface UpdateParticipantRequest {
   pet_name: string;
   pet_description: string;
 }

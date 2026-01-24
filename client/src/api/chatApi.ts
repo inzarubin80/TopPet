@@ -1,5 +1,5 @@
 import { axiosClient } from './axiosClient';
-import { ContestID } from '../types/models';
+import { ContestID, ChatMessageID, ChatMessage } from '../types/models';
 import { ChatMessagesListResponse } from '../types/api';
 
 export const getChatMessages = async (
@@ -15,4 +15,13 @@ export const getChatMessages = async (
     params,
   });
   return response.data;
+};
+
+export const updateChatMessage = async (messageId: ChatMessageID, text: string): Promise<ChatMessage> => {
+  const response = await axiosClient.patch<ChatMessage>(`/chat/${messageId}`, { text });
+  return response.data;
+};
+
+export const deleteChatMessage = async (messageId: ChatMessageID): Promise<void> => {
+  await axiosClient.delete(`/chat/${messageId}`);
 };

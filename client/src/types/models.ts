@@ -6,7 +6,7 @@ export type ParticipantID = string;
 export type CommentID = string;
 export type ChatMessageID = string;
 
-export type ContestStatus = 'draft' | 'published' | 'finished';
+export type ContestStatus = 'draft' | 'registration' | 'voting' | 'finished';
 
 export interface User {
   id: UserID;
@@ -30,6 +30,7 @@ export interface Participant {
   id: ParticipantID;
   contest_id: ContestID;
   user_id: UserID;
+  user_name?: string;
   pet_name: string;
   pet_description: string;
   photos?: Photo[];
@@ -44,6 +45,16 @@ export interface Photo {
   participant_id: ParticipantID;
   url: string;
   thumb_url?: string;
+  position?: number;
+  like_count?: number;
+  is_liked?: boolean;
+  created_at: string;
+}
+
+export interface PhotoLike {
+  id: string;
+  photo_id: string;
+  user_id: UserID;
   created_at: string;
 }
 
@@ -68,6 +79,7 @@ export interface Comment {
   id: CommentID;
   participant_id: ParticipantID;
   user_id: UserID;
+  user_name?: string;
   text: string;
   created_at: string;
   updated_at: string;
@@ -77,6 +89,7 @@ export interface ChatMessage {
   id: ChatMessageID;
   contest_id: ContestID;
   user_id: UserID;
+  user_name?: string;
   text: string;
   is_system: boolean;
   created_at: string;
@@ -102,6 +115,11 @@ export interface PaginatedResponse<T> {
 
 export interface VoteResponse {
   participant_id: string;
+}
+
+export interface PhotoLikeResponse {
+  like_count: number;
+  is_liked: boolean;
 }
 
 export interface Provider {

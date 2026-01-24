@@ -7,6 +7,10 @@ import (
 	"toppet/server/internal/model"
 )
 
+func commentsAllowed(status model.ContestStatus) bool {
+	return status == model.ContestStatusRegistration || status == model.ContestStatusVoting
+}
+
 func (s *TopPetService) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error) {
 	if text == "" {
 		return nil, errors.New("text is required")
@@ -17,9 +21,17 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 	}
 
 	// Check participant exists
-	_, err := s.repository.GetParticipant(ctx, participantID)
+	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		return nil, err
+	}
+
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	if !commentsAllowed(contest.Status) {
+		return nil, errors.New("comments are only allowed during registration or voting")
 	}
 
 	return s.repository.CreateComment(ctx, participantID, userID, text)
@@ -51,6 +63,18 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 		return nil, err
 	}
 
+	participant, err := s.repository.GetParticipant(ctx, comment.ParticipantID)
+	if err != nil {
+		return nil, err
+	}
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	if !commentsAllowed(contest.Status) {
+		return nil, errors.New("comments are only allowed during registration or voting")
+	}
+
 	if comment.UserID != userID {
 		return nil, errors.New("only comment author can update comment")
 	}
@@ -65,8 +89,22 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 		return err
 	}
 
+	participant, err := s.repository.GetParticipant(ctx, comment.ParticipantID)
+	if err != nil {
+		return err
+	}
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return err
+	}
+	if !commentsAllowed(contest.Status) {
+		return errors.New("comments are only allowed during registration or voting")
+	}
+
 	if comment.UserID != userID {
-		return errors.New("only comment author can delete comment")
+		if contest.CreatedByUserID != userID {
+			return errors.New("only comment author or contest owner can delete comment")
+		}
 	}
 
 	return s.repository.DeleteComment(ctx, commentID, userID)

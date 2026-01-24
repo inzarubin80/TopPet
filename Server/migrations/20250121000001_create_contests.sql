@@ -5,7 +5,7 @@ CREATE TABLE contests (
     created_by_user_id BIGINT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL CHECK (status IN ('draft','published','finished')),
+    status TEXT NOT NULL CHECK (status IN ('draft','registration','voting','finished')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

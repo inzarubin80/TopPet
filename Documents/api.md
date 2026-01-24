@@ -31,9 +31,8 @@
 - `PATCH /api/contests/{contestId}` (только admin, только draft)\n
   - body: `{ title?, description? }`\n
   - resp: `Contest`\n
-- `POST /api/contests/{contestId}/publish` (admin)\n
-  - resp: `Contest`\n
-- `POST /api/contests/{contestId}/finish` (admin)\n
+- `PATCH /api/contests/{contestId}/status` (admin)\n
+  - body: `{ status }` (`draft -> registration -> voting -> finished`)\n
   - resp: `Contest`\n
 
 ## Participants (public)
@@ -44,6 +43,13 @@
 - `POST /api/contests/{contestId}/participants`\n
   - body: `{ pet_name, pet_description }`\n
   - resp: `Participant`\n
+- `PATCH /api/participants/{participantId}`\n
+  - body: `{ pet_name, pet_description }`\n
+  - resp: `Participant`\n
+  - Только автор участника, только если конкурс в статусе `draft` или `registration`\n
+- `DELETE /api/participants/{participantId}`\n
+  - resp: `{ ok: true }`\n
+  - Только автор участника, только если конкурс в статусе `draft` или `registration`\n
 - `POST /api/participants/{participantId}/photos` (multipart)\n
   - form: `file`\n
   - resp: `Photo`\n
@@ -55,7 +61,7 @@
 - `GET /api/contests/{contestId}/vote` (auth optional)\n
   - если auth: resp `{ participant_id: string } | { participant_id: \"\" }`\n
   - если no auth: 401 или 204 (на выбор клиента)\n
-- `POST /api/contests/{contestId}/vote` (auth required, только published)\n
+- `POST /api/contests/{contestId}/vote` (auth required, только voting)\n
   - body: `{ participant_id: string }`\n
   - resp: `{ participant_id: string }`\n
 

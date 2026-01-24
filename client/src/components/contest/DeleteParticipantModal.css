@@ -1,0 +1,31 @@
+.delete-participant-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.delete-participant-modal-content {
+  padding: 16px 0;
+}
+
+.delete-participant-modal-content p {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.delete-participant-modal-warning {
+  color: #d32f2f;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.delete-participant-modal-error {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #ffebee;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  color: #d32f2f;
+  font-size: 14px;
+}

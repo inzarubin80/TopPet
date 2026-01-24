@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,13 +14,20 @@ import (
 )
 
 func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error) {
+	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
+	
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID := uuid.New()
+	log.Printf("[Repository] CreateParticipant: Generated participantUUID=%s", participantUUID.String())
+	
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
+		log.Printf("[Repository] CreateParticipant: ERROR - Failed to parse contestID: %v", err)
 		return nil, err
 	}
+	log.Printf("[Repository] CreateParticipant: Parsed contestUUID=%s", contestUUID.String())
 
+	log.Printf("[Repository] CreateParticipant: Executing SQL insert")
 	participant, err := reposqlc.CreateParticipant(ctx, &sqlc_repository.CreateParticipantParams{
 		ID:             pgtype.UUID{Bytes: participantUUID, Valid: true},
 		ContestID:      pgtype.UUID{Bytes: contestUUID, Valid: true},
@@ -28,8 +36,10 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		PetDescription: petDescription,
 	})
 	if err != nil {
+		log.Printf("[Repository] CreateParticipant: ERROR - SQL insert failed: %v", err)
 		return nil, err
 	}
+	log.Printf("[Repository] CreateParticipant: SQL insert successful, participantID=%s", participant.ID.String())
 
 	var participantIDStr, contestIDStr string
 	if participant.ID.Valid {
@@ -39,7 +49,7 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		contestIDStr = uuid.UUID(participant.ContestID.Bytes).String()
 	}
 
-	return &model.Participant{
+	result := &model.Participant{
 		ID:             model.ParticipantID(participantIDStr),
 		ContestID:      model.ContestID(contestIDStr),
 		UserID:         model.UserID(participant.UserID),
@@ -47,7 +57,15 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		PetDescription: participant.PetDescription,
 		CreatedAt:      participant.CreatedAt.Time,
 		UpdatedAt:      participant.UpdatedAt.Time,
-	}, nil
+	}
+
+	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
+	if err == nil && user != nil {
+		result.UserName = user.Name
+	}
+	
+	log.Printf("[Repository] CreateParticipant: Successfully created participant: ID=%s, ContestID=%s, UserID=%d", result.ID, result.ContestID, result.UserID)
+	return result, nil
 }
 
 func (r *Repository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
@@ -77,6 +95,7 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		ID:             model.ParticipantID(participantIDStr),
 		ContestID:      model.ContestID(contestIDStr),
 		UserID:         model.UserID(participant.UserID),
+		UserName:       participant.UserName,
 		PetName:        participant.PetName,
 		PetDescription: participant.PetDescription,
 		CreatedAt:      participant.CreatedAt.Time,
@@ -114,6 +133,7 @@ func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contest
 		ID:             model.ParticipantID(participantIDStr),
 		ContestID:      model.ContestID(contestIDStr),
 		UserID:         model.UserID(participant.UserID),
+		UserName:       participant.UserName,
 		PetName:        participant.PetName,
 		PetDescription: participant.PetDescription,
 		CreatedAt:      participant.CreatedAt.Time,
@@ -147,6 +167,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 			ID:             model.ParticipantID(participantIDStr),
 			ContestID:      model.ContestID(contestIDStr),
 			UserID:         model.UserID(p.UserID),
+			UserName:       p.UserName,
 			PetName:        p.PetName,
 			PetDescription: p.PetDescription,
 			CreatedAt:      p.CreatedAt.Time,
@@ -181,7 +202,7 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		contestIDStr = uuid.UUID(participant.ContestID.Bytes).String()
 	}
 
-	return &model.Participant{
+	result := &model.Participant{
 		ID:             model.ParticipantID(participantIDStr),
 		ContestID:      model.ContestID(contestIDStr),
 		UserID:         model.UserID(participant.UserID),
@@ -189,7 +210,68 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		PetDescription: participant.PetDescription,
 		CreatedAt:      participant.CreatedAt.Time,
 		UpdatedAt:      participant.UpdatedAt.Time,
-	}, nil
+	}
+
+	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
+	if err == nil && user != nil {
+		result.UserName = user.Name
+	}
+
+	return result, nil
+}
+
+func (r *Repository) DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error {
+	log.Printf("[Repository] DeleteParticipant: participantID=%s", participantID)
+	
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		log.Printf("[Repository] DeleteParticipant: ERROR - Failed to parse participantID: %v", err)
+		return err
+	}
+
+	// Delete all related data first (no foreign keys, so we delete manually)
+	// Delete photos
+	log.Printf("[Repository] DeleteParticipant: Deleting photos for participant %s", participantID)
+	photos, err := reposqlc.GetPhotosByParticipantID(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
+	if err == nil {
+		for _, photo := range photos {
+			if photo.ID.Valid {
+				if err := reposqlc.DeleteParticipantPhoto(ctx, photo.ID); err != nil {
+					log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete photo %s: %v", photo.ID.String(), err)
+				}
+			}
+		}
+	}
+
+	// Delete video
+	log.Printf("[Repository] DeleteParticipant: Deleting video for participant %s", participantID)
+	if err := reposqlc.DeleteParticipantVideo(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
+		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete video: %v", err)
+	}
+
+	// Delete comments
+	log.Printf("[Repository] DeleteParticipant: Deleting comments for participant %s", participantID)
+	if err := reposqlc.DeleteCommentsByParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
+		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete comments: %v", err)
+	}
+
+	// Delete votes
+	log.Printf("[Repository] DeleteParticipant: Deleting votes for participant %s", participantID)
+	if err := reposqlc.DeleteVotesByParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
+		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete votes: %v", err)
+	}
+
+	// Delete participant
+	log.Printf("[Repository] DeleteParticipant: Deleting participant %s", participantID)
+	err = reposqlc.DeleteParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
+	if err != nil {
+		log.Printf("[Repository] DeleteParticipant: ERROR - Failed to delete participant: %v", err)
+		return err
+	}
+
+	log.Printf("[Repository] DeleteParticipant: Successfully deleted participant %s", participantID)
+	return nil
 }
 
 func (r *Repository) AddParticipantPhoto(ctx context.Context, participantID model.ParticipantID, url string, thumbURL *string) (*model.Photo, error) {
@@ -200,11 +282,22 @@ func (r *Repository) AddParticipantPhoto(ctx context.Context, participantID mode
 		return nil, err
 	}
 
+	maxPosition, err := reposqlc.GetMaxPhotoPositionByParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	maxPosInt, ok := maxPosition.(int64)
+	if !ok {
+		maxPosInt = 0
+	}
+	nextPosition := int32(maxPosInt + 1)
+
 	photo, err := reposqlc.AddParticipantPhoto(ctx, &sqlc_repository.AddParticipantPhotoParams{
 		ID:            pgtype.UUID{Bytes: photoUUID, Valid: true},
 		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
 		Url:           url,
 		ThumbUrl:      thumbURL,
+		Position:      nextPosition,
 	})
 	if err != nil {
 		return nil, err
@@ -222,6 +315,7 @@ func (r *Repository) AddParticipantPhoto(ctx context.Context, participantID mode
 		ID:            photoIDStr,
 		ParticipantID: model.ParticipantID(participantIDStr),
 		URL:           photo.Url,
+		Position:      int(photo.Position),
 		CreatedAt:     photo.CreatedAt.Time,
 	}
 	if photo.ThumbUrl != nil {
@@ -257,6 +351,7 @@ func (r *Repository) GetPhotosByParticipantID(ctx context.Context, participantID
 			ID:            photoIDStr,
 			ParticipantID: model.ParticipantID(participantIDStr),
 			URL:           p.Url,
+			Position:      int(p.Position),
 			CreatedAt:     p.CreatedAt.Time,
 		}
 		if p.ThumbUrl != nil {
@@ -331,4 +426,45 @@ func (r *Repository) GetVideoByParticipantID(ctx context.Context, participantID 
 		CreatedAt:     video.CreatedAt.Time,
 		UpdatedAt:     video.CreatedAt.Time, // Video table doesn't have updated_at, use CreatedAt
 	}, nil
+}
+
+func (r *Repository) DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	photoUUID, err := uuid.Parse(photoID)
+	if err != nil {
+		return err
+	}
+
+	err = reposqlc.DeleteParticipantPhoto(ctx, pgtype.UUID{Bytes: photoUUID, Valid: true})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repository) UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+
+	for index, photoID := range photoIDs {
+		photoUUID, err := uuid.Parse(photoID)
+		if err != nil {
+			return err
+		}
+
+		err = reposqlc.UpdateParticipantPhotoOrder(ctx, &sqlc_repository.UpdateParticipantPhotoOrderParams{
+			ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+			ID:            pgtype.UUID{Bytes: photoUUID, Valid: true},
+			Position:      int32(index + 1),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

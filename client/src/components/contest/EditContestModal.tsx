@@ -68,6 +68,7 @@ export const EditContestModal: React.FC<EditContestModalProps> = ({
 
   const handleClose = () => {
     if (!loading) {
+      console.log('[EditContestModal] handleClose', { contestId: contest.id });
       setTitle(contest.title);
       setDescription(contest.description || '');
       setError(null);

@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Participant, ParticipantID, ContestID } from '../../types/models';
 import * as participantsApi from '../../api/participantsApi';
-import { CreateParticipantRequest } from '../../types/api';
+import { CreateParticipantRequest, UpdateParticipantRequest } from '../../types/api';
 
 interface ParticipantsState {
   items: Record<ParticipantID, Participant>;
@@ -78,12 +78,73 @@ export const uploadVideo = createAsyncThunk(
   }
 );
 
+export const updateParticipant = createAsyncThunk(
+  'participants/updateParticipant',
+  async ({ participantId, data }: { participantId: ParticipantID; data: UpdateParticipantRequest }, { rejectWithValue }) => {
+    try {
+      const participant = await participantsApi.updateParticipant(participantId, data);
+      return participant;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update participant');
+    }
+  }
+);
+
+export const deleteParticipant = createAsyncThunk(
+  'participants/deleteParticipant',
+  async (participantId: ParticipantID, { rejectWithValue }) => {
+    try {
+      await participantsApi.deleteParticipant(participantId);
+      return participantId;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to delete participant');
+    }
+  }
+);
+
+export const deletePhoto = createAsyncThunk(
+  'participants/deletePhoto',
+  async ({ participantId, photoId }: { participantId: ParticipantID; photoId: string }, { rejectWithValue }) => {
+    try {
+      await participantsApi.deletePhoto(participantId, photoId);
+      return { participantId, photoId };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to delete photo');
+    }
+  }
+);
+
+export const updatePhotoOrder = createAsyncThunk(
+  'participants/updatePhotoOrder',
+  async ({ participantId, photoIds }: { participantId: ParticipantID; photoIds: string[] }, { rejectWithValue }) => {
+    try {
+      await participantsApi.updatePhotoOrder(participantId, photoIds);
+      return { participantId, photoIds };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update photo order');
+    }
+  }
+);
+
 const participantsSlice = createSlice({
   name: 'participants',
   initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    updateParticipantVotes: (
+      state,
+      action: {
+        payload: { participantId: ParticipantID; totalVotes: number };
+        type: string;
+      }
+    ) => {
+      const { participantId, totalVotes } = action.payload;
+      const participant = state.items[participantId];
+      if (participant) {
+        participant.total_votes = totalVotes;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -110,10 +171,13 @@ const participantsSlice = createSlice({
         state.loading = false;
         const { contestId, participants } = action.payload;
         const participantIds: ParticipantID[] = [];
-        participants.forEach((p) => {
-          state.items[p.id] = p;
-          participantIds.push(p.id);
-        });
+        // Ensure participants is an array
+        if (Array.isArray(participants)) {
+          participants.forEach((p) => {
+            state.items[p.id] = p;
+            participantIds.push(p.id);
+          });
+        }
         state.byContest[contestId] = participantIds;
       })
       .addCase(fetchParticipantsByContest.rejected, (state, action) => {
@@ -149,9 +213,54 @@ const participantsSlice = createSlice({
         if (participant) {
           participant.video = video;
         }
+      })
+      // updateParticipant
+      .addCase(updateParticipant.fulfilled, (state, action) => {
+        state.items[action.payload.id] = action.payload;
+      })
+      .addCase(updateParticipant.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // deleteParticipant
+      .addCase(deleteParticipant.fulfilled, (state, action) => {
+        const participantId = action.payload;
+        // Remove from items
+        delete state.items[participantId];
+        // Remove from byContest
+        for (const contestId in state.byContest) {
+          state.byContest[contestId] = state.byContest[contestId].filter(id => id !== participantId);
+        }
+      })
+      .addCase(deleteParticipant.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // deletePhoto
+      .addCase(deletePhoto.fulfilled, (state, action) => {
+        const { participantId, photoId } = action.payload;
+        const participant = state.items[participantId];
+        if (participant && participant.photos) {
+          participant.photos = participant.photos.filter(photo => photo.id !== photoId);
+        }
+      })
+      .addCase(deletePhoto.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // updatePhotoOrder
+      .addCase(updatePhotoOrder.fulfilled, (state, action) => {
+        const { participantId, photoIds } = action.payload;
+        const participant = state.items[participantId];
+        if (participant && participant.photos) {
+          const map = new Map(participant.photos.map((photo) => [photo.id, photo]));
+          participant.photos = photoIds
+            .map((id) => map.get(id))
+            .filter((photo): photo is NonNullable<typeof photo> => !!photo);
+        }
+      })
+      .addCase(updatePhotoOrder.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { clearError } = participantsSlice.actions;
+export const { clearError, updateParticipantVotes } = participantsSlice.actions;
 export default participantsSlice.reducer;

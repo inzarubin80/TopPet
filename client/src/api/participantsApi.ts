@@ -1,6 +1,6 @@
 import { axiosClient } from './axiosClient';
 import { Participant, Photo, Video, ParticipantID, ContestID } from '../types/models';
-import { CreateParticipantRequest } from '../types/api';
+import { CreateParticipantRequest, UpdateParticipantRequest } from '../types/api';
 
 export const getParticipant = async (
   contestId: ContestID,
@@ -13,10 +13,10 @@ export const getParticipant = async (
 };
 
 export const getParticipantsByContest = async (contestId: ContestID): Promise<Participant[]> => {
-  // Note: This endpoint may need to be added to the server
-  // For now, we'll use a workaround or wait for the endpoint
-  const response = await axiosClient.get<Participant[]>(`/contests/${contestId}/participants`);
-  return response.data;
+  const response = await axiosClient.get<{ items: Participant[]; total: number }>(
+    `/contests/${contestId}/participants`
+  );
+  return response.data.items || [];
 };
 
 export const createParticipant = async (
@@ -49,4 +49,26 @@ export const uploadVideo = async (participantId: ParticipantID, file: File): Pro
     },
   });
   return response.data;
+};
+
+export const updateParticipant = async (
+  participantId: ParticipantID,
+  data: UpdateParticipantRequest
+): Promise<Participant> => {
+  const response = await axiosClient.patch<Participant>(`/participants/${participantId}`, data);
+  return response.data;
+};
+
+export const deleteParticipant = async (participantId: ParticipantID): Promise<void> => {
+  await axiosClient.delete(`/participants/${participantId}`);
+};
+
+export const deletePhoto = async (participantId: ParticipantID, photoId: string): Promise<void> => {
+  await axiosClient.delete(`/participants/${participantId}/photos/${photoId}`);
+};
+
+export const updatePhotoOrder = async (participantId: ParticipantID, photoIds: string[]): Promise<void> => {
+  await axiosClient.patch(`/participants/${participantId}/photos/order`, {
+    photo_ids: photoIds,
+  });
 };

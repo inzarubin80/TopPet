@@ -55,6 +55,7 @@ type (
 		ID             ParticipantID `json:"id"`
 		ContestID      ContestID     `json:"contest_id"`
 		UserID         UserID        `json:"user_id"`
+		UserName       string        `json:"user_name,omitempty"`
 		PetName        string        `json:"pet_name"`
 		PetDescription string        `json:"pet_description"`
 		Photos         []*Photo      `json:"photos,omitempty"`
@@ -69,7 +70,17 @@ type (
 		ParticipantID ParticipantID `json:"participant_id"`
 		URL           string        `json:"url"`
 		ThumbURL      *string       `json:"thumb_url,omitempty"`
+		Position      int           `json:"position"`
+		LikeCount     *int64        `json:"like_count,omitempty"`
+		IsLiked       *bool         `json:"is_liked,omitempty"`
 		CreatedAt     time.Time     `json:"created_at"`
+	}
+
+	PhotoLike struct {
+		ID        string    `json:"id"`
+		PhotoID   string    `json:"photo_id"`
+		UserID    UserID    `json:"user_id"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	Video struct {
@@ -93,6 +104,7 @@ type (
 		ID            CommentID     `json:"id"`
 		ParticipantID ParticipantID `json:"participant_id"`
 		UserID        UserID        `json:"user_id"`
+		UserName      string        `json:"user_name"`
 		Text          string        `json:"text"`
 		CreatedAt     time.Time     `json:"created_at"`
 		UpdatedAt     time.Time     `json:"updated_at"`
@@ -102,6 +114,7 @@ type (
 		ID        ChatMessageID `json:"id"`
 		ContestID ContestID     `json:"contest_id"`
 		UserID    UserID        `json:"user_id"`
+		UserName  string        `json:"user_name"`
 		Text      string        `json:"text"`
 		IsSystem  bool          `json:"is_system"`
 		CreatedAt time.Time     `json:"created_at"`
@@ -125,9 +138,10 @@ const (
 	AccessTokenType  = "access"
 	RefreshTokenType = "refresh"
 
-	ContestStatusDraft     ContestStatus = "draft"
-	ContestStatusPublished ContestStatus = "published"
-	ContestStatusFinished  ContestStatus = "finished"
+	ContestStatusDraft        ContestStatus = "draft"
+	ContestStatusRegistration ContestStatus = "registration"
+	ContestStatusVoting       ContestStatus = "voting"
+	ContestStatusFinished     ContestStatus = "finished"
 )
 
 var (

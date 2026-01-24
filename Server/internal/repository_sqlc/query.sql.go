@@ -13,9 +13,9 @@ import (
 
 const addParticipantPhoto = `-- name: AddParticipantPhoto :one
 
-INSERT INTO contest_participant_photos (id, participant_id, url, thumb_url)
-VALUES ($1, $2, $3, $4)
-RETURNING id, participant_id, url, thumb_url, created_at
+INSERT INTO contest_participant_photos (id, participant_id, url, thumb_url, position)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, participant_id, url, thumb_url, created_at, position
 `
 
 type AddParticipantPhotoParams struct {
@@ -23,6 +23,7 @@ type AddParticipantPhotoParams struct {
 	ParticipantID pgtype.UUID
 	Url           string
 	ThumbUrl      *string
+	Position      int32
 }
 
 // Contest Participant Photos
@@ -32,6 +33,7 @@ func (q *Queries) AddParticipantPhoto(ctx context.Context, arg *AddParticipantPh
 		arg.ParticipantID,
 		arg.Url,
 		arg.ThumbUrl,
+		arg.Position,
 	)
 	var i ContestParticipantPhoto
 	err := row.Scan(
@@ -40,6 +42,7 @@ func (q *Queries) AddParticipantPhoto(ctx context.Context, arg *AddParticipantPh
 		&i.Url,
 		&i.ThumbUrl,
 		&i.CreatedAt,
+		&i.Position,
 	)
 	return &i, err
 }
@@ -105,6 +108,18 @@ WHERE (COALESCE($1::text, '') = '' OR status = $1)
 
 func (q *Queries) CountContests(ctx context.Context, dollar_1 string) (int64, error) {
 	row := q.db.QueryRow(ctx, countContests, dollar_1)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPhotoLikes = `-- name: CountPhotoLikes :one
+SELECT count(1) FROM photo_likes
+WHERE photo_id = $1
+`
+
+func (q *Queries) CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPhotoLikes, photoID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -294,9 +309,10 @@ func (q *Queries) CreateUser(ctx context.Context, name string) (*User, error) {
 	return &i, err
 }
 
-const deleteChatMessage = `-- name: DeleteChatMessage :exec
+const deleteChatMessage = `-- name: DeleteChatMessage :one
 DELETE FROM contest_chat_messages
 WHERE id = $1 AND user_id = $2 AND is_system = FALSE
+RETURNING contest_id
 `
 
 type DeleteChatMessageParams struct {
@@ -304,23 +320,30 @@ type DeleteChatMessageParams struct {
 	UserID int64
 }
 
-func (q *Queries) DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) error {
-	_, err := q.db.Exec(ctx, deleteChatMessage, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteChatMessage, arg.ID, arg.UserID)
+	var contest_id pgtype.UUID
+	err := row.Scan(&contest_id)
+	return contest_id, err
 }
 
 const deleteComment = `-- name: DeleteComment :exec
 DELETE FROM contest_comments
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
 `
 
-type DeleteCommentParams struct {
-	ID     pgtype.UUID
-	UserID int64
+func (q *Queries) DeleteComment(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteComment, id)
+	return err
 }
 
-func (q *Queries) DeleteComment(ctx context.Context, arg *DeleteCommentParams) error {
-	_, err := q.db.Exec(ctx, deleteComment, arg.ID, arg.UserID)
+const deleteCommentsByParticipant = `-- name: DeleteCommentsByParticipant :exec
+DELETE FROM contest_comments
+WHERE participant_id = $1
+`
+
+func (q *Queries) DeleteCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCommentsByParticipant, participantID)
 	return err
 }
 
@@ -331,6 +354,34 @@ WHERE id = $1
 
 func (q *Queries) DeleteContest(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteContest, id)
+	return err
+}
+
+const deleteContestVoteByUser = `-- name: DeleteContestVoteByUser :one
+DELETE FROM contest_votes
+WHERE contest_id = $1 AND user_id = $2
+RETURNING participant_id
+`
+
+type DeleteContestVoteByUserParams struct {
+	ContestID pgtype.UUID
+	UserID    int64
+}
+
+func (q *Queries) DeleteContestVoteByUser(ctx context.Context, arg *DeleteContestVoteByUserParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteContestVoteByUser, arg.ContestID, arg.UserID)
+	var participant_id pgtype.UUID
+	err := row.Scan(&participant_id)
+	return participant_id, err
+}
+
+const deleteParticipant = `-- name: DeleteParticipant :exec
+DELETE FROM contest_participants
+WHERE id = $1
+`
+
+func (q *Queries) DeleteParticipant(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteParticipant, id)
 	return err
 }
 
@@ -351,6 +402,31 @@ WHERE participant_id = $1
 
 func (q *Queries) DeleteParticipantVideo(ctx context.Context, participantID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteParticipantVideo, participantID)
+	return err
+}
+
+const deletePhotoLike = `-- name: DeletePhotoLike :exec
+DELETE FROM photo_likes
+WHERE photo_id = $1 AND user_id = $2
+`
+
+type DeletePhotoLikeParams struct {
+	PhotoID pgtype.UUID
+	UserID  int64
+}
+
+func (q *Queries) DeletePhotoLike(ctx context.Context, arg *DeletePhotoLikeParams) error {
+	_, err := q.db.Exec(ctx, deletePhotoLike, arg.PhotoID, arg.UserID)
+	return err
+}
+
+const deleteVotesByParticipant = `-- name: DeleteVotesByParticipant :exec
+DELETE FROM contest_votes
+WHERE participant_id = $1
+`
+
+func (q *Queries) DeleteVotesByParticipant(ctx context.Context, participantID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteVotesByParticipant, participantID)
 	return err
 }
 
@@ -415,9 +491,32 @@ func (q *Queries) GetContestVoteByUser(ctx context.Context, arg *GetContestVoteB
 	return &i, err
 }
 
+const getMaxPhotoPositionByParticipant = `-- name: GetMaxPhotoPositionByParticipant :one
+SELECT COALESCE(MAX(position), 0) AS max_position
+FROM contest_participant_photos
+WHERE participant_id = $1
+`
+
+func (q *Queries) GetMaxPhotoPositionByParticipant(ctx context.Context, participantID pgtype.UUID) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getMaxPhotoPositionByParticipant, participantID)
+	var max_position interface{}
+	err := row.Scan(&max_position)
+	return max_position, err
+}
+
 const getParticipantByContestAndUser = `-- name: GetParticipantByContestAndUser :one
-SELECT id, contest_id, user_id, pet_name, pet_description, created_at, updated_at FROM contest_participants
-WHERE contest_id = $1 AND user_id = $2
+SELECT
+    cp.id,
+    cp.contest_id,
+    cp.user_id,
+    COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
+    cp.pet_name,
+    cp.pet_description,
+    cp.created_at,
+    cp.updated_at
+FROM contest_participants cp
+LEFT JOIN users u ON u.user_id = cp.user_id
+WHERE cp.contest_id = $1 AND cp.user_id = $2
 `
 
 type GetParticipantByContestAndUserParams struct {
@@ -425,13 +524,25 @@ type GetParticipantByContestAndUserParams struct {
 	UserID    int64
 }
 
-func (q *Queries) GetParticipantByContestAndUser(ctx context.Context, arg *GetParticipantByContestAndUserParams) (*ContestParticipant, error) {
+type GetParticipantByContestAndUserRow struct {
+	ID             pgtype.UUID
+	ContestID      pgtype.UUID
+	UserID         int64
+	UserName       string
+	PetName        string
+	PetDescription string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetParticipantByContestAndUser(ctx context.Context, arg *GetParticipantByContestAndUserParams) (*GetParticipantByContestAndUserRow, error) {
 	row := q.db.QueryRow(ctx, getParticipantByContestAndUser, arg.ContestID, arg.UserID)
-	var i ContestParticipant
+	var i GetParticipantByContestAndUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContestID,
 		&i.UserID,
+		&i.UserName,
 		&i.PetName,
 		&i.PetDescription,
 		&i.CreatedAt,
@@ -441,16 +552,39 @@ func (q *Queries) GetParticipantByContestAndUser(ctx context.Context, arg *GetPa
 }
 
 const getParticipantByID = `-- name: GetParticipantByID :one
-SELECT id, contest_id, user_id, pet_name, pet_description, created_at, updated_at FROM contest_participants WHERE id = $1
+SELECT
+    cp.id,
+    cp.contest_id,
+    cp.user_id,
+    COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
+    cp.pet_name,
+    cp.pet_description,
+    cp.created_at,
+    cp.updated_at
+FROM contest_participants cp
+LEFT JOIN users u ON u.user_id = cp.user_id
+WHERE cp.id = $1
 `
 
-func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*ContestParticipant, error) {
+type GetParticipantByIDRow struct {
+	ID             pgtype.UUID
+	ContestID      pgtype.UUID
+	UserID         int64
+	UserName       string
+	PetName        string
+	PetDescription string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetParticipantByIDRow, error) {
 	row := q.db.QueryRow(ctx, getParticipantByID, id)
-	var i ContestParticipant
+	var i GetParticipantByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContestID,
 		&i.UserID,
+		&i.UserName,
 		&i.PetName,
 		&i.PetDescription,
 		&i.CreatedAt,
@@ -459,10 +593,32 @@ func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*Cont
 	return &i, err
 }
 
+const getPhotoLikeByUser = `-- name: GetPhotoLikeByUser :one
+SELECT id, photo_id, user_id, created_at FROM photo_likes
+WHERE photo_id = $1 AND user_id = $2
+`
+
+type GetPhotoLikeByUserParams struct {
+	PhotoID pgtype.UUID
+	UserID  int64
+}
+
+func (q *Queries) GetPhotoLikeByUser(ctx context.Context, arg *GetPhotoLikeByUserParams) (*PhotoLike, error) {
+	row := q.db.QueryRow(ctx, getPhotoLikeByUser, arg.PhotoID, arg.UserID)
+	var i PhotoLike
+	err := row.Scan(
+		&i.ID,
+		&i.PhotoID,
+		&i.UserID,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
 const getPhotosByParticipantID = `-- name: GetPhotosByParticipantID :many
-SELECT id, participant_id, url, thumb_url, created_at FROM contest_participant_photos
+SELECT id, participant_id, url, thumb_url, created_at, position FROM contest_participant_photos
 WHERE participant_id = $1
-ORDER BY created_at ASC
+ORDER BY position ASC, created_at ASC
 `
 
 func (q *Queries) GetPhotosByParticipantID(ctx context.Context, participantID pgtype.UUID) ([]*ContestParticipantPhoto, error) {
@@ -480,6 +636,7 @@ func (q *Queries) GetPhotosByParticipantID(ctx context.Context, participantID pg
 			&i.Url,
 			&i.ThumbUrl,
 			&i.CreatedAt,
+			&i.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -573,9 +730,19 @@ func (q *Queries) GetVideoByParticipantID(ctx context.Context, participantID pgt
 }
 
 const listChatMessages = `-- name: ListChatMessages :many
-SELECT id, contest_id, user_id, text, is_system, created_at, updated_at FROM contest_chat_messages
-WHERE contest_id = $1
-ORDER BY created_at ASC
+SELECT 
+    ccm.id,
+    ccm.contest_id,
+    ccm.user_id,
+    ccm.text,
+    ccm.is_system,
+    ccm.created_at,
+    ccm.updated_at,
+    COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name
+FROM contest_chat_messages ccm
+LEFT JOIN users u ON u.user_id = ccm.user_id
+WHERE ccm.contest_id = $1
+ORDER BY ccm.created_at ASC
 LIMIT $2 OFFSET $3
 `
 
@@ -585,15 +752,26 @@ type ListChatMessagesParams struct {
 	Offset    int32
 }
 
-func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ContestChatMessage, error) {
+type ListChatMessagesRow struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+	UserID    int64
+	Text      string
+	IsSystem  bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	UserName  string
+}
+
+func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error) {
 	rows, err := q.db.Query(ctx, listChatMessages, arg.ContestID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ContestChatMessage
+	var items []*ListChatMessagesRow
 	for rows.Next() {
-		var i ContestChatMessage
+		var i ListChatMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContestID,
@@ -602,6 +780,7 @@ func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesPar
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserName,
 		); err != nil {
 			return nil, err
 		}
@@ -614,9 +793,18 @@ func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesPar
 }
 
 const listCommentsByParticipant = `-- name: ListCommentsByParticipant :many
-SELECT id, participant_id, user_id, text, created_at, updated_at FROM contest_comments
-WHERE participant_id = $1
-ORDER BY created_at ASC
+SELECT
+    cc.id,
+    cc.participant_id,
+    cc.user_id,
+    cc.text,
+    cc.created_at,
+    cc.updated_at,
+    COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name
+FROM contest_comments cc
+LEFT JOIN users u ON u.user_id = cc.user_id
+WHERE cc.participant_id = $1
+ORDER BY cc.created_at ASC
 LIMIT $2 OFFSET $3
 `
 
@@ -626,15 +814,25 @@ type ListCommentsByParticipantParams struct {
 	Offset        int32
 }
 
-func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ContestComment, error) {
+type ListCommentsByParticipantRow struct {
+	ID            pgtype.UUID
+	ParticipantID pgtype.UUID
+	UserID        int64
+	Text          string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	UserName      string
+}
+
+func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ListCommentsByParticipantRow, error) {
 	rows, err := q.db.Query(ctx, listCommentsByParticipant, arg.ParticipantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ContestComment
+	var items []*ListCommentsByParticipantRow
 	for rows.Next() {
-		var i ContestComment
+		var i ListCommentsByParticipantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ParticipantID,
@@ -642,6 +840,7 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserName,
 		); err != nil {
 			return nil, err
 		}
@@ -695,28 +894,86 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 }
 
 const listParticipantsByContest = `-- name: ListParticipantsByContest :many
-SELECT id, contest_id, user_id, pet_name, pet_description, created_at, updated_at FROM contest_participants
-WHERE contest_id = $1
-ORDER BY created_at ASC
+SELECT
+    cp.id,
+    cp.contest_id,
+    cp.user_id,
+    COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
+    cp.pet_name,
+    cp.pet_description,
+    cp.created_at,
+    cp.updated_at
+FROM contest_participants cp
+LEFT JOIN users u ON u.user_id = cp.user_id
+WHERE cp.contest_id = $1
+ORDER BY cp.created_at ASC
 `
 
-func (q *Queries) ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestParticipant, error) {
+type ListParticipantsByContestRow struct {
+	ID             pgtype.UUID
+	ContestID      pgtype.UUID
+	UserID         int64
+	UserName       string
+	PetName        string
+	PetDescription string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListParticipantsByContestRow, error) {
 	rows, err := q.db.Query(ctx, listParticipantsByContest, contestID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ContestParticipant
+	var items []*ListParticipantsByContestRow
 	for rows.Next() {
-		var i ContestParticipant
+		var i ListParticipantsByContestRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContestID,
 			&i.UserID,
+			&i.UserName,
 			&i.PetName,
 			&i.PetDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPhotoLikesByPhotos = `-- name: ListPhotoLikesByPhotos :many
+SELECT id, photo_id, user_id, created_at
+FROM photo_likes
+WHERE photo_id = ANY($1::uuid[]) AND user_id = $2
+`
+
+type ListPhotoLikesByPhotosParams struct {
+	Column1 []pgtype.UUID
+	UserID  int64
+}
+
+func (q *Queries) ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error) {
+	rows, err := q.db.Query(ctx, listPhotoLikesByPhotos, arg.Column1, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*PhotoLike
+	for rows.Next() {
+		var i PhotoLike
+		if err := rows.Scan(
+			&i.ID,
+			&i.PhotoID,
+			&i.UserID,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -866,6 +1123,42 @@ func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantP
 	return &i, err
 }
 
+const updateParticipantPhotoOrder = `-- name: UpdateParticipantPhotoOrder :exec
+UPDATE contest_participant_photos
+SET position = $3
+WHERE participant_id = $1 AND id = $2
+`
+
+type UpdateParticipantPhotoOrderParams struct {
+	ParticipantID pgtype.UUID
+	ID            pgtype.UUID
+	Position      int32
+}
+
+func (q *Queries) UpdateParticipantPhotoOrder(ctx context.Context, arg *UpdateParticipantPhotoOrderParams) error {
+	_, err := q.db.Exec(ctx, updateParticipantPhotoOrder, arg.ParticipantID, arg.ID, arg.Position)
+	return err
+}
+
+const updateUserName = `-- name: UpdateUserName :one
+UPDATE users
+SET name = $2
+WHERE user_id = $1
+RETURNING user_id, name, created_at
+`
+
+type UpdateUserNameParams struct {
+	UserID int64
+	Name   string
+}
+
+func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*User, error) {
+	row := q.db.QueryRow(ctx, updateUserName, arg.UserID, arg.Name)
+	var i User
+	err := row.Scan(&i.UserID, &i.Name, &i.CreatedAt)
+	return &i, err
+}
+
 const upsertContestVote = `-- name: UpsertContestVote :one
 
 INSERT INTO contest_votes (id, contest_id, participant_id, user_id)
@@ -925,6 +1218,34 @@ func (q *Queries) UpsertParticipantVideo(ctx context.Context, arg *UpsertPartici
 		&i.ID,
 		&i.ParticipantID,
 		&i.Url,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const upsertPhotoLike = `-- name: UpsertPhotoLike :one
+
+INSERT INTO photo_likes (id, photo_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (photo_id, user_id) DO UPDATE
+SET id = photo_likes.id
+RETURNING id, photo_id, user_id, created_at
+`
+
+type UpsertPhotoLikeParams struct {
+	ID      pgtype.UUID
+	PhotoID pgtype.UUID
+	UserID  int64
+}
+
+// Photo Likes
+func (q *Queries) UpsertPhotoLike(ctx context.Context, arg *UpsertPhotoLikeParams) (*PhotoLike, error) {
+	row := q.db.QueryRow(ctx, upsertPhotoLike, arg.ID, arg.PhotoID, arg.UserID)
+	var i PhotoLike
+	err := row.Scan(
+		&i.ID,
+		&i.PhotoID,
+		&i.UserID,
 		&i.CreatedAt,
 	)
 	return &i, err

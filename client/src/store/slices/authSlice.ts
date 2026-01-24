@@ -3,6 +3,18 @@ import { User, AuthResponse } from '../../types/models';
 import { tokenStorage } from '../../utils/tokenStorage';
 import * as authApi from '../../api/authApi';
 
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const user = await authApi.getCurrentUser();
+      return user;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch current user');
+    }
+  }
+);
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -72,12 +84,26 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refresh_token;
         state.isAuthenticated = true;
         tokenStorage.saveTokens(action.payload.token, action.payload.refresh_token);
+        // Note: User info will be loaded by AppContent useEffect
       })
       .addCase(refreshTokenAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
         tokenStorage.clearTokens();
+      })
+      // fetchCurrentUser
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { AppDispatch, RootState } from '../store';
 import { WebSocketClient } from '../websocket/wsClient';
-import { addMessage, setConnectionState, setCurrentContestId } from '../store/slices/chatSlice';
-import { ChatMessage, ContestID } from '../types/models';
+import { addMessage, updateMessage, removeMessage, setConnectionState, setCurrentContestId } from '../store/slices/chatSlice';
+import { refreshTokenAsync } from '../store/slices/authSlice';
+import { fetchContest, setUserVote, updateContestTotalVotes } from '../store/slices/contestsSlice';
+import { updateParticipantVotes } from '../store/slices/participantsSlice';
+import { ChatMessage, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
 import { tokenStorage } from '../utils/tokenStorage';
 
@@ -16,13 +19,14 @@ const getWebSocketClient = (): WebSocketClient => {
   return wsClientInstance;
 };
 
-export const useWebSocket = (contestId: ContestID | null) => {
-  const dispatch = useDispatch();
+export const useWebSocket = (contestId: ContestID | null, participantId?: ParticipantID | null) => {
+  const dispatch = useDispatch<AppDispatch>();
   const connectionState = useSelector((state: RootState) => state.chat.connectionState);
   const messages = useSelector((state: RootState) =>
     contestId ? state.chat.messages[contestId] || [] : []
   );
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const refreshToken = useSelector((state: RootState) => state.auth.refreshToken);
   const wsClientRef = useRef<WebSocketClient | null>(null);
 
   // Initialize WebSocket client
@@ -34,6 +38,41 @@ export const useWebSocket = (contestId: ContestID | null) => {
     client.setOnMessage((message: ChatMessage) => {
       if (contestId && message.contest_id === contestId) {
         dispatch(addMessage({ contestId, message }));
+      }
+    });
+
+    client.setOnMessageUpdated((message: ChatMessage) => {
+      if (contestId && message.contest_id === contestId) {
+        dispatch(updateMessage({ contestId, message }));
+      }
+    });
+
+    client.setOnMessageDeleted((messageId: string, contestIdFromPayload: string) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(removeMessage({ contestId, messageId }));
+      }
+    });
+
+    client.setOnContestStatusUpdated((contestIdFromPayload) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(fetchContest(contestId));
+      }
+    });
+
+    client.setOnVoteCountsUpdated((contestIdFromPayload, participantIdFromPayload, totalVotes, contestTotal) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        if (participantIdFromPayload && typeof totalVotes === 'number') {
+          dispatch(updateParticipantVotes({ participantId: participantIdFromPayload, totalVotes }));
+        }
+        if (typeof contestTotal === 'number') {
+          dispatch(updateContestTotalVotes({ contestId, totalVotes: contestTotal }));
+        }
+      }
+    });
+
+    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(setUserVote({ contestId, participantId: participantIdFromPayload || null }));
       }
     });
 
@@ -58,19 +97,53 @@ export const useWebSocket = (contestId: ContestID | null) => {
       return;
     }
 
-    const client = wsClientRef.current;
-    const token = accessToken || tokenStorage.getAccessToken();
+    const connectWithToken = async () => {
+      const client = wsClientRef.current;
+      if (!client) return;
 
-    if (!token) {
-      console.warn('WebSocket: No access token available for connection');
-      return;
-    }
+      // Always refresh token before connecting to ensure it's fresh
+      const refreshTokenValue = refreshToken || tokenStorage.getRefreshToken();
+      if (!refreshTokenValue) {
+        console.warn('[useWebSocket] No refresh token available for connection');
+        return;
+      }
 
-    dispatch(setCurrentContestId(contestId));
-    client.connect(contestId, token);
-    client.subscribe(contestId);
+      console.log('[useWebSocket] Refreshing token before WebSocket connection...');
+      let token: string | null = null;
+      
+      try {
+        const result = await dispatch(refreshTokenAsync(refreshTokenValue));
+        if (refreshTokenAsync.fulfilled.match(result)) {
+          token = (result.payload as any)?.token;
+          if (token) {
+            console.log('[useWebSocket] Token refreshed successfully, connecting WebSocket...');
+          } else {
+            console.error('[useWebSocket] Token refresh returned no token');
+            return;
+          }
+        } else {
+          console.error('[useWebSocket] Token refresh failed:', result.payload);
+          return;
+        }
+      } catch (err) {
+        console.error('[useWebSocket] Failed to refresh token:', err);
+        return;
+      }
+
+      if (!token) {
+        console.warn('[useWebSocket] No access token available after refresh');
+        return;
+      }
+
+      dispatch(setCurrentContestId(contestId));
+      client.connect(contestId, token);
+      client.subscribe(contestId);
+    };
+
+    connectWithToken();
 
     return () => {
+      const client = wsClientRef.current;
       if (client) {
         client.unsubscribe(contestId);
         // Only disconnect if no other contests are subscribed
@@ -79,7 +152,7 @@ export const useWebSocket = (contestId: ContestID | null) => {
         client.disconnect();
       }
     };
-  }, [contestId, accessToken, dispatch]);
+  }, [contestId, refreshToken, dispatch]);
 
   // Update access token when it changes
   useEffect(() => {
@@ -98,16 +171,38 @@ export const useWebSocket = (contestId: ContestID | null) => {
     [contestId]
   );
 
-  const reconnect = useCallback(() => {
+  const reconnect = useCallback(async () => {
     if (!contestId || !wsClientRef.current) {
       return;
     }
-    const token = accessToken || tokenStorage.getAccessToken();
-    if (token) {
-      wsClientRef.current.connect(contestId, token);
-      wsClientRef.current.subscribe(contestId);
+    
+    // Always refresh token before reconnecting to ensure it's fresh
+    const refreshTokenValue = refreshToken || tokenStorage.getRefreshToken();
+    if (!refreshTokenValue) {
+      console.warn('[useWebSocket] Reconnect: No refresh token available');
+      return;
     }
-  }, [contestId, accessToken]);
+
+    console.log('[useWebSocket] Reconnect: Refreshing token before reconnecting...');
+    
+    try {
+      const result = await dispatch(refreshTokenAsync(refreshTokenValue));
+      if (refreshTokenAsync.fulfilled.match(result)) {
+        const token = (result.payload as any)?.token;
+        if (token) {
+          console.log('[useWebSocket] Reconnect: Token refreshed successfully, reconnecting...');
+          wsClientRef.current.connect(contestId, token);
+          wsClientRef.current.subscribe(contestId);
+        } else {
+          console.error('[useWebSocket] Reconnect: Token refresh returned no token');
+        }
+      } else {
+        console.error('[useWebSocket] Reconnect: Token refresh failed:', result.payload);
+      }
+    } catch (err) {
+      console.error('[useWebSocket] Reconnect: Failed to refresh token:', err);
+    }
+  }, [contestId, refreshToken, dispatch]);
 
   return {
     connectionState,

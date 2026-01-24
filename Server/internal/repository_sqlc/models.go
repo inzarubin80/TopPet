@@ -53,6 +53,7 @@ type ContestParticipantPhoto struct {
 	Url           string
 	ThumbUrl      *string
 	CreatedAt     pgtype.Timestamptz
+	Position      int32
 }
 
 type ContestParticipantVideo struct {
@@ -69,6 +70,13 @@ type ContestVote struct {
 	UserID        int64
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type PhotoLike struct {
+	ID        pgtype.UUID
+	PhotoID   pgtype.UUID
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
 }
 
 type User struct {

@@ -90,12 +90,12 @@ func (s *TopPetService) PublishContest(ctx context.Context, contestID model.Cont
 		return nil, errors.New("only contest admin can publish contest")
 	}
 
-	// Only draft can be published
+	// Only draft can be opened for registration
 	if contest.Status != model.ContestStatusDraft {
 		return nil, fmt.Errorf("contest must be in draft status to publish, current status: %s", contest.Status)
 	}
 
-	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusPublished)
+	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusRegistration)
 }
 
 func (s *TopPetService) FinishContest(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
@@ -109,12 +109,47 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 		return nil, errors.New("only contest admin can finish contest")
 	}
 
-	// Only published can be finished
-	if contest.Status != model.ContestStatusPublished {
-		return nil, fmt.Errorf("contest must be in published status to finish, current status: %s", contest.Status)
+	// Only voting can be finished
+	if contest.Status != model.ContestStatusVoting {
+		return nil, fmt.Errorf("contest must be in voting status to finish, current status: %s", contest.Status)
 	}
 
 	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusFinished)
+}
+
+func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model.ContestID, userID model.UserID, status model.ContestStatus) (*model.Contest, error) {
+	contest, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+
+	if contest.CreatedByUserID != userID {
+		return nil, errors.New("only contest admin can update contest status")
+	}
+
+	switch status {
+	case model.ContestStatusDraft,
+		model.ContestStatusRegistration,
+		model.ContestStatusVoting,
+		model.ContestStatusFinished:
+	default:
+		return nil, fmt.Errorf("invalid contest status %s", status)
+	}
+
+	updated, err := s.repository.UpdateContestStatus(ctx, contestID, status)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.hub != nil {
+		_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
+			"type":       "contest_status_updated",
+			"contest_id": string(contestID),
+			"status":     status,
+		})
+	}
+
+	return updated, nil
 }
 
 func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.ContestID, userID model.UserID) error {

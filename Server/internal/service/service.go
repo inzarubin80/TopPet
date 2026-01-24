@@ -24,6 +24,7 @@ type (
 		CreateUser(ctx context.Context, name string) (*model.User, error)
 		CreateUserFromProvider(ctx context.Context, userData *model.UserProfileFromProvider) (*model.User, error)
 		GetUser(ctx context.Context, userID model.UserID) (*model.User, error)
+		UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error)
 		GetUserAuthProvidersByProviderUid(ctx context.Context, providerUID, provider string) (*model.UserAuthProvider, error)
 		AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error)
 		GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error)
@@ -43,16 +44,20 @@ type (
 		GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error)
 		ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error)
 		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string) (*model.Participant, error)
+		DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error
 
 		// Photos & Videos
 		AddParticipantPhoto(ctx context.Context, participantID model.ParticipantID, url string, thumbURL *string) (*model.Photo, error)
 		GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error)
+		DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string) error
+		UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error
 		UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error)
 		GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error)
 
 		// Votes
 		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
 		GetContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error)
+		DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error)
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error)
 
@@ -67,7 +72,14 @@ type (
 		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool) (*model.ChatMessage, error)
 		ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error)
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
-		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) error
+		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error)
+
+		// Photo Likes
+		UpsertPhotoLike(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error)
+		DeletePhotoLike(ctx context.Context, photoID string, userID model.UserID) error
+		GetPhotoLikeByUser(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error)
+		CountPhotoLikes(ctx context.Context, photoID string) (int64, error)
+		ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error)
 	}
 
 	TokenService interface {

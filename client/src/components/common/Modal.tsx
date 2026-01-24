@@ -26,12 +26,18 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {title && (
           <div className="modal-header">
             <h2 className="modal-title">{title}</h2>
-            <button className="modal-close" onClick={onClose}>
+            <button
+              className="modal-close"
+              onClick={() => {
+                console.log('[Modal] Close button click', { title });
+                onClose();
+              }}
+            >
               ×
             </button>
           </div>

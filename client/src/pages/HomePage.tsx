@@ -14,7 +14,7 @@ const HomePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { items, total, loading, filters } = useSelector((state: RootState) => state.contests);
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [statusFilter, setStatusFilter] = useState<ContestStatus | undefined>(undefined);
 
   useEffect(() => {
@@ -28,23 +28,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="home-page">
-      <div className="home-page-header">
-        <h1>Конкурсы красоты животных</h1>
-        {isAuthenticated ? (
-          <Button onClick={() => navigate('/create-contest')}>Создать конкурс</Button>
-        ) : (
-          <Button
-            variant="primary"
-            onClick={() => {
-              const returnUrl = '/create-contest';
-              navigate(buildLoginUrl(returnUrl));
-            }}
-          >
-            Войти для создания конкурса
-          </Button>
-        )}
-      </div>
-
       <div className="home-page-filters">
         <button
           className={`filter-button ${statusFilter === undefined ? 'active' : ''}`}
@@ -59,10 +42,16 @@ const HomePage: React.FC = () => {
           Черновики
         </button>
         <button
-          className={`filter-button ${statusFilter === 'published' ? 'active' : ''}`}
-          onClick={() => handleStatusFilter('published')}
+          className={`filter-button ${statusFilter === 'registration' ? 'active' : ''}`}
+          onClick={() => handleStatusFilter('registration')}
         >
-          Опубликованные
+          Регистрация
+        </button>
+        <button
+          className={`filter-button ${statusFilter === 'voting' ? 'active' : ''}`}
+          onClick={() => handleStatusFilter('voting')}
+        >
+          Голосование
         </button>
         <button
           className={`filter-button ${statusFilter === 'finished' ? 'active' : ''}`}
@@ -78,6 +67,21 @@ const HomePage: React.FC = () => {
         </div>
       ) : (
         <>
+          <div className="home-page-list-actions">
+            {isAuthenticated ? (
+              <Button onClick={() => navigate('/create-contest')}>Создать конкурс</Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const returnUrl = '/create-contest';
+                  navigate(buildLoginUrl(returnUrl));
+                }}
+              >
+                Войти для создания конкурса
+              </Button>
+            )}
+          </div>
           <div className="home-page-contests">
             {items.length === 0 ? (
               <div className="home-page-empty">Нет конкурсов</div>

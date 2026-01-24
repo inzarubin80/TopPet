@@ -4,7 +4,8 @@
   gap: 8px;
   padding: 8px 12px;
   font-size: 14px;
-  border-radius: 4px;
+  border-radius: 8px;
+  background-color: #f3f4f6;
 }
 
 .status-indicator {
@@ -35,15 +36,15 @@
 .reconnect-button {
   padding: 4px 8px;
   font-size: 12px;
-  background-color: #007bff;
+  background-color: #2f6df6;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
 .reconnect-button:hover {
-  background-color: #0056b3;
+  background-color: #2557c2;
 }
 
 @keyframes pulse {

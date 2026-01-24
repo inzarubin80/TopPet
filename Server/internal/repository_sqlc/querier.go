@@ -17,6 +17,7 @@ type Querier interface {
 	CountChatMessages(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	CountContests(ctx context.Context, dollar_1 string) (int64, error)
+	CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error)
 	CountVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountVotesByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	// Contest Chat Messages
@@ -29,34 +30,46 @@ type Querier interface {
 	CreateParticipant(ctx context.Context, arg *CreateParticipantParams) (*ContestParticipant, error)
 	// Users
 	CreateUser(ctx context.Context, name string) (*User, error)
-	DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) error
-	DeleteComment(ctx context.Context, arg *DeleteCommentParams) error
+	DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) (pgtype.UUID, error)
+	DeleteComment(ctx context.Context, id pgtype.UUID) error
+	DeleteCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	DeleteContest(ctx context.Context, id pgtype.UUID) error
+	DeleteContestVoteByUser(ctx context.Context, arg *DeleteContestVoteByUserParams) (pgtype.UUID, error)
+	DeleteParticipant(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantVideo(ctx context.Context, participantID pgtype.UUID) error
+	DeletePhotoLike(ctx context.Context, arg *DeletePhotoLikeParams) error
+	DeleteVotesByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
 	GetContestVoteByUser(ctx context.Context, arg *GetContestVoteByUserParams) (*ContestVote, error)
-	GetParticipantByContestAndUser(ctx context.Context, arg *GetParticipantByContestAndUserParams) (*ContestParticipant, error)
-	GetParticipantByID(ctx context.Context, id pgtype.UUID) (*ContestParticipant, error)
+	GetMaxPhotoPositionByParticipant(ctx context.Context, participantID pgtype.UUID) (interface{}, error)
+	GetParticipantByContestAndUser(ctx context.Context, arg *GetParticipantByContestAndUserParams) (*GetParticipantByContestAndUserRow, error)
+	GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetParticipantByIDRow, error)
+	GetPhotoLikeByUser(ctx context.Context, arg *GetPhotoLikeByUserParams) (*PhotoLike, error)
 	GetPhotosByParticipantID(ctx context.Context, participantID pgtype.UUID) ([]*ContestParticipantPhoto, error)
 	GetUserAuthProvidersByProviderUid(ctx context.Context, arg *GetUserAuthProvidersByProviderUidParams) (*UserAuthProvider, error)
 	GetUserAuthProvidersByUserID(ctx context.Context, userID int64) ([]*UserAuthProvider, error)
 	GetUserByID(ctx context.Context, userID int64) (*User, error)
 	GetVideoByParticipantID(ctx context.Context, participantID pgtype.UUID) (*ContestParticipantVideo, error)
-	ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ContestChatMessage, error)
-	ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ContestComment, error)
+	ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error)
+	ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ListCommentsByParticipantRow, error)
 	ListContests(ctx context.Context, arg *ListContestsParams) ([]*Contest, error)
-	ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestParticipant, error)
+	ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListParticipantsByContestRow, error)
+	ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error)
 	UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageParams) (*ContestChatMessage, error)
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
 	UpdateContestStatus(ctx context.Context, arg *UpdateContestStatusParams) (*Contest, error)
 	UpdateParticipant(ctx context.Context, arg *UpdateParticipantParams) (*ContestParticipant, error)
+	UpdateParticipantPhotoOrder(ctx context.Context, arg *UpdateParticipantPhotoOrderParams) error
+	UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*User, error)
 	// Contest Votes
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)
 	// Contest Participant Videos
 	UpsertParticipantVideo(ctx context.Context, arg *UpsertParticipantVideoParams) (*ContestParticipantVideo, error)
+	// Photo Likes
+	UpsertPhotoLike(ctx context.Context, arg *UpsertPhotoLikeParams) (*PhotoLike, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getProviders } from '../../api/authApi';
 import { Provider } from '../../types/models';
-import { Button } from '../common/Button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ErrorMessage } from '../common/ErrorMessage';
 import './AuthProviders.css';
@@ -139,19 +138,18 @@ export const AuthProviders: React.FC<AuthProvidersProps> = ({ onProviderClick })
   return (
     <div className="auth-providers">
       {providers.map((provider) => (
-        <Button
+        <button
           key={provider.provider}
-          variant="primary"
           onClick={() => handleProviderClick(provider.provider)}
           className="auth-provider-button"
-          fullWidth
+          data-provider={provider.provider}
         >
           <span
             className="auth-provider-icon"
             dangerouslySetInnerHTML={{ __html: provider.icon_svg }}
           />
           <span className="auth-provider-name">Войти через {provider.name}</span>
-        </Button>
+        </button>
       ))}
     </div>
   );

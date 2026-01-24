@@ -1,6 +1,6 @@
 import { WSConnectionState, WSIncomingMessage } from '../types/ws';
 import { tokenStorage } from '../utils/tokenStorage';
-import { ChatMessage } from '../types/models';
+import { ChatMessage, ContestStatus } from '../types/models';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api';
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -8,6 +8,11 @@ const INITIAL_RECONNECT_DELAY = 1000; // 1 second
 const MAX_RECONNECT_DELAY = 30000; // 30 seconds
 
 type MessageHandler = (message: ChatMessage) => void;
+type MessageUpdateHandler = (message: ChatMessage) => void;
+type MessageDeleteHandler = (messageId: string, contestId: string) => void;
+type ContestStatusUpdateHandler = (contestId: string, status: ContestStatus) => void;
+type VoteCountsUpdatedHandler = (contestId: string, participantId?: string, totalVotes?: number, contestTotal?: number) => void;
+type UserVoteUpdatedHandler = (contestId: string, participantId?: string | null) => void;
 type ConnectionStateHandler = (state: WSConnectionState) => void;
 type ErrorHandler = (error: Event) => void;
 
@@ -21,6 +26,11 @@ export class WebSocketClient {
   private subscribedContests: Set<string> = new Set();
 
   private onMessageHandler: MessageHandler | null = null;
+  private onMessageUpdateHandler: MessageUpdateHandler | null = null;
+  private onMessageDeleteHandler: MessageDeleteHandler | null = null;
+  private onContestStatusUpdatedHandler: ContestStatusUpdateHandler | null = null;
+  private onVoteCountsUpdatedHandler: VoteCountsUpdatedHandler | null = null;
+  private onUserVoteUpdatedHandler: UserVoteUpdatedHandler | null = null;
   private onConnectionStateChange: ConnectionStateHandler | null = null;
   private onErrorHandler: ErrorHandler | null = null;
 
@@ -31,6 +41,26 @@ export class WebSocketClient {
 
   setOnMessage(handler: MessageHandler): void {
     this.onMessageHandler = handler;
+  }
+
+  setOnMessageUpdated(handler: MessageUpdateHandler): void {
+    this.onMessageUpdateHandler = handler;
+  }
+
+  setOnMessageDeleted(handler: MessageDeleteHandler): void {
+    this.onMessageDeleteHandler = handler;
+  }
+
+  setOnContestStatusUpdated(handler: ContestStatusUpdateHandler): void {
+    this.onContestStatusUpdatedHandler = handler;
+  }
+
+  setOnVoteCountsUpdated(handler: VoteCountsUpdatedHandler): void {
+    this.onVoteCountsUpdatedHandler = handler;
+  }
+
+  setOnUserVoteUpdated(handler: UserVoteUpdatedHandler): void {
+    this.onUserVoteUpdatedHandler = handler;
   }
 
   setOnConnectionStateChange(handler: ConnectionStateHandler): void {
@@ -51,7 +81,14 @@ export class WebSocketClient {
   }
 
   private getWebSocketUrl(contestId: string): string {
-    const baseUrl = WS_URL.replace(/^http/, 'ws');
+    // WS_URL should already be ws:// or wss://, but handle http:// case
+    let baseUrl = WS_URL;
+    if (baseUrl.startsWith('http://')) {
+      baseUrl = baseUrl.replace('http://', 'ws://');
+    } else if (baseUrl.startsWith('https://')) {
+      baseUrl = baseUrl.replace('https://', 'wss://');
+    }
+    
     const url = new URL(`${baseUrl}/contests/${contestId}/chat/ws`);
     if (this.accessToken) {
       url.searchParams.set('accessToken', this.accessToken);
@@ -174,6 +211,44 @@ export class WebSocketClient {
     if (data.type === 'new_message' && data.message) {
       if (this.onMessageHandler) {
         this.onMessageHandler(data.message as ChatMessage);
+      }
+      return;
+    }
+    if (data.type === 'message_updated' && data.message) {
+      if (this.onMessageUpdateHandler) {
+        this.onMessageUpdateHandler(data.message as ChatMessage);
+      }
+      return;
+    }
+    if (data.type === 'message_deleted' && data.message_id && data.contest_id) {
+      if (this.onMessageDeleteHandler) {
+        this.onMessageDeleteHandler(String(data.message_id), String(data.contest_id));
+      }
+      return;
+    }
+    if (data.type === 'contest_status_updated' && data.contest_id && data.status) {
+      if (this.onContestStatusUpdatedHandler) {
+        this.onContestStatusUpdatedHandler(String(data.contest_id), data.status as ContestStatus);
+      }
+      return;
+    }
+    if (data.type === 'vote_counts_updated' && data.contest_id) {
+      if (this.onVoteCountsUpdatedHandler) {
+        this.onVoteCountsUpdatedHandler(
+          String(data.contest_id),
+          data.participant_id ? String(data.participant_id) : undefined,
+          typeof data.participant_total_votes === 'number' ? data.participant_total_votes : undefined,
+          typeof data.contest_total_votes === 'number' ? data.contest_total_votes : undefined
+        );
+      }
+      return;
+    }
+    if (data.type === 'user_vote_updated' && data.contest_id) {
+      if (this.onUserVoteUpdatedHandler) {
+        this.onUserVoteUpdatedHandler(
+          String(data.contest_id),
+          data.participant_id ? String(data.participant_id) : null
+        );
       }
     }
   }

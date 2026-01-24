@@ -1,50 +1,60 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Button } from '../common/Button';
-import { vote, getVote } from '../../api/votesApi';
-import { ContestID, ParticipantID } from '../../types/models';
+import { vote, getVote, unvote } from '../../api/votesApi';
+import { ContestID, ParticipantID, ContestStatus } from '../../types/models';
 import { buildLoginUrl } from '../../utils/navigation';
+import { setUserVote } from '../../store/slices/contestsSlice';
 import './VoteButton.css';
 
 interface VoteButtonProps {
   contestId: ContestID;
   participantId: ParticipantID;
-  contestStatus: string;
+  contestStatus: ContestStatus;
+  isOwner?: boolean;
+  onVoted?: (participantId: ParticipantID) => void;
 }
 
 export const VoteButton: React.FC<VoteButtonProps> = ({
   contestId,
   participantId,
   contestStatus,
+  isOwner = false,
+  onVoted,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-  const [currentVote, setCurrentVote] = useState<ParticipantID | null>(null);
+  const currentVote = useSelector((state: RootState) =>
+    state.contests.userVotes[contestId] ? state.contests.userVotes[contestId] : null
+  );
   const [loading, setLoading] = useState(false);
   const [voting, setVoting] = useState(false);
 
   const loadVote = useCallback(async () => {
+    console.log('[VoteButton] loadVote start', { contestId, isAuthenticated });
     try {
       setLoading(true);
       const voteData = await getVote(contestId);
-      if (voteData && voteData.participant_id) {
-        setCurrentVote(voteData.participant_id);
-      }
+      console.log('[VoteButton] loadVote result', { contestId, participantId: voteData?.participant_id || null });
+      dispatch(setUserVote({ contestId, participantId: voteData?.participant_id || null }));
     } catch (error) {
       console.error('Failed to load vote:', error);
+      dispatch(setUserVote({ contestId, participantId: null }));
     } finally {
+      console.log('[VoteButton] loadVote end', { contestId });
       setLoading(false);
     }
-  }, [contestId]);
+  }, [contestId, dispatch]);
 
   useEffect(() => {
-    if (isAuthenticated && contestStatus === 'published') {
+    if (isAuthenticated) {
       loadVote();
     }
-  }, [isAuthenticated, contestId, contestStatus, loadVote]);
+  }, [isAuthenticated, contestId, loadVote]);
 
   const handleVote = async () => {
     if (!isAuthenticated) {
@@ -54,27 +64,40 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       return;
     }
 
-    if (contestStatus !== 'published' || voting) {
+    if (contestStatus !== 'voting' || voting || isOwner) {
       return;
     }
 
     try {
       setVoting(true);
-      await vote(contestId, { participant_id: participantId });
-      setCurrentVote(participantId);
+      if (currentVote === participantId) {
+        await unvote(contestId);
+        dispatch(setUserVote({ contestId, participantId: null }));
+      } else {
+        await vote(contestId, { participant_id: participantId });
+        dispatch(setUserVote({ contestId, participantId }));
+      }
+      if (onVoted) {
+        onVoted(participantId);
+      }
     } catch (error) {
       console.error('Failed to vote:', error);
-      alert('Не удалось проголосовать');
+      alert(currentVote === participantId ? 'Не удалось отменить голос' : 'Не удалось проголосовать');
     } finally {
       setVoting(false);
     }
   };
 
+  if (isOwner) {
+    return null;
+  }
+
   if (!isAuthenticated) {
     return (
       <Button
         variant="primary"
-        size="small"
+        size="large"
+        fullWidth={true}
         onClick={handleVote}
       >
         Войти для голосования
@@ -82,7 +105,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     );
   }
 
-  if (contestStatus !== 'published') {
+  if (contestStatus !== 'voting') {
     return null;
   }
 
@@ -93,9 +116,10 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       variant={isVoted ? 'secondary' : 'primary'}
       onClick={handleVote}
       disabled={loading || voting}
-      size="small"
+      size="large"
+      fullWidth={true}
     >
-      {loading ? 'Загрузка...' : voting ? 'Голосование...' : isVoted ? 'Вы проголосовали' : 'Проголосовать'}
+      {loading ? 'Загрузка...' : voting ? 'Голосование...' : isVoted ? 'Отменить голос' : 'Проголосовать'}
     </Button>
   );
 };

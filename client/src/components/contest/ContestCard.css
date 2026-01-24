@@ -35,18 +35,23 @@
 }
 
 .status-draft {
-  background-color: #e9ecef;
-  color: #6c757d;
+  background-color: #f3f4f6;
+  color: #6b7280;
 }
 
-.status-published {
-  background-color: #d4edda;
-  color: #155724;
+.status-registration {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-voting {
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .status-finished {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 .contest-card-description {

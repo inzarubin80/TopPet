@@ -4,6 +4,7 @@ import {
   ContestsListResponse,
   CreateContestRequest,
   UpdateContestRequest,
+  UpdateContestStatusRequest,
 } from '../types/api';
 
 export const getContests = async (
@@ -49,6 +50,14 @@ export const publishContest = async (contestId: ContestID): Promise<Contest> => 
 
 export const finishContest = async (contestId: ContestID): Promise<Contest> => {
   const response = await axiosClient.post<Contest>(`/contests/${contestId}/finish`);
+  return response.data;
+};
+
+export const updateContestStatus = async (
+  contestId: ContestID,
+  data: UpdateContestStatusRequest
+): Promise<Contest> => {
+  const response = await axiosClient.patch<Contest>(`/contests/${contestId}/status`, data);
   return response.data;
 };
 

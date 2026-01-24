@@ -4,6 +4,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
+  color: #1f2937;
 }
 
 .contest-page-main {
@@ -33,35 +34,122 @@
   margin-bottom: 24px;
 }
 
+.contest-page-back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.contest-page-back-button:hover {
+  background: #f5f5f5;
+  border-color: #007bff;
+  color: #007bff;
+  transform: translateX(-2px);
+}
+
+.contest-page-back-button:active {
+  transform: translateX(0);
+}
+
+.contest-page-back-button svg {
+  width: 20px;
+  height: 20px;
+}
+
 .contest-page-header h1 {
   flex: 1;
   margin: 0;
   font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .contest-page-admin-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.contest-page-admin-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.contest-page-admin-status-select {
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  font-size: 14px;
 }
 
 .contest-page-description {
   margin-bottom: 32px;
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  padding: 20px 24px;
+  background-color: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .contest-page-description p {
   margin: 0 0 12px 0;
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.65;
+  color: #374151;
 }
 
 .contest-page-stats {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   font-size: 14px;
-  color: #666;
+  color: #6b7280;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.contest-page-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  order: -1;
+}
+
+.contest-page-status-draft {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.contest-page-status-registration {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.contest-page-status-voting {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.contest-page-status-finished {
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 .contest-page-participants-header {
@@ -74,6 +162,8 @@
 .contest-page-participants-header h2 {
   margin: 0;
   font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
 .contest-page-participants-actions {

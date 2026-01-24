@@ -2,23 +2,29 @@ import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { ContestID } from '../../types/models';
+import { ContestID, ContestStatus } from '../../types/models';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ConnectionStatus } from './ConnectionStatus';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import * as chatApi from '../../api/chatApi';
-import { setMessages } from '../../store/slices/chatSlice';
+import { removeMessage, setMessages } from '../../store/slices/chatSlice';
 import { useDispatch } from 'react-redux';
 import './ChatWindow.css';
 
 interface ChatWindowProps {
   contestId: ContestID;
+  contestStatus: ContestStatus;
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus }) => {
+  const isChatAvailable =
+    contestStatus === 'registration' || contestStatus === 'voting' || contestStatus === 'finished';
   const dispatch = useDispatch();
-  const { connectionState, messages, sendMessage, reconnect, isConnected } = useWebSocket(contestId);
+  const { connectionState, messages, sendMessage, reconnect, isConnected } = useWebSocket(
+    isChatAvailable ? contestId : null,
+    null
+  );
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
@@ -26,6 +32,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId }) => {
   useEffect(() => {
     const loadHistory = async () => {
       try {
+        if (!isChatAvailable) {
+          return;
+        }
         const response = await chatApi.getChatMessages(contestId, 50, 0);
         dispatch(setMessages({ contestId, messages: response.items }));
       } catch (error) {
@@ -34,11 +43,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId }) => {
     };
 
     loadHistory();
-  }, [contestId, dispatch]);
+  }, [contestId, dispatch, isChatAvailable]);
 
   const handleSendMessage = (text: string) => {
     if (isConnected && isAuthenticated) {
       sendMessage(text);
+    }
+  };
+
+  const handleUpdateMessage = async (messageId: string, text: string) => {
+    try {
+      await chatApi.updateChatMessage(messageId, text);
+    } catch (error) {
+      console.error('Failed to update chat message:', error);
+      alert('Не удалось обновить сообщение');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await chatApi.deleteChatMessage(messageId);
+      dispatch(removeMessage({ contestId, messageId }));
+    } catch (error) {
+      console.error('Failed to delete chat message:', error);
+      alert('Не удалось удалить сообщение');
     }
   };
 
@@ -53,19 +81,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId }) => {
           <div className="chat-loading">
             <LoadingSpinner size="medium" />
           </div>
+        ) : !isChatAvailable ? (
+          <div className="chat-loading">Чат доступен на этапах регистрации, голосования и финала</div>
         ) : (
-          <MessageList messages={messages} currentUserId={currentUserId} />
+          <MessageList
+            messages={messages}
+            currentUserId={currentUserId}
+            onUpdateMessage={handleUpdateMessage}
+            onDeleteMessage={handleDeleteMessage}
+          />
         )}
       </div>
       <div className="chat-footer">
-        {isAuthenticated ? (
+        {isAuthenticated && isChatAvailable ? (
           <MessageInput
             onSend={handleSendMessage}
             disabled={!isConnected}
             placeholder={isConnected ? 'Введите сообщение...' : 'Подключение...'}
           />
         ) : (
-          <div className="chat-auth-required">Войдите, чтобы отправлять сообщения</div>
+          <div className="chat-auth-required">
+            {isChatAvailable ? 'Войдите, чтобы отправлять сообщения' : 'Чат недоступен'}
+          </div>
         )}
       </div>
     </div>

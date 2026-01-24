@@ -16,13 +16,19 @@ type (
 	}
 
 	ListContestsHandler struct {
-		name    string
-		service serviceListContests
+		name        string
+		service     serviceListContests
+		authService serviceOptionalAuth
 	}
 )
 
 func NewListContestsHandler(name string, service serviceListContests) *ListContestsHandler {
-	return &ListContestsHandler{name: name, service: service}
+	var authService serviceOptionalAuth
+	if svc, ok := service.(serviceOptionalAuth); ok {
+		authService = svc
+	}
+
+	return &ListContestsHandler{name: name, service: service, authService: authService}
 }
 
 func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +54,27 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	userID, hasUser, authErr := getOptionalUserID(r, h.authService)
+	if authErr != nil {
+		uhttp.SendErrorResponse(w, http.StatusUnauthorized, authErr.Error())
+		return
+	}
+
 	contests, total, err := h.service.ListContests(r.Context(), status, limit, offset)
 	if err != nil {
 		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	filtered := make([]*model.Contest, 0, len(contests))
+	for _, contest := range contests {
+		if contest.Status != model.ContestStatusDraft {
+			filtered = append(filtered, contest)
+			continue
+		}
+		if hasUser && contest.CreatedByUserID == userID {
+			filtered = append(filtered, contest)
+		}
 	}
 
 	type response struct {
@@ -59,7 +82,10 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		Total int64            `json:"total"`
 	}
 
-	resp := response{Items: contests, Total: total}
+	resp := response{Items: filtered, Total: int64(len(filtered))}
+	if status != nil && *status != model.ContestStatusDraft {
+		resp.Total = total
+	}
 	jsonData, _ := json.Marshal(resp)
 	uhttp.SendSuccessfulResponse(w, jsonData)
 }

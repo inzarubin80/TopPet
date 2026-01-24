@@ -14,8 +14,10 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
     switch (status) {
       case 'draft':
         return 'Черновик';
-      case 'published':
-        return 'Опубликован';
+      case 'registration':
+        return 'Регистрация';
+      case 'voting':
+        return 'Голосование';
       case 'finished':
         return 'Завершен';
       default:

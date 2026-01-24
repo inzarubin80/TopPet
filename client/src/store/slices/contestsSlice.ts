@@ -9,6 +9,7 @@ interface ContestsState {
   total: number;
   loading: boolean;
   error: string | null;
+  userVotes: Record<ContestID, string | null>;
   filters: {
     status?: ContestStatus;
     limit: number;
@@ -22,6 +23,7 @@ const initialState: ContestsState = {
   total: 0,
   loading: false,
   error: null,
+  userVotes: {},
   filters: {
     limit: 20,
     offset: 0,
@@ -77,6 +79,18 @@ export const updateContest = createAsyncThunk(
   }
 );
 
+export const updateContestStatus = createAsyncThunk(
+  'contests/updateContestStatus',
+  async ({ contestId, status }: { contestId: ContestID; status: ContestStatus }, { rejectWithValue }) => {
+    try {
+      const contest = await contestsApi.updateContestStatus(contestId, { status });
+      return contest;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update contest status');
+    }
+  }
+);
+
 export const publishContest = createAsyncThunk(
   'contests/publishContest',
   async (contestId: ContestID, { rejectWithValue }) => {
@@ -125,6 +139,25 @@ const contestsSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    setUserVote: (state, action: PayloadAction<{ contestId: ContestID; participantId: string | null }>) => {
+      state.userVotes[action.payload.contestId] = action.payload.participantId;
+    },
+    clearUserVote: (state, action: PayloadAction<ContestID>) => {
+      delete state.userVotes[action.payload];
+    },
+    updateContestTotalVotes: (
+      state,
+      action: PayloadAction<{ contestId: ContestID; totalVotes: number }>
+    ) => {
+      const { contestId, totalVotes } = action.payload;
+      if (state.currentContest?.id === contestId) {
+        state.currentContest.total_votes = totalVotes;
+      }
+      const index = state.items.findIndex((contest) => contest.id === contestId);
+      if (index >= 0) {
+        state.items[index].total_votes = totalVotes;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -176,6 +209,16 @@ const contestsSlice = createSlice({
           state.items[index] = action.payload;
         }
       })
+      // updateContestStatus
+      .addCase(updateContestStatus.fulfilled, (state, action) => {
+        if (state.currentContest?.id === action.payload.id) {
+          state.currentContest = action.payload;
+        }
+        const index = state.items.findIndex((c) => c.id === action.payload.id);
+        if (index >= 0) {
+          state.items[index] = action.payload;
+        }
+      })
       // publishContest
       .addCase(publishContest.fulfilled, (state, action) => {
         if (state.currentContest?.id === action.payload.id) {
@@ -207,5 +250,12 @@ const contestsSlice = createSlice({
   },
 });
 
-export const { setFilters, clearCurrentContest, clearError } = contestsSlice.actions;
+export const {
+  setFilters,
+  clearCurrentContest,
+  clearError,
+  setUserVote,
+  clearUserVote,
+  updateContestTotalVotes,
+} = contestsSlice.actions;
 export default contestsSlice.reducer;

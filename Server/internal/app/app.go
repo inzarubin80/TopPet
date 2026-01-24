@@ -13,11 +13,11 @@ import (
 
 	appHttp "toppet/server/internal/app/http"
 	"toppet/server/internal/app/http/middleware"
+	tokenservice "toppet/server/internal/app/token_service"
 	"toppet/server/internal/app/ws"
 	"toppet/server/internal/repository"
 	"toppet/server/internal/service"
 	"toppet/server/internal/storage/objectstorage"
-	tokenservice "toppet/server/internal/app/token_service"
 )
 
 const (
@@ -110,7 +110,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 	// Build allowed origins list
 	// Always include default dev origins
 	allowedOrigins := []string{"http://localhost:3000", "http://localhost:5173", "http://10.0.2.2"}
-	
+
 	// Add configured origins from environment
 	if len(config.CorsAllowedOrigins) > 0 {
 		seen := make(map[string]bool)
@@ -178,6 +178,14 @@ func (a *App) registerRoutes() {
 	a.mux.Handle("GET /api/auth/providers", appHttp.NewGetProvidersHandler(a.config.ProvidersConf, "/api/auth/providers"))
 	a.mux.Handle("POST /api/auth/login", appHttp.NewLoginHandler(a.config.ProvidersConf, "/api/auth/login", a.store, a.loginStateStore, &a.loginStateStoreMu))
 	a.mux.Handle("GET /api/auth/callback", appHttp.NewOAuthCallbackHandler(a.config.ProvidersConf, "/api/auth/callback", a.store, a.loginStateStore, &a.loginStateStoreMu, a.service))
+	a.mux.Handle("GET /api/auth/me", middleware.NewAuthMiddleware(
+		appHttp.NewGetCurrentUserHandler("/api/auth/me", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/auth/me", middleware.NewAuthMiddleware(
+		appHttp.NewUpdateCurrentUserHandler("/api/auth/me", a.service),
+		a.service,
+	))
 
 	// Contests (public)
 	a.mux.Handle("GET /api/contests", appHttp.NewListContestsHandler("/api/contests", a.service))
@@ -190,6 +198,10 @@ func (a *App) registerRoutes() {
 	))
 	a.mux.Handle("PATCH /api/contests/{contestId}", middleware.NewAuthMiddleware(
 		appHttp.NewUpdateContestHandler("/api/contests/{contestId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/contests/{contestId}/status", middleware.NewAuthMiddleware(
+		appHttp.NewUpdateContestStatusHandler("/api/contests/{contestId}/status", a.service),
 		a.service,
 	))
 	a.mux.Handle("DELETE /api/contests/{contestId}", middleware.NewAuthMiddleware(
@@ -206,11 +218,20 @@ func (a *App) registerRoutes() {
 	))
 
 	// Participants (public)
+	a.mux.Handle("GET /api/contests/{contestId}/participants", appHttp.NewListParticipantsHandler("/api/contests/{contestId}/participants", a.service))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}", appHttp.NewGetParticipantHandler("/api/contests/{contestId}/participants/{participantId}", a.service))
 
 	// Participants (auth required)
 	a.mux.Handle("POST /api/contests/{contestId}/participants", middleware.NewAuthMiddleware(
 		appHttp.NewCreateParticipantHandler("/api/contests/{contestId}/participants", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/participants/{participantId}", middleware.NewAuthMiddleware(
+		appHttp.NewUpdateParticipantHandler("/api/participants/{participantId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/participants/{participantId}", middleware.NewAuthMiddleware(
+		appHttp.NewDeleteParticipantHandler("/api/participants/{participantId}", a.service),
 		a.service,
 	))
 	if a.uploader != nil {
@@ -223,10 +244,28 @@ func (a *App) registerRoutes() {
 			a.service,
 		))
 	}
+	a.mux.Handle("DELETE /api/participants/{participantId}/photos/{photoId}", middleware.NewAuthMiddleware(
+		appHttp.NewDeletePhotoHandler("/api/participants/{participantId}/photos/{photoId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/participants/{participantId}/photos/order", middleware.NewAuthMiddleware(
+		appHttp.NewUpdatePhotoOrderHandler("/api/participants/{participantId}/photos/order", a.service),
+		a.service,
+	))
+
+	// Photo Likes
+	photoLikeHandler := appHttp.NewPhotoLikeHandler("/api/photos/{photoId}/like", a.service)
+	a.mux.Handle("GET /api/photos/{photoId}/like", photoLikeHandler)
+	a.mux.Handle("POST /api/photos/{photoId}/like", middleware.NewAuthMiddleware(photoLikeHandler, a.service))
+	a.mux.Handle("DELETE /api/photos/{photoId}/like", middleware.NewAuthMiddleware(photoLikeHandler, a.service))
 
 	// Votes
 	a.mux.Handle("GET /api/contests/{contestId}/vote", appHttp.NewVoteHandler("/api/contests/{contestId}/vote", a.service))
 	a.mux.Handle("POST /api/contests/{contestId}/vote", middleware.NewAuthMiddleware(
+		appHttp.NewVoteHandler("/api/contests/{contestId}/vote", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/contests/{contestId}/vote", middleware.NewAuthMiddleware(
 		appHttp.NewVoteHandler("/api/contests/{contestId}/vote", a.service),
 		a.service,
 	))
@@ -246,7 +285,16 @@ func (a *App) registerRoutes() {
 
 	// Chat (public)
 	a.mux.Handle("GET /api/contests/{contestId}/chat", appHttp.NewChatHandler("/api/contests/{contestId}/chat", a.service))
-	a.mux.Handle("GET /api/contests/{contestId}/chat/ws", appHttp.NewContestChatWSHandler("/api/contests/{contestId}/chat/ws", a.service, a.hub))
+	a.mux.Handle("GET /api/contests/{contestId}/chat/ws", appHttp.NewContestChatWSHandler("/api/contests/{contestId}/chat/ws", a.service, a.service, a.hub))
+	chatMessageHandler := appHttp.NewChatMessageHandler("/api/chat/{messageId}", a.service)
+	a.mux.Handle("PATCH /api/chat/{messageId}", middleware.NewAuthMiddleware(
+		http.HandlerFunc(chatMessageHandler.UpdateChatMessage),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/chat/{messageId}", middleware.NewAuthMiddleware(
+		http.HandlerFunc(chatMessageHandler.DeleteChatMessage),
+		a.service,
+	))
 }
 
 func (a *App) ListenAndServe() error {
