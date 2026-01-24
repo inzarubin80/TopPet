@@ -48,3 +48,19 @@
   color: #6b7280;
   font-size: 14px;
 }
+
+.chat-auth-required-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-auth-required-content span {
+  display: block;
+}
+
+.chat-auth-required-content .btn {
+  padding: 12px 24px;
+  width: 100%;
+}

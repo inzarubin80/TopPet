@@ -204,11 +204,14 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     }
   }, [contestId, refreshToken, dispatch]);
 
+  // Use connectionState to determine isConnected instead of checking ws.readyState directly
+  // This ensures consistency between ConnectionStatus and MessageInput
+  const isConnectedValue = connectionState === 'CONNECTED';
   return {
     connectionState,
     messages,
     sendMessage,
     reconnect,
-    isConnected: wsClientRef.current?.isConnected() || false,
+    isConnected: isConnectedValue,
   };
 };

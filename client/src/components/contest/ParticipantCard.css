@@ -89,11 +89,43 @@
   flex-direction: column;
 }
 
-.participant-card-name {
+.participant-card-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 8px 0;
+  flex-wrap: wrap;
+}
+
+.participant-card-name {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: #111827;
+}
+
+.participant-card-winner-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.participant-card-winner-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #fbbf24;
+}
+
+.participant-card-winner-text {
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .participant-card-description {

@@ -15,7 +15,20 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     // Если пользователь уже авторизован, редиректим на главную
+    // НО: не обрабатываем здесь, если мы на странице с OAuth callback параметрами
+    // (это обрабатывается в отдельном useEffect ниже)
+    // ИЛИ если мы уже не на странице /login (значит, уже произошла навигация)
     if (isAuthenticated) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasOAuthParams = urlParams.has('access_token') || urlParams.has('error');
+      const isOnLoginPage = window.location.pathname === '/login';
+      
+      // Пропускаем обработку, если есть OAuth параметры (их обработает другой useEffect)
+      // ИЛИ если мы уже не на странице /login (значит, уже произошла навигация)
+      if (hasOAuthParams || !isOnLoginPage) {
+        return;
+      }
+      
       const returnUrl = getAndClearReturnUrl();
       navigate(returnUrl || '/');
     }

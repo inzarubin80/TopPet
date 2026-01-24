@@ -5,9 +5,10 @@ import './ConnectionStatus.css';
 interface ConnectionStatusProps {
   state: WSConnectionState;
   onReconnect?: () => void;
+  isAuthenticated?: boolean;
 }
 
-export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ state, onReconnect }) => {
+export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ state, onReconnect, isAuthenticated = false }) => {
   const getStatusText = () => {
     switch (state) {
       case 'CONNECTING':
@@ -41,7 +42,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ state, onRec
     <div className={`connection-status ${getStatusClass()}`}>
       <span className="status-indicator"></span>
       <span className="status-text">{getStatusText()}</span>
-      {state === 'DISCONNECTED' && onReconnect && (
+      {state === 'DISCONNECTED' && onReconnect && isAuthenticated && (
         <button className="reconnect-button" onClick={onReconnect}>
           Переподключить
         </button>

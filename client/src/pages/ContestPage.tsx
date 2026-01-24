@@ -250,26 +250,44 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-empty">Нет участников</div>
           ) : (
             <div className="contest-page-participants-list">
-              {participantIds.map((participantId) => {
-                const participant = participants[participantId];
-                return participant ? (
-                  <ParticipantCard 
-                    key={participantId} 
-                    participant={participant} 
-                    contestId={id!}
-                    contestStatus={currentContest.status}
-                    isVoted={currentVoteId === participant.id}
-                    onEdit={(p) => {
-                      setEditingParticipant(p);
-                      setIsEditParticipantModalOpen(true);
-                    }}
-                    onDelete={(p) => {
-                      setDeletingParticipant(p);
-                      setIsDeleteParticipantModalOpen(true);
-                    }}
-                  />
-                ) : null;
-              })}
+              {(() => {
+                // Calculate winner only when contest is finished
+                const isFinished = currentContest.status === 'finished';
+                const maxVotes = isFinished
+                  ? Math.max(
+                      ...participantIds.map((id) => participants[id]?.total_votes || 0),
+                      0
+                    )
+                  : 0;
+
+                const isWinner = (participantId: string) => {
+                  if (!isFinished) return false;
+                  const participant = participants[participantId];
+                  return participant?.total_votes === maxVotes && maxVotes > 0;
+                };
+
+                return participantIds.map((participantId) => {
+                  const participant = participants[participantId];
+                  return participant ? (
+                    <ParticipantCard 
+                      key={participantId} 
+                      participant={participant} 
+                      contestId={id!}
+                      contestStatus={currentContest.status}
+                      isVoted={currentVoteId === participant.id}
+                      isWinner={isWinner(participantId)}
+                      onEdit={(p) => {
+                        setEditingParticipant(p);
+                        setIsEditParticipantModalOpen(true);
+                      }}
+                      onDelete={(p) => {
+                        setDeletingParticipant(p);
+                        setIsDeleteParticipantModalOpen(true);
+                      }}
+                    />
+                  ) : null;
+                });
+              })()}
             </div>
           )}
         </div>

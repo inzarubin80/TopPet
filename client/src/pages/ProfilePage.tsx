@@ -5,6 +5,8 @@ import { AppDispatch, RootState } from '../store';
 import { logout, setUser } from '../store/slices/authSlice';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
+import { getProfileReferrer, clearProfileReferrer } from '../utils/navigation';
+import { tokenStorage } from '../utils/tokenStorage';
 import * as authApi from '../api/authApi';
 import './ProfilePage.css';
 
@@ -47,8 +49,26 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // Сначала определяем, куда редиректить (до logout, чтобы ProtectedRoute не перехватил)
+    const referrer = getProfileReferrer();
+    clearProfileReferrer();
+    
+    // Список защищенных страниц, на которые нельзя редиректить после logout
+    const protectedPages = ['/profile', '/create-contest'];
+    
+    // Редиректим на сохраненный URL, если он есть, внутренний и не защищенный
+    // Также проверяем, что referrer не равен текущей странице профиля
+    const isProtected = referrer && protectedPages.some(page => referrer.startsWith(page));
+    const isValidReferrer = referrer && referrer.startsWith('/') && referrer !== '/profile' && !isProtected;
+    const targetUrl = isValidReferrer ? referrer : '/';
+    
+    // Обновляем Redux state ПЕРЕД навигацией
+    // Это гарантирует, что isAuthenticated будет false, но навигация произойдет до проверки ProtectedRoute
     dispatch(logout());
-    navigate('/');
+    
+    // Используем navigate с replace для избежания мигания
+    // replace: true предотвращает добавление записи в историю браузера
+    navigate(targetUrl, { replace: true });
   };
 
   const avatarUrl = user?.avatar_url;

@@ -3,6 +3,7 @@ import { getProviders } from '../../api/authApi';
 import { Provider } from '../../types/models';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { getReturnUrl, saveReturnUrlToStorage } from '../../utils/navigation';
 import './AuthProviders.css';
 
 interface AuthProvidersProps {
@@ -104,6 +105,11 @@ export const AuthProviders: React.FC<AuthProvidersProps> = ({ onProviderClick })
         // Сохраняем code_verifier в sessionStorage для использования в callback (только для провайдеров с PKCE)
         if (supportsPKCE && codeVerifier) {
           sessionStorage.setItem(`oauth_code_verifier_${provider}`, codeVerifier);
+        }
+        // Сохраняем returnUrl в sessionStorage перед OAuth редиректом
+        const returnUrl = getReturnUrl();
+        if (returnUrl) {
+          saveReturnUrlToStorage(returnUrl);
         }
         // Редирект на страницу авторизации провайдера
         window.location.href = data.auth_url;

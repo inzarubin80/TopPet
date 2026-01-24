@@ -16,6 +16,7 @@ interface ParticipantCardProps {
   onEdit?: (participant: Participant) => void;
   onDelete?: (participant: Participant) => void;
   isVoted?: boolean;
+  isWinner?: boolean;
 }
 
 export const ParticipantCard: React.FC<ParticipantCardProps> = ({ 
@@ -24,7 +25,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   contestStatus,
   onEdit,
   onDelete,
-  isVoted
+  isVoted,
+  isWinner = false
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -113,7 +115,18 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         )}
       </div>
       <div className="participant-card-content">
-        <h4 className="participant-card-name">{participant.pet_name}</h4>
+        <div className="participant-card-name-wrapper">
+          <h4 className="participant-card-name">{participant.pet_name}</h4>
+          {isWinner && contestStatus === 'finished' && (
+            <div className="participant-card-winner-badge">
+              <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
+                <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="participant-card-winner-text">Победитель</span>
+            </div>
+          )}
+        </div>
         <p className="participant-card-description">
           {participant.pet_description || 'Нет описания'}
         </p>
@@ -125,7 +138,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
             <span className="participant-card-author">Автор: {authorLabel}</span>
             {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
           </div>
-          {canVote && (
+          {canVote && isAuthenticated && (
             <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
               <Button
                 size="small"
@@ -133,7 +146,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                 onClick={handleVoteClick}
                 disabled={isVoting}
               >
-                {!isAuthenticated ? 'Войти' : isVoted ? 'Отменить' : 'Голосовать'}
+                {isVoted ? 'Отменить' : 'Голосовать'}
               </Button>
             </div>
           )}

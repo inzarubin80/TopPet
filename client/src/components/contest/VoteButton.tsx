@@ -88,6 +88,19 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     }
   };
 
+  if (isOwner && contestStatus === 'voting') {
+    return (
+      <div className="vote-button-owner-info">
+        <svg className="vote-button-owner-info-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
+          <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="12" cy="8" r="1" fill="currentColor"/>
+        </svg>
+        <span className="vote-button-owner-info-text">Это ваш участник</span>
+      </div>
+    );
+  }
+
   if (isOwner) {
     return null;
   }

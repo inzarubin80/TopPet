@@ -141,6 +141,17 @@
   background: #ffeef5;
 }
 
+.photo-gallery-like-button-unauthorized {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.photo-gallery-like-button-unauthorized:hover:not(:disabled) {
+  border-color: #007bff;
+  background: #f0f8ff;
+  opacity: 1;
+}
+
 .photo-gallery-like-icon {
   font-size: 20px;
   line-height: 1;

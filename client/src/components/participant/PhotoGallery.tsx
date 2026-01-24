@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
 import { Photo } from '../../types/models';
 import { fetchPhotoLike, likePhoto, unlikePhoto, setPhotoLike } from '../../store/slices/photoLikesSlice';
+import { buildLoginUrl } from '../../utils/navigation';
 import './PhotoGallery.css';
 
 interface PhotoGalleryProps {
@@ -12,6 +14,8 @@ interface PhotoGalleryProps {
 
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantId }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const photoLikes = useSelector((state: RootState) => state.photoLikes.likes);
   const loadingLikes = useSelector((state: RootState) => state.photoLikes.loading);
@@ -66,6 +70,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
   const handleLikeClick = async (photoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) {
+      // Redirect to login with return URL
+      const returnUrl = location.pathname + location.search;
+      navigate(buildLoginUrl(returnUrl));
       return;
     }
     const currentLike = photoLikes[photoId];
@@ -121,27 +128,19 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
           )}
         </div>
         <div className="photo-gallery-actions">
-          {isAuthenticated && (
-            <button
-              type="button"
-              className={`photo-gallery-like-button ${likeData.is_liked ? 'photo-gallery-like-button-active' : ''}`}
-              onClick={(e) => handleLikeClick(currentPhoto.id, e)}
-              disabled={isLoading}
-            >
-              <span className="photo-gallery-like-icon">
-                {likeData.is_liked ? '❤️' : '🤍'}
-              </span>
-              <span className="photo-gallery-like-count-text">
-                {likeData.like_count > 0 ? likeData.like_count : ''}
-              </span>
-            </button>
-          )}
-          {!isAuthenticated && likeData.like_count > 0 && (
-            <div className="photo-gallery-like-count-display">
-              <span className="photo-gallery-like-icon">🤍</span>
-              <span>{likeData.like_count}</span>
-            </div>
-          )}
+          <button
+            type="button"
+            className={`photo-gallery-like-button ${likeData.is_liked ? 'photo-gallery-like-button-active' : ''} ${!isAuthenticated ? 'photo-gallery-like-button-unauthorized' : ''}`}
+            onClick={(e) => handleLikeClick(currentPhoto.id, e)}
+            disabled={isLoading}
+          >
+            <span className="photo-gallery-like-icon">
+              {likeData.is_liked ? '❤️' : '🤍'}
+            </span>
+            <span className="photo-gallery-like-count-text">
+              {likeData.like_count > 0 ? likeData.like_count : ''}
+            </span>
+          </button>
         </div>
       </div>
     </div>

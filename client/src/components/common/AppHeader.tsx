@@ -1,18 +1,24 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import { buildLoginUrl } from '../../utils/navigation';
+import { buildLoginUrl, saveProfileReferrer } from '../../utils/navigation';
 import './AppHeader.css';
 
 export const AppHeader: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
   const handleProfileClick = () => {
     if (!isAuthenticated) {
       navigate(buildLoginUrl('/profile'));
       return;
+    }
+    // Сохраняем текущий URL перед переходом на профиль
+    // НО: не сохраняем, если мы уже на странице профиля
+    if (location.pathname !== '/profile') {
+      saveProfileReferrer(location.pathname + location.search);
     }
     navigate('/profile');
   };

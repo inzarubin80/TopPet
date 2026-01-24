@@ -4,3 +4,30 @@
   color: #6c757d;
   font-size: 14px;
 }
+
+.vote-button-owner-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #e8f4fd 0%, #d0e8fc 100%);
+  border-radius: 24px;
+  box-sizing: border-box;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0056b3;
+  letter-spacing: 0.3px;
+}
+
+.vote-button-owner-info-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: #0056b3;
+}
+
+.vote-button-owner-info-text {
+  line-height: 1.2;
+}

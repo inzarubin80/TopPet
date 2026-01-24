@@ -15,11 +15,6 @@ type (
 		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 		GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, userID *model.UserID) (*model.Participant, error)
 	}
-	
-	serviceGetParticipantWithAuth interface {
-		serviceGetParticipant
-		serviceOptionalAuth
-	}
 
 	GetParticipantHandler struct {
 		name        string
