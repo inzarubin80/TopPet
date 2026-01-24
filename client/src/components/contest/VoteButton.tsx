@@ -7,6 +7,9 @@ import { vote, getVote, unvote } from '../../api/votesApi';
 import { ContestID, ParticipantID, ContestStatus } from '../../types/models';
 import { buildLoginUrl } from '../../utils/navigation';
 import { setUserVote } from '../../store/slices/contestsSlice';
+import { useToast } from '../../contexts/ToastContext';
+import { errorHandler } from '../../utils/errorHandler';
+import { logger } from '../../utils/logger';
 import './VoteButton.css';
 
 interface VoteButtonProps {
@@ -27,6 +30,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { showError } = useToast();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const currentVote = useSelector((state: RootState) =>
     state.contests.userVotes[contestId] ? state.contests.userVotes[contestId] : null
@@ -35,20 +39,20 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   const [voting, setVoting] = useState(false);
 
   const loadVote = useCallback(async () => {
-    console.log('[VoteButton] loadVote start', { contestId, isAuthenticated });
+    logger.debug('[VoteButton] loadVote start', { contestId, isAuthenticated });
     try {
       setLoading(true);
       const voteData = await getVote(contestId);
-      console.log('[VoteButton] loadVote result', { contestId, participantId: voteData?.participant_id || null });
+      logger.debug('[VoteButton] loadVote result', { contestId, participantId: voteData?.participant_id || null });
       dispatch(setUserVote({ contestId, participantId: voteData?.participant_id || null }));
     } catch (error) {
-      console.error('Failed to load vote:', error);
+      logger.error('Failed to load vote', error);
       dispatch(setUserVote({ contestId, participantId: null }));
     } finally {
-      console.log('[VoteButton] loadVote end', { contestId });
+      logger.debug('[VoteButton] loadVote end', { contestId });
       setLoading(false);
     }
-  }, [contestId, dispatch]);
+  }, [contestId, dispatch, isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -81,8 +85,8 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
         onVoted(participantId);
       }
     } catch (error) {
-      console.error('Failed to vote:', error);
-      alert(currentVote === participantId ? 'Не удалось отменить голос' : 'Не удалось проголосовать');
+      const message = currentVote === participantId ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
+      errorHandler.handleError(error, () => showError(message));
     } finally {
       setVoting(false);
     }

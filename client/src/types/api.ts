@@ -1,6 +1,6 @@
 // API types and utilities
 
-import { Contest, Participant, Comment, ChatMessage, VoteResponse, ContestStatus } from './models';
+import { Contest, Participant, Comment, ChatMessage, ContestStatus } from './models';
 
 export interface ContestsListResponse {
   items: Contest[];
@@ -73,3 +73,40 @@ export interface UpdateCommentRequest {
 export interface VoteRequest {
   participant_id: string;
 }
+
+export interface RefreshTokenResponse {
+  token: string;
+  refresh_token: string;
+}
+
+export interface ApiError {
+  message?: string;
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+      error?: string;
+    };
+  };
+}
+
+export const isApiError = (error: unknown): error is ApiError => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    ('message' in error || 'response' in error)
+  );
+};
+
+export const getApiErrorMessage = (error: unknown): string => {
+  if (isApiError(error)) {
+    return error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Unknown error';
+};

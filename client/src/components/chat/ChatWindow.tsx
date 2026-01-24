@@ -13,6 +13,8 @@ import { buildLoginUrl } from '../../utils/navigation';
 import * as chatApi from '../../api/chatApi';
 import { removeMessage, setMessages } from '../../store/slices/chatSlice';
 import { useDispatch } from 'react-redux';
+import { useToast } from '../../contexts/ToastContext';
+import { errorHandler } from '../../utils/errorHandler';
 import './ChatWindow.css';
 
 interface ChatWindowProps {
@@ -26,6 +28,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { showError } = useToast();
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
@@ -63,8 +66,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
     try {
       await chatApi.updateChatMessage(messageId, text);
     } catch (error) {
-      console.error('Failed to update chat message:', error);
-      alert('Не удалось обновить сообщение');
+      errorHandler.handleError(error, () => showError('Не удалось обновить сообщение'));
     }
   };
 
@@ -73,8 +75,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
       await chatApi.deleteChatMessage(messageId);
       dispatch(removeMessage({ contestId, messageId }));
     } catch (error) {
-      console.error('Failed to delete chat message:', error);
-      alert('Не удалось удалить сообщение');
+      errorHandler.handleError(error, () => showError('Не удалось удалить сообщение'));
     }
   };
 

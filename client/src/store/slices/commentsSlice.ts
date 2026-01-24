@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Comment, ParticipantID, CommentID } from '../../types/models';
 import * as commentsApi from '../../api/commentsApi';
-import { CreateCommentRequest, UpdateCommentRequest, CommentsListResponse } from '../../types/api';
+import { CreateCommentRequest, UpdateCommentRequest, CommentsListResponse, getApiErrorMessage } from '../../types/api';
 
 interface CommentsState {
   items: Record<ParticipantID, Comment[]>;
@@ -27,8 +27,8 @@ export const fetchComments = createAsyncThunk(
     try {
       const response: CommentsListResponse = await commentsApi.getComments(participantId, limit, offset);
       return { participantId, comments: response.items, total: response.total };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch comments');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -39,8 +39,8 @@ export const createComment = createAsyncThunk(
     try {
       const comment = await commentsApi.createComment(participantId, data);
       return { participantId, comment };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to create comment');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -51,8 +51,8 @@ export const updateComment = createAsyncThunk(
     try {
       const comment = await commentsApi.updateComment(commentId, data);
       return comment;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update comment');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -63,8 +63,8 @@ export const deleteComment = createAsyncThunk(
     try {
       await commentsApi.deleteComment(commentId);
       return commentId;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete comment');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );

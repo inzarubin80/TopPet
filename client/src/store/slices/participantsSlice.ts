@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Participant, ParticipantID, ContestID } from '../../types/models';
 import * as participantsApi from '../../api/participantsApi';
-import { CreateParticipantRequest, UpdateParticipantRequest } from '../../types/api';
+import { CreateParticipantRequest, UpdateParticipantRequest, getApiErrorMessage } from '../../types/api';
 
 interface ParticipantsState {
   items: Record<ParticipantID, Participant>;
@@ -24,8 +24,8 @@ export const fetchParticipant = createAsyncThunk(
     try {
       const participant = await participantsApi.getParticipant(contestId, participantId);
       return participant;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch participant');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -36,8 +36,8 @@ export const fetchParticipantsByContest = createAsyncThunk(
     try {
       const participants = await participantsApi.getParticipantsByContest(contestId);
       return { contestId, participants };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch participants');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -48,8 +48,8 @@ export const createParticipant = createAsyncThunk(
     try {
       const participant = await participantsApi.createParticipant(contestId, data);
       return participant;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to create participant');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -60,8 +60,8 @@ export const uploadPhoto = createAsyncThunk(
     try {
       const photo = await participantsApi.uploadPhoto(participantId, file);
       return { participantId, photo };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to upload photo');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -72,8 +72,8 @@ export const uploadVideo = createAsyncThunk(
     try {
       const video = await participantsApi.uploadVideo(participantId, file);
       return { participantId, video };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to upload video');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -84,8 +84,8 @@ export const updateParticipant = createAsyncThunk(
     try {
       const participant = await participantsApi.updateParticipant(participantId, data);
       return participant;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update participant');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -96,8 +96,8 @@ export const deleteParticipant = createAsyncThunk(
     try {
       await participantsApi.deleteParticipant(participantId);
       return participantId;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete participant');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -120,8 +120,8 @@ export const updatePhotoOrder = createAsyncThunk(
     try {
       await participantsApi.updatePhotoOrder(participantId, photoIds);
       return { participantId, photoIds };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update photo order');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );

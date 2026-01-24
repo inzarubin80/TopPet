@@ -6,7 +6,6 @@ import { logout, setUser } from '../store/slices/authSlice';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { getProfileReferrer, clearProfileReferrer } from '../utils/navigation';
-import { tokenStorage } from '../utils/tokenStorage';
 import * as authApi from '../api/authApi';
 import './ProfilePage.css';
 

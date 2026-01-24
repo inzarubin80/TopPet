@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthResponse } from '../../types/models';
 import { tokenStorage } from '../../utils/tokenStorage';
+import { getApiErrorMessage } from '../../types/api';
 import * as authApi from '../../api/authApi';
 
 export const fetchCurrentUser = createAsyncThunk(
@@ -9,8 +10,8 @@ export const fetchCurrentUser = createAsyncThunk(
     try {
       const user = await authApi.getCurrentUser();
       return user;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch current user');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -40,8 +41,8 @@ export const refreshTokenAsync = createAsyncThunk(
     try {
       const response = await authApi.refreshToken(refreshToken);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Token refresh failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );

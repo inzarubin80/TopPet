@@ -9,6 +9,8 @@ import CreateContestPage from './pages/CreateContestPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import { AppHeader } from './components/common/AppHeader';
+import { ToastContainer } from './components/common/ToastContainer';
+import { useToast } from './contexts/ToastContext';
 import { buildLoginUrl } from './utils/navigation';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -23,14 +25,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-const AppLayout: React.FC = () => (
-  <div className="app-shell">
-    <AppHeader />
-    <main className="app-main">
-      <Outlet />
-    </main>
-  </div>
-);
+const AppLayout: React.FC = () => {
+  const { toasts, removeToast } = useToast();
+  
+  return (
+    <div className="app-shell">
+      <AppHeader />
+      <main className="app-main">
+        <Outlet />
+      </main>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </div>
+  );
+};
 
 export const AppRoutes: React.FC = () => {
   return (

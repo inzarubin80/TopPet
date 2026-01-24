@@ -7,6 +7,9 @@ import { Button } from '../common/Button';
 import { buildLoginUrl } from '../../utils/navigation';
 import { vote, unvote } from '../../api/votesApi';
 import { setUserVote } from '../../store/slices/contestsSlice';
+import { useToast } from '../../contexts/ToastContext';
+import { errorHandler } from '../../utils/errorHandler';
+import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -33,13 +36,12 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { showError } = useToast();
   const [isVoting, setIsVoting] = useState(false);
-  const isOwner = currentUserId && participant.user_id === currentUserId;
+  const { isOwner, canEdit, canVote } = useParticipantPermissions(participant, currentUserId, contestStatus);
   const authorLabel = isOwner
     ? 'Вы'
     : participant.user_name || `Пользователь ${participant.user_id}`;
-  const canEdit = isOwner && (contestStatus === 'draft' || contestStatus === 'registration');
-  const canVote = contestStatus === 'voting' && !isOwner;
   const photos = participant.photos ?? [];
 
   const handleClick = () => {
@@ -81,8 +83,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         dispatch(setUserVote({ contestId, participantId: participant.id }));
       }
     } catch (error) {
-      console.error('Failed to vote from card:', error);
-      alert(isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать');
+      const errorMessage = isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
+      errorHandler.handleError(error, () => showError(errorMessage));
     } finally {
       setIsVoting(false);
     }

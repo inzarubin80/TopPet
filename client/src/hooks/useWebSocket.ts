@@ -8,7 +8,9 @@ import { fetchContest, setUserVote, updateContestTotalVotes } from '../store/sli
 import { updateParticipantVotes } from '../store/slices/participantsSlice';
 import { ChatMessage, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
+import { RefreshTokenResponse } from '../types/api';
 import { tokenStorage } from '../utils/tokenStorage';
+import { logger } from '../utils/logger';
 
 let wsClientInstance: WebSocketClient | null = null;
 
@@ -104,29 +106,30 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       // Always refresh token before connecting to ensure it's fresh
       const refreshTokenValue = refreshToken || tokenStorage.getRefreshToken();
       if (!refreshTokenValue) {
-        console.warn('[useWebSocket] No refresh token available for connection');
+        logger.warn('[useWebSocket] No refresh token available for connection');
         return;
       }
 
-      console.log('[useWebSocket] Refreshing token before WebSocket connection...');
+      logger.debug('[useWebSocket] Refreshing token before WebSocket connection...');
       let token: string | null = null;
       
       try {
         const result = await dispatch(refreshTokenAsync(refreshTokenValue));
         if (refreshTokenAsync.fulfilled.match(result)) {
-          token = (result.payload as any)?.token;
+          const payload = result.payload as RefreshTokenResponse;
+          token = payload?.token;
           if (token) {
-            console.log('[useWebSocket] Token refreshed successfully, connecting WebSocket...');
+            logger.info('[useWebSocket] Token refreshed successfully, connecting WebSocket...');
           } else {
-            console.error('[useWebSocket] Token refresh returned no token');
+            logger.error('[useWebSocket] Token refresh returned no token');
             return;
           }
         } else {
-          console.error('[useWebSocket] Token refresh failed:', result.payload);
+          logger.error('[useWebSocket] Token refresh failed', result.payload);
           return;
         }
       } catch (err) {
-        console.error('[useWebSocket] Failed to refresh token:', err);
+        logger.error('[useWebSocket] Failed to refresh token', err);
         return;
       }
 
@@ -179,28 +182,29 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     // Always refresh token before reconnecting to ensure it's fresh
     const refreshTokenValue = refreshToken || tokenStorage.getRefreshToken();
     if (!refreshTokenValue) {
-      console.warn('[useWebSocket] Reconnect: No refresh token available');
+      logger.warn('[useWebSocket] Reconnect: No refresh token available');
       return;
     }
 
-    console.log('[useWebSocket] Reconnect: Refreshing token before reconnecting...');
+    logger.debug('[useWebSocket] Reconnect: Refreshing token before reconnecting...');
     
     try {
       const result = await dispatch(refreshTokenAsync(refreshTokenValue));
       if (refreshTokenAsync.fulfilled.match(result)) {
-        const token = (result.payload as any)?.token;
+        const payload = result.payload as RefreshTokenResponse;
+        const token = payload?.token;
         if (token) {
-          console.log('[useWebSocket] Reconnect: Token refreshed successfully, reconnecting...');
+          logger.info('[useWebSocket] Reconnect: Token refreshed successfully, reconnecting...');
           wsClientRef.current.connect(contestId, token);
           wsClientRef.current.subscribe(contestId);
         } else {
-          console.error('[useWebSocket] Reconnect: Token refresh returned no token');
+          logger.error('[useWebSocket] Reconnect: Token refresh returned no token');
         }
       } else {
-        console.error('[useWebSocket] Reconnect: Token refresh failed:', result.payload);
+        logger.error('[useWebSocket] Reconnect: Token refresh failed', result.payload);
       }
     } catch (err) {
-      console.error('[useWebSocket] Reconnect: Failed to refresh token:', err);
+      logger.error('[useWebSocket] Reconnect: Failed to refresh token', err);
     }
   }, [contestId, refreshToken, dispatch]);
 

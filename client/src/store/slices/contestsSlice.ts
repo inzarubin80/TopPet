@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Contest, ContestStatus, ContestID } from '../../types/models';
 import * as contestsApi from '../../api/contestsApi';
-import { CreateContestRequest, UpdateContestRequest } from '../../types/api';
+import { CreateContestRequest, UpdateContestRequest, getApiErrorMessage } from '../../types/api';
 
 interface ContestsState {
   items: Contest[];
@@ -37,8 +37,8 @@ export const fetchContests = createAsyncThunk(
     try {
       const response = await contestsApi.getContests(params.status, params.limit, params.offset);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch contests');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -49,8 +49,8 @@ export const fetchContest = createAsyncThunk(
     try {
       const contest = await contestsApi.getContest(contestId);
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -61,8 +61,8 @@ export const createContest = createAsyncThunk(
     try {
       const contest = await contestsApi.createContest(data);
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to create contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -73,8 +73,8 @@ export const updateContest = createAsyncThunk(
     try {
       const contest = await contestsApi.updateContest(contestId, data);
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -85,8 +85,8 @@ export const updateContestStatus = createAsyncThunk(
     try {
       const contest = await contestsApi.updateContestStatus(contestId, { status });
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update contest status');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -97,8 +97,8 @@ export const publishContest = createAsyncThunk(
     try {
       const contest = await contestsApi.publishContest(contestId);
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to publish contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -109,8 +109,8 @@ export const finishContest = createAsyncThunk(
     try {
       const contest = await contestsApi.finishContest(contestId);
       return contest;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to finish contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -121,8 +121,8 @@ export const deleteContest = createAsyncThunk(
     try {
       await contestsApi.deleteContest(contestId);
       return contestId;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete contest');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );

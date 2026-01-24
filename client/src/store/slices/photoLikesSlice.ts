@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as photoLikesApi from '../../api/photoLikesApi';
 import { PhotoLikeResponse } from '../../types/models';
+import { getApiErrorMessage } from '../../types/api';
 
 interface PhotoLikeState {
   likes: Record<string, PhotoLikeResponse>; // photoId -> { like_count, is_liked }
@@ -24,8 +25,8 @@ export const fetchPhotoLike = createAsyncThunk(
         return { photoId, like_count: 0, is_liked: false };
       }
       return { photoId, ...response };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch photo like');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -36,8 +37,8 @@ export const likePhoto = createAsyncThunk(
     try {
       const response = await photoLikesApi.likePhoto(photoId);
       return { photoId, ...response };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to like photo');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );
@@ -53,8 +54,8 @@ export const unlikePhoto = createAsyncThunk(
         return { photoId, like_count: currentState?.like_count || 0, is_liked: false };
       }
       return { photoId, ...response };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to unlike photo');
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
     }
   }
 );

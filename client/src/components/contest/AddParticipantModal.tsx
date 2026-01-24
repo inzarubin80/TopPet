@@ -421,7 +421,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                     >
                       <img
                         src={photo.thumb_url || photo.url}
-                        alt={`Photo ${index + 1}`}
+                        alt={`${index + 1}`}
                         className="add-participant-existing-photo-preview"
                       />
                       <button

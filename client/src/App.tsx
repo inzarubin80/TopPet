@@ -5,11 +5,13 @@ import { AppDispatch, RootState, store } from './store';
 import { AppRoutes } from './routes';
 import { fetchCurrentUser } from './store/slices/authSlice';
 import { tokenStorage } from './utils/tokenStorage';
+import { ToastProvider } from './contexts/ToastContext';
+import { logger } from './utils/logger';
 import './App.css';
 
 const AppContent: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, user, accessToken } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     // Load user info if we have a token but user is not loaded
@@ -18,7 +20,7 @@ const AppContent: React.FC = () => {
       // Try to load user - this will work if token is valid
       dispatch(fetchCurrentUser()).catch((err) => {
         // If loading fails (e.g., token expired), clear tokens
-        console.log('[AppContent] Failed to load user, clearing tokens:', err);
+        logger.warn('[AppContent] Failed to load user, clearing tokens', err);
         tokenStorage.clearTokens();
         dispatch({ type: 'auth/logout' });
       });
@@ -31,9 +33,11 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <Provider store={store}>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ToastProvider>
     </Provider>
   );
 }

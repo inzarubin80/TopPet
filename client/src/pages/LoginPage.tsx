@@ -6,11 +6,13 @@ import { AuthProviders } from '../components/auth/AuthProviders';
 import { login } from '../store/slices/authSlice';
 import { tokenStorage } from '../utils/tokenStorage';
 import { getAndClearReturnUrl } from '../utils/navigation';
+import { useToast } from '../contexts/ToastContext';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const { showError } = useToast();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   useEffect(() => {
@@ -44,7 +46,8 @@ const LoginPage: React.FC = () => {
     const errorDescription = urlParams.get('error_description');
 
     if (error) {
-      alert(`Ошибка авторизации: ${errorDescription || error}`);
+      const errorMessage = `Ошибка авторизации: ${errorDescription || error}`;
+      showError(errorMessage);
       // Очищаем URL от параметров ошибки
       window.history.replaceState({}, '', window.location.pathname);
       return;
@@ -65,7 +68,7 @@ const LoginPage: React.FC = () => {
       window.history.replaceState({}, '', cleanUrl);
       navigate(cleanUrl);
     }
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, showError]);
 
   return (
     <div className="login-page">

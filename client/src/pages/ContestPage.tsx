@@ -8,7 +8,7 @@ import {
   deleteContest,
   setUserVote,
 } from '../store/slices/contestsSlice';
-import { fetchParticipantsByContest, updateParticipant, deleteParticipant } from '../store/slices/participantsSlice';
+import { fetchParticipantsByContest } from '../store/slices/participantsSlice';
 import { Participant, ContestStatus } from '../types/models';
 import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
@@ -21,12 +21,18 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { buildLoginUrl } from '../utils/navigation';
 import { getVote } from '../api/votesApi';
+import { useToast } from '../contexts/ToastContext';
+import { errorHandler } from '../utils/errorHandler';
+import { logger } from '../utils/logger';
+import { useContestPermissions } from '../hooks/useContestPermissions';
+import { useContestWinners } from '../hooks/useContestWinners';
 import './ContestPage.css';
 
 const ContestPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const { showError } = useToast();
   const { currentContest, loading } = useSelector((state: RootState) => state.contests);
   const { items: participants, loading: participantsLoading } = useSelector(
     (state: RootState) => state.participants
@@ -70,13 +76,16 @@ const ContestPage: React.FC = () => {
         const voteData = await getVote(id);
         dispatch(setUserVote({ contestId: id, participantId: voteData?.participant_id || null }));
       } catch (error) {
-        console.error('Failed to load vote:', error);
+        logger.error('Failed to load vote', error);
         dispatch(setUserVote({ contestId: id, participantId: null }));
       }
     };
     loadVote();
   }, [dispatch, id, isAuthenticated, currentContest?.status]);
 
+
+  const { isAdmin, canManageParticipants } = useContestPermissions(currentContest, currentUserId);
+  const isWinner = useContestWinners(participants, currentContest?.status || 'draft');
 
   if (loading) {
     return (
@@ -89,9 +98,6 @@ const ContestPage: React.FC = () => {
   if (!currentContest) {
     return <div className="contest-page-error">Конкурс не найден</div>;
   }
-
-  const isAdmin = currentContest.created_by_user_id === currentUserId;
-  const canManageParticipants = currentContest.status === 'draft' || currentContest.status === 'registration';
   const statusLabels: Record<ContestStatus, string> = {
     draft: 'Черновик',
     registration: 'Регистрация',
@@ -130,8 +136,8 @@ const ContestPage: React.FC = () => {
                         updateContestStatus({ contestId: currentContest.id, status: nextStatus })
                       ).unwrap();
                     } catch (error) {
-                      console.error('Failed to update contest status:', error);
-                      alert('Не удалось обновить статус');
+                      errorHandler.handleError(error, showError, false);
+                      showError('Не удалось обновить статус');
                     }
                   }}
                 >
@@ -156,8 +162,8 @@ const ContestPage: React.FC = () => {
                           updateContestStatus({ contestId: currentContest.id, status: 'registration' })
                         ).unwrap();
                       } catch (error) {
-                        console.error('Failed to update contest status:', error);
-                        alert('Не удалось открыть регистрацию');
+                        errorHandler.handleError(error, showError, false);
+                        showError('Не удалось открыть регистрацию');
                       }
                     }}
                   >
@@ -173,8 +179,8 @@ const ContestPage: React.FC = () => {
                         updateContestStatus({ contestId: currentContest.id, status: 'voting' })
                       ).unwrap();
                     } catch (error) {
-                      console.error('Failed to update contest status:', error);
-                      alert('Не удалось начать голосование');
+                      errorHandler.handleError(error, showError, false);
+                      showError('Не удалось начать голосование');
                     }
                   }}
                 >
@@ -190,8 +196,8 @@ const ContestPage: React.FC = () => {
                         updateContestStatus({ contestId: currentContest.id, status: 'finished' })
                       ).unwrap();
                     } catch (error) {
-                      console.error('Failed to update contest status:', error);
-                      alert('Не удалось завершить конкурс');
+                      errorHandler.handleError(error, showError, false);
+                      showError('Не удалось завершить конкурс');
                     }
                   }}
                 >
@@ -250,44 +256,27 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-empty">Нет участников</div>
           ) : (
             <div className="contest-page-participants-list">
-              {(() => {
-                // Calculate winner only when contest is finished
-                const isFinished = currentContest.status === 'finished';
-                const maxVotes = isFinished
-                  ? Math.max(
-                      ...participantIds.map((id) => participants[id]?.total_votes || 0),
-                      0
-                    )
-                  : 0;
-
-                const isWinner = (participantId: string) => {
-                  if (!isFinished) return false;
-                  const participant = participants[participantId];
-                  return participant?.total_votes === maxVotes && maxVotes > 0;
-                };
-
-                return participantIds.map((participantId) => {
-                  const participant = participants[participantId];
-                  return participant ? (
-                    <ParticipantCard 
-                      key={participantId} 
-                      participant={participant} 
-                      contestId={id!}
-                      contestStatus={currentContest.status}
-                      isVoted={currentVoteId === participant.id}
-                      isWinner={isWinner(participantId)}
-                      onEdit={(p) => {
-                        setEditingParticipant(p);
-                        setIsEditParticipantModalOpen(true);
-                      }}
-                      onDelete={(p) => {
-                        setDeletingParticipant(p);
-                        setIsDeleteParticipantModalOpen(true);
-                      }}
-                    />
-                  ) : null;
-                });
-              })()}
+              {participantIds.map((participantId) => {
+                const participant = participants[participantId];
+                return participant ? (
+                  <ParticipantCard 
+                    key={participantId} 
+                    participant={participant} 
+                    contestId={id!}
+                    contestStatus={currentContest.status}
+                    isVoted={currentVoteId === participant.id}
+                    isWinner={isWinner(participantId)}
+                    onEdit={(p) => {
+                      setEditingParticipant(p);
+                      setIsEditParticipantModalOpen(true);
+                    }}
+                    onDelete={(p) => {
+                      setDeletingParticipant(p);
+                      setIsDeleteParticipantModalOpen(true);
+                    }}
+                  />
+                ) : null;
+              })}
             </div>
           )}
         </div>
@@ -350,8 +339,8 @@ const ContestPage: React.FC = () => {
                 await dispatch(deleteContest(currentContest.id)).unwrap();
                 navigate('/');
               } catch (error) {
-                console.error('Failed to delete contest:', error);
-                alert('Не удалось удалить конкурс');
+                errorHandler.handleError(error, showError, false);
+                showError('Не удалось удалить конкурс');
                 setIsDeleting(false);
               }
             }}

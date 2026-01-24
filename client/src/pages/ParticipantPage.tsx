@@ -13,6 +13,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { PhotoGallery } from '../components/participant/PhotoGallery';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useParticipantPermissions } from '../hooks/useParticipantPermissions';
 import './ParticipantPage.css';
 
 const ParticipantPage: React.FC = () => {
@@ -28,8 +29,11 @@ const ParticipantPage: React.FC = () => {
   const { loading } = useSelector((state: RootState) => state.participants);
   const { currentContest, loading: contestLoading } = useSelector((state: RootState) => state.contests);
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
-  const isOwner = participant && currentUserId && participant.user_id === currentUserId;
-  const canEdit = !!(isOwner && currentContest && (currentContest.status === 'draft' || currentContest.status === 'registration'));
+  const { isOwner, canEdit } = useParticipantPermissions(
+    participant,
+    currentUserId,
+    currentContest?.status || 'draft'
+  );
   const canComment = !!(currentContest && (currentContest.status === 'registration' || currentContest.status === 'voting'));
   const isContestOwner = currentContest && currentUserId && currentContest.created_by_user_id === currentUserId;
   
