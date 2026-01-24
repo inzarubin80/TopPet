@@ -33,7 +33,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	
 	if participantID == "" {
 		log.Printf("[UpdateParticipantHandler] ERROR: participantId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "participantId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("participantId is required", nil))
 		return
 	}
 
@@ -46,7 +46,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to decode request body: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	// Let's require at least one field to be provided
 	if req.PetName == nil && req.PetDescription == nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: At least one field (pet_name or pet_description) must be provided")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "at least one field must be provided")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("at least one field must be provided", nil))
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	currentParticipant, err := h.service.GetParticipant(r.Context(), participantID)
 	if err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to get current participant: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusNotFound, "participant not found")
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	// Require pet_name to be non-empty
 	if petName == "" {
 		log.Printf("[UpdateParticipantHandler] ERROR: pet_name cannot be empty")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "pet_name cannot be empty")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("pet_name cannot be empty", nil))
 		return
 	}
 
@@ -92,11 +92,13 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, petName, petDescription)
 	if err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to update participant: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
 	log.Printf("[UpdateParticipantHandler] Participant updated successfully: participantID=%s", participant.ID)
-	jsonData, _ := json.Marshal(participant)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, participant); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

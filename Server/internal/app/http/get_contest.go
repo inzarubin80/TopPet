@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/uhttp"
@@ -33,28 +32,30 @@ func NewGetContestHandler(name string, service serviceGetContest) *GetContestHan
 func (h *GetContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contestID := model.ContestID(r.PathValue("contestId"))
 	if contestID == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
 	contest, err := h.service.GetContest(r.Context(), contestID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusNotFound, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
 	if contest.Status == model.ContestStatusDraft {
 		userID, ok, authErr := getOptionalUserID(r, h.authService)
 		if authErr != nil {
-			uhttp.SendErrorResponse(w, http.StatusUnauthorized, authErr.Error())
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication required", authErr))
 			return
 		}
 		if !ok || contest.CreatedByUserID != userID {
-			uhttp.SendErrorResponse(w, http.StatusNotFound, "contest not found")
+			uhttp.HandleError(w, uhttp.NewNotFoundError("contest not found", nil))
 			return
 		}
 	}
 
-	jsonData, _ := json.Marshal(contest)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, contest); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

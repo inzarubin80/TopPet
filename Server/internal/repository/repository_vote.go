@@ -139,3 +139,49 @@ func (r *Repository) CountVotesByParticipant(ctx context.Context, participantID 
 	count, err := reposqlc.CountVotesByParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
 	return count, err
 }
+
+// CountVotesByContests получает счетчики голосов для нескольких конкурсов одним запросом
+// Оптимизирует N+1 проблему при получении списка конкурсов
+func (r *Repository) CountVotesByContests(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error) {
+	if len(contestIDs) == 0 {
+		return make(map[model.ContestID]int64), nil
+	}
+
+	contestUUIDs := make([]pgtype.UUID, 0, len(contestIDs))
+	for _, contestID := range contestIDs {
+		contestUUID, err := uuid.Parse(string(contestID))
+		if err != nil {
+			continue
+		}
+		contestUUIDs = append(contestUUIDs, pgtype.UUID{Bytes: contestUUID, Valid: true})
+	}
+
+	// Используем сырой SQL запрос для оптимизации
+	query := `
+		SELECT contest_id, count(1) as vote_count 
+		FROM contest_votes
+		WHERE contest_id = ANY($1::uuid[])
+		GROUP BY contest_id
+	`
+	
+	rows, err := r.conn.Query(ctx, query, contestUUIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[model.ContestID]int64)
+	for rows.Next() {
+		var contestUUID pgtype.UUID
+		var count int64
+		if err := rows.Scan(&contestUUID, &count); err != nil {
+			return nil, err
+		}
+		if contestUUID.Valid {
+			contestID := model.ContestID(uuid.UUID(contestUUID.Bytes).String())
+			result[contestID] = count
+		}
+	}
+
+	return result, rows.Err()
+}

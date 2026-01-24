@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -46,8 +45,9 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				LikeCount int64 `json:"like_count"`
 				IsLiked   bool  `json:"is_liked"`
 			}
-			jsonData, _ := json.Marshal(resp{LikeCount: count, IsLiked: false})
-			uhttp.SendSuccessfulResponse(w, jsonData)
+			if err := uhttp.SendSuccess(w, resp{LikeCount: count, IsLiked: false}); err != nil {
+				uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+			}
 			return
 		}
 		userID := userIDVal.(model.UserID)
@@ -59,16 +59,18 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				LikeCount int64 `json:"like_count"`
 				IsLiked   bool  `json:"is_liked"`
 			}
-			jsonData, _ := json.Marshal(resp{LikeCount: count, IsLiked: false})
-			uhttp.SendSuccessfulResponse(w, jsonData)
+			if err := uhttp.SendSuccess(w, resp{LikeCount: count, IsLiked: false}); err != nil {
+				uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+			}
 			return
 		}
 		type resp struct {
 			LikeCount int64 `json:"like_count"`
 			IsLiked   bool  `json:"is_liked"`
 		}
-		jsonData, _ := json.Marshal(resp{LikeCount: count, IsLiked: true})
-		uhttp.SendSuccessfulResponse(w, jsonData)
+		if err := uhttp.SendSuccess(w, resp{LikeCount: count, IsLiked: true}); err != nil {
+			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		}
 		return
 	}
 
@@ -80,7 +82,7 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
-			uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			uhttp.HandleError(w, err)
 			return
 		}
 		count, _ := h.service.GetPhotoLikesCount(r.Context(), photoID)
@@ -88,8 +90,9 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			LikeCount int64 `json:"like_count"`
 			IsLiked   bool  `json:"is_liked"`
 		}
-		jsonData, _ := json.Marshal(resp{LikeCount: count, IsLiked: false})
-		uhttp.SendSuccessfulResponse(w, jsonData)
+		if err := uhttp.SendSuccess(w, resp{LikeCount: count, IsLiked: false}); err != nil {
+			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		}
 		return
 	}
 
@@ -98,7 +101,7 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.service.LikePhoto(r.Context(), photoID, userID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -107,6 +110,8 @@ func (h *PhotoLikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		LikeCount int64 `json:"like_count"`
 		IsLiked   bool  `json:"is_liked"`
 	}
-	jsonData, _ := json.Marshal(resp{LikeCount: count, IsLiked: true})
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, resp{LikeCount: count, IsLiked: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

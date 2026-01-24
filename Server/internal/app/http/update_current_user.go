@@ -33,21 +33,23 @@ func (h *UpdateCurrentUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	if req.Name == nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "name is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("name is required", nil))
 		return
 	}
 
 	updated, err := h.service.UpdateUserName(r.Context(), userID, *req.Name)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(updated)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, updated); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

@@ -31,7 +31,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	contestID := model.ContestID(r.PathValue("contestId"))
 	
 	if contestID == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
@@ -41,14 +41,14 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	// Get current contest to preserve fields
 	contest, err := h.service.GetContest(r.Context(), contestID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusNotFound, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -64,10 +64,12 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	updated, err := h.service.UpdateContest(r.Context(), contestID, userID, title, description)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(updated)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, updated); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

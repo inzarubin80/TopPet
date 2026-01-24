@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
@@ -16,13 +15,16 @@ type (
 	}
 
 	CreateContestHandler struct {
-		name    string
+		*BaseHandler
 		service serviceCreateContest
 	}
 )
 
 func NewCreateContestHandler(name string, service serviceCreateContest) *CreateContestHandler {
-	return &CreateContestHandler{name: name, service: service}
+	return &CreateContestHandler{
+		BaseHandler: NewBaseHandler(name),
+		service:     service,
+	}
 }
 
 func (h *CreateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -33,17 +35,19 @@ func (h *CreateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Description string `json:"description"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+	if err := h.ParseJSON(r, &req); err != nil {
+		h.HandleError(w, err)
 		return
 	}
 
 	contest, err := h.service.CreateContest(r.Context(), userID, req.Title, req.Description)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		h.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(contest)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := h.SendSuccess(w, contest); err != nil {
+		h.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

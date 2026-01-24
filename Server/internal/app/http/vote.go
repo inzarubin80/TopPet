@@ -56,8 +56,9 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		type resp struct {
 			ParticipantID string `json:"participant_id"`
 		}
-		jsonData, _ := json.Marshal(resp{ParticipantID: string(vote.ParticipantID)})
-		uhttp.SendSuccessfulResponse(w, jsonData)
+		if err := uhttp.SendSuccess(w, resp{ParticipantID: string(vote.ParticipantID)}); err != nil {
+			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		}
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
-			uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			uhttp.HandleError(w, err)
 			return
 		}
 		if participantID == "" {
@@ -79,8 +80,9 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		type resp struct {
 			ParticipantID string `json:"participant_id"`
 		}
-		jsonData, _ := json.Marshal(resp{ParticipantID: string(participantID)})
-		uhttp.SendSuccessfulResponse(w, jsonData)
+		if err := uhttp.SendSuccess(w, resp{ParticipantID: string(participantID)}); err != nil {
+			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		}
 		return
 	}
 
@@ -92,19 +94,21 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	vote, err := h.service.Vote(r.Context(), contestID, model.ParticipantID(req.ParticipantID), userID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
 	type resp struct {
 		ParticipantID string `json:"participant_id"`
 	}
-	jsonData, _ := json.Marshal(resp{ParticipantID: string(vote.ParticipantID)})
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, resp{ParticipantID: string(vote.ParticipantID)}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

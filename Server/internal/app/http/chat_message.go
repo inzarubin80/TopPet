@@ -34,18 +34,20 @@ func (h *ChatMessageHandler) UpdateChatMessage(w http.ResponseWriter, r *http.Re
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	message, err := h.service.UpdateChatMessage(r.Context(), messageID, userID, req.Text)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(message)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, message); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }
 
 func (h *ChatMessageHandler) DeleteChatMessage(w http.ResponseWriter, r *http.Request) {
@@ -53,9 +55,15 @@ func (h *ChatMessageHandler) DeleteChatMessage(w http.ResponseWriter, r *http.Re
 	messageID := model.ChatMessageID(r.PathValue("messageId"))
 
 	if err := h.service.DeleteChatMessage(r.Context(), messageID, userID); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	uhttp.SendSuccessfulResponse(w, []byte(`{"ok":true}`))
+	type response struct {
+		OK bool `json:"ok"`
+	}
+	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

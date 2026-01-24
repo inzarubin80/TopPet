@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	appcontext "toppet/server/internal/app/context"
+	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
 )
 
@@ -13,7 +15,10 @@ func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, 
 		return nil, errors.New("title is required")
 	}
 
-	contest, err := s.repository.CreateContest(ctx, userID, title, description)
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+
+	contest, err := s.repository.CreateContest(dbCtx, userID, title, description)
 	if err != nil {
 		return nil, err
 	}
@@ -22,13 +27,16 @@ func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, 
 }
 
 func (s *TopPetService) GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+
+	contest, err := s.repository.GetContest(dbCtx, contestID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add total votes count
-	totalVotes, err := s.repository.CountVotesByContest(ctx, contestID)
+	totalVotes, err := s.repository.CountVotesByContest(dbCtx, contestID)
 	if err == nil {
 		contest.TotalVotes = totalVotes
 	}
@@ -44,16 +52,37 @@ func (s *TopPetService) ListContests(ctx context.Context, status *model.ContestS
 		limit = 100
 	}
 
-	contests, total, err := s.repository.ListContests(ctx, status, limit, offset)
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+
+	contests, total, err := s.repository.ListContests(dbCtx, status, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Add total votes for each contest
-	for _, contest := range contests {
-		totalVotes, err := s.repository.CountVotesByContest(ctx, contest.ID)
+	// Optimize: get all vote counts in one query instead of N+1
+	if len(contests) > 0 {
+		contestIDs := make([]model.ContestID, len(contests))
+		for i, contest := range contests {
+			contestIDs[i] = contest.ID
+		}
+
+		voteCounts, err := s.repository.CountVotesByContests(dbCtx, contestIDs)
 		if err == nil {
-			contest.TotalVotes = totalVotes
+			// Set vote counts from the batch query result
+			for _, contest := range contests {
+				if count, ok := voteCounts[contest.ID]; ok {
+					contest.TotalVotes = count
+				}
+			}
+		} else {
+			// Fallback to individual queries if batch fails
+			for _, contest := range contests {
+				totalVotes, err := s.repository.CountVotesByContest(dbCtx, contest.ID)
+				if err == nil {
+					contest.TotalVotes = totalVotes
+				}
+			}
 		}
 	}
 
@@ -142,11 +171,8 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 	}
 
 	if s.hub != nil {
-		_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-			"type":       "contest_status_updated",
-			"contest_id": string(contestID),
-			"status":     status,
-		})
+		payload := wsapp.NewContestStatusUpdatedPayload(contestID, string(status))
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
 	}
 
 	return updated, nil

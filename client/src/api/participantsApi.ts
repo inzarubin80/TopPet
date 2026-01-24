@@ -67,6 +67,10 @@ export const deletePhoto = async (participantId: ParticipantID, photoId: string)
   await axiosClient.delete(`/participants/${participantId}/photos/${photoId}`);
 };
 
+export const deleteVideo = async (participantId: ParticipantID): Promise<void> => {
+  await axiosClient.delete(`/participants/${participantId}/video`);
+};
+
 export const updatePhotoOrder = async (participantId: ParticipantID, photoIds: string[]): Promise<void> => {
   await axiosClient.patch(`/participants/${participantId}/photos/order`, {
     photo_ids: photoIds,

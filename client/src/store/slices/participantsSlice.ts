@@ -114,6 +114,18 @@ export const deletePhoto = createAsyncThunk(
   }
 );
 
+export const deleteVideo = createAsyncThunk(
+  'participants/deleteVideo',
+  async ({ participantId }: { participantId: ParticipantID }, { rejectWithValue }) => {
+    try {
+      await participantsApi.deleteVideo(participantId);
+      return { participantId };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to delete video');
+    }
+  }
+);
+
 export const updatePhotoOrder = createAsyncThunk(
   'participants/updatePhotoOrder',
   async ({ participantId, photoIds }: { participantId: ParticipantID; photoIds: string[] }, { rejectWithValue }) => {
@@ -243,6 +255,17 @@ const participantsSlice = createSlice({
         }
       })
       .addCase(deletePhoto.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // deleteVideo
+      .addCase(deleteVideo.fulfilled, (state, action) => {
+        const { participantId } = action.payload;
+        const participant = state.items[participantId];
+        if (participant) {
+          participant.video = undefined;
+        }
+      })
+      .addCase(deleteVideo.rejected, (state, action) => {
         state.error = action.payload as string;
       })
       // updatePhotoOrder

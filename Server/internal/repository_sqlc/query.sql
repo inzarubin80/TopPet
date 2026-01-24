@@ -193,6 +193,11 @@ WHERE contest_id = $1;
 SELECT count(1) FROM contest_votes
 WHERE participant_id = $1;
 
+-- name: CountVotesByContests :many
+SELECT contest_id, count(1) as vote_count FROM contest_votes
+WHERE contest_id = ANY($1::uuid[])
+GROUP BY contest_id;
+
 -- Contest Comments
 
 -- name: CreateComment :one

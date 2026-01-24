@@ -83,13 +83,13 @@ const HomePage: React.FC = () => {
             )}
           </div>
           <div className="home-page-contests">
-            {items.length === 0 ? (
+            {!items || items.length === 0 ? (
               <div className="home-page-empty">Нет конкурсов</div>
             ) : (
               items.map((contest) => <ContestCard key={contest.id} contest={contest} />)
             )}
           </div>
-          {total > items.length && (
+          {total > (items?.length || 0) && (
             <div className="home-page-pagination">
               <Button
                 disabled={filters.offset === 0}
@@ -98,7 +98,7 @@ const HomePage: React.FC = () => {
                 Назад
               </Button>
               <span>
-                Показано {items.length} из {total}
+                Показано {items?.length || 0} из {total}
               </span>
               <Button
                 disabled={filters.offset + filters.limit >= total}

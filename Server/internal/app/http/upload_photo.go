@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -33,13 +32,13 @@ func (h *UploadPhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	participantID := model.ParticipantID(r.PathValue("participantId"))
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "failed to parse multipart form")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("failed to parse multipart form", err))
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "file is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("file is required", err))
 		return
 	}
 	defer file.Close()
@@ -47,16 +46,18 @@ func (h *UploadPhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := "contests/participants/" + string(participantID) + "/photos/" + uuid.New().String()
 	url, err := h.uploader.Upload(r.Context(), key, file, header.Size, header.Header.Get("Content-Type"))
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}
 
 	photo, err := h.service.AddParticipantPhoto(r.Context(), participantID, userID, url, nil)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(photo)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, photo); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

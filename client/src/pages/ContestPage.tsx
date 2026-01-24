@@ -228,25 +228,48 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-participants">
           <div className="contest-page-participants-header">
             <h2>Участники</h2>
-            {canManageParticipants && (
-              <div className="contest-page-participants-actions">
-                {isAuthenticated ? (
-                  <Button onClick={() => setIsAddParticipantModalOpen(true)}>
-                    Добавить участника
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      const returnUrl = `/contests/${id}`;
-                      navigate(buildLoginUrl(returnUrl));
-                    }}
-                  >
-                    Войти для участия
-                  </Button>
-                )}
-              </div>
-            )}
+            {/* Allow any authenticated user to add participants during registration phase */}
+            {(() => {
+              const canAddParticipant = isAuthenticated && (currentContest?.status === 'registration' || currentContest?.status === 'draft');
+              return (canAddParticipant || canManageParticipants) ? (
+                <div className="contest-page-participants-actions">
+                  {isAuthenticated ? (
+                    <Button 
+                      size="large"
+                      onClick={() => setIsAddParticipantModalOpen(true)}
+                      className="contest-page-add-participant-button"
+                    >
+                      <svg 
+                        width="20" 
+                        height="20" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        style={{ marginRight: '8px', verticalAlign: 'middle' }}
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      Добавить участника
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="large"
+                      onClick={() => {
+                        const returnUrl = `/contests/${id}`;
+                        navigate(buildLoginUrl(returnUrl));
+                      }}
+                    >
+                      Войти для участия
+                    </Button>
+                  )}
+                </div>
+              ) : null;
+            })()}
           </div>
           {participantsLoading ? (
             <div className="contest-page-participants-loading">
@@ -301,7 +324,8 @@ const ContestPage: React.FC = () => {
             setIsEditParticipantModalOpen(false);
             setEditingParticipant(null);
           }}
-          participant={editingParticipant}
+          // Always use the latest participant data from Redux store
+          participant={editingParticipant.id ? participants[editingParticipant.id] || editingParticipant : editingParticipant}
         />
       )}
 

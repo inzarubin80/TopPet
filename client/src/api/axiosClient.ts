@@ -71,7 +71,8 @@ const redirectToLogin = (originalRequest?: InternalAxiosRequestConfig) => {
   }
 
   // Don't redirect for public endpoints (to avoid infinite loop)
-  const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback'];
+  // Chat messages endpoint is public - unauthorized users should be able to read messages
+  const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/contests/', '/chat'];
   if (originalRequest?.url && publicEndpoints.some(endpoint => originalRequest.url?.includes(endpoint))) {
     return;
   }
@@ -94,6 +95,14 @@ axiosClient.interceptors.response.use(
       url: response.config.url,
       method: response.config.method?.toUpperCase(),
     });
+    
+    // Extract data from { data: ... } wrapper if present
+    // This handles the new response format from refactored server
+    // The server now wraps all successful responses in { data: ... }
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && !('error' in response.data)) {
+      response.data = response.data.data;
+    }
+    
     return response;
   },
   async (error: AxiosError) => {
@@ -112,7 +121,8 @@ axiosClient.interceptors.response.use(
     // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Check if this is a public endpoint - don't try refresh for those
-      const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback'];
+      // Chat messages endpoint is public - unauthorized users should be able to read messages
+      const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/contests/', '/chat'];
       const isPublicEndpoint = originalRequest?.url && publicEndpoints.some(endpoint => originalRequest.url?.includes(endpoint));
       
       // For public endpoints, just reject without redirect

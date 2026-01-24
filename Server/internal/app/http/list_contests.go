@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -56,13 +55,13 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	userID, hasUser, authErr := getOptionalUserID(r, h.authService)
 	if authErr != nil {
-		uhttp.SendErrorResponse(w, http.StatusUnauthorized, authErr.Error())
+		uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication error", authErr))
 		return
 	}
 
 	contests, total, err := h.service.ListContests(r.Context(), status, limit, offset)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -86,6 +85,8 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if status != nil && *status != model.ContestStatusDraft {
 		resp.Total = total
 	}
-	jsonData, _ := json.Marshal(resp)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, resp); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

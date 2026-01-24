@@ -3,10 +3,10 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
+	"toppet/server/internal/app/logger"
 	"toppet/server/internal/app/uhttp"
 	"toppet/server/internal/model"
 )
@@ -30,7 +30,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	contestID := model.ContestID(r.PathValue("contestId"))
 
-	log.Printf("[CreateParticipantHandler] Creating participant for contest %s, user %d", contestID, userID)
+	logger.Info("Creating participant", "handler", "CreateParticipantHandler", "contestID", contestID, "userID", userID)
 
 	var req struct {
 		PetName        string `json:"pet_name"`
@@ -38,27 +38,29 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("[CreateParticipantHandler] ERROR: Failed to decode request body: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		logger.Error("Failed to decode request body", "handler", "CreateParticipantHandler", "error", err)
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
-	log.Printf("[CreateParticipantHandler] Request data: pet_name=%s, pet_description=%s", req.PetName, req.PetDescription)
+	logger.Debug("Request data", "handler", "CreateParticipantHandler", "pet_name", req.PetName, "pet_description", req.PetDescription)
 
 	if req.PetName == "" {
-		log.Printf("[CreateParticipantHandler] ERROR: pet_name is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "pet_name is required")
+		logger.Warn("pet_name is required", "handler", "CreateParticipantHandler")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("pet_name is required", nil))
 		return
 	}
 
 	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription)
 	if err != nil {
-		log.Printf("[CreateParticipantHandler] ERROR: Failed to create participant: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	log.Printf("[CreateParticipantHandler] Participant created successfully: %s", participant.ID)
-	jsonData, _ := json.Marshal(participant)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	logger.Info("Participant created successfully", "handler", "CreateParticipantHandler", "participantID", participant.ID)
+	if err := uhttp.SendSuccess(w, participant); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

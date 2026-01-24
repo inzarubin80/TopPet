@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,7 +34,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if contestID == "" {
 		log.Printf("[ChatHandler] ERROR: contestId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
@@ -65,7 +64,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[ChatHandler] error type: %T", err)
 		log.Printf("[ChatHandler] error message: %v", err)
 		log.Printf("[ChatHandler] error details: %+v", err)
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -75,15 +74,11 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Items []*model.ChatMessage `json:"items"`
 		Total int64                `json:"total"`
 	}
-	jsonData, err := json.Marshal(resp{Items: messages, Total: total})
-	if err != nil {
-		log.Printf("[ChatHandler] ===== ERROR: Failed to marshal response =====")
+	log.Printf("[ChatHandler] ===== SUCCESS: Sending response =====")
+	if err := uhttp.SendSuccess(w, resp{Items: messages, Total: total}); err != nil {
+		log.Printf("[ChatHandler] ===== ERROR: Failed to send response =====")
 		log.Printf("[ChatHandler] error: %v", err)
-		log.Printf("[ChatHandler] messages count: %d", len(messages))
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, "failed to encode response")
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}
-	log.Printf("[ChatHandler] Response marshaled successfully, size: %d bytes", len(jsonData))
-	log.Printf("[ChatHandler] ===== SUCCESS: Sending response =====")
-	uhttp.SendSuccessfulResponse(w, jsonData)
 }

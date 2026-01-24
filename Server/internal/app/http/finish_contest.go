@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
@@ -31,10 +30,12 @@ func (h *FinishContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	contest, err := h.service.FinishContest(r.Context(), contestID, userID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(contest)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, contest); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

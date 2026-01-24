@@ -32,7 +32,7 @@ func (h *UpdatePhotoOrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	if participantID == "" {
 		log.Printf("[UpdatePhotoOrderHandler] ERROR: participantId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "participantId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("participantId is required", nil))
 		return
 	}
 
@@ -42,22 +42,28 @@ func (h *UpdatePhotoOrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("[UpdatePhotoOrderHandler] ERROR: Failed to decode request body: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	if len(req.PhotoIDs) == 0 {
 		log.Printf("[UpdatePhotoOrderHandler] ERROR: photo_ids is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "photo_ids is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("photo_ids is required", nil))
 		return
 	}
 
 	log.Printf("[UpdatePhotoOrderHandler] Updating photo order for participant %s, user %d", participantID, userID)
 	if err := h.service.UpdateParticipantPhotoOrder(r.Context(), participantID, userID, req.PhotoIDs); err != nil {
 		log.Printf("[UpdatePhotoOrderHandler] ERROR: Failed to update photo order: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	uhttp.SendSuccessfulResponse(w, []byte(`{"success": true}`))
+	type response struct {
+		Success bool `json:"success"`
+	}
+	if err := uhttp.SendSuccess(w, response{Success: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

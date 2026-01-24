@@ -48,7 +48,7 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		comments, total, err := h.service.ListComments(r.Context(), participantID, limit, offset)
 		if err != nil {
-			uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+			uhttp.HandleError(w, err)
 			return
 		}
 
@@ -56,8 +56,9 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Items []*model.Comment `json:"items"`
 			Total int64           `json:"total"`
 		}
-		jsonData, _ := json.Marshal(resp{Items: comments, Total: total})
-		uhttp.SendSuccessfulResponse(w, jsonData)
+		if err := uhttp.SendSuccess(w, resp{Items: comments, Total: total}); err != nil {
+			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		}
 		return
 	}
 
@@ -67,18 +68,20 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	comment, err := h.service.CreateComment(r.Context(), participantID, userID, req.Text)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(comment)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, comment); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }
 
 func (h *CommentsHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
@@ -89,18 +92,20 @@ func (h *CommentsHandler) UpdateComment(w http.ResponseWriter, r *http.Request) 
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	comment, err := h.service.UpdateComment(r.Context(), commentID, userID, req.Text)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(comment)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, comment); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }
 
 func (h *CommentsHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
@@ -108,9 +113,15 @@ func (h *CommentsHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	commentID := model.CommentID(r.PathValue("commentId"))
 
 	if err := h.service.DeleteComment(r.Context(), commentID, userID); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	uhttp.SendSuccessfulResponse(w, []byte(`{"ok":true}`))
+	type response struct {
+		OK bool `json:"ok"`
+	}
+	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

@@ -53,6 +53,7 @@ type (
 		UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error
 		UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error)
 		GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error)
+		DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error
 
 		// Votes
 		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
@@ -60,6 +61,7 @@ type (
 		DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error)
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error)
+		CountVotesByContests(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)
 
 		// Comments
 		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error)
@@ -82,17 +84,20 @@ type (
 		ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error)
 	}
 
+	// TokenService интерфейс для работы с JWT токенами
 	TokenService interface {
 		GenerateToken(userID model.UserID) (string, error)
 		ValidateToken(tokenString string) (*model.Claims, error)
 	}
 
+	// Hub интерфейс для работы с WebSocket соединениями
 	Hub interface {
 		BroadcastContestMessage(contestID model.ContestID, payload any) error
 		SendContestMessageToUser(contestID model.ContestID, userID model.UserID, payload any) error
 	}
 )
 
+// NewTopPetService создает новый экземпляр TopPetService с указанными зависимостями
 func NewTopPetService(repository Repository, hub Hub, accessTokenService TokenService, refreshTokenService TokenService, providersUserData map[string]ProviderUserData) *TopPetService {
 	return &TopPetService{
 		repository:          repository,

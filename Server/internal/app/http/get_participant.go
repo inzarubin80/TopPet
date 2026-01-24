@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
@@ -55,10 +54,12 @@ func (h *GetParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		participant, err = h.service.GetParticipant(r.Context(), participantID)
 	}
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusNotFound, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 	
-	jsonData, _ := json.Marshal(participant)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, participant); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

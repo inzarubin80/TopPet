@@ -169,8 +169,8 @@ const contestsSlice = createSlice({
       })
       .addCase(fetchContests.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.items;
-        state.total = action.payload.total;
+        state.items = action.payload?.items || [];
+        state.total = action.payload?.total || 0;
       })
       .addCase(fetchContests.rejected, (state, action) => {
         state.loading = false;
@@ -183,11 +183,13 @@ const contestsSlice = createSlice({
       })
       .addCase(fetchContest.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentContest = action.payload;
-        // Update in items list if exists
-        const index = state.items.findIndex((c) => c.id === action.payload.id);
-        if (index >= 0) {
-          state.items[index] = action.payload;
+        if (action.payload) {
+          state.currentContest = action.payload;
+          // Update in items list if exists
+          const index = state.items.findIndex((c) => c.id === action.payload.id);
+          if (index >= 0) {
+            state.items[index] = action.payload;
+          }
         }
       })
       .addCase(fetchContest.rejected, (state, action) => {

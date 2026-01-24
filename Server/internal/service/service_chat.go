@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
 )
 
@@ -37,11 +38,12 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 
 	// Broadcast to all subscribers
 	if s.hub != nil {
-		_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-			"type":    "new_message",
-			"contest_id": string(contestID),
-			"message": message,
-		})
+		payload := wsapp.NewMessagePayload{
+			Type:      wsapp.MessageTypeChatMessage,
+			ContestID: contestID,
+			Message:   message,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
 	}
 
 	return message, nil
@@ -95,11 +97,12 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 
 	// Broadcast update
 	if s.hub != nil {
-		_ = s.hub.BroadcastContestMessage(message.ContestID, map[string]interface{}{
-			"type":    "message_updated",
-			"contest_id": string(message.ContestID),
-			"message": message,
-		})
+		payload := wsapp.MessageUpdatedPayload{
+			Type:      wsapp.MessageTypeChatMessage,
+			ContestID: message.ContestID,
+			Message:   message,
+		}
+		_ = s.hub.BroadcastContestMessage(message.ContestID, payload)
 	}
 
 	return message, nil
@@ -112,11 +115,12 @@ func (s *TopPetService) DeleteChatMessage(ctx context.Context, messageID model.C
 	}
 
 	if s.hub != nil {
-		_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-			"type":       "message_deleted",
-			"contest_id": string(contestID),
-			"message_id": string(messageID),
-		})
+		payload := wsapp.MessageDeletedPayload{
+			Type:      wsapp.MessageTypeChatMessage,
+			ContestID: contestID,
+			MessageID: messageID,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
 	}
 
 	return nil

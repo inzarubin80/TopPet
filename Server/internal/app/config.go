@@ -6,10 +6,7 @@ import (
 	"strconv"
 
 	authinterface "toppet/server/internal/app/authinterface"
-	providerUserData "toppet/server/internal/app/clients/provider_user_data"
-	"toppet/server/internal/app/icons"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/yandex"
+	appconfig "toppet/server/internal/app/config"
 )
 
 type Config struct {
@@ -56,106 +53,14 @@ func LoadConfigFromEnv() Config {
 	cfg.CorsAllowedOrigins = splitComma(envOr("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
 
 	// Initialize OAuth providers
-	provaders := make(authinterface.MapProviderOauthConf)
-	apiRoot := os.Getenv("API_ROOT")
-	if apiRoot == "" {
-		apiRoot = "http://localhost:8080"
+	oauthProviders, err := appconfig.LoadOAuthProviders()
+	if err != nil {
+		// Log error but don't fail - app can work without OAuth providers
+		fmt.Printf("Warning: Failed to load OAuth providers: %v\n", err)
+		oauthProviders = make(authinterface.MapProviderOauthConf)
 	}
+	cfg.ProvidersConf = oauthProviders
 
-	// Yandex provider
-	if clientID := os.Getenv("CLIENT_ID_YANDEX"); clientID != "" {
-		provaders["yandex"] = &authinterface.ProviderOauthConf{
-			Oauth2Config: &oauth2.Config{
-				ClientID:     clientID,
-				ClientSecret: os.Getenv("CLIENT_SECRET_YANDEX"),
-				RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=yandex", apiRoot),
-				Scopes:       []string{"login:info"},
-				Endpoint:     yandex.Endpoint,
-			},
-			UrlUserData: "https://login.yandex.ru/info?format=json",
-			IconSVG:     icons.GetProviderIcon("yandex"),
-			DisplayName: "Яндекс",
-			ProviderUserData: providerUserData.NewProviderUserData(
-				"https://login.yandex.ru/info?format=json",
-				&oauth2.Config{
-					ClientID:     clientID,
-					ClientSecret: os.Getenv("CLIENT_SECRET_YANDEX"),
-					RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=yandex", apiRoot),
-					Scopes:       []string{"login:info"},
-					Endpoint:     yandex.Endpoint,
-				},
-				"yandex",
-			),
-		}
-	}
-
-	// Google provider
-	if clientID := os.Getenv("CLIENT_ID_GOOGLE"); clientID != "" {
-		provaders["google"] = &authinterface.ProviderOauthConf{
-			Oauth2Config: &oauth2.Config{
-				ClientID:     clientID,
-				ClientSecret: os.Getenv("CLIENT_SECRET_GOOGLE"),
-				RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=google", apiRoot),
-				Scopes:       []string{"openid", "email", "profile"},
-				Endpoint: oauth2.Endpoint{
-					AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-					TokenURL: "https://oauth2.googleapis.com/token",
-				},
-			},
-			UrlUserData: "https://www.googleapis.com/oauth2/v2/userinfo",
-			IconSVG:     icons.GetProviderIcon("google"),
-			DisplayName: "Google",
-			ProviderUserData: providerUserData.NewProviderUserData(
-				"https://www.googleapis.com/oauth2/v2/userinfo",
-				&oauth2.Config{
-					ClientID:     clientID,
-					ClientSecret: os.Getenv("CLIENT_SECRET_GOOGLE"),
-					RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=google", apiRoot),
-					Scopes:       []string{"openid", "email", "profile"},
-					Endpoint: oauth2.Endpoint{
-						AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-						TokenURL: "https://oauth2.googleapis.com/token",
-					},
-				},
-				"google",
-			),
-		}
-	}
-
-	// VK provider
-	if clientID := os.Getenv("CLIENT_ID_VK"); clientID != "" {
-		provaders["vk"] = &authinterface.ProviderOauthConf{
-			Oauth2Config: &oauth2.Config{
-				ClientID:     clientID,
-				ClientSecret: os.Getenv("CLIENT_SECRET_VK"),
-				RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=vk", apiRoot),
-				Scopes:       []string{"email"},
-				Endpoint: oauth2.Endpoint{
-					AuthURL:  "https://oauth.vk.com/authorize",
-					TokenURL: "https://oauth.vk.com/access_token",
-				},
-			},
-			UrlUserData: "https://api.vk.com/method/users.get?fields=photo_200&v=5.131",
-			IconSVG:     icons.GetProviderIcon("vk"),
-			DisplayName: "VK",
-			ProviderUserData: providerUserData.NewProviderUserData(
-				"https://api.vk.com/method/users.get?fields=photo_200&v=5.131",
-				&oauth2.Config{
-					ClientID:     clientID,
-					ClientSecret: os.Getenv("CLIENT_SECRET_VK"),
-					RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=vk", apiRoot),
-					Scopes:       []string{"email"},
-					Endpoint: oauth2.Endpoint{
-						AuthURL:  "https://oauth.vk.com/authorize",
-						TokenURL: "https://oauth.vk.com/access_token",
-					},
-				},
-				"vk",
-			),
-		}
-	}
-
-	cfg.ProvidersConf = provaders
 	return cfg
 }
 
@@ -223,5 +128,38 @@ func trimSpaces(s string) string {
 		return ""
 	}
 	return s[i : j+1]
+}
+
+// ValidateConfig проверяет корректность конфигурации
+func ValidateConfig(cfg Config) error {
+	if cfg.Addr == "" {
+		return fmt.Errorf("ADDR is required")
+	}
+
+	if cfg.DatabaseURL == "" {
+		return fmt.Errorf("DATABASE_URL is required")
+	}
+
+	if cfg.AccessTokenSecret == "" {
+		return fmt.Errorf("ACCESS_TOKEN_SECRET is required")
+	}
+
+	if cfg.RefreshTokenSecret == "" {
+		return fmt.Errorf("REFRESH_TOKEN_SECRET is required")
+	}
+
+	if cfg.StoreSecret == "" {
+		return fmt.Errorf("STORE_SECRET is required")
+	}
+
+	if cfg.AccessTokenTTLSec <= 0 {
+		return fmt.Errorf("ACCESS_TOKEN_TTL_SEC must be positive")
+	}
+
+	if cfg.RefreshTokenTTLSec <= 0 {
+		return fmt.Errorf("REFRESH_TOKEN_TTL_SEC must be positive")
+	}
+
+	return nil
 }
 

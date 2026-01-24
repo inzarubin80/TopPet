@@ -35,18 +35,18 @@ func (h *RefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
 	if req.RefreshToken == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "refresh_token is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("refresh_token is required", nil))
 		return
 	}
 
 	authData, err := h.service.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusUnauthorized, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -62,11 +62,8 @@ func (h *RefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		UserID:       authData.UserID,
 	}
 
-	jsonData, err := json.Marshal(resp)
-	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+	if err := uhttp.SendSuccess(w, resp); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}
-
-	uhttp.SendSuccessfulResponse(w, jsonData)
 }

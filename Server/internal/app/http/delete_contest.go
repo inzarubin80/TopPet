@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/defenitions"
@@ -30,13 +29,13 @@ func (h *DeleteContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	contestID := model.ContestID(r.PathValue("contestId"))
 
 	if contestID == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
 	err := h.service.DeleteContest(r.Context(), contestID, userID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -45,6 +44,8 @@ func (h *DeleteContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := response{OK: true}
-	jsonData, _ := json.Marshal(resp)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, resp); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

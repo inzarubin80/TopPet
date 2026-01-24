@@ -97,21 +97,11 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     >
       <div className="participant-card-image">
         {photos.length > 0 ? (
-          <div
-            className={`participant-card-gallery participant-card-gallery-${Math.min(
-              photos.length,
-              3
-            )}`}
-          >
-            {photos.slice(0, 3).map((photo, index) => (
-              <div key={photo.id} className="participant-card-thumb">
-                <img src={photo.thumb_url || photo.url} alt={participant.pet_name} />
-                {index === 2 && photos.length > 3 && (
-                  <span className="participant-card-more">+{photos.length - 3}</span>
-                )}
-              </div>
-            ))}
-          </div>
+          <img 
+            src={photos[0].thumb_url || photos[0].url} 
+            alt={participant.pet_name}
+            className="participant-card-single-image"
+          />
         ) : (
           <div className="participant-card-placeholder">Нет фото</div>
         )}

@@ -70,7 +70,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		
 		if accessToken == "" {
 			log.Printf("[WS] ERROR: No access token provided, rejecting connection")
-			uhttp.SendErrorResponse(w, http.StatusUnauthorized, "access token is required")
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("access token is required", nil))
 			return
 		}
 		
@@ -79,7 +79,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		claims, err := h.authService.Authorization(r.Context(), accessToken)
 		if err != nil {
 			log.Printf("[WS] ERROR: Invalid access token: %v", err)
-			uhttp.SendErrorResponse(w, http.StatusUnauthorized, "invalid access token")
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("invalid access token", err))
 			return
 		}
 		

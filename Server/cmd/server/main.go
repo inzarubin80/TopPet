@@ -3,14 +3,24 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
 	"toppet/server/internal/app"
+	"toppet/server/internal/app/logger"
 )
 
 func main() {
+	// Initialize structured logger
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	logJSON := os.Getenv("LOG_JSON") == "true"
+	logger.InitLogger(logLevel, logJSON)
+
 	// Load .env file
 	// Try multiple paths for different launch scenarios:
 	// - ../../.env: when running from cmd/server/ directory (Server/.env)
@@ -22,13 +32,13 @@ func main() {
 	var envLoaded bool
 	for _, path := range envPaths {
 		if err := godotenv.Load(path); err == nil {
-			log.Printf("Successfully loaded .env file from: %s", path)
+			logger.Info("Successfully loaded .env file", "path", path)
 			envLoaded = true
 			break
 		}
 	}
 	if !envLoaded {
-		log.Printf("Warning: .env file not found in any of the tried paths: %v", envPaths)
+		logger.Warn("Warning: .env file not found", "paths", envPaths)
 	}
 
 	ctx := context.Background()
@@ -36,28 +46,39 @@ func main() {
 	// Load config
 	cfg := app.LoadConfigFromEnv()
 
+	// Validate config
+	if err := app.ValidateConfig(cfg); err != nil {
+		logger.Error("Invalid configuration", "error", err)
+		log.Fatalf("Invalid configuration: %v", err)
+	}
+
 	// Log secret to verify .env loading (first 8 chars for security)
 	secretPreview := cfg.AccessTokenSecret
 	if len(secretPreview) > 8 {
 		secretPreview = secretPreview[:8] + "..."
 	}
-	log.Printf("Loaded ACCESS_TOKEN_SECRET: %s (length: %d)", secretPreview, len(cfg.AccessTokenSecret))
+	logger.Info("Loaded ACCESS_TOKEN_SECRET", "preview", secretPreview, "length", len(cfg.AccessTokenSecret))
 
 	// Connect to database
 	dbPool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
+		logger.Error("Failed to connect to database", "error", err)
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer dbPool.Close()
+	logger.Info("Database connection established")
 
 	// Create app
 	application, err := app.NewApp(ctx, cfg, dbPool)
 	if err != nil {
+		logger.Error("Failed to create app", "error", err)
 		log.Fatalf("Failed to create app: %v", err)
 	}
 
 	// Start server
+	logger.Info("Starting server", "addr", cfg.Addr)
 	if err := application.ListenAndServe(); err != nil {
+		logger.Error("Server error", "error", err)
 		log.Fatalf("Server error: %v", err)
 	}
 }

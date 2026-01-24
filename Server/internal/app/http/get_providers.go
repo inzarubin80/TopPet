@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"net/http"
 
 	authinterface "toppet/server/internal/app/authinterface"
@@ -32,11 +31,8 @@ func (h *GetProvidersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		)
 	}
 
-	jsonContent, err := json.Marshal(providerOauthConfFrontend)
-	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+	if err := uhttp.SendSuccess(w, providerOauthConfFrontend); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}
-
-	uhttp.SendSuccessfulResponse(w, jsonContent)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
 )
 
@@ -42,28 +43,31 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 	if s.hub != nil {
 		contestTotalVotes, _ := s.repository.CountVotesByContest(ctx, contestID)
 		participantTotalVotes, _ := s.repository.CountVotesByParticipant(ctx, participantID)
-		_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-			"type":                   "vote_counts_updated",
-			"contest_id":             string(contestID),
-			"participant_id":         string(participantID),
-			"participant_total_votes": participantTotalVotes,
-			"contest_total_votes":    contestTotalVotes,
-		})
+		payload := wsapp.VoteCountsUpdatedPayload{
+			Type:                wsapp.MessageTypeVoteCreated,
+			ContestID:           contestID,
+			ParticipantID:       participantID,
+			ParticipantTotalVotes: participantTotalVotes,
+			ContestTotalVotes:   contestTotalVotes,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
 		if previousParticipantID != "" && previousParticipantID != participantID {
 			previousTotalVotes, _ := s.repository.CountVotesByParticipant(ctx, previousParticipantID)
-			_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-				"type":                   "vote_counts_updated",
-				"contest_id":             string(contestID),
-				"participant_id":         string(previousParticipantID),
-				"participant_total_votes": previousTotalVotes,
-				"contest_total_votes":    contestTotalVotes,
-			})
+			prevPayload := wsapp.VoteCountsUpdatedPayload{
+				Type:                wsapp.MessageTypeVoteCreated,
+				ContestID:           contestID,
+				ParticipantID:       previousParticipantID,
+				ParticipantTotalVotes: previousTotalVotes,
+				ContestTotalVotes:   contestTotalVotes,
+			}
+			_ = s.hub.BroadcastContestMessage(contestID, prevPayload)
 		}
-		_ = s.hub.SendContestMessageToUser(contestID, userID, map[string]interface{}{
-			"type":          "user_vote_updated",
-			"contest_id":    string(contestID),
-			"participant_id": string(participantID),
-		})
+		userPayload := wsapp.UserVoteUpdatedPayload{
+			Type:          wsapp.MessageTypeVoteCreated,
+			ContestID:     contestID,
+			ParticipantID: participantID,
+		}
+		_ = s.hub.SendContestMessageToUser(contestID, userID, userPayload)
 	}
 
 	return vote, nil
@@ -96,19 +100,21 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 		contestTotalVotes, _ := s.repository.CountVotesByContest(ctx, contestID)
 		if participantID != "" {
 			participantTotalVotes, _ := s.repository.CountVotesByParticipant(ctx, participantID)
-			_ = s.hub.BroadcastContestMessage(contestID, map[string]interface{}{
-				"type":                   "vote_counts_updated",
-				"contest_id":             string(contestID),
-				"participant_id":         string(participantID),
-				"participant_total_votes": participantTotalVotes,
-				"contest_total_votes":    contestTotalVotes,
-			})
+			payload := wsapp.VoteCountsUpdatedPayload{
+				Type:                wsapp.MessageTypeVoteDeleted,
+				ContestID:           contestID,
+				ParticipantID:       participantID,
+				ParticipantTotalVotes: participantTotalVotes,
+				ContestTotalVotes:   contestTotalVotes,
+			}
+			_ = s.hub.BroadcastContestMessage(contestID, payload)
 		}
-		_ = s.hub.SendContestMessageToUser(contestID, userID, map[string]interface{}{
-			"type":          "user_vote_updated",
-			"contest_id":    string(contestID),
-			"participant_id": "",
-		})
+		userPayload := wsapp.UserVoteUpdatedPayload{
+			Type:          wsapp.MessageTypeVoteDeleted,
+			ContestID:     contestID,
+			ParticipantID: "",
+		}
+		_ = s.hub.SendContestMessageToUser(contestID, userID, userPayload)
 	}
 
 	return participantID, nil

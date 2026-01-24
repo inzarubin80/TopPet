@@ -34,9 +34,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
 
   // Only connect to WebSocket if authenticated and chat is available
   const wsContestId = isAuthenticated && isChatAvailable ? contestId : null;
-  const { connectionState, messages, sendMessage, reconnect, isConnected } = useWebSocket(
+  const { connectionState, sendMessage, reconnect, isConnected } = useWebSocket(
     wsContestId,
     null
+  );
+
+  // Get messages from Redux store directly (for both authenticated and unauthenticated users)
+  // This ensures messages loaded via API are displayed even when WebSocket is not connected
+  const messages = useSelector((state: RootState) =>
+    contestId ? state.chat.messages[contestId] || [] : []
   );
 
   // Load chat history on mount
@@ -88,7 +94,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
         )}
       </div>
       <div className="chat-content">
-        {connectionState === 'CONNECTING' && messages.length === 0 ? (
+        {isAuthenticated && connectionState === 'CONNECTING' && messages.length === 0 ? (
           <div className="chat-loading">
             <LoadingSpinner size="medium" />
           </div>

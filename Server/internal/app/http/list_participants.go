@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"toppet/server/internal/app/uhttp"
@@ -27,13 +26,13 @@ func NewListParticipantsHandler(name string, service serviceListParticipants) *L
 func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contestID := model.ContestID(r.PathValue("contestId"))
 	if contestID == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
 	participants, err := h.service.ListParticipantsByContest(r.Context(), contestID)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
@@ -47,6 +46,8 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		Total: int64(len(participants)),
 	}
 
-	jsonData, _ := json.Marshal(respData)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, respData); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

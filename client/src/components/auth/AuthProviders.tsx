@@ -101,7 +101,12 @@ export const AuthProviders: React.FC<AuthProvidersProps> = ({ onProviderClick })
       }
 
       const data = await response.json();
-      if (data.auth_url) {
+      
+      // Extract data from { data: ... } wrapper if present (after server refactoring)
+      // Server now returns responses in format: { data: { auth_url, state } }
+      const responseData = data.data || data;
+      
+      if (responseData.auth_url) {
         // Сохраняем code_verifier в sessionStorage для использования в callback (только для провайдеров с PKCE)
         if (supportsPKCE && codeVerifier) {
           sessionStorage.setItem(`oauth_code_verifier_${provider}`, codeVerifier);
@@ -112,7 +117,7 @@ export const AuthProviders: React.FC<AuthProvidersProps> = ({ onProviderClick })
           saveReturnUrlToStorage(returnUrl);
         }
         // Редирект на страницу авторизации провайдера
-        window.location.href = data.auth_url;
+        window.location.href = responseData.auth_url;
       } else {
         throw new Error('Сервер не вернул URL авторизации');
       }

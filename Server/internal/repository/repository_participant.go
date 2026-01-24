@@ -443,6 +443,21 @@ func (r *Repository) DeleteParticipantPhoto(ctx context.Context, participantID m
 	return nil
 }
 
+func (r *Repository) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+
+	err = reposqlc.DeleteParticipantVideo(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Repository) UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error {
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))

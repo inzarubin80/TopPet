@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -33,13 +32,13 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	participantID := model.ParticipantID(r.PathValue("participantId"))
 
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "failed to parse multipart form")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("failed to parse multipart form", err))
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "file is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("file is required", err))
 		return
 	}
 	defer file.Close()
@@ -47,16 +46,18 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := "contests/participants/" + string(participantID) + "/video/" + uuid.New().String()
 	url, err := h.uploader.Upload(r.Context(), key, file, header.Size, header.Header.Get("Content-Type"))
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}
 
 	video, err := h.service.AddParticipantVideo(r.Context(), participantID, userID, url)
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(video)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, video); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

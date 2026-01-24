@@ -208,7 +208,8 @@ export class WebSocketClient {
   }
 
   private handleMessage(data: any): void {
-    if (data.type === 'new_message' && data.message) {
+    // Fix: Server sends "chat_message" type, not "new_message"
+    if ((data.type === 'new_message' || data.type === 'chat_message') && data.message) {
       if (this.onMessageHandler) {
         this.onMessageHandler(data.message as ChatMessage);
       }
@@ -232,7 +233,8 @@ export class WebSocketClient {
       }
       return;
     }
-    if (data.type === 'vote_counts_updated' && data.contest_id) {
+    // Fix: Server sends "vote_created" and "vote_deleted" types, not "vote_counts_updated"
+    if ((data.type === 'vote_counts_updated' || data.type === 'vote_created' || data.type === 'vote_deleted') && data.contest_id) {
       if (this.onVoteCountsUpdatedHandler) {
         this.onVoteCountsUpdatedHandler(
           String(data.contest_id),

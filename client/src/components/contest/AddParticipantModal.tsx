@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
-import { createParticipant, updateParticipant, uploadPhoto, uploadVideo, deletePhoto, updatePhotoOrder, fetchParticipantsByContest } from '../../store/slices/participantsSlice';
+import { createParticipant, updateParticipant, uploadPhoto, uploadVideo, deletePhoto, deleteVideo, updatePhotoOrder, fetchParticipantsByContest } from '../../store/slices/participantsSlice';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Textarea } from '../common/Textarea';
@@ -39,6 +39,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [existingVideo, setExistingVideo] = useState<string | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +71,9 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setPhotosToDelete(new Set());
       setSelectedPhotos([]);
       setSelectedVideo(null);
-      setExistingVideo(participant.video?.url || null);
+      const videoUrl = participant.video?.url || null;
+      setExistingVideo(videoUrl);
+      setVideoToDelete(false);
       setError(null);
     } else if (isOpen && !participant) {
       // Reset for create mode
@@ -81,9 +84,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setSelectedPhotos([]);
       setSelectedVideo(null);
       setExistingVideo(null);
+      setVideoToDelete(false);
       setError(null);
     }
-  }, [isOpen, participant]);
+  }, [isOpen, participant, isEditMode]);
 
   const handlePhotoSelect = (file: File) => {
     // Validate file type
@@ -118,6 +122,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     }
 
     setSelectedVideo(file);
+    // Clear existing video when new video is selected (it will be replaced)
+    if (isEditMode && existingVideo) {
+      setExistingVideo(null);
+    }
     setError(null);
   };
 
@@ -136,7 +144,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
   const removeVideo = () => {
     setSelectedVideo(null);
-    if (isEditMode) {
+    if (isEditMode && existingVideo) {
+      setVideoToDelete(true);
       setExistingVideo(null);
     }
   };
@@ -220,6 +229,19 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           }
         }
 
+        // Delete video if marked for deletion
+        if (videoToDelete) {
+          setUploadingMedia(true);
+          try {
+            const deleteResult = await dispatch(deleteVideo({ participantId }));
+            if (deleteVideo.rejected.match(deleteResult)) {
+              console.error('Failed to delete video:', deleteResult.payload);
+            }
+          } catch (err) {
+            console.error('Error deleting video:', err);
+          }
+        }
+
         const newPhotoIds: string[] = [];
 
         // Upload new photos
@@ -258,6 +280,13 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             const videoResult = await dispatch(uploadVideo({ participantId, file: selectedVideo }));
             if (uploadVideo.rejected.match(videoResult)) {
               console.error('Failed to upload video:', videoResult.payload);
+            } else if (uploadVideo.fulfilled.match(videoResult)) {
+              const newVideo = videoResult.payload as any;
+              // Update existingVideo to new video URL and clear selectedVideo
+              if (isEditMode && newVideo?.video?.url) {
+                setExistingVideo(newVideo.video.url);
+                setSelectedVideo(null);
+              }
             }
           } catch (err) {
             console.error('Error uploading video:', err);
@@ -316,7 +345,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setUploadingMedia(false);
       setLoading(false);
 
-      // Refresh participants list
+      // Refresh participants list to get updated data
       await dispatch(fetchParticipantsByContest(contestId));
 
       // Close modal
@@ -348,6 +377,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setSelectedPhotos([]);
       setSelectedVideo(null);
       setExistingVideo(null);
+      setVideoToDelete(false);
       setDraggedIndex(null);
       setError(null);
       onClose();

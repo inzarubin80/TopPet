@@ -29,7 +29,7 @@ func (h *UpdateContestStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	contestID := model.ContestID(r.PathValue("contestId"))
 	if contestID == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "contestId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("contestId is required", nil))
 		return
 	}
 
@@ -37,20 +37,22 @@ func (h *UpdateContestStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 	if req.Status == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "status is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("status is required", nil))
 		return
 	}
 
 	contest, err := h.service.UpdateContestStatus(r.Context(), contestID, userID, model.ContestStatus(req.Status))
 	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
-	jsonData, _ := json.Marshal(contest)
-	uhttp.SendSuccessfulResponse(w, jsonData)
+	if err := uhttp.SendSuccess(w, contest); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

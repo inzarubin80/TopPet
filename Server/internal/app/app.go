@@ -243,6 +243,10 @@ func (a *App) registerRoutes() {
 			appHttp.NewUploadVideoHandler("/api/participants/{participantId}/video", a.service, a.uploader),
 			a.service,
 		))
+		a.mux.Handle("DELETE /api/participants/{participantId}/video", middleware.NewAuthMiddleware(
+			appHttp.NewDeleteVideoHandler("/api/participants/{participantId}/video", a.service),
+			a.service,
+		))
 	}
 	a.mux.Handle("DELETE /api/participants/{participantId}/photos/{photoId}", middleware.NewAuthMiddleware(
 		appHttp.NewDeletePhotoHandler("/api/participants/{participantId}/photos/{photoId}", a.service),

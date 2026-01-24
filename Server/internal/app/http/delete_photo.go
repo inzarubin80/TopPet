@@ -33,13 +33,13 @@ func (h *DeletePhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if participantID == "" {
 		log.Printf("[DeletePhotoHandler] ERROR: participantId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "participantId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("participantId is required", nil))
 		return
 	}
 
 	if photoID == "" {
 		log.Printf("[DeletePhotoHandler] ERROR: photoId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "photoId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("photoId is required", nil))
 		return
 	}
 
@@ -48,10 +48,16 @@ func (h *DeletePhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.service.DeleteParticipantPhoto(r.Context(), participantID, photoID, userID)
 	if err != nil {
 		log.Printf("[DeletePhotoHandler] ERROR: Failed to delete photo: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
 	log.Printf("[DeletePhotoHandler] Photo deleted successfully: photoID=%s", photoID)
-	uhttp.SendSuccessfulResponse(w, []byte(`{"success": true}`))
+	type response struct {
+		Success bool `json:"success"`
+	}
+	if err := uhttp.SendSuccess(w, response{Success: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

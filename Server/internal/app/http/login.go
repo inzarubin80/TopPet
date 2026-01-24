@@ -51,17 +51,17 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "invalid json")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 	if req.Provider == "" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "provider required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("provider required", nil))
 		return
 	}
 
 	cfg, ok := h.provadersConf[req.Provider]
 	if !ok || cfg == nil || cfg.Oauth2Config == nil {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "unknown provider")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("unknown provider", nil))
 		return
 	}
 
@@ -73,11 +73,11 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	
 	if req.Provider != "vk" {
 		if challenge == "" {
-			uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_challenge required from client")
+			uhttp.HandleError(w, uhttp.NewBadRequestError("code_challenge required from client", nil))
 			return
 		}
 		if codeVerifier == "" {
-			uhttp.SendErrorResponse(w, http.StatusBadRequest, "code_verifier required from client")
+			uhttp.HandleError(w, uhttp.NewBadRequestError("code_verifier required from client", nil))
 			return
 		}
 	}
@@ -87,7 +87,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		action = "login"
 	}
 	if action != "login" && action != "link" {
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "action must be 'login' or 'link'")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("action must be 'login' or 'link'", nil))
 		return
 	}
 
@@ -136,12 +136,10 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"auth_url": authURL,
 		"state":    state,
 	}
-	b, err := json.Marshal(resp)
-	if err != nil {
-		uhttp.SendErrorResponse(w, http.StatusInternalServerError, "internal error")
+	if err := uhttp.SendSuccess(w, resp); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}
-	uhttp.SendSuccessfulResponse(w, b)
 }
 
 func randomURLSafe(n int) string {

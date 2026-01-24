@@ -15,5 +15,11 @@ func NewPingHandler(name string) *PingHandler {
 }
 
 func (h *PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	uhttp.SendSuccessfulResponse(w, []byte(`{"status":"ok"}`))
+	type response struct {
+		Status string `json:"status"`
+	}
+	if err := uhttp.SendSuccess(w, response{Status: "ok"}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

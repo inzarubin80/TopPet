@@ -31,7 +31,7 @@ func (h *DeleteParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	
 	if participantID == "" {
 		log.Printf("[DeleteParticipantHandler] ERROR: participantId is required")
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, "participantId is required")
+		uhttp.HandleError(w, uhttp.NewBadRequestError("participantId is required", nil))
 		return
 	}
 
@@ -40,10 +40,16 @@ func (h *DeleteParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	err := h.service.DeleteParticipant(r.Context(), participantID, userID)
 	if err != nil {
 		log.Printf("[DeleteParticipantHandler] ERROR: Failed to delete participant: %v", err)
-		uhttp.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		uhttp.HandleError(w, err)
 		return
 	}
 
 	log.Printf("[DeleteParticipantHandler] Participant deleted successfully: participantID=%s", participantID)
-	uhttp.SendSuccessfulResponse(w, []byte(`{"ok": true}`))
+	type response struct {
+		OK bool `json:"ok"`
+	}
+	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+		return
+	}
 }

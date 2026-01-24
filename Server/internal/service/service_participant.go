@@ -332,6 +332,47 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	return nil
 }
 
+func (s *TopPetService) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
+	log.Printf("[Service] DeleteParticipantVideo: participantID=%s, userID=%d", participantID, userID)
+	
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to get participant: %v", err)
+		return err
+	}
+	log.Printf("[Service] DeleteParticipantVideo: Participant found: contestID=%s, ownerID=%d", participant.ContestID, participant.UserID)
+
+	// Only owner can delete video
+	if participant.UserID != userID {
+		log.Printf("[Service] DeleteParticipantVideo: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
+		return errors.New("only participant owner can delete video")
+	}
+
+	// Get contest to check status
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to get contest: %v", err)
+		return err
+	}
+	log.Printf("[Service] DeleteParticipantVideo: Contest found: status=%s", contest.Status)
+
+	// Contest must be in draft or registration status
+	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
+		log.Printf("[Service] DeleteParticipantVideo: ERROR - Contest status does not allow video deletion (status=%s)", contest.Status)
+		return errors.New("can only delete video in draft or registration status")
+	}
+
+	// Delete video from repository
+	err = s.repository.DeleteParticipantVideo(ctx, participantID)
+	if err != nil {
+		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to delete video: %v", err)
+		return err
+	}
+	log.Printf("[Service] DeleteParticipantVideo: Video deleted successfully: participantID=%s", participantID)
+
+	return nil
+}
+
 func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, userID model.UserID, photoIDs []string) error {
 	log.Printf("[Service] UpdateParticipantPhotoOrder: participantID=%s, userID=%d, photoCount=%d", participantID, userID, len(photoIDs))
 
