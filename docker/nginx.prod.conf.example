@@ -1,0 +1,89 @@
+# Пример конфигурации внешнего Nginx для продакшена
+# Этот файл должен быть размещен на сервере 147.45.141.46
+# Обычно в /etc/nginx/sites-available/top-pet.ru
+
+# Редирект с HTTP на HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name top-pet.ru www.top-pet.ru api.top-pet.ru;
+
+    # Редирект на HTTPS
+    return 301 https://$host$request_uri;
+}
+
+# Frontend (www.top-pet.ru и top-pet.ru)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.top-pet.ru top-pet.ru;
+
+    # SSL сертификаты (замените на пути к вашим сертификатам)
+    ssl_certificate /etc/letsencrypt/live/top-pet.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/top-pet.ru/privkey.pem;
+
+    # SSL настройки
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Увеличиваем буферы для длинных заголовков и URL (для OAuth токенов)
+    large_client_header_buffers 4 32k;
+    client_header_buffer_size 32k;
+
+    # Проксирование на контейнер клиента
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Таймауты
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Backend API (api.top-pet.ru)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.top-pet.ru;
+
+    # SSL сертификаты (можно использовать тот же или отдельный)
+    ssl_certificate /etc/letsencrypt/live/api.top-pet.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.top-pet.ru/privkey.pem;
+
+    # SSL настройки
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Увеличиваем буферы для длинных заголовков и URL
+    large_client_header_buffers 4 32k;
+    client_header_buffer_size 32k;
+
+    # Проксирование на контейнер сервера
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Таймауты
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}

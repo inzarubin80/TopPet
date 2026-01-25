@@ -28,17 +28,23 @@ FROM node:lts-alpine AS production
 
 WORKDIR /app
 
-# Устанавливаем serve для раздачи статических файлов
-RUN npm install -g serve
+# Устанавливаем serve для раздачи статических файлов и wget для healthcheck
+RUN npm install -g serve && \
+    apk add --no-cache wget
 
 # Копируем собранные файлы из build stage
 COPY --from=build /app/build ./build
 
-# Открываем порт 3000
+# Открываем порт 3000 (Coolify использует этот порт)
 EXPOSE 3000
+
+# Healthcheck для Coolify
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 # Запускаем serve с настройками для SPA
 # -s: запускать в single-page application mode (все запросы на index.html)
-# -l: порт для прослушивания
+# -l: адрес и порт для прослушивания (0.0.0.0:3000 - слушать на всех интерфейсах)
 # --no-clipboard: не пытаться копировать URL в буфер обмена
-CMD ["serve", "-s", "build", "-l", "3000", "--no-clipboard"]
+# --no-port-switching: не пытаться переключать порт если занят
+CMD ["serve", "-s", "build", "-l", "0.0.0.0:3000", "--no-clipboard", "--no-port-switching"]
