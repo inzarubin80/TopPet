@@ -25,23 +25,34 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
   useEffect(() => {
     if (photos.length > 0) {
       photos.forEach((photo) => {
-        // If photo has like data from API, use it; otherwise fetch
-        if (photo.is_liked !== undefined || photo.like_count !== undefined) {
-          // Initialize from photo data if not in store
-          if (!photoLikes[photo.id]) {
+        // Check if photo has like data from API (including null values)
+        const hasLikeData = photo.is_liked !== undefined || photo.like_count !== undefined;
+        
+        if (hasLikeData) {
+          // Always update from photo data to ensure fresh state after reload
+          // Use ?? instead of || to properly handle null values
+          // Check if data actually changed to avoid unnecessary updates
+          const currentLike = photoLikes[photo.id];
+          const newLikeCount = photo.like_count ?? 0;
+          const newIsLiked = photo.is_liked ?? false;
+          
+          if (!currentLike || currentLike.like_count !== newLikeCount || currentLike.is_liked !== newIsLiked) {
             dispatch(setPhotoLike({
               photoId: photo.id,
-              like_count: photo.like_count || 0,
-              is_liked: photo.is_liked || false,
+              like_count: newLikeCount,
+              is_liked: newIsLiked,
             }));
           }
-        } else if (!photoLikes[photo.id]) {
-          // Fetch if no data available
-          dispatch(fetchPhotoLike(photo.id));
+        } else {
+          // Fetch if no data available and not in store
+          if (!photoLikes[photo.id]) {
+            dispatch(fetchPhotoLike(photo.id));
+          }
         }
       });
     }
-  }, [dispatch, photos, photoLikes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, photos]);
 
   const handlePrev = useCallback(() => {
     if (photos.length === 0) return;
@@ -88,7 +99,10 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
   }
 
   const currentPhoto = photos[currentIndex];
-  const likeData = photoLikes[currentPhoto.id] || { like_count: currentPhoto.like_count || 0, is_liked: currentPhoto.is_liked || false };
+  const likeData = photoLikes[currentPhoto.id] || { 
+    like_count: currentPhoto.like_count ?? 0, 
+    is_liked: currentPhoto.is_liked ?? false 
+  };
   const isLoading = loadingLikes[currentPhoto.id] || false;
 
   return (
@@ -115,12 +129,14 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
               </button>
             </>
           )}
-          <img
-            key={currentPhoto.id}
-            src={currentPhoto.url}
-            alt={`Фото ${currentIndex + 1}`}
-            className="photo-gallery-image"
-          />
+          {currentPhoto && (
+            <img
+              key={currentPhoto.id}
+              src={currentPhoto.url}
+              alt={`Фото ${currentIndex + 1}`}
+              className="photo-gallery-image"
+            />
+          )}
           {photos.length > 1 && (
             <div className="photo-gallery-counter">
               {currentIndex + 1} / {photos.length}
@@ -131,7 +147,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
           <button
             type="button"
             className={`photo-gallery-like-button ${likeData.is_liked ? 'photo-gallery-like-button-active' : ''} ${!isAuthenticated ? 'photo-gallery-like-button-unauthorized' : ''}`}
-            onClick={(e) => handleLikeClick(currentPhoto.id, e)}
+            onClick={(e) => currentPhoto && handleLikeClick(currentPhoto.id, e)}
             disabled={isLoading}
           >
             <span className="photo-gallery-like-icon">

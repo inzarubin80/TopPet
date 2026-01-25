@@ -95,7 +95,10 @@ func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participant
 		for i, photo := range photos {
 			photoIDs[i] = photo.ID
 		}
-		userLikes, _ := s.repository.ListPhotoLikesByPhotos(ctx, photoIDs, *userID)
+		userLikes, err := s.repository.ListPhotoLikesByPhotos(ctx, photoIDs, *userID)
+		if err != nil {
+			log.Printf("[Service] GetParticipantWithLikes: Error loading photo likes: %v", err)
+		}
 		// Load like counts for all photos
 		for _, photo := range photos {
 			count, _ := s.repository.CountPhotoLikes(ctx, photo.ID)
