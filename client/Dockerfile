@@ -3,6 +3,15 @@ FROM node:lts-alpine AS build
 
 WORKDIR /app
 
+# ARG для возможности переопределения при сборке образа
+ARG REACT_APP_API_URL=https://api.top-pet.ru/api
+ARG REACT_APP_WS_URL=wss://api.top-pet.ru/api
+
+# ENV для использования в build процессе
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_WS_URL=$REACT_APP_WS_URL
+ENV NODE_ENV=production
+
 COPY package*.json ./
 
 RUN npm install
@@ -11,6 +20,7 @@ COPY . .
 
 RUN chmod -R +x node_modules/.bin
 
+# Используем .env.production если он есть, иначе переменные из ARG/ENV
 RUN npm run build
 
 # Production Stage
