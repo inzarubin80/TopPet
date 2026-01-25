@@ -55,3 +55,16 @@
     opacity: 0.5;
   }
 }
+
+/* Mobile adaptations */
+@media (max-width: 768px) {
+  .connection-status {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .reconnect-button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
