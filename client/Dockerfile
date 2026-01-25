@@ -32,8 +32,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Копируем собранные файлы (react-scripts собирает в build, а не dist)
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Открываем порт 80
-EXPOSE 80
+# Открываем порт 3000
+EXPOSE 3000
 
 # Запускаем Nginx
 CMD ["nginx", "-g", "daemon off;"]
