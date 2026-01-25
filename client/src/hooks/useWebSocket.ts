@@ -24,9 +24,11 @@ const getWebSocketClient = (): WebSocketClient => {
 export const useWebSocket = (contestId: ContestID | null, participantId?: ParticipantID | null) => {
   const dispatch = useDispatch<AppDispatch>();
   const connectionState = useSelector((state: RootState) => state.chat.connectionState);
-  const messages = useSelector((state: RootState) =>
-    contestId ? state.chat.messages[contestId] || [] : []
-  );
+  const messages = useSelector((state: RootState) => {
+    if (!contestId) return [];
+    const contestMessages = state.chat.messages[contestId];
+    return contestMessages || [];
+  });
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
   const refreshToken = useSelector((state: RootState) => state.auth.refreshToken);
   const wsClientRef = useRef<WebSocketClient | null>(null);

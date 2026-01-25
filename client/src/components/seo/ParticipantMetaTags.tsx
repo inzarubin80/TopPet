@@ -26,7 +26,7 @@ export const ParticipantMetaTags: React.FC<ParticipantMetaTagsProps> = ({
   
   // Получаем первое фото участника для изображения
   const firstPhoto = participant.photos && participant.photos.length > 0
-    ? participant.photos.sort((a, b) => {
+    ? [...participant.photos].sort((a, b) => {
         const posA = a.position ?? 0;
         const posB = b.position ?? 0;
         return posA - posB;
