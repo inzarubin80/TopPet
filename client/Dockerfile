@@ -15,8 +15,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 
 # Используем --legacy-peer-deps для решения конфликта версий react-helmet-async с React 19
-# Используем --legacy-peer-deps для решения конфликта версий react-helmet-async с React 19
-RUN npm install --legacy-peer-deps --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
