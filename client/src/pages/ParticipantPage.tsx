@@ -14,6 +14,7 @@ import { Button } from '../components/common/Button';
 import { PhotoGallery } from '../components/participant/PhotoGallery';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useParticipantPermissions } from '../hooks/useParticipantPermissions';
+import { ParticipantMetaTags } from '../components/seo/ParticipantMetaTags';
 import './ParticipantPage.css';
 
 const ParticipantPage: React.FC = () => {
@@ -128,6 +129,14 @@ const ParticipantPage: React.FC = () => {
 
   return (
     <div className="participant-page">
+      {participant && currentContest && contestId && participantId && (
+        <ParticipantMetaTags
+          participant={participant}
+          contest={currentContest}
+          contestId={contestId}
+          participantId={participantId}
+        />
+      )}
       <div className="participant-page-header">
         <button
           type="button"

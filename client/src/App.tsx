@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider, useDispatch, useSelector } from 'react-redux';
+import { HelmetProvider } from 'react-helmet-async';
 import { AppDispatch, RootState, store } from './store';
 import { AppRoutes } from './routes';
 import { fetchCurrentUser } from './store/slices/authSlice';
@@ -32,13 +33,15 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <Provider store={store}>
-      <ToastProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </ToastProvider>
-    </Provider>
+    <HelmetProvider>
+      <Provider store={store}>
+        <ToastProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </ToastProvider>
+      </Provider>
+    </HelmetProvider>
   );
 }
 

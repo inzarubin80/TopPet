@@ -26,6 +26,7 @@ import { errorHandler } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { useContestPermissions } from '../hooks/useContestPermissions';
 import { useContestWinners } from '../hooks/useContestWinners';
+import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import './ContestPage.css';
 
 const ContestPage: React.FC = () => {
@@ -105,8 +106,20 @@ const ContestPage: React.FC = () => {
     finished: 'Завершен',
   };
 
+  // Формируем массив участников для метатегов
+  const participantsArray = participantIds
+    .map((participantId) => participants[participantId])
+    .filter((p): p is Participant => p !== undefined);
+
   return (
     <div className="contest-page">
+      {currentContest && id && (
+        <ContestMetaTags
+          contest={currentContest}
+          participants={participantsArray}
+          contestId={id}
+        />
+      )}
       <div className="contest-page-main">
         <div className="contest-page-header">
           <button
