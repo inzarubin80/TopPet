@@ -44,7 +44,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Запускаем serve с настройками для SPA
 # -s: запускать в single-page application mode (все запросы на index.html)
-# -l: адрес и порт для прослушивания (0.0.0.0:3000 - слушать на всех интерфейсах)
+# -l: порт для прослушивания (serve слушает на 0.0.0.0 по умолчанию)
 # --no-clipboard: не пытаться копировать URL в буфер обмена
 # --no-port-switching: не пытаться переключать порт если занят
-CMD ["serve", "-s", "build", "-l", "0.0.0.0:3000", "--no-clipboard", "--no-port-switching"]
+CMD ["serve", "-s", "build", "-l", "tcp://0.0.0.0:3000", "--no-clipboard", "--no-port-switching"]
