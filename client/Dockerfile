@@ -21,11 +21,10 @@ COPY . .
 
 RUN chmod -R +x node_modules/.bin
 
-# Используем .env.production если он есть, иначе переменные из ARG/ENV
 RUN npm run build
 
 # Production Stage
-FROM nginx:alpine AS production
+FROM nginx:latest AS production
 
 # Копируем кастомную конфигурацию Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
