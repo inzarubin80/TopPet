@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	appcontext "toppet/server/internal/app/context"
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
 	"toppet/server/internal/model"
@@ -31,6 +32,10 @@ func (h *UploadPhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	participantID := model.ParticipantID(r.PathValue("participantId"))
 
+	// Используем увеличенный таймаут для загрузки файлов
+	uploadCtx, cancel := appcontext.WithUploadTimeout(r.Context())
+	defer cancel()
+
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("failed to parse multipart form", err))
 		return
@@ -44,13 +49,13 @@ func (h *UploadPhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	key := "contests/participants/" + string(participantID) + "/photos/" + uuid.New().String()
-	url, err := h.uploader.Upload(r.Context(), key, file, header.Size, header.Header.Get("Content-Type"))
+	url, err := h.uploader.Upload(uploadCtx, key, file, header.Size, header.Header.Get("Content-Type"))
 	if err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}
 
-	photo, err := h.service.AddParticipantPhoto(r.Context(), participantID, userID, url, nil)
+	photo, err := h.service.AddParticipantPhoto(uploadCtx, participantID, userID, url, nil)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

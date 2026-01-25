@@ -35,6 +35,7 @@ export const uploadPhoto = async (participantId: ParticipantID, file: File): Pro
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 300000, // 5 минут для загрузки фото
   });
   return response.data;
 };
@@ -47,6 +48,7 @@ export const uploadVideo = async (participantId: ParticipantID, file: File): Pro
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 600000, // 10 минут для загрузки больших видео файлов
   });
   return response.data;
 };

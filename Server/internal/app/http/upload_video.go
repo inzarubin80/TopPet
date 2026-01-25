@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	appcontext "toppet/server/internal/app/context"
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
 	"toppet/server/internal/model"
@@ -31,6 +32,10 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	participantID := model.ParticipantID(r.PathValue("participantId"))
 
+	// Используем увеличенный таймаут для загрузки видео
+	uploadCtx, cancel := appcontext.WithUploadTimeout(r.Context())
+	defer cancel()
+
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("failed to parse multipart form", err))
 		return
@@ -44,13 +49,13 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	key := "contests/participants/" + string(participantID) + "/video/" + uuid.New().String()
-	url, err := h.uploader.Upload(r.Context(), key, file, header.Size, header.Header.Get("Content-Type"))
+	url, err := h.uploader.Upload(uploadCtx, key, file, header.Size, header.Header.Get("Content-Type"))
 	if err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}
 
-	video, err := h.service.AddParticipantVideo(r.Context(), participantID, userID, url)
+	video, err := h.service.AddParticipantVideo(uploadCtx, participantID, userID, url)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

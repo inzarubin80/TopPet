@@ -22,8 +22,8 @@ import (
 
 const (
 	readHeaderTimeoutSeconds = 30
-	readTimeoutSeconds       = 60
-	writeTimeoutSeconds      = 60
+	readTimeoutSeconds       = 600 // Увеличено до 10 минут для загрузки больших файлов (видео)
+	writeTimeoutSeconds      = 600 // Увеличено до 10 минут для загрузки больших файлов (видео)
 	idleTimeoutSeconds       = 300
 )
 

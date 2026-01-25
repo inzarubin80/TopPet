@@ -12,8 +12,8 @@ const (
 	DatabaseTimeout = 10 * time.Second
 	// ExternalAPITimeout для внешних API вызовов
 	ExternalAPITimeout = 15 * time.Second
-	// UploadTimeout для загрузки файлов
-	UploadTimeout = 5 * time.Minute
+	// UploadTimeout для загрузки файлов (увеличено для больших видео файлов)
+	UploadTimeout = 10 * time.Minute
 )
 
 // WithDatabaseTimeout создает контекст с таймаутом для операций с БД
