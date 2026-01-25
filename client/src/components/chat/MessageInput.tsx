@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '../common/Button';
+import { PawIcon } from './PawIcon';
 import './MessageInput.css';
 
 interface MessageInputProps {
@@ -62,7 +63,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         rows={1}
       />
       <Button type="submit" disabled={disabled || !text.trim()} size="small">
-        Отправить
+        <span style={{ marginRight: '6px', display: 'inline-flex', alignItems: 'center' }}>
+          <PawIcon width={18} height={18} />
+        </span>
+        <span>Отправить</span>
       </Button>
     </form>
   );

@@ -27,11 +27,26 @@
   color: #999;
 }
 
+.contest-page-top-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.contest-page-admin-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .contest-page-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .contest-page-back-button {
@@ -74,62 +89,134 @@
   letter-spacing: -0.5px;
 }
 
-.contest-page-admin-actions {
+.contest-page-edit-button {
   display: flex;
-  gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.contest-page-edit-button:hover {
+  background: #f5f5f5;
+  border-color: #007bff;
+  color: #007bff;
+  transform: translateY(-1px);
+}
+
+.contest-page-edit-button:active {
+  transform: translateY(0);
+}
+
+.contest-page-edit-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.contest-page-delete-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.contest-page-delete-button:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.contest-page-delete-button:active {
+  transform: translateY(0);
+}
+
+.contest-page-delete-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .contest-page-admin-status {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-right: 4px;
 }
 
 .contest-page-admin-status-select {
-  height: 36px;
-  padding: 0 8px;
+  padding: 10px 32px 10px 20px;
+  height: auto;
+  min-height: 40px;
   border: 1px solid #d9dee8;
   border-radius: 8px;
-  background-color: #f9fafb;
+  background-color: #fff;
   font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.contest-page-admin-status-select:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.contest-page-admin-status-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.contest-page-admin-status-select:active {
+  transform: translateY(0);
 }
 
 .contest-page-description {
-  margin-bottom: 32px;
-  padding: 20px 24px;
-  background-color: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  margin-bottom: 20px;
+  text-align: left;
 }
 
 .contest-page-description p {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   font-size: 16px;
   line-height: 1.65;
   color: #374151;
-}
-
-.contest-page-stats {
-  display: flex;
-  gap: 12px;
-  font-size: 14px;
-  color: #6b7280;
-  flex-wrap: wrap;
-  align-items: center;
+  text-align: left;
 }
 
 .contest-page-status {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
   font-weight: 600;
+  font-size: 14px;
   background-color: #f3f4f6;
   color: #6b7280;
-  order: -1;
 }
 
 .contest-page-status-draft {
@@ -156,7 +243,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  padding-top: 8px;
 }
 
 .contest-page-participants-header h2 {
@@ -164,6 +252,7 @@
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.3px;
+  color: #1f2937;
 }
 
 .contest-page-participants-actions {
@@ -174,18 +263,6 @@
 .contest-page-add-participant-button {
   display: inline-flex;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
-  transition: all 0.2s ease;
-}
-
-.contest-page-add-participant-button:hover {
-  box-shadow: 0 6px 16px rgba(0, 123, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-.contest-page-add-participant-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
 }
 
 .contest-page-participants-loading {

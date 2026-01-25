@@ -121,7 +121,7 @@ const ContestPage: React.FC = () => {
         />
       )}
       <div className="contest-page-main">
-        <div className="contest-page-header">
+        <div className="contest-page-top-actions">
           <button
             type="button"
             className="contest-page-back-button"
@@ -132,7 +132,6 @@ const ContestPage: React.FC = () => {
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1>{currentContest.title}</h1>
           {isAdmin && (
             <div className="contest-page-admin-actions">
               <div className="contest-page-admin-status">
@@ -160,82 +159,104 @@ const ContestPage: React.FC = () => {
                   <option value="finished">Завершен</option>
                 </select>
               </div>
-              {currentContest.status === 'draft' && (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setIsEditContestModalOpen(true)}
-                  >
-                    Редактировать
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        await dispatch(
-                          updateContestStatus({ contestId: currentContest.id, status: 'registration' })
-                        ).unwrap();
-                      } catch (error) {
-                        errorHandler.handleError(error, showError, false);
-                        showError('Не удалось открыть регистрацию');
-                      }
-                    }}
-                  >
-                    Открыть регистрацию
-                  </Button>
-                </>
-              )}
-              {currentContest.status === 'registration' && (
-                <Button
-                  onClick={async () => {
-                    try {
-                      await dispatch(
-                        updateContestStatus({ contestId: currentContest.id, status: 'voting' })
-                      ).unwrap();
-                    } catch (error) {
-                      errorHandler.handleError(error, showError, false);
-                      showError('Не удалось начать голосование');
-                    }
-                  }}
-                >
-                  Начать голосование
-                </Button>
-              )}
-              {currentContest.status === 'voting' && (
-                <Button
-                  variant="success"
-                  onClick={async () => {
-                    try {
-                      await dispatch(
-                        updateContestStatus({ contestId: currentContest.id, status: 'finished' })
-                      ).unwrap();
-                    } catch (error) {
-                      errorHandler.handleError(error, showError, false);
-                      showError('Не удалось завершить конкурс');
-                    }
-                  }}
-                >
-                  Завершить
-                </Button>
-              )}
+            {currentContest.status === 'draft' && (
               <Button
-                variant="danger"
-                onClick={() => setIsDeleteContestModalOpen(true)}
+                onClick={async () => {
+                  try {
+                    await dispatch(
+                      updateContestStatus({ contestId: currentContest.id, status: 'registration' })
+                    ).unwrap();
+                  } catch (error) {
+                    errorHandler.handleError(error, showError, false);
+                    showError('Не удалось открыть регистрацию');
+                  }
+                }}
               >
-                Удалить
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5l7 7-7 7"></path>
+                </svg>
+                Открыть регистрацию
               </Button>
+            )}
+            {currentContest.status === 'registration' && (
+              <Button
+                onClick={async () => {
+                  try {
+                    await dispatch(
+                      updateContestStatus({ contestId: currentContest.id, status: 'voting' })
+                    ).unwrap();
+                  } catch (error) {
+                    errorHandler.handleError(error, showError, false);
+                    showError('Не удалось начать голосование');
+                  }
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Начать голосование
+              </Button>
+            )}
+            {currentContest.status === 'voting' && (
+              <Button
+                variant="success"
+                onClick={async () => {
+                  try {
+                    await dispatch(
+                      updateContestStatus({ contestId: currentContest.id, status: 'finished' })
+                    ).unwrap();
+                  } catch (error) {
+                    errorHandler.handleError(error, showError, false);
+                    showError('Не удалось завершить конкурс');
+                  }
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Завершить
+              </Button>
+            )}
             </div>
+          )}
+        </div>
+        <div className="contest-page-header">
+          <h1>{currentContest.title}</h1>
+          <span className={`contest-page-status contest-page-status-${currentContest.status}`}>
+            {statusLabels[currentContest.status]}
+          </span>
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                className="contest-page-edit-button"
+                onClick={() => setIsEditContestModalOpen(true)}
+                aria-label="Редактировать конкурс"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="contest-page-delete-button"
+                onClick={() => setIsDeleteContestModalOpen(true)}
+                aria-label="Удалить конкурс"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </>
           )}
         </div>
 
         <div className="contest-page-description">
           <p>{currentContest.description || 'Нет описания'}</p>
-          <div className="contest-page-stats">
-            <span>Голосов: {currentContest.total_votes || 0}</span>
-            <span className={`contest-page-status contest-page-status-${currentContest.status}`}>
-              {statusLabels[currentContest.status]}
-            </span>
-            <span>Автор: {isAdmin ? 'Вы' : `Пользователь ${currentContest.created_by_user_id}`}</span>
-          </div>
         </div>
 
         <div className="contest-page-participants">
