@@ -24,16 +24,21 @@ RUN chmod -R +x node_modules/.bin
 RUN npm run build
 
 # Production Stage
-FROM nginx:latest AS production
+FROM node:lts-alpine AS production
 
-# Копируем кастомную конфигурацию Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Копируем собранные файлы (react-scripts собирает в build, а не dist)
-COPY --from=build /app/build /usr/share/nginx/html
+# Устанавливаем serve для раздачи статических файлов
+RUN npm install -g serve
+
+# Копируем собранные файлы из build stage
+COPY --from=build /app/build ./build
 
 # Открываем порт 3000
 EXPOSE 3000
 
-# Запускаем Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Запускаем serve с настройками для SPA
+# -s: запускать в single-page application mode (все запросы на index.html)
+# -l: порт для прослушивания
+# --no-clipboard: не пытаться копировать URL в буфер обмена
+CMD ["serve", "-s", "build", "-l", "3000", "--no-clipboard"]
