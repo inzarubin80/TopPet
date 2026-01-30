@@ -180,6 +180,13 @@
   }
 }
 
+/* Обёртка содержимого кнопки «Создать конкурс» (иконка + текст) */
+.home-page-create-button-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Адаптивность для мобильных */
 @media (max-width: 768px) {
   .home-page-header {
@@ -201,14 +208,18 @@
     font-size: 14px;
   }
 
-  .home-page-create-button {
-    padding: 8px 16px !important;
-    font-size: 13px !important;
-  }
-
   .home-page-list-actions {
     width: 100%;
-    justify-content: flex-end;
+  }
+
+  .home-page-create-button {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-height: 48px !important;
+    padding: 14px 20px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
   }
 }
 
@@ -224,8 +235,8 @@
   }
 
   .home-page-create-button {
-    padding: 8px 12px !important;
-    font-size: 12px !important;
+    padding: 14px 20px !important;
+    font-size: 16px !important;
   }
 
   /* На очень маленьких экранах можно скрыть иконки */
