@@ -29,6 +29,7 @@
   border-radius: 12px;
   overflow: hidden;
   min-height: 400px;
+  touch-action: pan-y;
 }
 
 .photo-gallery-image {

@@ -57,9 +57,45 @@
   font-size: 32px;
 }
 
-.participant-page-actions {
+.participant-page-icon-actions {
   display: flex;
+  flex-direction: row;
   gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.participant-page-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.participant-page-icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: #374151;
+}
+
+.participant-page-icon-btn:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.participant-page-icon-btn-danger:hover {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.participant-page-icon-btn-danger:active {
+  background-color: rgba(220, 38, 38, 0.15);
 }
 
 

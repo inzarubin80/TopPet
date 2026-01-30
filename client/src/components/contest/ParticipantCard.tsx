@@ -9,6 +9,7 @@ import { vote, unvote } from '../../api/votesApi';
 import { setUserVote } from '../../store/slices/contestsSlice';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
+import { descriptionWithBreaks } from '../../utils/formatText';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import './ParticipantCard.css';
 
@@ -131,7 +132,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           )}
         </div>
         <p className="participant-card-description">
-          {participant.pet_description || 'Нет описания'}
+          {descriptionWithBreaks(participant.pet_description || 'Нет описания')}
         </p>
         <div className="participant-card-footer">
           <div className="participant-card-meta">

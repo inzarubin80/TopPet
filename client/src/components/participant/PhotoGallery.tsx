@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
@@ -20,6 +20,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
   const photoLikes = useSelector((state: RootState) => state.photoLikes.likes);
   const loadingLikes = useSelector((state: RootState) => state.photoLikes.loading);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const SWIPE_THRESHOLD = 50;
 
   // Initialize likes from photos data and fetch if missing
   useEffect(() => {
@@ -78,6 +81,31 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [photos.length, handleNext, handlePrev]);
 
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (photos.length <= 1) return;
+      const t = e.touches[0];
+      if (t) touchStartRef.current = { x: t.clientX, y: t.clientY };
+    },
+    [photos.length]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (photos.length <= 1 || !touchStartRef.current) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const deltaX = t.clientX - touchStartRef.current.x;
+      const deltaY = t.clientY - touchStartRef.current.y;
+      touchStartRef.current = null;
+      if (Math.abs(deltaX) <= SWIPE_THRESHOLD) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
+      if (deltaX < 0) handleNext();
+      else handlePrev();
+    },
+    [photos.length, handleNext, handlePrev]
+  );
+
   const handleLikeClick = async (photoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) {
@@ -108,7 +136,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, participantI
   return (
     <div className="photo-gallery">
       <div className="photo-gallery-item">
-        <div className="photo-gallery-image-container">
+        <div
+          className="photo-gallery-image-container"
+          {...(photos.length > 1
+            ? { onTouchStart: handleTouchStart, onTouchEnd: handleTouchEnd }
+            : {})}
+        >
           {photos.length > 1 && (
             <>
               <button
