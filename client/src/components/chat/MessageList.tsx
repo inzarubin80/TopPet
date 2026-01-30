@@ -42,8 +42,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (isAtBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isAtBottom && listRef.current) {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+      });
     }
   }, [messages, isAtBottom]);
 
@@ -57,7 +61,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
   };
 
   const formatDate = (dateString: string) => {

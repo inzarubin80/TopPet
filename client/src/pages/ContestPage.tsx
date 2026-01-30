@@ -69,6 +69,10 @@ const ContestPage: React.FC = () => {
   }, [dispatch, id]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
+  useEffect(() => {
     const loadVote = async () => {
       if (!id || !isAuthenticated || currentContest?.status !== 'voting') {
         if (id) {
