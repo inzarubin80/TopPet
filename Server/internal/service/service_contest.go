@@ -100,6 +100,11 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 		return nil, errors.New("only contest admin can update contest")
 	}
 
+	// Only draft can be updated
+	if contest.Status != model.ContestStatusDraft {
+		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
+	}
+
 	return s.repository.UpdateContest(ctx, contestID, title, description)
 }
 

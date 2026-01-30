@@ -102,6 +102,7 @@ func (m *mockRepository) DeleteParticipantVideo(ctx context.Context, participant
 func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error) { return nil, nil }
 func (m *mockRepository) GetContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error) { return nil, nil }
 func (m *mockRepository) DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error) { return "", nil }
+func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) { return nil, nil }
 // CountVotesByContest, CountVotesByContests реализованы ниже с поддержкой моков
 func (m *mockRepository) CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) { return 0, nil }
 func (m *mockRepository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error) { return nil, nil }

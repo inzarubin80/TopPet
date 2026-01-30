@@ -82,6 +82,20 @@ func (h *metaHTMLHandler) defaultImageURL() string {
 	return h.baseURL + "/og-default.png"
 }
 
+// absoluteImageURL returns imageURL as-is if it's already absolute (http/https), otherwise baseURL + path.
+// Telegram and other crawlers require og:image to be an absolute HTTPS URL.
+func (h *metaHTMLHandler) absoluteImageURL(imageURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+	if strings.HasPrefix(imageURL, "http://") || strings.HasPrefix(imageURL, "https://") {
+		return imageURL
+	}
+	base := strings.TrimSuffix(h.baseURL, "/")
+	path := strings.TrimPrefix(imageURL, "/")
+	return base + "/" + path
+}
+
 const (
 	ogTitleMaxRunes       = 60
 	ogDescriptionMaxRunes = 160
@@ -307,6 +321,8 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 	imageURL := firstParticipantPhotoURL(participants)
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
+	} else {
+		imageURL = h.absoluteImageURL(imageURL)
 	}
 
 	pageTitle := truncateRunes(contest.Title+" - Top-Pet", ogTitleMaxRunes)
@@ -369,6 +385,8 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 	imageURL := firstPhotoURLFromParticipant(participant)
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
+	} else {
+		imageURL = h.absoluteImageURL(imageURL)
 	}
 	url := h.baseURL + "/contests/" + string(contestID) + "/participants/" + string(participantID)
 	imageAlt := "Фото питомца " + participant.PetName
