@@ -29,7 +29,7 @@ export const AppHeader: React.FC = () => {
     <header className="app-header">
       <div className="app-header-inner">
         <button type="button" className="app-header-title" onClick={() => navigate('/')}>
-          Конкурсы красоты животных
+          TOP-PET
         </button>
         <button type="button" className="app-header-profile" onClick={handleProfileClick}>
           <span className="app-header-avatar">

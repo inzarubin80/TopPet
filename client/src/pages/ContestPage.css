@@ -1,7 +1,7 @@
 .contest-page {
   display: flex;
   gap: 24px;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
   color: #1f2937;
@@ -291,6 +291,12 @@
   .contest-page-sidebar {
     width: 100%;
     height: 500px;
+  }
+}
+
+@media (max-width: 720px) {
+  .contest-page {
+    padding: 24px 16px;
   }
 }
 

@@ -33,7 +33,7 @@
 
 .photo-gallery-image {
   max-width: 100%;
-  max-height: 80vh;
+  max-height: min(80vh, calc(100vh - 260px));
   width: auto;
   height: auto;
   object-fit: contain;

@@ -2,7 +2,7 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   transition: all 0.2s ease;
   outline: none;
   display: inline-flex;
@@ -83,19 +83,19 @@
 
 .btn-small {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--font-size-base-sm);
   border-radius: 8px;
 }
 
 .btn-medium {
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   border-radius: 8px;
 }
 
 .btn-large {
   padding: 12px 24px;
-  font-size: 15px;
+  font-size: var(--font-size-base-md);
   border-radius: 8px;
 }
 

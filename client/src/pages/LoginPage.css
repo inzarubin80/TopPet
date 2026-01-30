@@ -18,17 +18,17 @@
 }
 
 .login-page-title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
   color: #1976d2;
   margin: 0 0 16px 0;
 }
 
 .login-page-subtitle {
-  font-size: 16px;
+  font-size: var(--font-size-md);
   color: #666;
   margin: 0 0 32px 0;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .login-page-providers {

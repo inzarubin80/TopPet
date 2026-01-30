@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page">
       <div className="login-page-content">
-        <h1 className="login-page-title">Конкурсы красоты животных</h1>
+        <h1 className="login-page-title">TOP-PET</h1>
         <p className="login-page-subtitle">
           Войдите, чтобы создавать конкурсы, добавлять участников и голосовать
         </p>
