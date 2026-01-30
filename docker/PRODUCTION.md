@@ -55,6 +55,10 @@ STORE_SECRET=<strong-random-secret>
 # CORS
 CORS_ALLOWED_ORIGINS=https://www.top-pet.ru,https://top-pet.ru
 
+# Превью ссылок в соцсетях (og/twitter). При использовании docker-compose.prod.yml
+# бэкенду монтируется client/build, SPA_INDEX_PATH=/app/static/index.html — менять не нужно.
+BASE_URL=https://top-pet.ru
+
 # API URLs
 API_ROOT=https://api.top-pet.ru
 FRONTEND_URL=https://www.top-pet.ru
@@ -101,8 +105,13 @@ sudo systemctl reload nginx
 
 ### 6. Запуск контейнеров
 
+Для работы превью в соцсетях бэкенду нужен собранный `client/build/index.html`. Сначала соберите клиент, затем запустите compose:
+
 ```bash
-cd docker
+cd /opt/toppet/client
+npm ci --legacy-peer-deps
+npm run build
+cd ../docker
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
@@ -120,7 +129,17 @@ curl http://localhost:3000  # Frontend
 curl http://localhost:8080/api/ping  # Backend API
 ```
 
-### 8. Настройка автообновления SSL
+### 8. Превью ссылок в соцсетях (og/twitter)
+
+Чтобы при публикации ссылки на конкурс или участника в Telegram/WhatsApp/VK показывалось превью (заголовок, описание, картинка):
+
+1. **Nginx** уже настроен: запросы к `/contests/:id` и `/contests/:id/participants/:pid` проксируются на бэкенд (внешний nginx — см. `nginx.prod.conf.example`; внутри контейнера клиента — в `client/nginx.conf` на сервис `server`).
+
+2. **Бэкенд:** в окружении сервера заданы `BASE_URL` (например `https://top-pet.ru`) и `SPA_INDEX_PATH` (в docker-compose монтируется `../client/build` в `/app/static`, путь `/app/static/index.html`). При первом запуске убедитесь, что каталог `client/build` существует (соберите клиент до `up` или используйте шаг 6 выше).
+
+3. **Проверка:** отправьте ссылку на конкурс в Telegram или откройте [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) — в ответе должны быть теги `og:title`, `og:image` и т.д.
+
+### 9. Настройка автообновления SSL
 
 ```bash
 # Certbot автоматически настроит автообновление
@@ -130,9 +149,13 @@ sudo certbot renew --dry-run
 
 ## Обновление приложения
 
+После обновления кода клиента пересоберите `client/build` (для превью в соцсетях бэкенд читает оттуда `index.html`):
+
 ```bash
-cd /opt/toppet/docker
+cd /opt/toppet
 git pull
+cd client && npm run build
+cd ../docker
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 

@@ -31,6 +31,19 @@ server {
     large_client_header_buffers 4 32k;
     client_header_buffer_size 32k;
 
+    # Превью в соцсетях: запросы к /contests/:id и /contests/:id/participants/:pid — на бэкенд (Go отдаёт HTML с og/twitter meta)
+    location ~ ^/contests/[^/]+(/participants/[^/]+)?$ {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
     # Проксирование на контейнер клиента
     location / {
         proxy_pass http://localhost:3000;

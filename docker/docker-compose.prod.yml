@@ -49,6 +49,10 @@ services:
       CLIENT_SECRET_GOOGLE: ${CLIENT_SECRET_GOOGLE:-}
       CLIENT_ID_VK: ${CLIENT_ID_VK:-}
       CLIENT_SECRET_VK: ${CLIENT_SECRET_VK:-}
+      BASE_URL: ${BASE_URL:-https://top-pet.ru}
+      SPA_INDEX_PATH: ${SPA_INDEX_PATH:-/app/static/index.html}
+    volumes:
+      - ../client/build:/app/static:ro
     ports:
       - "8080:8080"
     depends_on:

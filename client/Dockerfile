@@ -23,28 +23,21 @@ RUN chmod -R +x node_modules/.bin
 
 RUN npm run build
 
-# Production Stage
-FROM node:lts-alpine AS production
+# Production Stage: nginx
+FROM nginx:alpine AS production
 
-WORKDIR /app
+# Удаляем дефолтный конфиг и подключаем наш
+RUN rm -f /etc/nginx/conf.d/default.conf
 
-# Устанавливаем serve для раздачи статических файлов и wget для healthcheck
-RUN npm install -g serve && \
-    apk add --no-cache wget
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Копируем собранные файлы из build stage
-COPY --from=build /app/build ./build
+# Копируем собранные файлы из build stage в корень nginx
+COPY --from=build /app/build /usr/share/nginx/html
 
 # Открываем порт 3000 (Coolify использует этот порт)
 EXPOSE 3000
 
 # Healthcheck для Coolify
+RUN apk add --no-cache curl
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
-
-# Запускаем serve с настройками для SPA
-# -s: запускать в single-page application mode (все запросы на index.html)
-# -l: порт для прослушивания (serve слушает на 0.0.0.0 по умолчанию)
-# --no-clipboard: не пытаться копировать URL в буфер обмена
-# --no-port-switching: не пытаться переключать порт если занят
-CMD ["serve", "-s", "build", "-l", "tcp://0.0.0.0:3000", "--no-clipboard", "--no-port-switching"]
+  CMD curl -f http://localhost:3000/ || exit 1

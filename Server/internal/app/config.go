@@ -29,6 +29,11 @@ type Config struct {
 
 	CorsAllowedOrigins []string
 	ProvidersConf      authinterface.MapProviderOauthConf
+
+	// Base URL for og:url and og:image (e.g. https://top-pet.ru)
+	BaseURL string
+	// Path to built SPA index.html for meta-injected HTML (optional; when set, GET /contests/* return HTML with og/twitter meta)
+	SPAIndexPath string
 }
 
 func LoadConfigFromEnv() Config {
@@ -49,8 +54,11 @@ func LoadConfigFromEnv() Config {
 		S3Secure:    envOrBool("S3_SECURE", true),
 	}
 
-	// Comma-separated
-	cfg.CorsAllowedOrigins = splitComma(envOr("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
+		// Comma-separated
+		cfg.CorsAllowedOrigins = splitComma(envOr("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
+
+	cfg.BaseURL = envOr("BASE_URL", "https://top-pet.ru")
+	cfg.SPAIndexPath = envOr("SPA_INDEX_PATH", "")
 
 	// Initialize OAuth providers
 	oauthProviders, err := appconfig.LoadOAuthProviders()
