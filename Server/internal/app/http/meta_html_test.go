@@ -37,6 +37,49 @@ func (m *mockMetaHTMLService) GetParticipant(ctx context.Context, participantID 
 	return nil, nil
 }
 
+func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	svc := &mockMetaHTMLService{}
+	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHome(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rec.Code)
+	}
+	html := rec.Body.String()
+
+	checkMetaPresent(t, html, "home", map[string]bool{
+		"og:title":       true,
+		"og:description": true,
+		"og:url":         true,
+		"og:image":       true,
+		"og:type":        true,
+		"og:site_name":   true,
+		"og:locale":      true,
+		"og:image:alt":   true,
+		"twitter:card":   true,
+		"twitter:title":  true,
+		"twitter:description": true,
+		"twitter:image": true,
+	})
+	if !strings.Contains(html, `rel="canonical"`) {
+		t.Error("home HTML: missing rel=canonical")
+	}
+	if !strings.Contains(html, `href="https://top-pet.ru/"`) {
+		t.Error("home HTML: canonical href should be base URL /")
+	}
+	if !strings.Contains(html, `id="og-preview"`) {
+		t.Error("home HTML: missing #og-preview")
+	}
+}
+
 func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	dir := t.TempDir()
 	indexPath := dir + "/index.html"

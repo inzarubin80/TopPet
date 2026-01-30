@@ -250,6 +250,40 @@ func (h *metaHTMLHandler) injectParticipantPreviewCard(htmlBytes []byte, imageUR
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
+// homeMetaTitle and homeMetaDescription are default og values for the main page.
+const (
+	homeMetaTitle       = "Top-Pet — Платформа для конкурсов красоты животных"
+	homeMetaDescription = "Создавайте конкурсы, участвуйте, голосуйте за любимых питомцев. Top-Pet — конкурсы красоты животных."
+)
+
+func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || r.URL.Path != "/" || !h.canServe() {
+		http.NotFound(w, r)
+		return
+	}
+	pageTitle := truncateRunes(homeMetaTitle, ogTitleMaxRunes)
+	description := truncateRunes(homeMetaDescription, ogDescriptionMaxRunes)
+	url := h.baseURL + "/"
+	imageURL := h.defaultImageURL()
+	imageAlt := "Top-Pet — конкурсы красоты животных"
+	imageWidth, imageHeight := 1200, 630
+	imageSecureURL := ""
+	if strings.HasPrefix(h.baseURL, "https://") {
+		imageSecureURL = imageURL
+	}
+	metaTags := h.buildMetaTags(pageTitle, description, url, imageURL, imageAlt, "ru_RU", imageWidth, imageHeight, imageSecureURL)
+
+	htmlBytes, err := h.readIndexHTML()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
+	out = h.injectPreviewImage(out, imageURL, pageTitle)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(out)
+}
+
 func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || !h.canServe() {
 		http.NotFound(w, r)

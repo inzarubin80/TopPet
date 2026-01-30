@@ -159,6 +159,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 	metaHandler := appHttp.NewMetaHTMLHandler(config.BaseURL, config.SPAIndexPath, topPetService)
 	mux.Handle("GET /contests/{contestId}/participants/{participantId}", http.HandlerFunc(metaHandler.ServeParticipant))
 	mux.Handle("GET /contests/{contestId}", http.HandlerFunc(metaHandler.ServeContest))
+	mux.Handle("GET /", http.HandlerFunc(metaHandler.ServeHome))
 
 	handler := corsMiddleware.Handler(mux)
 
