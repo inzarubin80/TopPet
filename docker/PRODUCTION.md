@@ -55,9 +55,10 @@ STORE_SECRET=<strong-random-secret>
 # CORS
 CORS_ALLOWED_ORIGINS=https://www.top-pet.ru,https://top-pet.ru
 
-# Превью ссылок в соцсетях (og/twitter). При использовании docker-compose.prod.yml
-# бэкенду монтируется client/build, SPA_INDEX_PATH=/app/static/index.html — менять не нужно.
+# Превью ссылок в соцсетях (og/twitter) — обязательно для работы /contests/... и / на api.top-pet.ru
 BASE_URL=https://top-pet.ru
+# Путь к index.html внутри контейнера сервера. В docker-compose монтируется client/build в /app/static.
+SPA_INDEX_PATH=/app/static/index.html
 
 # API URLs
 API_ROOT=https://api.top-pet.ru
@@ -224,3 +225,31 @@ docker-compose -f docker-compose.prod.yml exec -T postgres psql -U postgres topp
 ```bash
 CORS_ALLOWED_ORIGINS=https://www.top-pet.ru,https://top-pet.ru
 ```
+
+### Проблема: превью участника/конкурса на api.top-pet.ru не открывается (не отвечает)
+
+URL вида `https://api.top-pet.ru/contests/{id}/participants/{pid}` должен отдавать HTML с og/twitter meta. Если запрос не отвечает, таймаут или 404:
+
+1. **Прокси перед API**  
+   Nginx (или другой прокси) для **api.top-pet.ru** должен проксировать **все** пути на Go, а не только `/api/`. В `nginx.prod.conf.example` для api.top-pet.ru указано `location / { proxy_pass http://localhost:8080; }` — запросы к `/contests/...` и к `/` должны уходить на бэкенд. Если у вас отдельная конфигурация (Coolify, Ingress и т.п.), добавьте правило: **GET /** и **GET /contests/** проксировать на тот же бэкенд, что и `/api/`.
+
+2. **Переменные окружения бэкенда**  
+   В окружении сервера (контейнера) должны быть заданы:
+   - `BASE_URL` (например `https://top-pet.ru`)
+   - `SPA_INDEX_PATH` (в docker-compose по умолчанию `/app/static/index.html`)  
+   Если `SPA_INDEX_PATH` пустой, бэкенд отдаёт 404 на `/contests/...` и `/`.
+
+3. **Файл index.html**  
+   Бэкенд читает `index.html` по пути `SPA_INDEX_PATH`. В docker-compose монтируется `../client/build:/app/static:ro`. Убедитесь, что перед запуском выполнен `npm run build` в клиенте и на хосте есть `client/build/index.html`. Иначе бэкенд вернёт 500 при обращении к превью.
+
+4. **Проверка с сервера**  
+   ```bash
+   # Ответ 200 и HTML с og:title в теле
+   curl -s -o /dev/null -w "%{http_code}" "https://api.top-pet.ru/contests/f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb/participants/0eaa49bc-0ee4-42c5-888e-635be4d31fc4"
+
+   # Локально до прокси (если есть доступ к хосту)
+   curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/contests/f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb/participants/0eaa49bc-0ee4-42c5-888e-635be4d31fc4"
+   ```  
+   - **404:** участник/конкурс не найден в БД или не задан `SPA_INDEX_PATH`.  
+   - **500:** смотреть логи сервера (`docker-compose logs server`), чаще всего ошибка чтения файла по `SPA_INDEX_PATH`.  
+   - **Нет ответа / таймаут:** запрос не доходит до Go — проверить прокси/балансировщик перед api.top-pet.ru.
