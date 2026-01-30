@@ -22,8 +22,8 @@ services:
 
   server:
     build:
-      context: ..
-      dockerfile: Server/Dockerfile
+      context: ../Server
+      dockerfile: Dockerfile
     container_name: toppet-server-prod
     restart: unless-stopped
     environment:

@@ -1,20 +1,14 @@
-# Сборка из корня репозитория: docker build -f Server/Dockerfile .
-# Контекст должен быть корень репозитория (.), чтобы были client/ и Server/.
+# Сборка из папки Server (контекст = Server/).
+# Для Coolify: Dockerfile = Server/Dockerfile, контекст = Server.
+# index.html для превью og/twitter берётся из Server/static/index.html.
 
-# -------- Сборка клиента (для index.html) --------
-FROM node:20-alpine AS client-builder
-WORKDIR /app
-COPY client/package.json client/package-lock.json ./
-RUN npm ci
-COPY client/ ./
-RUN npm run build
-
-# -------- Сборка сервера --------
+# -------- Builder --------
 FROM golang:1.24 AS builder
+
 WORKDIR /app
-COPY Server/go.mod Server/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
-COPY Server/ ./
+COPY . .
 RUN go install github.com/pressly/goose/v3/cmd/goose@v3.22.1
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/server/
 RUN ls -l /app/server
@@ -26,7 +20,6 @@ RUN apk add --no-cache libc6-compat ca-certificates
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrations /app/migrations/
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
-# index.html встроен в образ (превью og/twitter для ботов)
-COPY --from=client-builder /app/build/index.html /app/static/index.html
+COPY --from=builder /app/static/index.html /app/static/index.html
 EXPOSE 8080
 CMD ["sh", "-c", "/usr/local/bin/goose -dir /app/migrations postgres \"$DATABASE_URL\" up && ./server"]
