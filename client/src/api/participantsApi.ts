@@ -1,6 +1,7 @@
 import { axiosClient } from './axiosClient';
 import { Participant, Photo, Video, ParticipantID, ContestID } from '../types/models';
 import { CreateParticipantRequest, UpdateParticipantRequest } from '../types/api';
+import type { VoterInfo } from '../types/api';
 
 export const getParticipant = async (
   contestId: ContestID,
@@ -17,6 +18,16 @@ export const getParticipantsByContest = async (contestId: ContestID): Promise<Pa
     `/contests/${contestId}/participants`
   );
   return response.data.items || [];
+};
+
+export const getParticipantVoters = async (
+  contestId: ContestID,
+  participantId: ParticipantID
+): Promise<{ voters: VoterInfo[] }> => {
+  const response = await axiosClient.get<{ voters: VoterInfo[] }>(
+    `/contests/${contestId}/participants/${participantId}/voters`
+  );
+  return response.data;
 };
 
 export const createParticipant = async (

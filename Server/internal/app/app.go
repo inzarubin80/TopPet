@@ -220,6 +220,10 @@ func (a *App) registerRoutes() {
 	// Participants (public)
 	a.mux.Handle("GET /api/contests/{contestId}/participants", appHttp.NewListParticipantsHandler("/api/contests/{contestId}/participants", a.service))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}", appHttp.NewGetParticipantHandler("/api/contests/{contestId}/participants/{participantId}", a.service))
+	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/voters", middleware.NewAuthMiddleware(
+		appHttp.NewParticipantVotersHandler("/api/contests/{contestId}/participants/{participantId}/voters", a.service),
+		a.service,
+	))
 
 	// Participants (auth required)
 	a.mux.Handle("POST /api/contests/{contestId}/participants", middleware.NewAuthMiddleware(

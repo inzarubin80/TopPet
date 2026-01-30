@@ -48,6 +48,12 @@ export interface UpdateContestRequest {
   description?: string;
 }
 
+export interface VoterInfo {
+  user_id: number;
+  user_name: string;
+  voted_at: string;
+}
+
 export interface UpdateContestStatusRequest {
   status: ContestStatus;
 }

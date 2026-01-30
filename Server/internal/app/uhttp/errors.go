@@ -77,6 +77,10 @@ func HandleError(w http.ResponseWriter, err error) {
 		SendErrorResponse(w, http.StatusNotFound, "not found")
 		return
 	}
+	if errors.Is(err, model.ErrorForbidden) {
+		SendErrorResponse(w, http.StatusForbidden, "forbidden")
+		return
+	}
 
 	if errors.Is(err, model.ErrUnauthorized) {
 		SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")

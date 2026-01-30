@@ -14,6 +14,7 @@ import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
+import { ParticipantVotersModal } from '../components/contest/ParticipantVotersModal';
 import { EditContestModal } from '../components/contest/EditContestModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
@@ -52,6 +53,8 @@ const ContestPage: React.FC = () => {
   const [isDeleteParticipantModalOpen, setIsDeleteParticipantModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
+  const [votersModalParticipant, setVotersModalParticipant] = useState<Participant | null>(null);
+  const [votersModalOpen, setVotersModalOpen] = useState(false);
   const currentVoteId = useSelector((state: RootState) =>
     id ? state.contests.userVotes[id] ?? null : null
   );
@@ -321,6 +324,7 @@ const ContestPage: React.FC = () => {
                     participant={participant} 
                     contestId={id!}
                     contestStatus={currentContest.status}
+                    isContestAdmin={isAdmin}
                     isVoted={currentVoteId === participant.id}
                     isWinner={isWinner(participantId)}
                     onEdit={(p) => {
@@ -330,6 +334,10 @@ const ContestPage: React.FC = () => {
                     onDelete={(p) => {
                       setDeletingParticipant(p);
                       setIsDeleteParticipantModalOpen(true);
+                    }}
+                    onShowVoters={(p) => {
+                      setVotersModalParticipant(p);
+                      setVotersModalOpen(true);
                     }}
                   />
                 ) : null;
@@ -377,6 +385,19 @@ const ContestPage: React.FC = () => {
               dispatch(fetchParticipantsByContest(id));
             }
           }}
+        />
+      )}
+
+      {votersModalOpen && votersModalParticipant && id && (
+        <ParticipantVotersModal
+          isOpen={votersModalOpen}
+          onClose={() => {
+            setVotersModalOpen(false);
+            setVotersModalParticipant(null);
+          }}
+          contestId={id}
+          participantId={votersModalParticipant.id}
+          participantName={votersModalParticipant.pet_name}
         />
       )}
 

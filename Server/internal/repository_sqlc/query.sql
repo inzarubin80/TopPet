@@ -193,6 +193,16 @@ WHERE contest_id = $1;
 SELECT count(1) FROM contest_votes
 WHERE participant_id = $1;
 
+-- name: ListVotersByParticipant :many
+SELECT
+    cv.user_id,
+    COALESCE(u.name, 'Пользователь ' || cv.user_id::text) AS user_name,
+    cv.created_at
+FROM contest_votes cv
+LEFT JOIN users u ON u.user_id = cv.user_id
+WHERE cv.contest_id = $1 AND cv.participant_id = $2
+ORDER BY cv.created_at ASC;
+
 -- name: CountVotesByContests :many
 SELECT contest_id, count(1) as vote_count FROM contest_votes
 WHERE contest_id = ANY($1::uuid[])

@@ -119,3 +119,14 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 
 	return participantID, nil
 }
+
+func (s *TopPetService) ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) ([]*model.VoterInfo, error) {
+	contest, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if contest.CreatedByUserID != userID {
+		return nil, model.ErrorForbidden
+	}
+	return s.repository.ListVotersByParticipant(ctx, contestID, participantID)
+}

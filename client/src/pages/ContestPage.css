@@ -12,6 +12,9 @@
 }
 
 .contest-page-sidebar {
+  position: sticky;
+  top: 72px; /* ниже шапки при прилипании */
+  align-self: flex-start;
   width: 400px;
   height: 600px;
   flex-shrink: 0;

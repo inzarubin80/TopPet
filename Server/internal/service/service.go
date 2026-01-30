@@ -62,6 +62,7 @@ type (
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error)
 		CountVotesByContests(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)
+		ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error)
 
 		// Comments
 		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error)

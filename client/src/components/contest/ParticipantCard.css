@@ -180,11 +180,45 @@
   font-weight: 600;
 }
 
-.participant-card-actions {
+.participant-card-icon-actions {
   display: flex;
+  flex-direction: row;
   gap: 8px;
   margin-left: auto;
-  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.participant-card-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.participant-card-icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: #374151;
+}
+
+.participant-card-icon-btn:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.participant-card-icon-btn-danger:hover {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.participant-card-icon-btn-danger:active {
+  background-color: rgba(220, 38, 38, 0.15);
 }
 
 .participant-card-voted {
@@ -198,9 +232,8 @@
     align-items: flex-start;
   }
 
-  .participant-card-actions {
+  .participant-card-icon-actions {
     margin-left: 0;
-    width: 100%;
-    justify-content: flex-start;
+    align-self: flex-end;
   }
 }

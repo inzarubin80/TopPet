@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -184,4 +185,38 @@ func (r *Repository) CountVotesByContests(ctx context.Context, contestIDs []mode
 	}
 
 	return result, rows.Err()
+}
+
+func (r *Repository) ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) {
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return nil, err
+	}
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return nil, err
+	}
+
+	reposqlc := sqlc_repository.New(r.conn)
+	rows, err := reposqlc.ListVotersByParticipant(ctx, &sqlc_repository.ListVotersByParticipantParams{
+		ContestID:     pgtype.UUID{Bytes: contestUUID, Valid: true},
+		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*model.VoterInfo, 0, len(rows))
+	for _, row := range rows {
+		var votedAt time.Time
+		if row.CreatedAt.Valid {
+			votedAt = row.CreatedAt.Time
+		}
+		result = append(result, &model.VoterInfo{
+			UserID:   model.UserID(row.UserID),
+			UserName: row.UserName,
+			VotedAt:  votedAt,
+		})
+	}
+	return result, nil
 }

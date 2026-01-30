@@ -100,6 +100,12 @@ type (
 		UpdatedAt     time.Time     `json:"updated_at"`
 	}
 
+	VoterInfo struct {
+		UserID   UserID    `json:"user_id"`
+		UserName string    `json:"user_name"`
+		VotedAt  time.Time `json:"voted_at"`
+	}
+
 	Comment struct {
 		ID            CommentID     `json:"id"`
 		ParticipantID ParticipantID `json:"participant_id"`
@@ -145,5 +151,6 @@ const (
 )
 
 var (
-	ErrorNotFound = errors.New("not found")
+	ErrorNotFound  = errors.New("not found")
+	ErrorForbidden = errors.New("forbidden")
 )

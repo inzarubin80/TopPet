@@ -137,6 +137,37 @@ func (q *Queries) CountVotesByContest(ctx context.Context, contestID pgtype.UUID
 	return count, err
 }
 
+const countVotesByContests = `-- name: CountVotesByContests :many
+SELECT contest_id, count(1) as vote_count FROM contest_votes
+WHERE contest_id = ANY($1::uuid[])
+GROUP BY contest_id
+`
+
+type CountVotesByContestsRow struct {
+	ContestID pgtype.UUID
+	VoteCount int64
+}
+
+func (q *Queries) CountVotesByContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountVotesByContestsRow, error) {
+	rows, err := q.db.Query(ctx, countVotesByContests, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*CountVotesByContestsRow
+	for rows.Next() {
+		var i CountVotesByContestsRow
+		if err := rows.Scan(&i.ContestID, &i.VoteCount); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countVotesByParticipant = `-- name: CountVotesByParticipant :one
 SELECT count(1) FROM contest_votes
 WHERE participant_id = $1
@@ -975,6 +1006,48 @@ func (q *Queries) ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLike
 			&i.UserID,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVotersByParticipant = `-- name: ListVotersByParticipant :many
+SELECT
+    cv.user_id,
+    COALESCE(u.name, 'Пользователь ' || cv.user_id::text) AS user_name,
+    cv.created_at
+FROM contest_votes cv
+LEFT JOIN users u ON u.user_id = cv.user_id
+WHERE cv.contest_id = $1 AND cv.participant_id = $2
+ORDER BY cv.created_at ASC
+`
+
+type ListVotersByParticipantParams struct {
+	ContestID     pgtype.UUID
+	ParticipantID pgtype.UUID
+}
+
+type ListVotersByParticipantRow struct {
+	UserID    int64
+	UserName  string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListVotersByParticipant(ctx context.Context, arg *ListVotersByParticipantParams) ([]*ListVotersByParticipantRow, error) {
+	rows, err := q.db.Query(ctx, listVotersByParticipant, arg.ContestID, arg.ParticipantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListVotersByParticipantRow
+	for rows.Next() {
+		var i ListVotersByParticipantRow
+		if err := rows.Scan(&i.UserID, &i.UserName, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)

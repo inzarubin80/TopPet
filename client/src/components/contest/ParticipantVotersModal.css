@@ -1,0 +1,54 @@
+.participant-voters-modal-body {
+  min-height: 120px;
+}
+
+.participant-voters-modal-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.participant-voters-modal-error,
+.participant-voters-modal-empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.participant-voters-modal-error {
+  color: #dc3545;
+}
+
+.participant-voters-modal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.participant-voters-modal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  gap: 12px;
+}
+
+.participant-voters-modal-item:last-child {
+  border-bottom: none;
+}
+
+.participant-voters-modal-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.participant-voters-modal-date {
+  font-size: 13px;
+  color: #6b7280;
+  flex-shrink: 0;
+}

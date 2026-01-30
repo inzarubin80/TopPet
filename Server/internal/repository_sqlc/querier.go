@@ -19,6 +19,7 @@ type Querier interface {
 	CountContests(ctx context.Context, dollar_1 string) (int64, error)
 	CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error)
 	CountVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
+	CountVotesByContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountVotesByContestsRow, error)
 	CountVotesByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	// Contest Chat Messages
 	CreateChatMessage(ctx context.Context, arg *CreateChatMessageParams) (*ContestChatMessage, error)
@@ -57,6 +58,7 @@ type Querier interface {
 	ListContests(ctx context.Context, arg *ListContestsParams) ([]*Contest, error)
 	ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListParticipantsByContestRow, error)
 	ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error)
+	ListVotersByParticipant(ctx context.Context, arg *ListVotersByParticipantParams) ([]*ListVotersByParticipantRow, error)
 	UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageParams) (*ContestChatMessage, error)
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
