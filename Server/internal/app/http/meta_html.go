@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -77,16 +78,17 @@ func firstPhotoURLFromParticipant(p *model.Participant) string {
 }
 
 func (h *metaHTMLHandler) defaultImageURL() string {
-	return h.baseURL + "/icon.svg"
+	return h.baseURL + "/og-default.png"
 }
 
 const (
-	ogTitleMaxRunes    = 60
+	ogTitleMaxRunes       = 60
 	ogDescriptionMaxRunes = 160
 	participantCTASuffix  = " Голосуйте на Top-Pet!"
+	contestDescSuffix     = " Добавляйте своих питомцев"
 )
 
-func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, imageAlt, locale string) string {
+func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, imageAlt, locale string, imageWidth, imageHeight int, imageSecureURL string) string {
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
 	}
@@ -95,6 +97,7 @@ func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, image
 	url = html.EscapeString(url)
 	imageURL = html.EscapeString(imageURL)
 	imageAlt = html.EscapeString(imageAlt)
+	imageSecureURL = html.EscapeString(imageSecureURL)
 	const siteName = "Top-Pet"
 	var b strings.Builder
 	b.WriteString(`<meta name="description" content="`)
@@ -113,6 +116,19 @@ func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, image
 	b.WriteString(`<meta property="og:image" content="`)
 	b.WriteString(imageURL)
 	b.WriteString(`">`)
+	if imageWidth > 0 && imageHeight > 0 {
+		b.WriteString(`<meta property="og:image:width" content="`)
+		b.WriteString(strings.TrimSpace(strconv.Itoa(imageWidth)))
+		b.WriteString(`">`)
+		b.WriteString(`<meta property="og:image:height" content="`)
+		b.WriteString(strings.TrimSpace(strconv.Itoa(imageHeight)))
+		b.WriteString(`">`)
+	}
+	if imageSecureURL != "" {
+		b.WriteString(`<meta property="og:image:secure_url" content="`)
+		b.WriteString(imageSecureURL)
+		b.WriteString(`">`)
+	}
 	if locale != "" {
 		b.WriteString(`<meta property="og:locale" content="`)
 		b.WriteString(locale)
@@ -144,10 +160,29 @@ func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, image
 	return b.String()
 }
 
-func (h *metaHTMLHandler) injectMetaIntoHTML(htmlBytes []byte, pageTitle, metaTags string) []byte {
+func (h *metaHTMLHandler) injectMetaIntoHTML(htmlBytes []byte, pageTitle, metaTags, canonicalURL string) []byte {
 	oldTitle := []byte("<title>Top-Pet</title>")
-	newHead := []byte("<title>" + html.EscapeString(pageTitle) + "</title>\n    " + metaTags)
+	canonicalTag := ""
+	if canonicalURL != "" {
+		canonicalURL = html.EscapeString(canonicalURL)
+		canonicalTag = "\n    <link rel=\"canonical\" href=\"" + canonicalURL + "\">"
+	}
+	newHead := []byte("<title>" + html.EscapeString(pageTitle) + "</title>\n    " + metaTags + canonicalTag)
 	return []byte(strings.Replace(string(htmlBytes), string(oldTitle), string(newHead), 1))
+}
+
+// contestDescription builds og:description for contest: one line from contestDesc (or contestTitle if empty) + suffix, max 160 runes.
+func contestDescription(contestTitle, contestDesc string) string {
+	if contestDesc == "" {
+		contestDesc = contestTitle
+	}
+	oneLine := strings.TrimSpace(strings.ReplaceAll(contestDesc, "\n", " "))
+	oneLine = strings.Join(strings.Fields(oneLine), " ")
+	maxDesc := ogDescriptionMaxRunes - utf8.RuneCountInString(contestDescSuffix)
+	if utf8.RuneCountInString(oneLine) > maxDesc {
+		oneLine = truncateRunes(oneLine, maxDesc)
+	}
+	return oneLine + contestDescSuffix
 }
 
 // participantTitleForOG returns "Кличка — Название конкурса" truncated to ogTitleMaxRunes, or "Кличка — Top-Pet" if contestTitle is empty.
@@ -182,6 +217,20 @@ func (h *metaHTMLHandler) injectPreviewImage(htmlBytes []byte, imageURL, title s
 	imageURL = html.EscapeString(imageURL)
 	title = html.EscapeString(title)
 	block := `<div id="og-preview" style="text-align:center;max-width:100%;margin:0 auto;padding:16px;background:#f5f5f5;"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto;border-radius:8px;" /></div>`
+	oldBody := "<body>"
+	newBody := "<body>\n  " + block
+	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
+}
+
+// injectContestPreviewCard inserts a card (image + title + description) after <body> for contest pages.
+func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, imageURL, title, description string) []byte {
+	if imageURL == "" {
+		imageURL = h.defaultImageURL()
+	}
+	imageURL = html.EscapeString(imageURL)
+	title = html.EscapeString(title)
+	description = html.EscapeString(description)
+	block := `<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">` + title + `</h1><p style="margin:0;font-size:1rem;line-height:1.5;color:#444;">` + description + `</p></div>`
 	oldBody := "<body>"
 	newBody := "<body>\n  " + block
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
@@ -224,22 +273,31 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		imageURL = h.defaultImageURL()
 	}
 
-	pageTitle := contest.Title + " - Top-Pet"
-	description := contest.Description
-	if description == "" {
-		description = contest.Title
-	}
-	description = description + " Добавляйте своих питомцев"
+	pageTitle := truncateRunes(contest.Title+" - Top-Pet", ogTitleMaxRunes)
+	description := contestDescription(contest.Title, contest.Description)
 	url := h.baseURL + "/contests/" + string(contestID)
-	metaTags := h.buildMetaTags(contest.Title, description, url, imageURL, "", "")
+	imageAlt := "Превью конкурса: " + contest.Title
+	if contest.Title == "" {
+		imageAlt = "Конкурс Top-Pet"
+	}
+	imageAlt = truncateRunes(imageAlt, 100)
+	imageWidth, imageHeight := 0, 0
+	imageSecureURL := ""
+	if imageURL == h.defaultImageURL() {
+		imageWidth, imageHeight = 1200, 630
+		if strings.HasPrefix(h.baseURL, "https://") {
+			imageSecureURL = imageURL
+		}
+	}
+	metaTags := h.buildMetaTags(pageTitle, description, url, imageURL, imageAlt, "ru_RU", imageWidth, imageHeight, imageSecureURL)
 
 	htmlBytes, err := h.readIndexHTML()
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags)
-	out = h.injectPreviewImage(out, imageURL, contest.Title)
+	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
+	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
@@ -271,16 +329,27 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 	description := participantDescription(participant.PetName, participant.PetDescription)
 
 	imageURL := firstPhotoURLFromParticipant(participant)
+	if imageURL == "" {
+		imageURL = h.defaultImageURL()
+	}
 	url := h.baseURL + "/contests/" + string(contestID) + "/participants/" + string(participantID)
 	imageAlt := "Фото питомца " + participant.PetName
-	metaTags := h.buildMetaTags(pageTitle, description, url, imageURL, imageAlt, "ru_RU")
+	imageWidth, imageHeight := 0, 0
+	imageSecureURL := ""
+	if imageURL == h.defaultImageURL() {
+		imageWidth, imageHeight = 1200, 630
+		if strings.HasPrefix(h.baseURL, "https://") {
+			imageSecureURL = imageURL
+		}
+	}
+	metaTags := h.buildMetaTags(pageTitle, description, url, imageURL, imageAlt, "ru_RU", imageWidth, imageHeight, imageSecureURL)
 
 	htmlBytes, err := h.readIndexHTML()
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags)
+	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
 	out = h.injectParticipantPreviewCard(out, imageURL, pageTitle, description)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
