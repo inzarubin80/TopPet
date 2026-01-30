@@ -97,10 +97,12 @@ func (h *metaHTMLHandler) absoluteImageURL(imageURL string) string {
 }
 
 const (
-	ogTitleMaxRunes       = 60
-	ogDescriptionMaxRunes = 160
-	participantCTASuffix  = " Голосуйте на Top-Pet!"
-	contestDescSuffix     = " Добавляйте своих питомцев"
+	ogTitleMaxRunes                = 60
+	ogDescriptionMaxRunes          = 160
+	participantDescBodyMaxRunes    = 100 // max runes for pet description body so CTA fits in card preview
+	ogParticipantTitleMaxRunes     = 50  // participant card title often shown in one line
+	participantCTASuffix           = " Голосуйте на Top-Pet!"
+	contestDescSuffix              = " Добавляйте своих питомцев"
 )
 
 func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, imageAlt, locale string, imageWidth, imageHeight int, imageSecureURL string) string {
@@ -200,16 +202,16 @@ func contestDescription(contestTitle, contestDesc string) string {
 	return oneLine + contestDescSuffix
 }
 
-// participantTitleForOG returns "Кличка — Название конкурса" truncated to ogTitleMaxRunes, or "Кличка — Top-Pet" if contestTitle is empty.
+// participantTitleForOG returns "Кличка — Название конкурса" truncated to ogParticipantTitleMaxRunes, or "Кличка — Top-Pet" if contestTitle is empty.
 func participantTitleForOG(petName, contestTitle string) string {
 	if contestTitle == "" {
-		return truncateRunes(petName+" — Top-Pet", ogTitleMaxRunes)
+		return truncateRunes(petName+" — Top-Pet", ogParticipantTitleMaxRunes)
 	}
 	full := petName + " — " + contestTitle
-	return truncateRunes(full, ogTitleMaxRunes)
+	return truncateRunes(full, ogParticipantTitleMaxRunes)
 }
 
-// participantDescription builds og:description: one line from petDesc + CTA, max 160 runes. If petDesc empty, "Голосуйте за [petName] на Top-Pet!".
+// participantDescription builds og:description: one line from petDesc (max participantDescBodyMaxRunes) + CTA, so CTA stays visible in card. If petDesc empty, "Голосуйте за [petName] на Top-Pet!".
 func participantDescription(petName, petDesc string) string {
 	cta := participantCTASuffix
 	if petDesc == "" {
@@ -217,9 +219,8 @@ func participantDescription(petName, petDesc string) string {
 	}
 	oneLine := strings.TrimSpace(strings.ReplaceAll(petDesc, "\n", " "))
 	oneLine = strings.Join(strings.Fields(oneLine), " ")
-	maxDesc := ogDescriptionMaxRunes - utf8.RuneCountInString(cta)
-	if utf8.RuneCountInString(oneLine) > maxDesc {
-		oneLine = truncateRunes(oneLine, maxDesc)
+	if utf8.RuneCountInString(oneLine) > participantDescBodyMaxRunes {
+		oneLine = truncateRunes(oneLine, participantDescBodyMaxRunes)
 	}
 	return oneLine + cta
 }

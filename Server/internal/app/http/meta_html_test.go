@@ -280,14 +280,18 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 		"twitter:image:alt": true,
 	})
 
-	// Participant: title ≤60, description ≤160 (plan requirement)
+	// Participant: title ≤50, description ≤160, CTA suffix visible (plan)
 	ogTitle := extractMetaContent(html, `property="og:title"`)
-	if n := utf8.RuneCountInString(ogTitle); n > 60 {
-		t.Errorf("participant og:title length %d > 60", n)
+	if n := utf8.RuneCountInString(ogTitle); n > 50 {
+		t.Errorf("participant og:title length %d > 50", n)
 	}
 	ogDesc := extractMetaContent(html, `property="og:description"`)
 	if n := utf8.RuneCountInString(ogDesc); n > 160 {
 		t.Errorf("participant og:description length %d > 160", n)
+	}
+	const ctaSuffix = " Голосуйте на Top-Pet!"
+	if !strings.HasSuffix(ogDesc, ctaSuffix) {
+		t.Errorf("participant og:description must end with CTA %q, got %q", ctaSuffix, ogDesc)
 	}
 
 	// Design: #og-preview card with h1 and p
