@@ -115,6 +115,19 @@ func (h *metaHTMLHandler) injectMetaIntoHTML(htmlBytes []byte, pageTitle, metaTa
 	return []byte(strings.Replace(string(htmlBytes), string(oldTitle), string(newHead), 1))
 }
 
+// injectPreviewImage inserts a visible preview image in the body (after <body>), for crawlers and direct opens.
+func (h *metaHTMLHandler) injectPreviewImage(htmlBytes []byte, imageURL, title string) []byte {
+	if imageURL == "" {
+		imageURL = h.defaultImageURL()
+	}
+	imageURL = html.EscapeString(imageURL)
+	title = html.EscapeString(title)
+	block := `<div id="og-preview" style="text-align:center;max-width:100%;margin:0 auto;padding:16px;background:#f5f5f5;"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto;border-radius:8px;" /></div>`
+	oldBody := "<body>"
+	newBody := "<body>\n  " + block
+	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
+}
+
 func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || !h.canServe() {
 		http.NotFound(w, r)
@@ -153,6 +166,7 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags)
+	out = h.injectPreviewImage(out, imageURL, contest.Title)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
@@ -191,6 +205,7 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags)
+	out = h.injectPreviewImage(out, imageURL, participant.PetName)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }

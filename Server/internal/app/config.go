@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	authinterface "toppet/server/internal/app/authinterface"
@@ -59,6 +60,9 @@ func LoadConfigFromEnv() Config {
 
 	cfg.BaseURL = envOr("BASE_URL", "https://top-pet.ru")
 	cfg.SPAIndexPath = envOr("SPA_INDEX_PATH", "")
+	if cfg.SPAIndexPath == "" {
+		cfg.SPAIndexPath = resolveDefaultSPAIndexPath()
+	}
 
 	// Initialize OAuth providers
 	oauthProviders, err := appconfig.LoadOAuthProviders()
@@ -70,6 +74,27 @@ func LoadConfigFromEnv() Config {
 	cfg.ProvidersConf = oauthProviders
 
 	return cfg
+}
+
+// resolveDefaultSPAIndexPath returns path to client index.html for local dev (relative to cwd).
+func resolveDefaultSPAIndexPath() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	candidates := []string{
+		filepath.Join(wd, "client", "public", "index.html"),
+		filepath.Join(wd, "..", "client", "public", "index.html"),
+		filepath.Join(wd, "..", "..", "client", "public", "index.html"),
+		filepath.Join(wd, "..", "client", "build", "index.html"),
+		filepath.Join(wd, "..", "..", "client", "build", "index.html"),
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
 }
 
 func envOr(key, def string) string {
