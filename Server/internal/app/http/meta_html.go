@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"toppet/server/internal/app/logger"
 	"toppet/server/internal/model"
 )
 
@@ -275,6 +276,7 @@ func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 
 	htmlBytes, err := h.readIndexHTML()
 	if err != nil {
+		logger.Error("meta HTML ServeHome: failed to read index.html", "path", h.spaIndexPath, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -327,6 +329,7 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 
 	htmlBytes, err := h.readIndexHTML()
 	if err != nil {
+		logger.Error("meta HTML ServeContest: failed to read index.html", "path", h.spaIndexPath, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -380,6 +383,7 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 
 	htmlBytes, err := h.readIndexHTML()
 	if err != nil {
+		logger.Error("meta HTML ServeParticipant: failed to read index.html", "path", h.spaIndexPath, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
