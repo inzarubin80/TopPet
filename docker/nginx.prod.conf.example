@@ -13,6 +13,7 @@ server {
 }
 
 # Frontend (www.top-pet.ru и top-pet.ru)
+# Весь трафик — на контейнер клиента (3000). Превью для ботов (User-Agent) настраивается внутри client/nginx.conf (map + proxy на API).
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -31,20 +32,7 @@ server {
     large_client_header_buffers 4 32k;
     client_header_buffer_size 32k;
 
-    # Превью в соцсетях: запросы к /contests/:id и /contests/:id/participants/:pid — на бэкенд (Go отдаёт HTML с og/twitter meta)
-    location ~ ^/contests/[^/]+(/participants/[^/]+)?$ {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 10s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-    }
-
-    # Проксирование на контейнер клиента
+    # Всё на контейнер клиента: там по User-Agent решают — отдать SPA или проксировать на API для превью (og/twitter)
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -54,9 +42,10 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_cache_bypass $http_upgrade;
         
-        # Таймауты
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
