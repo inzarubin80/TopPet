@@ -280,7 +280,7 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 		"twitter:image:alt": true,
 	})
 
-	// Participant: title = only pet name (no contest name), ≤50; description ≤160, CTA suffix, contest name prefix (plan)
+	// Participant: title = only pet name (no contest name), ≤50; description ≤160, CTA suffix, no contest name in preview
 	ogTitle := extractMetaContent(html, `property="og:title"`)
 	if n := utf8.RuneCountInString(ogTitle); n > 50 {
 		t.Errorf("participant og:title length %d > 50", n)
@@ -299,9 +299,8 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 	if !strings.HasSuffix(ogDesc, ctaSuffix) {
 		t.Errorf("participant og:description must end with CTA %q, got %q", ctaSuffix, ogDesc)
 	}
-	const contestPrefix = "Конкурс котиков. "
-	if !strings.HasPrefix(ogDesc, contestPrefix) {
-		t.Errorf("participant og:description must start with contest prefix %q, got %q", contestPrefix, ogDesc)
+	if strings.Contains(ogDesc, "Конкурс котиков") {
+		t.Errorf("participant og:description must not contain contest name, got %q", ogDesc)
 	}
 
 	// Design: #og-preview card with h1 and p

@@ -207,30 +207,18 @@ func participantTitleForOG(petName, contestTitle string) string {
 	return truncateRunes(petName, ogParticipantTitleMaxRunes)
 }
 
-// participantDescription builds og:description. If contestTitle is set, prepends "contestTitle. " so contest appears "on another line" in card. Then petDesc body (truncated to fit) + CTA. Total ≤ 160. If petDesc empty, "Голосуйте за [petName] на Top-Pet!" (or prefix + that when contestTitle set).
-func participantDescription(petName, petDesc, contestTitle string) string {
+// participantDescription builds og:description: one line from petDesc (max participantDescBodyMaxRunes) + CTA. Total ≤ 160. Contest name is not included. If petDesc empty, "Голосуйте за [petName] на Top-Pet!".
+func participantDescription(petName, petDesc string) string {
 	cta := participantCTASuffix
-	prefix := ""
-	if contestTitle != "" {
-		prefix = strings.TrimSpace(contestTitle) + ". "
-	}
 	if petDesc == "" {
-		base := "Голосуйте за " + petName + " на Top-Pet!"
-		if prefix != "" {
-			return truncateRunes(prefix+base, ogDescriptionMaxRunes)
-		}
-		return truncateRunes(base, ogDescriptionMaxRunes)
+		return truncateRunes("Голосуйте за "+petName+" на Top-Pet!", ogDescriptionMaxRunes)
 	}
 	oneLine := strings.TrimSpace(strings.ReplaceAll(petDesc, "\n", " "))
 	oneLine = strings.Join(strings.Fields(oneLine), " ")
-	maxBody := ogDescriptionMaxRunes - utf8.RuneCountInString(prefix) - utf8.RuneCountInString(cta)
-	if maxBody <= 0 {
-		return truncateRunes(prefix, ogDescriptionMaxRunes-utf8.RuneCountInString(cta)) + cta
+	if utf8.RuneCountInString(oneLine) > participantDescBodyMaxRunes {
+		oneLine = truncateRunes(oneLine, participantDescBodyMaxRunes)
 	}
-	if utf8.RuneCountInString(oneLine) > maxBody {
-		oneLine = truncateRunes(oneLine, maxBody)
-	}
-	return prefix + oneLine + cta
+	return oneLine + cta
 }
 
 // injectPreviewImage inserts a visible preview image in the body (after <body>), for crawlers and direct opens.
@@ -389,7 +377,7 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 		contestTitle = contest.Title
 	}
 	pageTitle := participantTitleForOG(participant.PetName, contestTitle)
-	description := participantDescription(participant.PetName, participant.PetDescription, contestTitle)
+	description := participantDescription(participant.PetName, participant.PetDescription)
 
 	imageURL := firstPhotoURLFromParticipant(participant)
 	if imageURL == "" {
