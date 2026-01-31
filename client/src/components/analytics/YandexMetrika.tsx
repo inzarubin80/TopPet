@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 declare global {
@@ -11,6 +11,7 @@ const YANDEX_METRIKA_SCRIPT = 'https://mc.yandex.ru/metrika/tag.js';
 
 export const YandexMetrika: React.FC = () => {
   const location = useLocation();
+  const [scriptReady, setScriptReady] = useState(false);
 
   const counterIdStr = process.env.REACT_APP_YANDEX_METRIKA_ID;
   const counterId = counterIdStr ? parseInt(counterIdStr, 10) : 0;
@@ -26,6 +27,7 @@ export const YandexMetrika: React.FC = () => {
         accurateTrackBounce: true,
         webvisor: true,
       });
+      setScriptReady(true);
     };
 
     if (window.ym) {
@@ -40,9 +42,9 @@ export const YandexMetrika: React.FC = () => {
   }, [isEnabled, counterId]);
 
   useEffect(() => {
-    if (!isEnabled || !window.ym) return;
+    if (!isEnabled || !scriptReady || !window.ym) return;
     window.ym(counterId, 'hit', window.location.href);
-  }, [isEnabled, counterId, location.pathname, location.search]);
+  }, [isEnabled, counterId, scriptReady, location.pathname, location.search]);
 
   return null;
 };
