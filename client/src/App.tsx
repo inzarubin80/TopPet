@@ -7,6 +7,7 @@ import { AppRoutes } from './routes';
 import { fetchCurrentUser } from './store/slices/authSlice';
 import { tokenStorage } from './utils/tokenStorage';
 import { ToastProvider } from './contexts/ToastContext';
+import { YandexMetrika } from './components/analytics/YandexMetrika';
 import { logger } from './utils/logger';
 import './App.css';
 
@@ -37,6 +38,7 @@ function App() {
       <Provider store={store}>
         <ToastProvider>
           <BrowserRouter>
+            <YandexMetrika />
             <AppContent />
           </BrowserRouter>
         </ToastProvider>
