@@ -78,6 +78,21 @@ func firstPhotoURLFromParticipant(p *model.Participant) string {
 	return photos[0].URL
 }
 
+// firstPhotoURLForOG returns URL for og:image: prefers ThumbURL when set (lighter for crawlers), else URL.
+func firstPhotoURLForOG(p *model.Participant) string {
+	if p == nil || len(p.Photos) == 0 {
+		return ""
+	}
+	photos := make([]*model.Photo, len(p.Photos))
+	copy(photos, p.Photos)
+	sort.Slice(photos, func(i, j int) bool { return photos[i].Position < photos[j].Position })
+	first := photos[0]
+	if first.ThumbURL != nil && *first.ThumbURL != "" {
+		return *first.ThumbURL
+	}
+	return first.URL
+}
+
 func (h *metaHTMLHandler) defaultImageURL() string {
 	return h.baseURL + "/og-default.png"
 }
@@ -379,7 +394,8 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 	pageTitle := participantTitleForOG(participant.PetName, contestTitle)
 	description := participantDescription(participant.PetName, participant.PetDescription)
 
-	imageURL := firstPhotoURLFromParticipant(participant)
+	// Prefer thumbnail for og:image so crawlers get a lighter image (heavy full-size can break preview)
+	imageURL := firstPhotoURLForOG(participant)
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
 	} else {
