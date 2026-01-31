@@ -15,28 +15,24 @@
 
 ## Где и как подключена Метрика
 
-### 1. Компонент
+### 1. Пакет и компонент
 
-**Файл:** `client/src/components/analytics/YandexMetrika.tsx`
-
-- React-компонент без разметки (return null).
+- Используется пакет **react-yandex-metrika** (YMInitializer + функция `ym`).
+- **Файл:** `client/src/components/analytics/YandexMetrika.tsx`
+- Компонент рендерит `YMInitializer` с `accounts={[counterId]}` и `options={...}` и внутренний трекер маршрутов.
 - Рендерится **внутри** `BrowserRouter` в `App.tsx`, чтобы иметь доступ к `useLocation()`.
-- ID счётчика берётся из переменной окружения `REACT_APP_YANDEX_METRIKA_ID` при сборке. Если переменная пустая или не число — компонент ничего не делает (логирует «отключена»).
+- ID счётчика берётся из переменной окружения `REACT_APP_YANDEX_METRIKA_ID` при сборке. Если переменная пустая или не число — компонент ничего не рендерит (return null).
 
-### 2. Загрузка скрипта
+### 2. Загрузка скрипта и инициализация
 
-- Скрипт подключается динамически: `document.createElement('script')`, `src = https://mc.yandex.ru/metrika/tag.js?id=${counterId}`, `async = true`, вставка в `document.head`.
-- Если при монтировании уже есть `window.ym` (например, скрипт подгружен с другой страницы), init вызывается сразу, без повторной загрузки скрипта.
+- Скрипт Метрики подключается пакетом **YMInitializer** при монтировании (один раз).
+- В `options` передаются: `clickmap`, `trackLinks`, `accurateTrackBounce`, `webvisor`, `trackHash`, `triggerEvent`.
 
-### 3. Инициализация и хиты
+### 3. Хиты (просмотры страниц)
 
-- После загрузки скрипта (событие `onload`) вызывается:
-  - `window.ym(counterId, 'init', { defer: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: true, trackHash: true, triggerEvent: true })` — для SPA используется `defer: true` (все просмотры отправляются только через hit).
-  - Сразу после init (без задержки) — первый хит: `window.ym(counterId, 'hit', url, { title: document.title, referer: document.referrer })`.
-- При смене маршрута вызывается `window.ym(counterId, 'hit', url, { title, referer })` в отдельном `useEffect`.
-- Защита от двойной инициализации: `useRef(initialized)` — скрипт не подгружается и init не вызывается повторно при повторном монтировании.
-
-Типизация: в том же файле объявлено `declare global { interface Window { ym?: (...) => void } }`.
+- Первый хит и хиты при смене маршрута отправляются через `ym('hit', url, { title: document.title, referer: document.referrer })` из пакета.
+- Внутренний компонент `YandexMetrikaRouteTracker` по `useLocation()` в `useEffect` при изменении `location.pathname` или `location.search` вызывает `ym('hit', window.location.href, hitOptions())`.
+- При первом монтировании тот же `useEffect` отправляет первый просмотр.
 
 ### 4. Переменная окружения
 
@@ -48,31 +44,22 @@
 
 **Файл:** `client/nginx.conf` (попадает в образ клиента и отдаёт статику)
 
-В блок `server` добавлен заголовок без `unsafe-eval` (по рекомендации эксперта):
+В блок `server` добавлен заголовок. **`unsafe-eval` оставлен в script-src:** без него tag.js загружается (200), но при выполнении использует eval и блокируется CSP — запросы к mc.yandex.ru/collect и watch не уходят.
 
 ```nginx
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://mc.yandex.ru https://yastatic.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.top-pet.ru https://mc.yandex.ru wss://api.top-pet.ru; img-src 'self' data: https: https://mc.yandex.ru; frame-src 'self' https://mc.yandex.ru; object-src 'none'; base-uri 'self';";
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval' https://mc.yandex.ru https://yastatic.net; ...";
 ```
 
-- `script-src`: `'self'`, `https://mc.yandex.ru`, `https://yastatic.net` (без `unsafe-eval`).
-- `connect-src`, `img-src`, `frame-src`: явно разрешён `https://mc.yandex.ru` для запросов и пикселя Метрики.
-
-**Важно:** если после деплоя в DevTools снова появится ошибка «CSP blocks the use of eval», в nginx нужно вернуть `'unsafe-eval'` в `script-src` и зафиксировать в документации, что tag.js в данной среде требует eval.
+- `script-src`: `'self'`, `'unsafe-eval'`, `https://mc.yandex.ru`, `https://yastatic.net` — без `unsafe-eval` данные Метрики не отправляются.
+- `connect-src`, `img-src`, `frame-src`: явно разрешён `https://mc.yandex.ru`.
 
 ---
 
 ## Что видно в браузере
 
-- В консоли при загрузке страницы по очереди появляются логи:
-  - `[YandexMetrika] инициализация: { counterId: 106546874 }`
-  - `[YandexMetrika] загрузка скрипта: { scriptUrl: 'https://mc.yandex.ru/metrika/tag.js?id=106546874' }`
-  - `[YandexMetrika] скрипт загружен, вызываем init`
-  - `[YandexMetrika] init: { counterId: 106546874 }`
-  - `[YandexMetrika] первый хит: { url: 'https://top-pet.ru/' }`
-- В Network видна успешная загрузка `tag.js?id=106546874` (200 OK).
-- При переходе по маршрутам в SPA логируется, например: `[YandexMetrika] хит при смене маршрута: { pathname: '...', url: '...' }`.
-
-То есть: скрипт загружается, init и hit вызываются с нужным counterId.
+- В Network видна успешная загрузка скрипта Метрики (tag.js) после загрузки страницы.
+- Просмотры отправляются через `ym('hit', url, options)` при первой загрузке и при каждом переходе по маршрутам SPA.
+- В консоли логов от компонента нет (в продакшене их не добавляли); при необходимости можно вызвать `ym('reachGoal', 'test')` после импорта `ym` из `react-yandex-metrika` для проверки.
 
 ---
 
@@ -89,13 +76,12 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' https:
 
 ---
 
-## Внесённые изменения (по рекомендациям эксперта)
+## Внесённые изменения (по рекомендациям эксперта и переход на пакет)
 
-- **init:** добавлены `defer: true` (SPA — все просмотры только через hit), `trackHash: true`, `triggerEvent: true`.
-- **Первый хит:** вызывается сразу после init (без задержки 150 ms), с options `{ title: document.title, referer: document.referrer }`.
-- **Хит при смене маршрута:** передаётся тот же options для вебвизора и источников трафика.
-- **Защита от двойной инициализации:** `useRef(initialized)` — скрипт и init выполняются один раз.
-- **CSP:** убран `unsafe-eval`; добавлены `https://yastatic.net` в script-src, явно `https://mc.yandex.ru` в img-src и frame-src, `object-src 'none'`, `base-uri 'self'`. При появлении ошибки eval в браузере — вернуть `'unsafe-eval'` в script-src.
+- **Пакет react-yandex-metrika:** инициализация через `YMInitializer`, хиты через `ym('hit', url, { title, referer })`.
+- **init (options):** `clickmap`, `trackLinks`, `accurateTrackBounce`, `webvisor`, `trackHash`, `triggerEvent`.
+- **Первый хит и при смене маршрута:** передаётся `{ title: document.title, referer: document.referrer }`.
+- **CSP:** см. раздел «Content Security Policy» выше; при ошибке eval в браузере — добавить `'unsafe-eval'` в script-src.
 
 ---
 
@@ -103,15 +89,15 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' https:
 
 - **«В реальном времени»** в кабинете Метрики — визиты должны отображаться сразу.
 - **Инкогнито:** открыть сайт без расширений, сделать 2–3 перехода по страницам, проверить «В реальном времени».
-- **Консоль браузера:** выполнить `ym(106546874, 'getClientID')` (должен вернуть ID); `ym(106546874, 'reachGoal', 'test')` — в Network должны появиться запросы к mc.yandex.ru.
+- **Консоль браузера:** после загрузки страницы можно проверить через глобальный объект Метрики (если доступен) или импортировать `ym` из `react-yandex-metrika` и вызвать `ym('reachGoal', 'test')` — в Network должны появиться запросы к mc.yandex.ru.
 - **Вебвизор:** в настройках счётчика включён «Вебвизор»; в разделе «Вебвизор» → «Записи» появляются сессии.
 - **Фильтры:** в настройках счётчика проверить вкладку «Фильтры» и опцию «Не учитывать мои визиты» (при необходимости отключить для проверки).
 
 ---
 
-## Альтернатива
+## Зависимость
 
-Можно рассмотреть пакет **react-yandex-metrika** (`YMInitializer` в App) для инициализации счётчика — без обязательной замены текущей реализации.
+В проекте используется пакет **react-yandex-metrika** (YMInitializer + ym). Официальной React-обёртки у Яндекса нет; при необходимости можно вернуться к кастомной загрузке tag.js и вызовам `window.ym(id, 'init', ...)` / `window.ym(id, 'hit', ...)`.
 
 ---
 

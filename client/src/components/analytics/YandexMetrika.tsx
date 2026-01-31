@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import ym, { YMInitializer } from 'react-yandex-metrika';
 
-declare global {
-  interface Window {
-    ym?: (id: number, action: string, ...args: unknown[]) => void;
-  }
-}
-
-const YANDEX_METRIKA_SCRIPT_BASE = 'https://mc.yandex.ru/metrika/tag.js';
+const METRIKA_OPTIONS = {
+  clickmap: true,
+  trackLinks: true,
+  accurateTrackBounce: true,
+  webvisor: true,
+  trackHash: true,
+  triggerEvent: true,
+};
 
 function hitOptions() {
   return {
@@ -16,68 +18,29 @@ function hitOptions() {
   };
 }
 
-export const YandexMetrika: React.FC = () => {
+const YandexMetrikaRouteTracker: React.FC = () => {
   const location = useLocation();
-  const [scriptReady, setScriptReady] = useState(false);
-  const initialized = useRef(false);
 
+  useEffect(() => {
+    ym('hit', window.location.href, hitOptions());
+  }, [location.pathname, location.search]);
+
+  return null;
+};
+
+export const YandexMetrika: React.FC = () => {
   const counterIdStr = process.env.REACT_APP_YANDEX_METRIKA_ID;
   const counterId = counterIdStr ? parseInt(counterIdStr, 10) : 0;
   const isEnabled = Number.isFinite(counterId) && counterId > 0;
 
-  useEffect(() => {
-    if (!isEnabled) {
-      console.log('[YandexMetrika] отключена:', { counterIdStr });
-      return;
-    }
-    if (initialized.current) return;
-    initialized.current = true;
+  if (!isEnabled) {
+    return null;
+  }
 
-    console.log('[YandexMetrika] инициализация:', { counterId });
-
-    const initMetrika = () => {
-      console.log('[YandexMetrika] init:', { counterId });
-      window.ym?.(counterId, 'init', {
-        defer: true,
-        clickmap: true,
-        trackLinks: true,
-        accurateTrackBounce: true,
-        webvisor: true,
-        trackHash: true,
-        triggerEvent: true,
-      });
-      setScriptReady(true);
-      const url = window.location.href;
-      console.log('[YandexMetrika] первый хит:', { url });
-      window.ym?.(counterId, 'hit', url, hitOptions());
-    };
-
-    if (window.ym) {
-      console.log('[YandexMetrika] window.ym уже есть, вызываем init');
-      initMetrika();
-    } else {
-      const scriptUrl = `${YANDEX_METRIKA_SCRIPT_BASE}?id=${counterId}`;
-      console.log('[YandexMetrika] загрузка скрипта:', { scriptUrl });
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = scriptUrl;
-      script.onload = () => {
-        console.log('[YandexMetrika] скрипт загружен, вызываем init');
-        initMetrika();
-      };
-      script.onerror = () => {
-        console.error('[YandexMetrika] ошибка загрузки скрипта:', scriptUrl);
-      };
-      document.head.appendChild(script);
-    }
-  }, [isEnabled, counterId, counterIdStr]);
-
-  useEffect(() => {
-    if (!isEnabled || !scriptReady || !window.ym) return;
-    const url = window.location.href;
-    console.log('[YandexMetrika] хит при смене маршрута:', { pathname: location.pathname, url });
-    window.ym(counterId, 'hit', url, hitOptions());
-  }, [isEnabled, counterId, scriptReady, location.pathname, location.search]);
-
-  return null;
+  return (
+    <>
+      <YMInitializer accounts={[counterId]} options={METRIKA_OPTIONS} />
+      <YandexMetrikaRouteTracker />
+    </>
+  );
 };
