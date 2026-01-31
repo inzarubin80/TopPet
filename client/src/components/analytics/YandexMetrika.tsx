@@ -28,6 +28,10 @@ export const YandexMetrika: React.FC = () => {
         webvisor: true,
       });
       setScriptReady(true);
+      // Первый хит — сразу после init, в следующем тике, чтобы скрипт Метрики успел обработать init
+      setTimeout(() => {
+        window.ym?.(counterId, 'hit', window.location.href);
+      }, 0);
     };
 
     if (window.ym) {
