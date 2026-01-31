@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { logger } from '../../utils/logger';
 
 declare global {
   interface Window {
@@ -7,7 +8,8 @@ declare global {
   }
 }
 
-const YANDEX_METRIKA_SCRIPT = 'https://mc.yandex.ru/metrika/tag.js';
+const YANDEX_METRIKA_SCRIPT_BASE = 'https://mc.yandex.ru/metrika/tag.js';
+const LOG_PREFIX = '[YandexMetrika]';
 
 export const YandexMetrika: React.FC = () => {
   const location = useLocation();
@@ -18,9 +20,15 @@ export const YandexMetrika: React.FC = () => {
   const isEnabled = Number.isFinite(counterId) && counterId > 0;
 
   useEffect(() => {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      logger.debug(`${LOG_PREFIX} отключена: REACT_APP_YANDEX_METRIKA_ID не задан или невалиден`, { counterIdStr });
+      return;
+    }
+
+    logger.info(`${LOG_PREFIX} инициализация счётчика`, { counterId });
 
     const initMetrika = () => {
+      logger.info(`${LOG_PREFIX} вызов ym(${counterId}, 'init', ...)`);
       window.ym?.(counterId, 'init', {
         clickmap: true,
         trackLinks: true,
@@ -28,26 +36,38 @@ export const YandexMetrika: React.FC = () => {
         webvisor: true,
       });
       setScriptReady(true);
-      // Первый хит — сразу после init, в следующем тике, чтобы скрипт Метрики успел обработать init
       setTimeout(() => {
-        window.ym?.(counterId, 'hit', window.location.href);
-      }, 0);
+        const url = window.location.href;
+        logger.info(`${LOG_PREFIX} первый хит`, { url });
+        window.ym?.(counterId, 'hit', url);
+      }, 150);
     };
 
     if (window.ym) {
+      logger.debug(`${LOG_PREFIX} window.ym уже есть, вызываем init`);
       initMetrika();
     } else {
+      const scriptUrl = `${YANDEX_METRIKA_SCRIPT_BASE}?id=${counterId}`;
+      logger.info(`${LOG_PREFIX} загрузка скрипта`, { scriptUrl });
       const script = document.createElement('script');
       script.async = true;
-      script.src = YANDEX_METRIKA_SCRIPT;
-      script.onload = initMetrika;
+      script.src = scriptUrl;
+      script.onload = () => {
+        logger.info(`${LOG_PREFIX} скрипт загружен, вызываем init`);
+        initMetrika();
+      };
+      script.onerror = () => {
+        logger.error(`${LOG_PREFIX} ошибка загрузки скрипта`, scriptUrl);
+      };
       document.head.appendChild(script);
     }
   }, [isEnabled, counterId]);
 
   useEffect(() => {
     if (!isEnabled || !scriptReady || !window.ym) return;
-    window.ym(counterId, 'hit', window.location.href);
+    const url = window.location.href;
+    logger.info(`${LOG_PREFIX} хит при смене маршрута`, { pathname: location.pathname, url });
+    window.ym(counterId, 'hit', url);
   }, [isEnabled, counterId, scriptReady, location.pathname, location.search]);
 
   return null;
