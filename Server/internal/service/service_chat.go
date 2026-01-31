@@ -98,7 +98,7 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 	// Broadcast update
 	if s.hub != nil {
 		payload := wsapp.MessageUpdatedPayload{
-			Type:      wsapp.MessageTypeChatMessage,
+			Type:      wsapp.MessageTypeMessageUpdated,
 			ContestID: message.ContestID,
 			Message:   message,
 		}
@@ -116,7 +116,7 @@ func (s *TopPetService) DeleteChatMessage(ctx context.Context, messageID model.C
 
 	if s.hub != nil {
 		payload := wsapp.MessageDeletedPayload{
-			Type:      wsapp.MessageTypeChatMessage,
+			Type:      wsapp.MessageTypeMessageDeleted,
 			ContestID: contestID,
 			MessageID: messageID,
 		}

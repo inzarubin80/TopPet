@@ -10,6 +10,8 @@ const (
 	MessageTypeVoteCreated          MessageType = "vote_created"
 	MessageTypeVoteDeleted          MessageType = "vote_deleted"
 	MessageTypeChatMessage          MessageType = "chat_message"
+	MessageTypeMessageUpdated       MessageType = "message_updated"
+	MessageTypeMessageDeleted       MessageType = "message_deleted"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
