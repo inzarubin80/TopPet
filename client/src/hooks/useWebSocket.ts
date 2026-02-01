@@ -105,8 +105,8 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       const client = wsClientRef.current;
       if (!client) return;
 
-      // Always refresh token before connecting to ensure it's fresh
-      const refreshTokenValue = refreshToken || tokenStorage.getRefreshToken();
+      // Use refresh token from storage only (not Redux) so effect doesn't re-run when Redux updates after refresh
+      const refreshTokenValue = tokenStorage.getRefreshToken();
       if (!refreshTokenValue) {
         logger.warn('[useWebSocket] No refresh token available for connection');
         return;
@@ -157,8 +157,6 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
         client.disconnect();
       }
     };
-    // refreshToken omitted: including it would re-run effect after refreshTokenAsync updates Redux, causing disconnect+reconnect loop
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contestId, dispatch]);
 
   // Update access token when it changes
