@@ -157,7 +157,9 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
         client.disconnect();
       }
     };
-  }, [contestId, refreshToken, dispatch]);
+    // refreshToken omitted: including it would re-run effect after refreshTokenAsync updates Redux, causing disconnect+reconnect loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contestId, dispatch]);
 
   // Update access token when it changes
   useEffect(() => {
