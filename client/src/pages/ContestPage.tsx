@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
@@ -45,6 +45,27 @@ const ContestPage: React.FC = () => {
   const participantIds = useSelector((state: RootState) =>
     id ? state.participants.byContest[id] || [] : []
   );
+  
+  // Sort participants by votes (descending) for voting and finished contests
+  const sortedParticipantIds = useMemo(() => {
+    if (!currentContest || !participantIds.length) {
+      return participantIds;
+    }
+    
+    const status = currentContest.status;
+    if (status === 'voting' || status === 'finished') {
+      // Sort by total_votes descending
+      return [...participantIds].sort((a, b) => {
+        const votesA = participants[a]?.total_votes ?? 0;
+        const votesB = participants[b]?.total_votes ?? 0;
+        return votesB - votesA; // Descending order
+      });
+    }
+    
+    // For draft and registration, keep original order (by created_at)
+    return participantIds;
+  }, [participantIds, participants, currentContest]);
+  
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
   const [isEditContestModalOpen, setIsEditContestModalOpen] = useState(false);
   const [isDeleteContestModalOpen, setIsDeleteContestModalOpen] = useState(false);
@@ -316,11 +337,11 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-loading">
               <LoadingSpinner size="medium" />
             </div>
-          ) : participantIds.length === 0 ? (
+          ) : sortedParticipantIds.length === 0 ? (
             <div className="contest-page-participants-empty">Нет участников</div>
           ) : (
             <div className="contest-page-participants-list">
-              {participantIds.map((participantId) => {
+              {sortedParticipantIds.map((participantId) => {
                 const participant = participants[participantId];
                 return participant ? (
                   <ParticipantCard 
