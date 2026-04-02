@@ -38,12 +38,24 @@ type (
 		UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
 		DeleteContest(ctx context.Context, contestID model.ContestID) error
 
+		// Nominations & jury criteria (организатор)
+		CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int) (*model.Nomination, error)
+		GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error)
+		UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string) (*model.Nomination, error)
+		ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
+		DeleteNomination(ctx context.Context, nominationID string) error
+		CountNominationsByContest(ctx context.Context, contestID model.ContestID) (int64, error)
+		ListJuryCriteriaByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryCriterion, error)
+		ReplaceContestJuryCriteria(ctx context.Context, contestID model.ContestID, items []*model.JuryCriterionInput) error
+		ListRegistrationFieldsByContest(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error)
+		ReplaceContestRegistrationFields(ctx context.Context, contestID model.ContestID, items []*model.RegistrationFieldInput) error
+
 		// Participant
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 		GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error)
 		ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error)
-		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string) (*model.Participant, error)
+		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
 		DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error
 
 		// Photos & Videos

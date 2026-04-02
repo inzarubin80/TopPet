@@ -1,27 +1,27 @@
 # Пример конфигурации внешнего Nginx для продакшена
-# Этот файл должен быть размещен на сервере 147.45.141.46
-# Обычно в /etc/nginx/sites-available/top-pet.ru
+# Этот файл должен быть размещён на сервере (см. docker/PRODUCTION.md)
+# Обычно в /etc/nginx/sites-available/shotcontest.ru
 
 # Редирект с HTTP на HTTPS
 server {
     listen 80;
     listen [::]:80;
-    server_name top-pet.ru www.top-pet.ru api.top-pet.ru;
+    server_name shotcontest.ru www.shotcontest.ru api.shotcontest.ru;
 
     # Редирект на HTTPS
     return 301 https://$host$request_uri;
 }
 
-# Frontend (www.top-pet.ru и top-pet.ru)
+# Frontend (www.shotcontest.ru и shotcontest.ru)
 # Весь трафик — на контейнер клиента (3000). Превью для ботов (User-Agent) настраивается внутри client/nginx.conf (map + proxy на API).
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name www.top-pet.ru top-pet.ru;
+    server_name www.shotcontest.ru shotcontest.ru;
 
     # SSL сертификаты (замените на пути к вашим сертификатам)
-    ssl_certificate /etc/letsencrypt/live/top-pet.ru/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/top-pet.ru/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/shotcontest.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/shotcontest.ru/privkey.pem;
 
     # SSL настройки
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -52,15 +52,15 @@ server {
     }
 }
 
-# Backend API (api.top-pet.ru)
+# Backend API (api.shotcontest.ru)
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name api.top-pet.ru;
+    server_name api.shotcontest.ru;
 
     # SSL сертификаты (можно использовать тот же или отдельный)
-    ssl_certificate /etc/letsencrypt/live/api.top-pet.ru/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.top-pet.ru/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.shotcontest.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.shotcontest.ru/privkey.pem;
 
     # SSL настройки
     ssl_protocols TLSv1.2 TLSv1.3;

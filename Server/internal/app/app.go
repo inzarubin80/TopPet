@@ -223,6 +223,32 @@ func (a *App) registerRoutes() {
 		a.service,
 	))
 
+	a.mux.Handle("GET /api/contests/{contestId}/nominations", appHttp.NewNominationsHandler("/api/contests/{contestId}/nominations", a.service))
+	a.mux.Handle("POST /api/contests/{contestId}/nominations", middleware.NewAuthMiddleware(
+		appHttp.NewNominationsHandler("/api/contests/{contestId}/nominations", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/contests/{contestId}/nominations/{nominationId}", middleware.NewAuthMiddleware(
+		appHttp.NewPatchNominationHandler("/api/contests/{contestId}/nominations/{nominationId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/contests/{contestId}/nominations/{nominationId}", middleware.NewAuthMiddleware(
+		appHttp.NewDeleteNominationHandler("/api/contests/{contestId}/nominations/{nominationId}", a.service),
+		a.service,
+	))
+
+	a.mux.Handle("GET /api/contests/{contestId}/jury-criteria", appHttp.NewJuryCriteriaListHandler("/api/contests/{contestId}/jury-criteria", a.service))
+	a.mux.Handle("PUT /api/contests/{contestId}/jury-criteria", middleware.NewAuthMiddleware(
+		appHttp.NewJuryCriteriaReplaceHandler("/api/contests/{contestId}/jury-criteria", a.service),
+		a.service,
+	))
+
+	a.mux.Handle("GET /api/contests/{contestId}/registration-fields", appHttp.NewRegistrationFieldsListHandler("/api/contests/{contestId}/registration-fields", a.service))
+	a.mux.Handle("PUT /api/contests/{contestId}/registration-fields", middleware.NewAuthMiddleware(
+		appHttp.NewRegistrationFieldsReplaceHandler("/api/contests/{contestId}/registration-fields", a.service),
+		a.service,
+	))
+
 	// Participants (public)
 	a.mux.Handle("GET /api/contests/{contestId}/participants", appHttp.NewListParticipantsHandler("/api/contests/{contestId}/participants", a.service))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}", appHttp.NewGetParticipantHandler("/api/contests/{contestId}/participants/{participantId}", a.service))

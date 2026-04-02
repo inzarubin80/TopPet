@@ -1,0 +1,24 @@
+-- +goose Up
+ALTER TABLE contests
+    ADD COLUMN IF NOT EXISTS tagline TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS rules_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS prize_text TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS logo_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS theme_color TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS sponsor_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS sponsor_logo_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS sponsor_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS cta_label_override TEXT NOT NULL DEFAULT '';
+
+-- +goose Down
+ALTER TABLE contests
+    DROP COLUMN IF EXISTS cta_label_override,
+    DROP COLUMN IF EXISTS sponsor_url,
+    DROP COLUMN IF EXISTS sponsor_logo_url,
+    DROP COLUMN IF EXISTS sponsor_name,
+    DROP COLUMN IF EXISTS theme_color,
+    DROP COLUMN IF EXISTS logo_url,
+    DROP COLUMN IF EXISTS prize_text,
+    DROP COLUMN IF EXISTS rules_url,
+    DROP COLUMN IF EXISTS tagline;
+

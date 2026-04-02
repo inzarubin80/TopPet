@@ -13,7 +13,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -33,8 +33,9 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	logger.Info("Creating participant", "handler", "CreateParticipantHandler", "contestID", contestID, "userID", userID)
 
 	var req struct {
-		PetName        string `json:"pet_name"`
-		PetDescription string `json:"pet_description"`
+		PetName             string                 `json:"pet_name"`
+		PetDescription      string                 `json:"pet_description"`
+		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -51,7 +52,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription)
+	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription, req.RegistrationAnswers)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)
 		uhttp.HandleError(w, err)

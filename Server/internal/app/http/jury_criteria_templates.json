@@ -1,0 +1,59 @@
+{
+  "scale_presets": [
+    {
+      "id": "stars-5",
+      "label": "1–5 (звёзды)",
+      "min": 1,
+      "max": 5,
+      "step": 1
+    },
+    {
+      "id": "decile",
+      "label": "1–10",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    },
+    {
+      "id": "percent",
+      "label": "0–100",
+      "min": 0,
+      "max": 100,
+      "step": 1
+    }
+  ],
+  "criteria_sets": [
+    {
+      "id": "photo-3",
+      "name": "Фотоконкурс: три критерия",
+      "criteria": [
+        {
+          "title": "Композиция и кадр",
+          "description": "Баланс, линии, фокус",
+          "scale_preset_id": "decile"
+        },
+        {
+          "title": "Свет и цвет",
+          "description": "Передача настроения, экспозиция",
+          "scale_preset_id": "decile"
+        },
+        {
+          "title": "Оригинальность",
+          "description": "Идея и исполнение",
+          "scale_preset_id": "decile"
+        }
+      ]
+    },
+    {
+      "id": "photo-1",
+      "name": "Одна общая оценка",
+      "criteria": [
+        {
+          "title": "Общее впечатление",
+          "description": "Впечатление от работы в целом",
+          "scale_preset_id": "stars-5"
+        }
+      ]
+    }
+  ]
+}

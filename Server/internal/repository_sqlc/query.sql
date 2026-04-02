@@ -67,9 +67,9 @@ WHERE id = $1;
 -- Contest Participants
 
 -- name: CreateParticipant :one
-INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
+INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, registration_answers)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers;
 
 -- name: GetParticipantByID :one
 SELECT
@@ -79,6 +79,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -93,6 +94,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -107,6 +109,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -116,9 +119,9 @@ ORDER BY cp.created_at ASC;
 
 -- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, registration_answers = $4, updated_at = NOW()
 WHERE id = $1
-RETURNING *;
+RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers;
 
 -- name: DeleteParticipant :exec
 DELETE FROM contest_participants
@@ -318,3 +321,66 @@ WHERE photo_id = $1;
 SELECT id, photo_id, user_id, created_at
 FROM photo_likes
 WHERE photo_id = ANY($1::uuid[]) AND user_id = $2;
+
+-- Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
+
+-- name: CreateNomination :one
+INSERT INTO contest_nominations (id, contest_id, title, description, sort_order)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetNominationByContest :one
+SELECT * FROM contest_nominations
+WHERE id = $1 AND contest_id = $2;
+
+-- name: UpdateNomination :one
+UPDATE contest_nominations
+SET title = $3, description = $4
+WHERE id = $1 AND contest_id = $2
+RETURNING *;
+
+-- name: ListNominationsByContest :many
+SELECT * FROM contest_nominations
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC;
+
+-- name: DeleteNomination :exec
+DELETE FROM contest_nominations WHERE id = $1;
+
+-- name: CountNominationsByContest :one
+SELECT count(1) FROM contest_nominations WHERE contest_id = $1;
+
+-- Contest jury criteria (общие для всего конкурса)
+
+-- name: ListJuryCriteriaByContest :many
+SELECT * FROM contest_jury_criteria
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC;
+
+-- name: DeleteJuryCriteriaByContest :exec
+DELETE FROM contest_jury_criteria WHERE contest_id = $1;
+
+-- name: InsertJuryCriterion :one
+INSERT INTO contest_jury_criteria (
+    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- Contest registration fields (поля заявки участника)
+
+-- name: ListRegistrationFieldsByContest :many
+SELECT id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+FROM contest_registration_fields
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC;
+
+-- name: DeleteRegistrationFieldsByContest :exec
+DELETE FROM contest_registration_fields WHERE contest_id = $1;
+
+-- name: InsertRegistrationField :one
+INSERT INTO contest_registration_fields (
+    id, contest_id, sort_order, label, field_type, required, enum_options
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, created_at;

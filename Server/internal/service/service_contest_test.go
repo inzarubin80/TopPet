@@ -86,11 +86,15 @@ func (m *mockRepository) AddUserAuthProviders(ctx context.Context, userData *mod
 func (m *mockRepository) GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error) { return nil, nil }
 func (m *mockRepository) SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error { return nil }
 // ListContests, UpdateContest, UpdateContestStatus, DeleteContest реализованы ниже с поддержкой моков
-func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error) { return nil, nil }
+func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+	return nil, nil
+}
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) { return nil, nil }
 func (m *mockRepository) GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error) { return nil, nil }
 func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error) { return nil, nil }
-func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string) (*model.Participant, error) { return nil, nil }
+func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+	return nil, nil
+}
 func (m *mockRepository) DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error { return nil }
 func (m *mockRepository) AddParticipantPhoto(ctx context.Context, participantID model.ParticipantID, url string, thumbURL *string) (*model.Photo, error) { return nil, nil }
 func (m *mockRepository) GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error) { return nil, nil }
@@ -120,6 +124,35 @@ func (m *mockRepository) GetPhotoLikeByUser(ctx context.Context, photoID string,
 func (m *mockRepository) CountPhotoLikes(ctx context.Context, photoID string) (int64, error) { return 0, nil }
 func (m *mockRepository) ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error) { return nil, nil }
 // CountVotesByContests реализован выше с поддержкой моков
+
+func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int) (*model.Nomination, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error) {
+	return nil, nil
+}
+func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string) (*model.Nomination, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+	return nil, nil
+}
+func (m *mockRepository) DeleteNomination(ctx context.Context, nominationID string) error { return nil }
+func (m *mockRepository) CountNominationsByContest(ctx context.Context, contestID model.ContestID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) ListJuryCriteriaByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryCriterion, error) {
+	return nil, nil
+}
+func (m *mockRepository) ReplaceContestJuryCriteria(ctx context.Context, contestID model.ContestID, items []*model.JuryCriterionInput) error {
+	return nil
+}
+func (m *mockRepository) ListRegistrationFieldsByContest(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error) {
+	return nil, nil
+}
+func (m *mockRepository) ReplaceContestRegistrationFields(ctx context.Context, contestID model.ContestID, items []*model.RegistrationFieldInput) error {
+	return nil
+}
 
 func TestTopPetService_CreateContest(t *testing.T) {
 	tests := []struct {

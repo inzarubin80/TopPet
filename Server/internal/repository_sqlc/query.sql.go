@@ -113,6 +113,17 @@ func (q *Queries) CountContests(ctx context.Context, dollar_1 string) (int64, er
 	return count, err
 }
 
+const countNominationsByContest = `-- name: CountNominationsByContest :one
+SELECT count(1) FROM contest_nominations WHERE contest_id = $1
+`
+
+func (q *Queries) CountNominationsByContest(ctx context.Context, contestID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countNominationsByContest, contestID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPhotoLikes = `-- name: CountPhotoLikes :one
 SELECT count(1) FROM photo_likes
 WHERE photo_id = $1
@@ -255,7 +266,7 @@ const createContest = `-- name: CreateContest :one
 
 INSERT INTO contests (id, created_by_user_id, title, description, status)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_ends_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override
 `
 
 type CreateContestParams struct {
@@ -284,23 +295,76 @@ func (q *Queries) CreateContest(ctx context.Context, arg *CreateContestParams) (
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Tier,
+		&i.CoverUrl,
+		&i.RegistrationEndsAt,
+		&i.VotingStartsAt,
+		&i.VotingEndsAt,
+		&i.RequireAcceptance,
+		&i.PublicVotingEnabled,
+		&i.Tagline,
+		&i.RulesUrl,
+		&i.PrizeText,
+		&i.LogoUrl,
+		&i.ThemeColor,
+		&i.SponsorName,
+		&i.SponsorLogoUrl,
+		&i.SponsorUrl,
+		&i.CtaLabelOverride,
+	)
+	return &i, err
+}
+
+const createNomination = `-- name: CreateNomination :one
+
+INSERT INTO contest_nominations (id, contest_id, title, description, sort_order)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, contest_id, title, description, sort_order, created_at
+`
+
+type CreateNominationParams struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	Title       string
+	Description string
+	SortOrder   int32
+}
+
+// Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
+func (q *Queries) CreateNomination(ctx context.Context, arg *CreateNominationParams) (*ContestNomination, error) {
+	row := q.db.QueryRow(ctx, createNomination,
+		arg.ID,
+		arg.ContestID,
+		arg.Title,
+		arg.Description,
+		arg.SortOrder,
+	)
+	var i ContestNomination
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.Title,
+		&i.Description,
+		&i.SortOrder,
+		&i.CreatedAt,
 	)
 	return &i, err
 }
 
 const createParticipant = `-- name: CreateParticipant :one
 
-INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at
+INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, registration_answers)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers
 `
 
 type CreateParticipantParams struct {
-	ID             pgtype.UUID
-	ContestID      pgtype.UUID
-	UserID         int64
-	PetName        string
-	PetDescription string
+	ID                  pgtype.UUID
+	ContestID           pgtype.UUID
+	UserID              int64
+	PetName             string
+	PetDescription      string
+	RegistrationAnswers []byte
 }
 
 // Contest Participants
@@ -311,6 +375,7 @@ func (q *Queries) CreateParticipant(ctx context.Context, arg *CreateParticipantP
 		arg.UserID,
 		arg.PetName,
 		arg.PetDescription,
+		arg.RegistrationAnswers,
 	)
 	var i ContestParticipant
 	err := row.Scan(
@@ -321,6 +386,7 @@ func (q *Queries) CreateParticipant(ctx context.Context, arg *CreateParticipantP
 		&i.PetDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RegistrationAnswers,
 	)
 	return &i, err
 }
@@ -332,10 +398,16 @@ VALUES ($1)
 RETURNING user_id, name, created_at
 `
 
+type CreateUserRow struct {
+	UserID    int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
 // Users
-func (q *Queries) CreateUser(ctx context.Context, name string) (*User, error) {
+func (q *Queries) CreateUser(ctx context.Context, name string) (*CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, name)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(&i.UserID, &i.Name, &i.CreatedAt)
 	return &i, err
 }
@@ -404,6 +476,24 @@ func (q *Queries) DeleteContestVoteByUser(ctx context.Context, arg *DeleteContes
 	var participant_id pgtype.UUID
 	err := row.Scan(&participant_id)
 	return participant_id, err
+}
+
+const deleteJuryCriteriaByContest = `-- name: DeleteJuryCriteriaByContest :exec
+DELETE FROM contest_jury_criteria WHERE contest_id = $1
+`
+
+func (q *Queries) DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteJuryCriteriaByContest, contestID)
+	return err
+}
+
+const deleteNomination = `-- name: DeleteNomination :exec
+DELETE FROM contest_nominations WHERE id = $1
+`
+
+func (q *Queries) DeleteNomination(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteNomination, id)
+	return err
 }
 
 const deleteParticipant = `-- name: DeleteParticipant :exec
@@ -480,7 +570,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 }
 
 const getContestByID = `-- name: GetContestByID :one
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at FROM contests WHERE id = $1
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_ends_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override FROM contests WHERE id = $1
 `
 
 func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error) {
@@ -494,6 +584,22 @@ func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Tier,
+		&i.CoverUrl,
+		&i.RegistrationEndsAt,
+		&i.VotingStartsAt,
+		&i.VotingEndsAt,
+		&i.RequireAcceptance,
+		&i.PublicVotingEnabled,
+		&i.Tagline,
+		&i.RulesUrl,
+		&i.PrizeText,
+		&i.LogoUrl,
+		&i.ThemeColor,
+		&i.SponsorName,
+		&i.SponsorLogoUrl,
+		&i.SponsorUrl,
+		&i.CtaLabelOverride,
 	)
 	return &i, err
 }
@@ -535,6 +641,30 @@ func (q *Queries) GetMaxPhotoPositionByParticipant(ctx context.Context, particip
 	return max_position, err
 }
 
+const getNominationByContest = `-- name: GetNominationByContest :one
+SELECT id, contest_id, title, description, sort_order, created_at FROM contest_nominations
+WHERE id = $1 AND contest_id = $2
+`
+
+type GetNominationByContestParams struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+}
+
+func (q *Queries) GetNominationByContest(ctx context.Context, arg *GetNominationByContestParams) (*ContestNomination, error) {
+	row := q.db.QueryRow(ctx, getNominationByContest, arg.ID, arg.ContestID)
+	var i ContestNomination
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.Title,
+		&i.Description,
+		&i.SortOrder,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
 const getParticipantByContestAndUser = `-- name: GetParticipantByContestAndUser :one
 SELECT
     cp.id,
@@ -543,6 +673,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -556,14 +687,15 @@ type GetParticipantByContestAndUserParams struct {
 }
 
 type GetParticipantByContestAndUserRow struct {
-	ID             pgtype.UUID
-	ContestID      pgtype.UUID
-	UserID         int64
-	UserName       string
-	PetName        string
-	PetDescription string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  pgtype.UUID
+	ContestID           pgtype.UUID
+	UserID              int64
+	UserName            string
+	PetName             string
+	PetDescription      string
+	RegistrationAnswers []byte
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) GetParticipantByContestAndUser(ctx context.Context, arg *GetParticipantByContestAndUserParams) (*GetParticipantByContestAndUserRow, error) {
@@ -576,6 +708,7 @@ func (q *Queries) GetParticipantByContestAndUser(ctx context.Context, arg *GetPa
 		&i.UserName,
 		&i.PetName,
 		&i.PetDescription,
+		&i.RegistrationAnswers,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -590,6 +723,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -598,14 +732,15 @@ WHERE cp.id = $1
 `
 
 type GetParticipantByIDRow struct {
-	ID             pgtype.UUID
-	ContestID      pgtype.UUID
-	UserID         int64
-	UserName       string
-	PetName        string
-	PetDescription string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  pgtype.UUID
+	ContestID           pgtype.UUID
+	UserID              int64
+	UserName            string
+	PetName             string
+	PetDescription      string
+	RegistrationAnswers []byte
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetParticipantByIDRow, error) {
@@ -618,6 +753,7 @@ func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetP
 		&i.UserName,
 		&i.PetName,
 		&i.PetDescription,
+		&i.RegistrationAnswers,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -736,9 +872,15 @@ SELECT user_id, name, created_at FROM users
 WHERE user_id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, userID int64) (*User, error) {
+type GetUserByIDRow struct {
+	UserID    int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, userID int64) (*GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, userID)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(&i.UserID, &i.Name, &i.CreatedAt)
 	return &i, err
 }
@@ -755,6 +897,51 @@ func (q *Queries) GetVideoByParticipantID(ctx context.Context, participantID pgt
 		&i.ID,
 		&i.ParticipantID,
 		&i.Url,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const insertJuryCriterion = `-- name: InsertJuryCriterion :one
+INSERT INTO contest_jury_criteria (
+    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at
+`
+
+type InsertJuryCriterionParams struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	Title       string
+	Description string
+	ScaleMin    int32
+	ScaleMax    int32
+	ScaleStep   int32
+	SortOrder   int32
+}
+
+func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error) {
+	row := q.db.QueryRow(ctx, insertJuryCriterion,
+		arg.ID,
+		arg.ContestID,
+		arg.Title,
+		arg.Description,
+		arg.ScaleMin,
+		arg.ScaleMax,
+		arg.ScaleStep,
+		arg.SortOrder,
+	)
+	var i ContestJuryCriterium
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.Title,
+		&i.Description,
+		&i.ScaleMin,
+		&i.ScaleMax,
+		&i.ScaleStep,
+		&i.SortOrder,
 		&i.CreatedAt,
 	)
 	return &i, err
@@ -884,7 +1071,7 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 }
 
 const listContests = `-- name: ListContests :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_ends_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override FROM contests
 WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -913,6 +1100,93 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Tier,
+			&i.CoverUrl,
+			&i.RegistrationEndsAt,
+			&i.VotingStartsAt,
+			&i.VotingEndsAt,
+			&i.RequireAcceptance,
+			&i.PublicVotingEnabled,
+			&i.Tagline,
+			&i.RulesUrl,
+			&i.PrizeText,
+			&i.LogoUrl,
+			&i.ThemeColor,
+			&i.SponsorName,
+			&i.SponsorLogoUrl,
+			&i.SponsorUrl,
+			&i.CtaLabelOverride,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listJuryCriteriaByContest = `-- name: ListJuryCriteriaByContest :many
+
+SELECT id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at FROM contest_jury_criteria
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC
+`
+
+// Contest jury criteria (общие для всего конкурса)
+func (q *Queries) ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error) {
+	rows, err := q.db.Query(ctx, listJuryCriteriaByContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ContestJuryCriterium
+	for rows.Next() {
+		var i ContestJuryCriterium
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContestID,
+			&i.Title,
+			&i.Description,
+			&i.ScaleMin,
+			&i.ScaleMax,
+			&i.ScaleStep,
+			&i.SortOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNominationsByContest = `-- name: ListNominationsByContest :many
+SELECT id, contest_id, title, description, sort_order, created_at FROM contest_nominations
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC
+`
+
+func (q *Queries) ListNominationsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestNomination, error) {
+	rows, err := q.db.Query(ctx, listNominationsByContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ContestNomination
+	for rows.Next() {
+		var i ContestNomination
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContestID,
+			&i.Title,
+			&i.Description,
+			&i.SortOrder,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -932,6 +1206,7 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.registration_answers,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -941,14 +1216,15 @@ ORDER BY cp.created_at ASC
 `
 
 type ListParticipantsByContestRow struct {
-	ID             pgtype.UUID
-	ContestID      pgtype.UUID
-	UserID         int64
-	UserName       string
-	PetName        string
-	PetDescription string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  pgtype.UUID
+	ContestID           pgtype.UUID
+	UserID              int64
+	UserName            string
+	PetName             string
+	PetDescription      string
+	RegistrationAnswers []byte
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) ListParticipantsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListParticipantsByContestRow, error) {
@@ -967,6 +1243,7 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, contestID pgtyp
 			&i.UserName,
 			&i.PetName,
 			&i.PetDescription,
+			&i.RegistrationAnswers,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1117,7 +1394,7 @@ const updateContest = `-- name: UpdateContest :one
 UPDATE contests
 SET title = $2, description = $3, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_ends_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override
 `
 
 type UpdateContestParams struct {
@@ -1137,6 +1414,22 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Tier,
+		&i.CoverUrl,
+		&i.RegistrationEndsAt,
+		&i.VotingStartsAt,
+		&i.VotingEndsAt,
+		&i.RequireAcceptance,
+		&i.PublicVotingEnabled,
+		&i.Tagline,
+		&i.RulesUrl,
+		&i.PrizeText,
+		&i.LogoUrl,
+		&i.ThemeColor,
+		&i.SponsorName,
+		&i.SponsorLogoUrl,
+		&i.SponsorUrl,
+		&i.CtaLabelOverride,
 	)
 	return &i, err
 }
@@ -1145,7 +1438,7 @@ const updateContestStatus = `-- name: UpdateContestStatus :one
 UPDATE contests
 SET status = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_ends_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override
 `
 
 type UpdateContestStatusParams struct {
@@ -1164,25 +1457,75 @@ func (q *Queries) UpdateContestStatus(ctx context.Context, arg *UpdateContestSta
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Tier,
+		&i.CoverUrl,
+		&i.RegistrationEndsAt,
+		&i.VotingStartsAt,
+		&i.VotingEndsAt,
+		&i.RequireAcceptance,
+		&i.PublicVotingEnabled,
+		&i.Tagline,
+		&i.RulesUrl,
+		&i.PrizeText,
+		&i.LogoUrl,
+		&i.ThemeColor,
+		&i.SponsorName,
+		&i.SponsorLogoUrl,
+		&i.SponsorUrl,
+		&i.CtaLabelOverride,
+	)
+	return &i, err
+}
+
+const updateNomination = `-- name: UpdateNomination :one
+UPDATE contest_nominations
+SET title = $3, description = $4
+WHERE id = $1 AND contest_id = $2
+RETURNING id, contest_id, title, description, sort_order, created_at
+`
+
+type UpdateNominationParams struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	Title       string
+	Description string
+}
+
+func (q *Queries) UpdateNomination(ctx context.Context, arg *UpdateNominationParams) (*ContestNomination, error) {
+	row := q.db.QueryRow(ctx, updateNomination,
+		arg.ID,
+		arg.ContestID,
+		arg.Title,
+		arg.Description,
+	)
+	var i ContestNomination
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.Title,
+		&i.Description,
+		&i.SortOrder,
+		&i.CreatedAt,
 	)
 	return &i, err
 }
 
 const updateParticipant = `-- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, registration_answers = $4, updated_at = NOW()
 WHERE id = $1
-RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at
+RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers
 `
 
 type UpdateParticipantParams struct {
-	ID             pgtype.UUID
-	PetName        string
-	PetDescription string
+	ID                  pgtype.UUID
+	PetName             string
+	PetDescription      string
+	RegistrationAnswers []byte
 }
 
 func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantParams) (*ContestParticipant, error) {
-	row := q.db.QueryRow(ctx, updateParticipant, arg.ID, arg.PetName, arg.PetDescription)
+	row := q.db.QueryRow(ctx, updateParticipant, arg.ID, arg.PetName, arg.PetDescription, arg.RegistrationAnswers)
 	var i ContestParticipant
 	err := row.Scan(
 		&i.ID,
@@ -1192,6 +1535,7 @@ func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantP
 		&i.PetDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RegistrationAnswers,
 	)
 	return &i, err
 }
@@ -1225,9 +1569,15 @@ type UpdateUserNameParams struct {
 	Name   string
 }
 
-func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*User, error) {
+type UpdateUserNameRow struct {
+	UserID    int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*UpdateUserNameRow, error) {
 	row := q.db.QueryRow(ctx, updateUserName, arg.UserID, arg.Name)
-	var i User
+	var i UpdateUserNameRow
 	err := row.Scan(&i.UserID, &i.Name, &i.CreatedAt)
 	return &i, err
 }
@@ -1319,6 +1669,93 @@ func (q *Queries) UpsertPhotoLike(ctx context.Context, arg *UpsertPhotoLikeParam
 		&i.ID,
 		&i.PhotoID,
 		&i.UserID,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const listRegistrationFieldsByContest = `-- name: ListRegistrationFieldsByContest :many
+SELECT id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+FROM contest_registration_fields
+WHERE contest_id = $1
+ORDER BY sort_order ASC, created_at ASC
+`
+
+func (q *Queries) ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestRegistrationField, error) {
+	rows, err := q.db.Query(ctx, listRegistrationFieldsByContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ContestRegistrationField
+	for rows.Next() {
+		var i ContestRegistrationField
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContestID,
+			&i.SortOrder,
+			&i.Label,
+			&i.FieldType,
+			&i.Required,
+			&i.EnumOptions,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteRegistrationFieldsByContest = `-- name: DeleteRegistrationFieldsByContest :exec
+DELETE FROM contest_registration_fields WHERE contest_id = $1
+`
+
+func (q *Queries) DeleteRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRegistrationFieldsByContest, contestID)
+	return err
+}
+
+const insertRegistrationField = `-- name: InsertRegistrationField :one
+INSERT INTO contest_registration_fields (
+    id, contest_id, sort_order, label, field_type, required, enum_options
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+`
+
+type InsertRegistrationFieldParams struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	SortOrder   int32
+	Label       string
+	FieldType   string
+	Required    bool
+	EnumOptions []byte
+}
+
+func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*ContestRegistrationField, error) {
+	row := q.db.QueryRow(ctx, insertRegistrationField,
+		arg.ID,
+		arg.ContestID,
+		arg.SortOrder,
+		arg.Label,
+		arg.FieldType,
+		arg.Required,
+		arg.EnumOptions,
+	)
+	var i ContestRegistrationField
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.SortOrder,
+		&i.Label,
+		&i.FieldType,
+		&i.Required,
+		&i.EnumOptions,
 		&i.CreatedAt,
 	)
 	return &i, err

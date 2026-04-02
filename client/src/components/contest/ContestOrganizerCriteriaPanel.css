@@ -1,0 +1,122 @@
+.contest-organizer-criteria {
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.contest-organizer-criteria-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.contest-organizer-criteria-hint {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.45;
+}
+
+.contest-organizer-criteria-muted {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.contest-organizer-criteria-block {
+  margin-bottom: 1.5rem;
+}
+
+.contest-organizer-criteria-block h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.contest-organizer-criteria-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.contest-organizer-criteria-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.contest-organizer-criteria-desc {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.contest-organizer-criteria-actions {
+  margin-top: 0.35rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.contest-organizer-criteria-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 28rem;
+}
+
+.contest-organizer-criteria-input,
+.contest-organizer-criteria-textarea {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.contest-organizer-criteria-criterion {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contest-organizer-criteria-scale-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.contest-organizer-criteria-scale-row label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  gap: 0.2rem;
+}
+
+.contest-organizer-criteria-scale-row input[type='number'] {
+  width: 5rem;
+}
+
+.contest-organizer-criteria-save {
+  margin-top: 0.75rem;
+}
+
+.contest-organizer-criteria-readonly {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.contest-organizer-criteria-readonly li {
+  margin-bottom: 0.35rem;
+}
+
+.contest-organizer-criteria-scale {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.contest-organizer-criteria-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

@@ -9,11 +9,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
 )
 
-func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error) {
+func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
 	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
 	
 	reposqlc := sqlc_repository.New(r.conn)
@@ -27,13 +28,18 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 	}
 	log.Printf("[Repository] CreateParticipant: Parsed contestUUID=%s", contestUUID.String())
 
+	ansBytes, err := registrationAnswersBytes(registrationAnswers)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("[Repository] CreateParticipant: Executing SQL insert")
 	participant, err := reposqlc.CreateParticipant(ctx, &sqlc_repository.CreateParticipantParams{
-		ID:             pgtype.UUID{Bytes: participantUUID, Valid: true},
-		ContestID:      pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:         int64(userID),
-		PetName:        petName,
-		PetDescription: petDescription,
+		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
+		ContestID:           pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:              int64(userID),
+		PetName:             petName,
+		PetDescription:      petDescription,
+		RegistrationAnswers: ansBytes,
 	})
 	if err != nil {
 		log.Printf("[Repository] CreateParticipant: ERROR - SQL insert failed: %v", err)
@@ -50,20 +56,21 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 	}
 
 	result := &model.Participant{
-		ID:             model.ParticipantID(participantIDStr),
-		ContestID:      model.ContestID(contestIDStr),
-		UserID:         model.UserID(participant.UserID),
-		PetName:        participant.PetName,
-		PetDescription: participant.PetDescription,
-		CreatedAt:      participant.CreatedAt.Time,
-		UpdatedAt:      participant.UpdatedAt.Time,
+		ID:                  model.ParticipantID(participantIDStr),
+		ContestID:           model.ContestID(contestIDStr),
+		UserID:              model.UserID(participant.UserID),
+		PetName:             participant.PetName,
+		PetDescription:      participant.PetDescription,
+		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CreatedAt:           participant.CreatedAt.Time,
+		UpdatedAt:           participant.UpdatedAt.Time,
 	}
 
 	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
 	if err == nil && user != nil {
 		result.UserName = user.Name
 	}
-	
+
 	log.Printf("[Repository] CreateParticipant: Successfully created participant: ID=%s, ContestID=%s, UserID=%d", result.ID, result.ContestID, result.UserID)
 	return result, nil
 }
@@ -92,14 +99,15 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 	}
 
 	return &model.Participant{
-		ID:             model.ParticipantID(participantIDStr),
-		ContestID:      model.ContestID(contestIDStr),
-		UserID:         model.UserID(participant.UserID),
-		UserName:       participant.UserName,
-		PetName:        participant.PetName,
-		PetDescription: participant.PetDescription,
-		CreatedAt:      participant.CreatedAt.Time,
-		UpdatedAt:      participant.UpdatedAt.Time,
+		ID:                  model.ParticipantID(participantIDStr),
+		ContestID:           model.ContestID(contestIDStr),
+		UserID:              model.UserID(participant.UserID),
+		UserName:            participant.UserName,
+		PetName:             participant.PetName,
+		PetDescription:      participant.PetDescription,
+		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CreatedAt:           participant.CreatedAt.Time,
+		UpdatedAt:           participant.UpdatedAt.Time,
 	}, nil
 }
 
@@ -130,14 +138,15 @@ func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contest
 	}
 
 	return &model.Participant{
-		ID:             model.ParticipantID(participantIDStr),
-		ContestID:      model.ContestID(contestIDStr),
-		UserID:         model.UserID(participant.UserID),
-		UserName:       participant.UserName,
-		PetName:        participant.PetName,
-		PetDescription: participant.PetDescription,
-		CreatedAt:      participant.CreatedAt.Time,
-		UpdatedAt:      participant.UpdatedAt.Time,
+		ID:                  model.ParticipantID(participantIDStr),
+		ContestID:           model.ContestID(contestIDStr),
+		UserID:              model.UserID(participant.UserID),
+		UserName:            participant.UserName,
+		PetName:             participant.PetName,
+		PetDescription:      participant.PetDescription,
+		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CreatedAt:           participant.CreatedAt.Time,
+		UpdatedAt:           participant.UpdatedAt.Time,
 	}, nil
 }
 
@@ -164,31 +173,37 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		}
 
 		result[i] = &model.Participant{
-			ID:             model.ParticipantID(participantIDStr),
-			ContestID:      model.ContestID(contestIDStr),
-			UserID:         model.UserID(p.UserID),
-			UserName:       p.UserName,
-			PetName:        p.PetName,
-			PetDescription: p.PetDescription,
-			CreatedAt:      p.CreatedAt.Time,
-			UpdatedAt:      p.UpdatedAt.Time,
+			ID:                  model.ParticipantID(participantIDStr),
+			ContestID:           model.ContestID(contestIDStr),
+			UserID:              model.UserID(p.UserID),
+			UserName:            p.UserName,
+			PetName:             p.PetName,
+			PetDescription:      p.PetDescription,
+			RegistrationAnswers: parseRegistrationAnswers(p.RegistrationAnswers),
+			CreatedAt:           p.CreatedAt.Time,
+			UpdatedAt:           p.UpdatedAt.Time,
 		}
 	}
 
 	return result, nil
 }
 
-func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string) (*model.Participant, error) {
+func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {
 		return nil, err
 	}
 
+	ansBytes, err := registrationAnswersBytes(registrationAnswers)
+	if err != nil {
+		return nil, err
+	}
 	participant, err := reposqlc.UpdateParticipant(ctx, &sqlc_repository.UpdateParticipantParams{
-		ID:             pgtype.UUID{Bytes: participantUUID, Valid: true},
-		PetName:        petName,
-		PetDescription: petDescription,
+		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
+		PetName:             petName,
+		PetDescription:      petDescription,
+		RegistrationAnswers: ansBytes,
 	})
 	if err != nil {
 		return nil, err
@@ -203,13 +218,14 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 	}
 
 	result := &model.Participant{
-		ID:             model.ParticipantID(participantIDStr),
-		ContestID:      model.ContestID(contestIDStr),
-		UserID:         model.UserID(participant.UserID),
-		PetName:        participant.PetName,
-		PetDescription: participant.PetDescription,
-		CreatedAt:      participant.CreatedAt.Time,
-		UpdatedAt:      participant.UpdatedAt.Time,
+		ID:                  model.ParticipantID(participantIDStr),
+		ContestID:           model.ContestID(contestIDStr),
+		UserID:              model.UserID(participant.UserID),
+		PetName:             participant.PetName,
+		PetDescription:      participant.PetDescription,
+		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CreatedAt:           participant.CreatedAt.Time,
+		UpdatedAt:           participant.UpdatedAt.Time,
 	}
 
 	user, err := r.GetUser(ctx, model.UserID(participant.UserID))

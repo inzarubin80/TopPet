@@ -70,6 +70,7 @@ func (r *Repository) GetContest(ctx context.Context, contestID model.ContestID) 
 		Title:           contest.Title,
 		Description:     contest.Description,
 		Status:          model.ContestStatus(contest.Status),
+		Tier:            contest.Tier,
 		CreatedAt:       contest.CreatedAt.Time,
 		UpdatedAt:       contest.UpdatedAt.Time,
 	}, nil
@@ -111,6 +112,7 @@ func (r *Repository) ListContests(ctx context.Context, status *model.ContestStat
 			Title:           c.Title,
 			Description:     c.Description,
 			Status:          model.ContestStatus(c.Status),
+			Tier:            c.Tier,
 			CreatedAt:       c.CreatedAt.Time,
 			UpdatedAt:       c.UpdatedAt.Time,
 		}

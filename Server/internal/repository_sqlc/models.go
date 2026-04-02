@@ -9,13 +9,29 @@ import (
 )
 
 type Contest struct {
-	ID              pgtype.UUID
-	CreatedByUserID int64
-	Title           string
-	Description     string
-	Status          string
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	ID                  pgtype.UUID
+	CreatedByUserID     int64
+	Title               string
+	Description         string
+	Status              string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	Tier                string
+	CoverUrl            string
+	RegistrationEndsAt  pgtype.Timestamptz
+	VotingStartsAt      pgtype.Timestamptz
+	VotingEndsAt        pgtype.Timestamptz
+	RequireAcceptance   bool
+	PublicVotingEnabled bool
+	Tagline             string
+	RulesUrl            string
+	PrizeText           string
+	LogoUrl             string
+	ThemeColor          string
+	SponsorName         string
+	SponsorLogoUrl      string
+	SponsorUrl          string
+	CtaLabelOverride    string
 }
 
 type ContestChatMessage struct {
@@ -37,14 +53,47 @@ type ContestComment struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type ContestJuryCriterium struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	Title       string
+	Description string
+	ScaleMin    int32
+	ScaleMax    int32
+	ScaleStep   int32
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+}
+
+type ContestNomination struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	Title       string
+	Description string
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+}
+
 type ContestParticipant struct {
-	ID             pgtype.UUID
-	ContestID      pgtype.UUID
-	UserID         int64
-	PetName        string
-	PetDescription string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID                  pgtype.UUID
+	ContestID           pgtype.UUID
+	UserID              int64
+	PetName             string
+	PetDescription      string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	RegistrationAnswers []byte
+}
+
+type ContestRegistrationField struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	SortOrder   int32
+	Label       string
+	FieldType   string
+	Required    bool
+	EnumOptions []byte
+	CreatedAt   pgtype.Timestamptz
 }
 
 type ContestParticipantPhoto struct {
@@ -76,12 +125,6 @@ type PhotoLike struct {
 	ID        pgtype.UUID
 	PhotoID   pgtype.UUID
 	UserID    int64
-	CreatedAt pgtype.Timestamptz
-}
-
-type User struct {
-	UserID    int64
-	Name      string
 	CreatedAt pgtype.Timestamptz
 }
 

@@ -1,0 +1,28 @@
+.organizer-cabinet-page {
+  padding: 24px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.organizer-cabinet-card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--card-bg, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.organizer-cabinet-muted {
+  margin-top: 8px;
+  color: rgba(0, 0, 0, 0.7);
+  line-height: 1.5;
+}
+
+.organizer-cabinet-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+}
+

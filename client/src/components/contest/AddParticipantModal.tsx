@@ -10,9 +10,90 @@ import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
-import { ContestID, Participant, Photo } from '../../types/models';
+import { ContestID, Participant, Photo, RegistrationField } from '../../types/models';
+import { listRegistrationFields } from '../../api/registrationFieldsApi';
 import { buildLoginUrl } from '../../utils/navigation';
 import './AddParticipantModal.css';
+
+function initRegistrationDraft(
+  participant: Participant | null | undefined,
+  fields: RegistrationField[]
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of fields) {
+    const v = participant?.registration_answers?.[f.id];
+    if (v === undefined || v === null) {
+      out[f.id] = f.field_type === 'boolean' ? 'false' : '';
+    } else if (typeof v === 'boolean') {
+      out[f.id] = v ? 'true' : 'false';
+    } else {
+      out[f.id] = String(v);
+    }
+  }
+  return out;
+}
+
+function buildRegistrationAnswers(
+  fields: RegistrationField[],
+  draft: Record<string, string>
+): { ok: true; answers: Record<string, string | number | boolean> } | { ok: false; message: string } {
+  const answers: Record<string, string | number | boolean> = {};
+  for (const f of fields) {
+    const raw = draft[f.id] ?? '';
+    const trimmed = raw.trim();
+
+    if (f.required) {
+      if (f.field_type === 'boolean') {
+        // всегда есть значение
+      } else if (f.field_type === 'number') {
+        if (trimmed === '') {
+          return { ok: false, message: `Заполните поле «${f.label}»` };
+        }
+      } else if (f.field_type === 'enum') {
+        if (!raw) {
+          return { ok: false, message: `Выберите значение для «${f.label}»` };
+        }
+      } else if (!trimmed) {
+        return { ok: false, message: `Заполните поле «${f.label}»` };
+      }
+    }
+
+    switch (f.field_type) {
+      case 'string': {
+        if (!f.required && !trimmed) {
+          break;
+        }
+        answers[f.id] = trimmed;
+        break;
+      }
+      case 'number': {
+        if (!f.required && trimmed === '') {
+          break;
+        }
+        const n = Number(raw.replace(',', '.'));
+        if (Number.isNaN(n)) {
+          return { ok: false, message: `Поле «${f.label}»: введите число` };
+        }
+        answers[f.id] = n;
+        break;
+      }
+      case 'boolean': {
+        answers[f.id] = raw === 'true';
+        break;
+      }
+      case 'enum': {
+        if (!f.required && !raw) {
+          break;
+        }
+        answers[f.id] = raw;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return { ok: true, answers };
+}
 
 interface AddParticipantModalProps {
   isOpen: boolean;
@@ -44,6 +125,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
+  const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
 
   const wasOpenRef = useRef(false);
 
@@ -88,6 +171,37 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError(null);
     }
   }, [isOpen, participant, isEditMode]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    let cancelled = false;
+    setRegistrationFields(null);
+    (async () => {
+      try {
+        const rows = await listRegistrationFields(contestId);
+        if (cancelled) {
+          return;
+        }
+        setRegistrationFields(rows);
+      } catch {
+        if (!cancelled) {
+          setRegistrationFields([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, contestId]);
+
+  useEffect(() => {
+    if (!isOpen || registrationFields === null) {
+      return;
+    }
+    setRegistrationAnswersDraft(initRegistrationDraft(participant, registrationFields));
+  }, [isOpen, participant, registrationFields]);
 
   const handlePhotoSelect = (file: File) => {
     // Validate file type
@@ -187,6 +301,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       return;
     }
 
+    const fields = registrationFields ?? [];
+    const built = buildRegistrationAnswers(fields, registrationAnswersDraft);
+    if (!built.ok) {
+      setError(built.message);
+      return;
+    }
+    const registrationPayload =
+      Object.keys(built.answers).length > 0 ? built.answers : undefined;
+
     try {
       setLoading(true);
       setError(null);
@@ -201,6 +324,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             data: {
               pet_name: petName.trim(),
               pet_description: petDescription.trim(),
+              ...(registrationPayload !== undefined ? { registration_answers: registrationPayload } : {}),
             },
           })
         );
@@ -300,6 +424,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             data: {
               pet_name: petName.trim(),
               pet_description: petDescription.trim(),
+              ...(registrationPayload !== undefined ? { registration_answers: registrationPayload } : {}),
             },
           })
         );
@@ -379,6 +504,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setExistingVideo(null);
       setVideoToDelete(false);
       setDraggedIndex(null);
+      setRegistrationFields(null);
+      setRegistrationAnswersDraft({});
       setError(null);
       onClose();
     }
@@ -402,7 +529,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           <Button
             type="submit"
             form="add-participant-form"
-            disabled={loading || uploadingMedia || !petName.trim()}
+            disabled={loading || uploadingMedia || !petName.trim() || registrationFields === null}
           >
             {loading || uploadingMedia ? <LoadingSpinner size="small" /> : (isEditMode ? 'Сохранить' : 'Добавить')}
           </Button>
@@ -426,6 +553,91 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           placeholder="Расскажите о вашем питомце..."
           disabled={loading || uploadingMedia}
         />
+
+        {registrationFields === null ? (
+          <p className="add-participant-registration-loading">Загрузка полей заявки…</p>
+        ) : registrationFields.length > 0 ? (
+          <div className="add-participant-registration-fields">
+            <p className="add-participant-registration-heading">Дополнительно в заявке</p>
+            {registrationFields.map((field) => (
+              <div key={field.id} className="add-participant-registration-row">
+                {field.field_type === 'string' && (
+                  <Input
+                    label={field.label + (field.required ? ' *' : '')}
+                    type="text"
+                    value={registrationAnswersDraft[field.id] ?? ''}
+                    onChange={(e) =>
+                      setRegistrationAnswersDraft((prev) => ({
+                        ...prev,
+                        [field.id]: e.target.value,
+                      }))
+                    }
+                    disabled={loading || uploadingMedia}
+                  />
+                )}
+                {field.field_type === 'number' && (
+                  <Input
+                    label={field.label + (field.required ? ' *' : '')}
+                    type="text"
+                    inputMode="decimal"
+                    value={registrationAnswersDraft[field.id] ?? ''}
+                    onChange={(e) =>
+                      setRegistrationAnswersDraft((prev) => ({
+                        ...prev,
+                        [field.id]: e.target.value,
+                      }))
+                    }
+                    disabled={loading || uploadingMedia}
+                  />
+                )}
+                {field.field_type === 'boolean' && (
+                  <label className="add-participant-registration-boolean">
+                    <input
+                      type="checkbox"
+                      checked={(registrationAnswersDraft[field.id] ?? 'false') === 'true'}
+                      onChange={(e) =>
+                        setRegistrationAnswersDraft((prev) => ({
+                          ...prev,
+                          [field.id]: e.target.checked ? 'true' : 'false',
+                        }))
+                      }
+                      disabled={loading || uploadingMedia}
+                    />
+                    <span>{field.label}</span>
+                    {field.required ? <span className="add-participant-registration-req"> *</span> : null}
+                  </label>
+                )}
+                {field.field_type === 'enum' && (
+                  <div className="add-participant-registration-enum">
+                    <label className="add-participant-registration-enum-label" htmlFor={`reg-enum-${field.id}`}>
+                      {field.label}
+                      {field.required ? ' *' : ''}
+                    </label>
+                    <select
+                      id={`reg-enum-${field.id}`}
+                      className="add-participant-registration-select"
+                      value={registrationAnswersDraft[field.id] ?? ''}
+                      onChange={(e) =>
+                        setRegistrationAnswersDraft((prev) => ({
+                          ...prev,
+                          [field.id]: e.target.value,
+                        }))
+                      }
+                      disabled={loading || uploadingMedia}
+                    >
+                      {!field.required && <option value="">— не выбрано —</option>}
+                      {(field.enum_options || []).map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div className="add-participant-media">
           <div className="add-participant-photos">

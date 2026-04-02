@@ -2,7 +2,7 @@
 
 ## Требования
 
-- Сервер с IP `147.45.141.46` (указан в DNS для `top-pet.ru`)
+- Сервер с IP `147.45.141.46` (указан в DNS для `shotcontest.ru`)
 - Docker и Docker Compose установлены
 - Nginx установлен на сервере
 - Доступ к серверу по SSH
@@ -53,16 +53,16 @@ REFRESH_TOKEN_SECRET=<strong-random-secret>
 STORE_SECRET=<strong-random-secret>
 
 # CORS
-CORS_ALLOWED_ORIGINS=https://www.top-pet.ru,https://top-pet.ru
+CORS_ALLOWED_ORIGINS=https://www.shotcontest.ru,https://shotcontest.ru
 
-# Превью ссылок в соцсетях (og/twitter) — обязательно для работы /contests/... и / на api.top-pet.ru
-BASE_URL=https://top-pet.ru
+# Превью ссылок в соцсетях (og/twitter) — обязательно для работы /contests/... и / на api.shotcontest.ru
+BASE_URL=https://shotcontest.ru
 # Путь к index.html внутри контейнера сервера. Файл встроен из Server/static/index.html при сборке.
 SPA_INDEX_PATH=/app/static/index.html
 
 # API URLs
-API_ROOT=https://api.top-pet.ru
-FRONTEND_URL=https://www.top-pet.ru
+API_ROOT=https://api.shotcontest.ru
+FRONTEND_URL=https://www.shotcontest.ru
 
 # OAuth (если используются)
 CLIENT_ID_YANDEX=<your-yandex-client-id>
@@ -84,16 +84,16 @@ sudo apt-get update
 sudo apt-get install certbot python3-certbot-nginx
 
 # Получение сертификатов для доменов
-sudo certbot certonly --nginx -d top-pet.ru -d www.top-pet.ru
-sudo certbot certonly --nginx -d api.top-pet.ru
+sudo certbot certonly --nginx -d shotcontest.ru -d www.shotcontest.ru
+sudo certbot certonly --nginx -d api.shotcontest.ru
 ```
 
 ### 5. Настройка Nginx
 
 ```bash
 # Копирование конфигурации
-sudo cp docker/nginx.prod.conf.example /etc/nginx/sites-available/top-pet.ru
-sudo ln -s /etc/nginx/sites-available/top-pet.ru /etc/nginx/sites-enabled/
+sudo cp docker/nginx.prod.conf.example /etc/nginx/sites-available/shotcontest.ru
+sudo ln -s /etc/nginx/sites-available/shotcontest.ru /etc/nginx/sites-enabled/
 
 # Проверка конфигурации
 sudo nginx -t
@@ -136,7 +136,7 @@ curl http://localhost:8080/api/ping  # Backend API
 
 1. **Nginx** уже настроен: запросы к `/contests/:id` и `/contests/:id/participants/:pid` проксируются на бэкенд (внешний nginx — см. `nginx.prod.conf.example`; внутри контейнера клиента — в `client/nginx.conf` на сервис `server`).
 
-2. **Бэкенд:** в окружении сервера заданы `BASE_URL` (например `https://top-pet.ru`) и `SPA_INDEX_PATH=/app/static/index.html`. Файл `index.html` встроен в образ из `Server/static/index.html` (минимальный шаблон для превью), монтировать `client/build` не нужно.
+2. **Бэкенд:** в окружении сервера заданы `BASE_URL` (например `https://shotcontest.ru`) и `SPA_INDEX_PATH=/app/static/index.html`. Файл `index.html` встроен в образ из `Server/static/index.html` (минимальный шаблон для превью), монтировать `client/build` не нужно.
 
 3. **Проверка:** отправьте ссылку на конкурс в Telegram или откройте [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) — в ответе должны быть теги `og:title`, `og:image` и т.д.
 
@@ -233,19 +233,19 @@ docker-compose -f docker-compose.prod.yml exec -T postgres psql -U postgres topp
 
 Убедитесь, что в `Server/.env` правильно указаны `CORS_ALLOWED_ORIGINS`:
 ```bash
-CORS_ALLOWED_ORIGINS=https://www.top-pet.ru,https://top-pet.ru
+CORS_ALLOWED_ORIGINS=https://www.shotcontest.ru,https://shotcontest.ru
 ```
 
-### Проблема: превью участника/конкурса на api.top-pet.ru не открывается (не отвечает)
+### Проблема: превью участника/конкурса на api.shotcontest.ru не открывается (не отвечает)
 
-URL вида `https://api.top-pet.ru/contests/{id}/participants/{pid}` должен отдавать HTML с og/twitter meta. Если запрос не отвечает, таймаут или 404:
+URL вида `https://api.shotcontest.ru/contests/{id}/participants/{pid}` должен отдавать HTML с og/twitter meta. Если запрос не отвечает, таймаут или 404:
 
 1. **Прокси перед API**  
-   Nginx (или другой прокси) для **api.top-pet.ru** должен проксировать **все** пути на Go, а не только `/api/`. В `nginx.prod.conf.example` для api.top-pet.ru указано `location / { proxy_pass http://localhost:8080; }` — запросы к `/contests/...` и к `/` должны уходить на бэкенд. Если у вас отдельная конфигурация (Coolify, Ingress и т.п.), добавьте правило: **GET /** и **GET /contests/** проксировать на тот же бэкенд, что и `/api/`.
+   Nginx (или другой прокси) для **api.shotcontest.ru** должен проксировать **все** пути на Go, а не только `/api/`. В `nginx.prod.conf.example` для api.shotcontest.ru указано `location / { proxy_pass http://localhost:8080; }` — запросы к `/contests/...` и к `/` должны уходить на бэкенд. Если у вас отдельная конфигурация (Coolify, Ingress и т.п.), добавьте правило: **GET /** и **GET /contests/** проксировать на тот же бэкенд, что и `/api/`.
 
 2. **Переменные окружения бэкенда**  
    В окружении сервера (контейнера) должны быть заданы:
-   - `BASE_URL` (например `https://top-pet.ru`)
+   - `BASE_URL` (например `https://shotcontest.ru`)
    - `SPA_INDEX_PATH=/app/static/index.html` (по умолчанию в docker-compose уже задан)  
    Если `SPA_INDEX_PATH` пустой, бэкенд отдаёт 404 на `/contests/...` и `/`.
 
@@ -255,24 +255,24 @@ URL вида `https://api.top-pet.ru/contests/{id}/participants/{pid}` долж�
 4. **Проверка с сервера**  
    ```bash
    # Ответ 200 и HTML с og:title в теле
-   curl -s -o /dev/null -w "%{http_code}" "https://api.top-pet.ru/contests/f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb/participants/0eaa49bc-0ee4-42c5-888e-635be4d31fc4"
+   curl -s -o /dev/null -w "%{http_code}" "https://api.shotcontest.ru/contests/f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb/participants/0eaa49bc-0ee4-42c5-888e-635be4d31fc4"
 
    # Локально до прокси (если есть доступ к хосту)
    curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/contests/f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb/participants/0eaa49bc-0ee4-42c5-888e-635be4d31fc4"
    ```  
    - **404:** участник/конкурс не найден в БД или не задан `SPA_INDEX_PATH`.  
    - **500:** смотреть логи сервера (`docker-compose logs server`), чаще всего ошибка чтения файла по `SPA_INDEX_PATH`.  
-   - **Нет ответа / таймаут:** запрос не доходит до Go — проверить прокси/балансировщик перед api.top-pet.ru.
+   - **Нет ответа / таймаут:** запрос не доходит до Go — проверить прокси/балансировщик перед api.shotcontest.ru.
 
 ### Проблема: в Telegram не показывается красивое превью ссылки (картинка + заголовок)
 
 1. **Какую ссылку кидать в Telegram**  
    Лучше кидать ссылку на **фронтенд**, а не на API:  
-   `https://www.top-pet.ru/contests/{id}/participants/{pid}`  
-   (не `https://api.top-pet.ru/...`). При запросе от бота nginx фронта отдаёт тот же HTML с og-тегами через прокси на API.
+   `https://www.shotcontest.ru/contests/{id}/participants/{pid}`  
+   (не `https://api.shotcontest.ru/...`). При запросе от бота nginx фронта отдаёт тот же HTML с og-тегами через прокси на API.
 
 2. **BASE_URL на бэкенде**  
-   Должен указывать на **сайт, где отдаётся картинка**, т.е. на фронт: `https://top-pet.ru` или `https://www.top-pet.ru`. Тогда `og:image` для превью по умолчанию будет `https://top-pet.ru/og-default.png` — этот файл отдаёт фронт (`client/public/og-default.png`). Если указать `BASE_URL=https://api.top-pet.ru`, картинка станет `api.top-pet.ru/og-default.png`, а API этот файл не отдаёт → превью без картинки.
+   Должен указывать на **сайт, где отдаётся картинка**, т.е. на фронт: `https://shotcontest.ru` или `https://www.shotcontest.ru`. Тогда `og:image` для превью по умолчанию будет `https://shotcontest.ru/og-default.png` — этот файл отдаёт фронт (`client/public/og-default.png`). Если указать `BASE_URL=https://api.shotcontest.ru`, картинка станет `api.shotcontest.ru/og-default.png`, а API этот файл не отдаёт → превью без картинки.
 
 3. **Фото участников**  
    В og-тегах подставляется URL фото из БД (S3/CDN). Он должен быть **абсолютным HTTPS** (например `https://cdn.../photo.jpg`), без авторизации, чтобы Telegram мог загрузить картинку.

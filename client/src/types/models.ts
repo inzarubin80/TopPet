@@ -15,15 +15,76 @@ export interface User {
   created_at: string;
 }
 
+export interface UserSearchHit {
+  id: UserID;
+  name: string;
+  email?: string;
+}
+
+export type ContestTier = 'free' | 'pro';
+
 export interface Contest {
   id: ContestID;
   created_by_user_id: UserID;
   title: string;
   description: string;
   status: ContestStatus;
+  tier?: ContestTier;
   total_votes?: number;
   created_at: string;
   updated_at: string;
+}
+
+/** Категория трека (без шкал на номинации — шкалы у критериев конкурса). */
+export interface Nomination {
+  id: string;
+  contest_id: ContestID;
+  title: string;
+  description: string;
+  sort_order: number;
+  created_at: string;
+}
+
+/** Критерий оценки жюри на весь конкурс. */
+export interface JuryCriterion {
+  id: string;
+  contest_id: ContestID;
+  title: string;
+  description: string;
+  scale_min: number;
+  scale_max: number;
+  scale_step: number;
+  sort_order: number;
+  created_at: string;
+}
+
+export type RegistrationFieldType = 'string' | 'number' | 'boolean' | 'enum';
+
+export interface RegistrationField {
+  id: string;
+  contest_id: ContestID;
+  sort_order: number;
+  label: string;
+  field_type: RegistrationFieldType;
+  required: boolean;
+  enum_options?: string[];
+  created_at: string;
+}
+
+export interface RegistrationFieldInput {
+  id?: string;
+  label: string;
+  field_type: RegistrationFieldType;
+  required: boolean;
+  enum_options?: string[];
+}
+
+export interface JuryMember {
+  id: string;
+  contest_id: ContestID;
+  user_id: UserID;
+  user_name?: string;
+  created_at: string;
 }
 
 export interface Participant {
@@ -33,6 +94,7 @@ export interface Participant {
   user_name?: string;
   pet_name: string;
   pet_description: string;
+  registration_answers?: Record<string, string | number | boolean>;
   photos?: Photo[];
   video?: Video;
   total_votes?: number;

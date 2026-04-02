@@ -15,7 +15,6 @@ import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
 import { ParticipantVotersModal } from '../components/contest/ParticipantVotersModal';
-import { EditContestModal } from '../components/contest/EditContestModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -28,6 +27,7 @@ import { logger } from '../utils/logger';
 import { useContestPermissions } from '../hooks/useContestPermissions';
 import { useContestWinners } from '../hooks/useContestWinners';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
+import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
 import './ContestPage.css';
 
 const ContestPage: React.FC = () => {
@@ -67,7 +67,6 @@ const ContestPage: React.FC = () => {
   }, [participantIds, participants, currentContest]);
   
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
-  const [isEditContestModalOpen, setIsEditContestModalOpen] = useState(false);
   const [isDeleteContestModalOpen, setIsDeleteContestModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditParticipantModalOpen, setIsEditParticipantModalOpen] = useState(false);
@@ -260,7 +259,7 @@ const ContestPage: React.FC = () => {
               <button
                 type="button"
                 className="contest-page-edit-button"
-                onClick={() => setIsEditContestModalOpen(true)}
+                onClick={() => navigate(`/contests/${currentContest.id}/edit`)}
                 aria-label="Редактировать конкурс"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -286,6 +285,8 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-description">
           <p>{currentContest.description || 'Нет описания'}</p>
         </div>
+
+        <ContestOrganizerCriteriaPanel contest={currentContest} isAdmin={isAdmin} readOnly />
 
         <div className="contest-page-participants">
           <div className="contest-page-participants-header">
@@ -428,11 +429,6 @@ const ContestPage: React.FC = () => {
 
       {currentContest && (
         <>
-          <EditContestModal
-            isOpen={isEditContestModalOpen}
-            onClose={() => setIsEditContestModalOpen(false)}
-            contest={currentContest}
-          />
           <DeleteContestModal
             isOpen={isDeleteContestModalOpen}
             onClose={() => setIsDeleteContestModalOpen(false)}

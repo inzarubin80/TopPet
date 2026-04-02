@@ -1,0 +1,209 @@
+/* Страница редактирования: плотная сетка, карточки, спокойная типографика */
+
+.edit-contest-page {
+  --edit-page-max: 38rem;
+  --edit-page-radius: 12px;
+  --edit-page-card-bg: #fff;
+  --edit-page-card-border: rgba(0, 0, 0, 0.06);
+  --edit-page-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --edit-page-accent: #1d4ed8;
+
+  min-height: 100%;
+  padding: 16px 18px 32px;
+}
+
+.edit-contest-page-inner {
+  max-width: var(--edit-page-max);
+  margin: 0 auto;
+}
+
+/* Шапка */
+.edit-contest-page-header {
+  margin-bottom: 20px;
+}
+
+.edit-contest-page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  font-size: var(--font-size-base-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--edit-page-accent);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.edit-contest-page-back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.edit-contest-page-back-icon {
+  font-size: 1.35em;
+  line-height: 1;
+  opacity: 0.85;
+  margin-right: 2px;
+}
+
+.edit-contest-page-heading {
+  padding-left: 1px;
+}
+
+.edit-contest-page-eyebrow {
+  margin: 0 0 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.edit-contest-page-title {
+  margin: 0 0 8px;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.edit-contest-page-lead {
+  margin: 0;
+  max-width: 34em;
+  font-size: var(--font-size-base-sm);
+  line-height: var(--line-height-relaxed);
+  color: #64748b;
+}
+
+/* Карточки-секции */
+.edit-contest-page-card {
+  background: var(--edit-page-card-bg);
+  border: 1px solid var(--edit-page-card-border);
+  border-radius: var(--edit-page-radius);
+  box-shadow: var(--edit-page-card-shadow);
+  padding: 18px 18px 20px;
+  margin-bottom: 12px;
+}
+
+.edit-contest-page-card--organizer {
+  padding: 16px 16px 18px;
+}
+
+.edit-contest-page-section-label {
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: #334155;
+  letter-spacing: -0.01em;
+}
+
+.edit-contest-page-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.edit-contest-page-error-inline {
+  margin-top: 12px;
+}
+
+/* Панель номинаций/критериев: компактнее только на этой странице */
+.edit-contest-page-organizer .contest-organizer-criteria {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-title {
+  margin: 0 0 6px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-hint {
+  margin: 0 0 14px;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-block {
+  margin-bottom: 1.1rem;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-block:last-child {
+  margin-bottom: 0;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-base-md);
+  font-weight: var(--font-weight-semibold);
+  color: #475569;
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-criterion {
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+.edit-contest-page-organizer .contest-organizer-criteria-form {
+  gap: 0.45rem;
+  max-width: none;
+}
+
+/* Футер с действием */
+.edit-contest-page-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+}
+
+/* Состояния загрузки и ошибки */
+.edit-contest-page-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 42vh;
+  padding: 24px;
+}
+
+.edit-contest-page-error {
+  max-width: var(--edit-page-max);
+  margin: 0 auto;
+  padding: 24px 18px;
+  font-size: var(--font-size-md);
+  color: #64748b;
+}
+
+@media (max-width: 480px) {
+  .edit-contest-page {
+    padding: 12px 14px 28px;
+  }
+
+  .edit-contest-page-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .edit-contest-page-card {
+    padding: 16px 14px 18px;
+  }
+
+  .edit-contest-page-footer {
+    padding-top: 12px;
+  }
+
+  .edit-contest-page-footer .btn {
+    width: 100%;
+  }
+}

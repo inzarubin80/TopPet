@@ -224,3 +224,65 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.add-participant-registration-loading {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.add-participant-registration-fields {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.add-participant-registration-heading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.add-participant-registration-row {
+  margin-bottom: 12px;
+}
+
+.add-participant-registration-boolean {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  margin: 4px 0 12px;
+}
+
+.add-participant-registration-boolean input {
+  margin-top: 2px;
+}
+
+.add-participant-registration-req {
+  color: #c62828;
+}
+
+.add-participant-registration-enum {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.add-participant-registration-enum-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.add-participant-registration-select {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  max-width: 100%;
+}

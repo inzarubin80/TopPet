@@ -8,7 +8,7 @@ import (
 	"toppet/server/internal/model"
 )
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string) (*model.Participant, error) {
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
 	
 	if petName == "" {
@@ -30,9 +30,21 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		return nil, errors.New("can only add participants in draft or registration status")
 	}
 
+	ans := registrationAnswers
+	if ans == nil {
+		ans = map[string]interface{}{}
+	}
+	fields, err := s.repository.ListRegistrationFieldsByContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateRegistrationAnswers(fields, ans); err != nil {
+		return nil, err
+	}
+
 	// Create participant
 	log.Printf("[Service] CreateParticipant: Creating participant in repository")
-	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, petName, petDescription)
+	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, petName, petDescription, ans)
 	if err != nil {
 		log.Printf("[Service] CreateParticipant: ERROR - Failed to create participant in repository: %v", err)
 		return nil, err
@@ -156,7 +168,7 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	return participants, nil
 }
 
-func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string) (*model.Participant, error) {
+func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
 	log.Printf("[Service] UpdateParticipant: participantID=%s, userID=%d", participantID, userID)
 	
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -186,8 +198,22 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, errors.New("can only update participant in draft or registration status")
 	}
 
+	merged := cloneAnswersMap(participant.RegistrationAnswers)
+	if registrationAnswers != nil {
+		for k, v := range *registrationAnswers {
+			merged[k] = v
+		}
+	}
+	fields, err := s.repository.ListRegistrationFieldsByContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateRegistrationAnswers(fields, merged); err != nil {
+		return nil, err
+	}
+
 	log.Printf("[Service] UpdateParticipant: Updating participant in repository")
-	updated, err := s.repository.UpdateParticipant(ctx, participantID, petName, petDescription)
+	updated, err := s.repository.UpdateParticipant(ctx, participantID, petName, petDescription, merged)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to update participant: %v", err)
 		return nil, err

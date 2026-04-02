@@ -61,11 +61,13 @@ export interface UpdateContestStatusRequest {
 export interface CreateParticipantRequest {
   pet_name: string;
   pet_description: string;
+  registration_answers?: Record<string, string | number | boolean>;
 }
 
 export interface UpdateParticipantRequest {
-  pet_name: string;
-  pet_description: string;
+  pet_name?: string;
+  pet_description?: string;
+  registration_answers?: Record<string, string | number | boolean>;
 }
 
 export interface CreateCommentRequest {

@@ -46,23 +46,76 @@ type (
 		Title           string        `json:"title"`
 		Description     string        `json:"description"`
 		Status          ContestStatus `json:"status"`
+		Tier            string        `json:"tier,omitempty"`
 		TotalVotes      int64         `json:"total_votes,omitempty"`
 		CreatedAt       time.Time     `json:"created_at"`
 		UpdatedAt       time.Time     `json:"updated_at"`
 	}
 
+	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).
+	Nomination struct {
+		ID          string    `json:"id"`
+		ContestID   ContestID `json:"contest_id"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		SortOrder   int       `json:"sort_order"`
+		CreatedAt   time.Time `json:"created_at"`
+	}
+
+	// JuryCriterion — критерий оценки жюри для всего конкурса (одинаков для всех номинаций).
+	JuryCriterion struct {
+		ID          string    `json:"id"`
+		ContestID   ContestID `json:"contest_id"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		ScaleMin    int32     `json:"scale_min"`
+		ScaleMax    int32     `json:"scale_max"`
+		ScaleStep   int32     `json:"scale_step"`
+		SortOrder   int32     `json:"sort_order"`
+		CreatedAt   time.Time `json:"created_at"`
+	}
+
+	JuryCriterionInput struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		ScaleMin    int32  `json:"scale_min"`
+		ScaleMax    int32  `json:"scale_max"`
+		ScaleStep   int32  `json:"scale_step"`
+	}
+
+	// RegistrationField — дополнительное поле заявки участника (настраивает организатор).
+	RegistrationField struct {
+		ID          string    `json:"id"`
+		ContestID   ContestID `json:"contest_id"`
+		SortOrder   int       `json:"sort_order"`
+		Label       string    `json:"label"`
+		FieldType   string    `json:"field_type"` // string | number | boolean | enum
+		Required    bool      `json:"required"`
+		EnumOptions []string  `json:"enum_options,omitempty"`
+		CreatedAt   time.Time `json:"created_at"`
+	}
+
+	RegistrationFieldInput struct {
+		ID          string   `json:"id,omitempty"`
+		Label       string   `json:"label"`
+		FieldType   string   `json:"field_type"`
+		Required    bool     `json:"required"`
+		EnumOptions []string `json:"enum_options,omitempty"`
+	}
+
 	Participant struct {
-		ID             ParticipantID `json:"id"`
-		ContestID      ContestID     `json:"contest_id"`
-		UserID         UserID        `json:"user_id"`
-		UserName       string        `json:"user_name,omitempty"`
-		PetName        string        `json:"pet_name"`
-		PetDescription string        `json:"pet_description"`
-		Photos         []*Photo      `json:"photos,omitempty"`
-		Video          *Video        `json:"video,omitempty"`
-		TotalVotes     int64         `json:"total_votes,omitempty"`
-		CreatedAt      time.Time     `json:"created_at"`
-		UpdatedAt      time.Time     `json:"updated_at"`
+		ID                  ParticipantID          `json:"id"`
+		ContestID           ContestID              `json:"contest_id"`
+		UserID              UserID                 `json:"user_id"`
+		UserName            string                 `json:"user_name,omitempty"`
+		PetName             string                 `json:"pet_name"`
+		PetDescription      string                 `json:"pet_description"`
+		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
+		Photos              []*Photo               `json:"photos,omitempty"`
+		Video               *Video                 `json:"video,omitempty"`
+		TotalVotes          int64                  `json:"total_votes,omitempty"`
+		CreatedAt           time.Time              `json:"created_at"`
+		UpdatedAt           time.Time              `json:"updated_at"`
 	}
 
 	Photo struct {

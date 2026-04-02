@@ -1,6 +1,6 @@
 # Нагрузочное тестирование (k6)
 
-Сценарии нагрузочного тестирования для top-pet.ru и api.top-pet.ru. Инструмент — [k6](https://k6.io/) (Grafana Labs).
+Сценарии нагрузочного тестирования для shotcontest.ru и api.shotcontest.ru. Инструмент — [k6](https://k6.io/) (Grafana Labs).
 
 ## Установка k6
 
@@ -41,8 +41,8 @@ ID по умолчанию (можно переопределить переме
 
 **По умолчанию** скрипты обращаются к:
 
-- API: `https://api.top-pet.ru`
-- Фронт: `https://top-pet.ru`
+- API: `https://api.shotcontest.ru`
+- Фронт: `https://www.shotcontest.ru`
 
 Запуск из корня репозитория:
 

@@ -14,7 +14,7 @@ import (
 type (
 	serviceUpdateParticipant interface {
 		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
-		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string) (*model.Participant, error)
+		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error)
 	}
 
 	UpdateParticipantHandler struct {
@@ -40,8 +40,9 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	log.Printf("[UpdateParticipantHandler] Updating participant %s for user %d", participantID, userID)
 
 	var req struct {
-		PetName        *string `json:"pet_name"`
-		PetDescription *string `json:"pet_description"`
+		PetName               *string                 `json:"pet_name"`
+		PetDescription        *string                 `json:"pet_description"`
+		RegistrationAnswers   *map[string]interface{} `json:"registration_answers"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -55,8 +56,8 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	// For now, we'll require both fields or get them from service
 	// Actually, service should handle getting current values if fields are empty
 	// Let's require at least one field to be provided
-	if req.PetName == nil && req.PetDescription == nil {
-		log.Printf("[UpdateParticipantHandler] ERROR: At least one field (pet_name or pet_description) must be provided")
+	if req.PetName == nil && req.PetDescription == nil && req.RegistrationAnswers == nil {
+		log.Printf("[UpdateParticipantHandler] ERROR: At least one field must be provided")
 		uhttp.HandleError(w, uhttp.NewBadRequestError("at least one field must be provided", nil))
 		return
 	}
@@ -89,7 +90,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	log.Printf("[UpdateParticipantHandler] Request data: pet_name=%s, pet_description=%s", petName, petDescription)
 
-	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, petName, petDescription)
+	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, petName, petDescription, req.RegistrationAnswers)
 	if err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to update participant: %v", err)
 		uhttp.HandleError(w, err)

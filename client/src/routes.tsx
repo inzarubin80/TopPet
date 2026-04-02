@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import ContestPage from './pages/ContestPage';
 import ParticipantPage from './pages/ParticipantPage';
 import CreateContestPage from './pages/CreateContestPage';
+import EditContestPage from './pages/EditContestPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import { AppHeader } from './components/common/AppHeader';
@@ -45,6 +46,14 @@ export const AppRoutes: React.FC = () => {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/contests/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditContestPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/contests/:id" element={<ContestPage />} />
         <Route path="/contests/:id/participants/:participantId" element={<ParticipantPage />} />
         <Route

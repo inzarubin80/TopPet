@@ -5,12 +5,12 @@
  *
  * Usage:
  *   k6 run load/k6-frontend.js
- *   FRONT_BASE=https://top-pet.ru k6 run load/k6-frontend.js
+ *   FRONT_BASE=https://www.shotcontest.ru k6 run load/k6-frontend.js
  */
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const FRONT_BASE = __ENV.FRONT_BASE || 'https://top-pet.ru';
+const FRONT_BASE = __ENV.FRONT_BASE || 'https://www.shotcontest.ru';
 const CONTEST_ID = __ENV.CONTEST_ID || 'f4ba61d5-9ce4-411a-a533-2e90c4e1e3eb';
 const PARTICIPANT_ID = __ENV.PARTICIPANT_ID || 'ca0f6ed7-41a5-49bb-9c3d-69752c65950e';
 
