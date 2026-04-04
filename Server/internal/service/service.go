@@ -24,18 +24,25 @@ type (
 		CreateUser(ctx context.Context, name string) (*model.User, error)
 		CreateUserFromProvider(ctx context.Context, userData *model.UserProfileFromProvider) (*model.User, error)
 		GetUser(ctx context.Context, userID model.UserID) (*model.User, error)
+		GetUserRole(ctx context.Context, userID model.UserID) (string, error)
 		UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error)
+		ListUsersForAdmin(ctx context.Context, limit, offset int32) ([]*model.User, error)
+		CountUsers(ctx context.Context) (int64, error)
+		CountSystemAdmins(ctx context.Context) (int64, error)
+		UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error)
 		GetUserAuthProvidersByProviderUid(ctx context.Context, providerUID, provider string) (*model.UserAuthProvider, error)
 		AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error)
 		GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error)
 		SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error
+		SetUserEmailIfEmpty(ctx context.Context, userID model.UserID, email string) error
 
 		// Contest
 		CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error)
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
 		ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
-		UpdateContest(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error)
+		UpdateContest(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error)
 		UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
+		ListContestsForStatusAutomation(ctx context.Context) ([]*model.Contest, error)
 		DeleteContest(ctx context.Context, contestID model.ContestID) error
 
 		// Nominations & jury criteria (организатор)
@@ -50,12 +57,26 @@ type (
 		ListRegistrationFieldsByContest(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error)
 		ReplaceContestRegistrationFields(ctx context.Context, contestID model.ContestID, items []*model.RegistrationFieldInput) error
 
+		// Jury members & user search
+		ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error)
+		AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
+		RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error
+		CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error)
+		IsContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (bool, error)
+		UpsertContestJuryScore(ctx context.Context, participantID model.ParticipantID, criterionID string, userID model.UserID, score int32) (*model.JuryScore, error)
+		ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error)
+		SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error)
+		SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
+		SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error)
+
 		// Participant
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
-		GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error)
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error)
+		GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error)
 		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
+		MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error
+		SetParticipantSubmissionStatus(ctx context.Context, participantID model.ParticipantID, status string, submissionComment *string) (*model.Participant, error)
 		DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error
 
 		// Photos & Videos
@@ -68,9 +89,11 @@ type (
 		DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error
 
 		// Votes
-		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
-		GetContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error)
-		DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error)
+		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error)
+		GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error)
+		ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error)
+		DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error)
+		ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error)
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error)
 		CountVotesByContests(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)
@@ -82,6 +105,8 @@ type (
 		ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, limit, offset int) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
 		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
+		ListStaffCommentNotificationsForUser(ctx context.Context, userID model.UserID) ([]*model.StaffCommentNotification, error)
+		UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error
 
 		// Chat
 		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool) (*model.ChatMessage, error)

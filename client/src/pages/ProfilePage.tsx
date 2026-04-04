@@ -9,6 +9,12 @@ import { getProfileReferrer, clearProfileReferrer } from '../utils/navigation';
 import * as authApi from '../api/authApi';
 import './ProfilePage.css';
 
+const SYSTEM_ROLE_LABEL: Record<string, string> = {
+  user: 'Пользователь',
+  contest_admin: 'Администратор конкурса',
+  system_admin: 'Администратор системы',
+};
+
 const ProfilePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -53,7 +59,7 @@ const ProfilePage: React.FC = () => {
     clearProfileReferrer();
     
     // Список защищенных страниц, на которые нельзя редиректить после logout
-    const protectedPages = ['/profile', '/create-contest'];
+    const protectedPages = ['/profile', '/create-contest', '/admin'];
     
     // Редиректим на сохраненный URL, если он есть, внутренний и не защищенный
     // Также проверяем, что referrer не равен текущей странице профиля
@@ -91,6 +97,9 @@ const ProfilePage: React.FC = () => {
           <div className="profile-title">
             <h1>Профиль</h1>
             <p>Управляйте своим отображаемым именем</p>
+            <p className="profile-system-role">
+              Роль в системе: {SYSTEM_ROLE_LABEL[user?.role || 'user'] || user?.role || 'Пользователь'}
+            </p>
           </div>
         </div>
 

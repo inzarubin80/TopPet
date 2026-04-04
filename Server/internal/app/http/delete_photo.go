@@ -12,7 +12,6 @@ import (
 
 type (
 	serviceDeletePhoto interface {
-		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 		DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string, userID model.UserID) error
 	}
 

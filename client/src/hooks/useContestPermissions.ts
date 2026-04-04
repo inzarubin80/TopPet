@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Contest, UserID } from '../types/models';
+import { Contest, User } from '../types/models';
+import { userCanManageContest } from '../utils/contestPermissions';
 
 interface UseContestPermissionsResult {
   isAdmin: boolean;
@@ -13,10 +14,10 @@ interface UseContestPermissionsResult {
  */
 export const useContestPermissions = (
   contest: Contest | null | undefined,
-  currentUserId: UserID | undefined
+  currentUser: User | null | undefined
 ): UseContestPermissionsResult => {
   return useMemo(() => {
-    if (!contest || !currentUserId) {
+    if (!contest || !currentUser?.id) {
       return {
         isAdmin: false,
         canManageParticipants: false,
@@ -25,7 +26,8 @@ export const useContestPermissions = (
       };
     }
 
-    const isAdmin = contest.created_by_user_id === currentUserId;
+    const currentUserId = currentUser.id;
+    const isAdmin = userCanManageContest(contest, currentUserId, currentUser);
     const canManageParticipants = isAdmin && (contest.status === 'draft' || contest.status === 'registration');
     const canVote = contest.status === 'voting';
     const canEdit = isAdmin && (contest.status === 'draft' || contest.status === 'registration');
@@ -36,5 +38,5 @@ export const useContestPermissions = (
       canVote,
       canEdit,
     };
-  }, [contest, currentUserId]);
+  }, [contest, currentUser]);
 };

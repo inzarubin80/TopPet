@@ -9,10 +9,41 @@ import CreateContestPage from './pages/CreateContestPage';
 import EditContestPage from './pages/EditContestPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import { AppHeader } from './components/common/AppHeader';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useToast } from './contexts/ToastContext';
 import { buildLoginUrl } from './utils/navigation';
+
+const ContestCreatorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const role = useSelector((state: RootState) => state.auth.user?.role);
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    const returnUrl = `${location.pathname}${location.search}`;
+    return <Navigate to={buildLoginUrl(returnUrl)} replace />;
+  }
+  if (role !== 'system_admin' && role !== 'contest_admin') {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
+
+const SystemAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const role = useSelector((state: RootState) => state.auth.user?.role);
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    const returnUrl = `${location.pathname}${location.search}`;
+    return <Navigate to={buildLoginUrl(returnUrl)} replace />;
+  }
+  if (role !== 'system_admin') {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -59,9 +90,9 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/create-contest"
           element={
-            <ProtectedRoute>
+            <ContestCreatorRoute>
               <CreateContestPage />
-            </ProtectedRoute>
+            </ContestCreatorRoute>
           }
         />
         <Route
@@ -70,6 +101,14 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <SystemAdminRoute>
+              <AdminUsersPage />
+            </SystemAdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

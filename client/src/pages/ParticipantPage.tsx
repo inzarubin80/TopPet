@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { fetchParticipant, fetchParticipantsByContest } from '../store/slices/participantsSlice';
 import { fetchComments, createComment, updateComment, deleteComment } from '../store/slices/commentsSlice';
 import { fetchContest } from '../store/slices/contestsSlice';
+import { fetchStaffCommentNotifications } from '../store/slices/notificationsSlice';
 import { Comment as ParticipantComment } from '../types/models';
 import { VoteButton } from '../components/contest/VoteButton';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
@@ -17,11 +18,14 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useParticipantPermissions } from '../hooks/useParticipantPermissions';
 import { ParticipantMetaTags } from '../components/seo/ParticipantMetaTags';
 import { descriptionWithBreaks } from '../utils/formatText';
+import { userCanManageContest } from '../utils/contestPermissions';
+import { ParticipantJuryScoresPanel } from '../components/contest/ParticipantJuryScoresPanel';
 import './ParticipantPage.css';
 
 const ParticipantPage: React.FC = () => {
   const { id: contestId, participantId } = useParams<{ id: string; participantId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const participant = useSelector((state: RootState) =>
     participantId ? state.participants.items[participantId] : undefined
@@ -29,16 +33,22 @@ const ParticipantPage: React.FC = () => {
   const comments = useSelector((state: RootState) =>
     participantId ? state.comments.items[participantId] || [] : []
   ) as ParticipantComment[];
-  const { loading } = useSelector((state: RootState) => state.participants);
+  const commentsLoading = useSelector((state: RootState) => state.comments.loading);
   const { currentContest, loading: contestLoading } = useSelector((state: RootState) => state.contests);
-  const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const currentUserId = currentUser?.id;
   const { isOwner, canEdit } = useParticipantPermissions(
     participant,
     currentUserId,
-    currentContest?.status || 'draft'
+    currentContest?.status || 'draft',
+    currentContest?.public_voting_enabled ?? true
   );
   const canComment = !!(currentContest && (currentContest.status === 'registration' || currentContest.status === 'voting'));
-  const isContestOwner = currentContest && currentUserId && currentContest.created_by_user_id === currentUserId;
+  const isContestOwner =
+    !!currentContest &&
+    !!currentUserId &&
+    userCanManageContest(currentContest, currentUserId, currentUser ?? undefined);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -47,17 +57,38 @@ const ParticipantPage: React.FC = () => {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [openMenuCommentId, setOpenMenuCommentId] = useState<string | null>(null);
+  const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
 
   useWebSocket(contestId ?? null, participantId ?? null);
 
   useEffect(() => {
-    if (contestId && participantId) {
-      dispatch(fetchContest(contestId));
-      dispatch(fetchParticipant({ contestId, participantId }));
-      dispatch(fetchComments({ participantId, limit: 50, offset: 0 }));
+    if (!contestId || !participantId) {
+      return;
     }
+    setParticipantFetchSettled(false);
+    dispatch(fetchContest(contestId));
+    dispatch(fetchComments({ participantId, limit: 50, offset: 0 }));
+    void dispatch(fetchParticipant({ contestId, participantId })).finally(() => {
+      setParticipantFetchSettled(true);
+    });
   }, [dispatch, contestId, participantId]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !isOwner || !participantId || commentsLoading) {
+      return;
+    }
+    void dispatch(fetchStaffCommentNotifications());
+  }, [dispatch, isAuthenticated, isOwner, participantId, commentsLoading]);
+
+  useEffect(() => {
+    if (location.hash !== '#participant-comments' || !participantFetchSettled || !participant) {
+      return;
+    }
+    const t = window.setTimeout(() => {
+      document.getElementById('participant-comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [location.hash, participantFetchSettled, participant]);
 
   const handleCreateComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,10 +153,23 @@ const ParticipantPage: React.FC = () => {
     });
   }, [isOwner, currentUserId, participant, currentContest, canEdit, contestLoading]);
 
-  if (loading || !participant) {
+  if (!participantFetchSettled) {
     return (
       <div className="participant-page-loading">
         <LoadingSpinner size="large" />
+      </div>
+    );
+  }
+
+  if (!participant) {
+    return (
+      <div className="participant-page-missing">
+        <p>Карточка не найдена или недоступна для просмотра.</p>
+        {contestId ? (
+          <Button variant="primary" onClick={() => navigate(`/contests/${contestId}`)}>
+            К конкурсу
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -218,16 +262,55 @@ const ParticipantPage: React.FC = () => {
         </div>
 
         <div className="participant-page-info">
+          {participant.submission_status === 'pending' && (isOwner || isContestOwner) && (
+            <p className="participant-page-moderation-notice" role="status">
+              Заявка на модерации. До решения организатора карточка не отображается другим участникам конкурса.
+            </p>
+          )}
+          {participant.submission_status === 'rejected' && (isOwner || isContestOwner) && (
+            <div className="participant-page-moderation-notice participant-page-moderation-notice-rejected" role="status">
+              <p>Заявка отклонена. Отредактируйте карточку — она снова уйдёт на модерацию.</p>
+              {participant.submission_comment?.trim() ? (
+                <blockquote className="participant-page-submission-comment">
+                  {participant.submission_comment}
+                </blockquote>
+              ) : null}
+            </div>
+          )}
           {currentContest && (
             <div className="participant-page-vote-button-wrapper">
               <VoteButton
                 contestId={currentContest.id}
                 participantId={participant.id}
                 contestStatus={currentContest.status}
+                nominationId={participant.nomination_id}
                 isOwner={!!isOwner}
+                publicVotingEnabled={currentContest.public_voting_enabled ?? true}
+                canReceiveVotes={
+                  !participant.submission_status || participant.submission_status === 'accepted'
+                }
+                voteCtaLabel={currentContest.cta_label_override?.trim() || undefined}
               />
             </div>
           )}
+
+          {currentContest &&
+            currentContest.jury_voting_enabled &&
+            currentContest.status !== 'draft' &&
+            isAuthenticated &&
+            currentUserId !== undefined && (
+              <ParticipantJuryScoresPanel
+                contestId={currentContest.id}
+                participantId={participant.id}
+                contestStatus={currentContest.status}
+                currentUserId={currentUserId}
+                onScoresSaved={() => {
+                  if (contestId) {
+                    void dispatch(fetchParticipant({ contestId, participantId: participant.id }));
+                  }
+                }}
+              />
+            )}
 
           <div className="participant-page-description">
             <h2>Описание</h2>
@@ -236,9 +319,24 @@ const ParticipantPage: React.FC = () => {
 
           <div className="participant-page-votes">
             <p className="participant-page-votes-text">Голосов: {participant.total_votes || 0}</p>
+            {currentContest?.jury_voting_enabled && participant.total_jury_score !== undefined ? (
+              <p className="participant-page-jury-total" title="Сумма оценок жюри по всем критериям и всем членам жюри">
+                Сумма оценок жюри: {participant.total_jury_score}
+              </p>
+            ) : null}
+            {currentContest?.status === 'finished' &&
+            (participant.is_audience_winner || participant.is_jury_winner) ? (
+              <p className="participant-page-winner-notice" role="status">
+                {participant.is_audience_winner && participant.is_jury_winner
+                  ? 'Победитель по голосам зрителей и по сумме оценок жюри в этой номинации.'
+                  : participant.is_audience_winner
+                    ? 'Победитель по голосам зрителей в этой номинации.'
+                    : 'Победитель по сумме оценок жюри в этой номинации.'}
+              </p>
+            ) : null}
           </div>
 
-          <div className="participant-page-comments">
+          <div className="participant-page-comments" id="participant-comments">
             <h2>Комментарии</h2>
             {currentUserId ? (
               canComment ? (

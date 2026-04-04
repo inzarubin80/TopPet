@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,7 +15,48 @@ import (
 	sqlc_repository "toppet/server/internal/repository_sqlc"
 )
 
-func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func participantNominationPtr(n pgtype.UUID) *string {
+	if !n.Valid {
+		return nil
+	}
+	s := uuid.UUID(n.Bytes).String()
+	return &s
+}
+
+func nominationPgFromOptional(nominationID *string) (pgtype.UUID, error) {
+	if nominationID == nil {
+		return pgtype.UUID{Valid: false}, nil
+	}
+	s := strings.TrimSpace(*nominationID)
+	if s == "" {
+		return pgtype.UUID{Valid: false}, nil
+	}
+	u, err := uuid.Parse(s)
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	return pgtype.UUID{Bytes: u, Valid: true}, nil
+}
+
+func listParticipantsNominationFilterParams(filter *model.ParticipantListNominationFilter) (mode string, filterID pgtype.UUID, err error) {
+	if filter == nil {
+		return "all", pgtype.UUID{}, nil
+	}
+	if filter.UnassignedOnly {
+		return "none", pgtype.UUID{}, nil
+	}
+	s := strings.TrimSpace(filter.NominationID)
+	if s == "" {
+		return "all", pgtype.UUID{}, nil
+	}
+	u, parseErr := uuid.Parse(s)
+	if parseErr != nil {
+		return "", pgtype.UUID{}, parseErr
+	}
+	return "id", pgtype.UUID{Bytes: u, Valid: true}, nil
+}
+
+func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
 	
 	reposqlc := sqlc_repository.New(r.conn)
@@ -32,6 +74,10 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 	if err != nil {
 		return nil, err
 	}
+	nomPg, err := nominationPgFromOptional(nominationID)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("[Repository] CreateParticipant: Executing SQL insert")
 	participant, err := reposqlc.CreateParticipant(ctx, &sqlc_repository.CreateParticipantParams{
 		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
@@ -40,8 +86,12 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		PetName:             petName,
 		PetDescription:      petDescription,
 		RegistrationAnswers: ansBytes,
+		NominationID:        nomPg,
 	})
 	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, errors.New("already participating in this nomination")
+		}
 		log.Printf("[Repository] CreateParticipant: ERROR - SQL insert failed: %v", err)
 		return nil, err
 	}
@@ -59,6 +109,9 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		ID:                  model.ParticipantID(participantIDStr),
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
+		NominationID:        participantNominationPtr(participant.NominationID),
+		SubmissionStatus:    participant.SubmissionStatus,
+		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
@@ -103,6 +156,9 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
 		UserName:            participant.UserName,
+		NominationID:        participantNominationPtr(participant.NominationID),
+		SubmissionStatus:    participant.SubmissionStatus,
+		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
@@ -111,16 +167,21 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 	}, nil
 }
 
-func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error) {
+func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		return nil, err
 	}
+	nomPg, err := nominationPgFromOptional(nominationID)
+	if err != nil {
+		return nil, err
+	}
 
-	participant, err := reposqlc.GetParticipantByContestAndUser(ctx, &sqlc_repository.GetParticipantByContestAndUserParams{
-		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:    int64(userID),
+	participant, err := reposqlc.GetParticipantByContestUserAndNomination(ctx, &sqlc_repository.GetParticipantByContestUserAndNominationParams{
+		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:       int64(userID),
+		NominationID: nomPg,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -142,6 +203,9 @@ func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contest
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
 		UserName:            participant.UserName,
+		NominationID:        participantNominationPtr(participant.NominationID),
+		SubmissionStatus:    participant.SubmissionStatus,
+		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
@@ -150,16 +214,53 @@ func (r *Repository) GetParticipantByContestAndUser(ctx context.Context, contest
 	}, nil
 }
 
-func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error) {
+func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	participants, err := reposqlc.ListParticipantsByContest(ctx, pgtype.UUID{Bytes: contestUUID, Valid: true})
+	var viewerPtr *int64
+	if viewer != nil {
+		v := int64(*viewer)
+		viewerPtr = &v
+	}
+
+	nomMode, nomID, nomErr := listParticipantsNominationFilterParams(nominationFilter)
+	if nomErr != nil {
+		return nil, 0, nomErr
+	}
+
+	cid := pgtype.UUID{Bytes: contestUUID, Valid: true}
+
+	total, err := reposqlc.CountParticipantsByContest(ctx, &sqlc_repository.CountParticipantsByContestParams{
+		ContestID:            cid,
+		IncludeAll:           includeAll,
+		ViewerUserID:         viewerPtr,
+		NominationFilterMode: nomMode,
+		NominationFilterID:   nomID,
+		JuryUnscoredOnly:     juryUnscoredOnly,
+		ParticipantScope:     participantScope,
+	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	participants, err := reposqlc.ListParticipantsByContest(ctx, &sqlc_repository.ListParticipantsByContestParams{
+		ContestID:            cid,
+		IncludeAll:           includeAll,
+		ViewerUserID:         viewerPtr,
+		NominationFilterMode: nomMode,
+		NominationFilterID:   nomID,
+		JuryUnscoredOnly:     juryUnscoredOnly,
+		ParticipantScope:     participantScope,
+		OrderByVotes:         orderByVotes,
+		ListOffset:           offset,
+		ListLimit:            limit,
+	})
+	if err != nil {
+		return nil, 0, err
 	}
 
 	result := make([]*model.Participant, len(participants))
@@ -177,6 +278,9 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 			ContestID:           model.ContestID(contestIDStr),
 			UserID:              model.UserID(p.UserID),
 			UserName:            p.UserName,
+			NominationID:        participantNominationPtr(p.NominationID),
+			SubmissionStatus:    p.SubmissionStatus,
+			SubmissionComment:   p.SubmissionComment,
 			PetName:             p.PetName,
 			PetDescription:      p.PetDescription,
 			RegistrationAnswers: parseRegistrationAnswers(p.RegistrationAnswers),
@@ -185,7 +289,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		}
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
 func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
@@ -221,6 +325,9 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		ID:                  model.ParticipantID(participantIDStr),
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
+		NominationID:        participantNominationPtr(participant.NominationID),
+		SubmissionStatus:    participant.SubmissionStatus,
+		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
@@ -233,6 +340,65 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		result.UserName = user.Name
 	}
 
+	return result, nil
+}
+
+func (r *Repository) MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.MarkParticipantSubmissionPending(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
+}
+
+func (r *Repository) SetParticipantSubmissionStatus(ctx context.Context, participantID model.ParticipantID, status string, submissionComment *string) (*model.Participant, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return nil, err
+	}
+	commentSQL := ""
+	if status == model.ParticipantSubmissionRejected && submissionComment != nil {
+		commentSQL = *submissionComment
+	}
+	participant, err := reposqlc.SetParticipantSubmissionStatus(ctx, &sqlc_repository.SetParticipantSubmissionStatusParams{
+		ID:               pgtype.UUID{Bytes: participantUUID, Valid: true},
+		SubmissionStatus: status,
+		Column3:          commentSQL,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
+	}
+
+	var participantIDStr, contestIDStr string
+	if participant.ID.Valid {
+		participantIDStr = uuid.UUID(participant.ID.Bytes).String()
+	}
+	if participant.ContestID.Valid {
+		contestIDStr = uuid.UUID(participant.ContestID.Bytes).String()
+	}
+
+	result := &model.Participant{
+		ID:                  model.ParticipantID(participantIDStr),
+		ContestID:           model.ContestID(contestIDStr),
+		UserID:              model.UserID(participant.UserID),
+		NominationID:        participantNominationPtr(participant.NominationID),
+		SubmissionStatus:    participant.SubmissionStatus,
+		SubmissionComment:   participant.SubmissionComment,
+		PetName:             participant.PetName,
+		PetDescription:      participant.PetDescription,
+		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CreatedAt:           participant.CreatedAt.Time,
+		UpdatedAt:           participant.UpdatedAt.Time,
+	}
+	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
+	if err == nil && user != nil {
+		result.UserName = user.Name
+	}
 	return result, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
@@ -14,13 +15,13 @@ import (
 type (
 	serviceVote interface {
 		Vote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
-		GetUserVote(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error)
-		Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error)
+		ListUserVotesForContest(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error)
+		Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error)
 	}
 
 	VoteHandler struct {
-		name    string
-		service serviceVote
+		name        string
+		service     serviceVote
 		authService serviceOptionalAuth
 	}
 )
@@ -37,7 +38,6 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contestID := model.ContestID(r.PathValue("contestId"))
 
 	if r.Method == http.MethodGet {
-		// Get user vote (optional auth)
 		userIDVal := r.Context().Value(defenitions.UserID)
 		if userIDVal == nil {
 			optionalUserID, hasUser, authErr := getOptionalUserID(r, h.authService)
@@ -48,15 +48,26 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			userIDVal = optionalUserID
 		}
 		userID := userIDVal.(model.UserID)
-		vote, err := h.service.GetUserVote(r.Context(), contestID, userID)
+		votes, err := h.service.ListUserVotesForContest(r.Context(), contestID, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		type resp struct {
-			ParticipantID string `json:"participant_id"`
+		type voteItem struct {
+			ParticipantID string  `json:"participant_id"`
+			NominationID  *string `json:"nomination_id,omitempty"`
 		}
-		if err := uhttp.SendSuccess(w, resp{ParticipantID: string(vote.ParticipantID)}); err != nil {
+		items := make([]voteItem, 0, len(votes))
+		for _, v := range votes {
+			items = append(items, voteItem{
+				ParticipantID: string(v.ParticipantID),
+				NominationID:  v.NominationID,
+			})
+		}
+		type resp struct {
+			Votes []voteItem `json:"votes"`
+		}
+		if err := uhttp.SendSuccess(w, resp{Votes: items}); err != nil {
 			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		}
 		return
@@ -64,7 +75,12 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodDelete {
 		userID := r.Context().Value(defenitions.UserID).(model.UserID)
-		participantID, err := h.service.Unvote(r.Context(), contestID, userID)
+		q := strings.TrimSpace(r.URL.Query().Get("nomination_id"))
+		var nom *string
+		if q != "" {
+			nom = &q
+		}
+		participantID, err := h.service.Unvote(r.Context(), contestID, userID, nom)
 		if err != nil {
 			if errors.Is(err, model.ErrorNotFound) {
 				w.WriteHeader(http.StatusNoContent)
@@ -86,7 +102,6 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// POST vote
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 
 	var req struct {
@@ -105,10 +120,13 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type resp struct {
-		ParticipantID string `json:"participant_id"`
+		ParticipantID string  `json:"participant_id"`
+		NominationID  *string `json:"nomination_id,omitempty"`
 	}
-	if err := uhttp.SendSuccess(w, resp{ParticipantID: string(vote.ParticipantID)}); err != nil {
+	if err := uhttp.SendSuccess(w, resp{
+		ParticipantID: string(vote.ParticipantID),
+		NominationID:  vote.NominationID,
+	}); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
-		return
 	}
 }

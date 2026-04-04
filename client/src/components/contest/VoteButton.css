@@ -31,3 +31,12 @@
 .vote-button-owner-info-text {
   line-height: 1.2;
 }
+
+.vote-button-disabled-hint {
+  margin: 0;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted, #78716c);
+  line-height: 1.45;
+}

@@ -51,6 +51,7 @@ services:
       CLIENT_SECRET_VK: ${CLIENT_SECRET_VK:-}
       BASE_URL: ${BASE_URL:-https://www.shotcontest.ru}
       SPA_INDEX_PATH: ${SPA_INDEX_PATH:-/app/static/index.html}
+      CONTEST_SCHEDULER_INTERVAL_SEC: ${CONTEST_SCHEDULER_INTERVAL_SEC:-60}
     ports:
       - "8080:8080"
     depends_on:

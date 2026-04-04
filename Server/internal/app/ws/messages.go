@@ -9,6 +9,7 @@ const (
 	MessageTypeContestStatusUpdated MessageType = "contest_status_updated"
 	MessageTypeVoteCreated          MessageType = "vote_created"
 	MessageTypeVoteDeleted          MessageType = "vote_deleted"
+	MessageTypeUserVoteUpdated      MessageType = "user_vote_updated"
 	MessageTypeChatMessage          MessageType = "chat_message"
 	MessageTypeMessageUpdated       MessageType = "message_updated"
 	MessageTypeMessageDeleted       MessageType = "message_deleted"
@@ -49,6 +50,7 @@ type UserVoteUpdatedPayload struct {
 	Type          MessageType     `json:"type"`
 	ContestID     model.ContestID `json:"contest_id"`
 	ParticipantID model.ParticipantID `json:"participant_id"`
+	NominationID  *string         `json:"nomination_id,omitempty"`
 }
 
 // MessageUpdatedPayload представляет payload для обновления сообщения

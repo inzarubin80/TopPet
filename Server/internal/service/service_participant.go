@@ -3,12 +3,37 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"strings"
 
 	"toppet/server/internal/model"
 )
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func (s *TopPetService) participantVisible(ctx context.Context, p *model.Participant, contest *model.Contest, viewer *model.UserID) bool {
+	st := p.SubmissionStatus
+	if st == "" {
+		st = model.ParticipantSubmissionAccepted
+	}
+	if st == model.ParticipantSubmissionAccepted {
+		return true
+	}
+	if viewer != nil && p.UserID == *viewer {
+		return true
+	}
+	if viewer != nil && s.userCanManageContest(ctx, contest, *viewer) {
+		return true
+	}
+	if viewer != nil && contest.JuryVotingEnabled && contest.Status != model.ContestStatusDraft {
+		ok, err := s.repository.IsContestJuryMember(ctx, contest.ID, *viewer)
+		if err == nil && ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
 	
 	if petName == "" {
@@ -42,9 +67,40 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		return nil, err
 	}
 
+	nCount, err := s.repository.CountNominationsByContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	var effectiveNom *string
+	if nCount > 0 {
+		if nominationID == nil || strings.TrimSpace(*nominationID) == "" {
+			return nil, errors.New("nomination_id is required when the contest has nominations")
+		}
+		trimmed := strings.TrimSpace(*nominationID)
+		effectiveNom = &trimmed
+		if _, err := s.repository.GetNominationByContest(ctx, contestID, trimmed); err != nil {
+			if errors.Is(err, model.ErrorNotFound) {
+				return nil, errors.New("nomination not found")
+			}
+			return nil, err
+		}
+	} else {
+		if nominationID != nil && strings.TrimSpace(*nominationID) != "" {
+			return nil, errors.New("nomination_id must not be set when the contest has no nominations")
+		}
+	}
+
+	existing, err := s.repository.GetParticipantByContestUserAndNomination(ctx, contestID, userID, effectiveNom)
+	if err != nil && !errors.Is(err, model.ErrorNotFound) {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, errors.New("already participating in this nomination")
+	}
+
 	// Create participant
 	log.Printf("[Service] CreateParticipant: Creating participant in repository")
-	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, petName, petDescription, ans)
+	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, petName, petDescription, ans, effectiveNom)
 	if err != nil {
 		log.Printf("[Service] CreateParticipant: ERROR - Failed to create participant in repository: %v", err)
 		return nil, err
@@ -67,10 +123,17 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	return participant, nil
 }
 
-func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
+func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error) {
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		return nil, err
+	}
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.participantVisible(ctx, participant, contest, viewer) {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
 	// Load photos and video
@@ -88,13 +151,23 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 		participant.TotalVotes = totalVotes
 	}
 
+	s.attachOneParticipantJuryScoreTotal(ctx, contest, viewer, participant)
+	s.attachOneParticipantWinnerFlags(ctx, contest, participant)
+
 	return participant, nil
 }
 
-func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, userID *model.UserID) (*model.Participant, error) {
+func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error) {
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		return nil, err
+	}
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.participantVisible(ctx, participant, contest, viewer) {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
 	// Load photos and video
@@ -102,12 +175,12 @@ func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participant
 	participant.Photos = photos
 
 	// Load photo likes if user is authenticated
-	if userID != nil && len(photos) > 0 {
+	if viewer != nil && len(photos) > 0 {
 		photoIDs := make([]string, len(photos))
 		for i, photo := range photos {
 			photoIDs[i] = photo.ID
 		}
-		userLikes, err := s.repository.ListPhotoLikesByPhotos(ctx, photoIDs, *userID)
+		userLikes, err := s.repository.ListPhotoLikesByPhotos(ctx, photoIDs, *viewer)
 		if err != nil {
 			log.Printf("[Service] GetParticipantWithLikes: Error loading photo likes: %v", err)
 		}
@@ -142,13 +215,60 @@ func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participant
 		participant.TotalVotes = totalVotes
 	}
 
+	s.attachOneParticipantJuryScoreTotal(ctx, contest, viewer, participant)
+	s.attachOneParticipantWinnerFlags(ctx, contest, participant)
+
 	return participant, nil
 }
 
-func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error) {
-	participants, err := s.repository.ListParticipantsByContest(ctx, contestID)
+func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error) {
+	if participantScope != model.ParticipantListScopeAll && participantScope != model.ParticipantListScopeMine {
+		return nil, 0, fmt.Errorf("%w: invalid participant_scope", model.ErrBadRequest)
+	}
+	if participantScope == model.ParticipantListScopeMine && viewer == nil {
+		return nil, 0, fmt.Errorf("%w: participant_scope=mine requires authentication", model.ErrBadRequest)
+	}
+	contest, err := s.repository.GetContest(ctx, contestID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+	includeAll := false
+	if viewer != nil {
+		includeAll = s.userCanManageContest(ctx, contest, *viewer)
+	}
+	if juryUnscoredOnly {
+		if viewer == nil {
+			return nil, 0, fmt.Errorf("%w: jury_unscored_only requires authentication", model.ErrBadRequest)
+		}
+		if !contest.JuryVotingEnabled {
+			return nil, 0, model.ErrorForbidden
+		}
+		ok, jerr := s.repository.IsContestJuryMember(ctx, contestID, *viewer)
+		if jerr != nil {
+			return nil, 0, jerr
+		}
+		if !ok {
+			return nil, 0, model.ErrorForbidden
+		}
+	}
+	if nominationFilter != nil {
+		if nominationFilter.UnassignedOnly && strings.TrimSpace(nominationFilter.NominationID) != "" {
+			return nil, 0, model.ErrBadRequest
+		}
+		nid := strings.TrimSpace(nominationFilter.NominationID)
+		if !nominationFilter.UnassignedOnly && nid != "" {
+			if _, err := s.repository.GetNominationByContest(ctx, contestID, nid); err != nil {
+				if errors.Is(err, model.ErrorNotFound) {
+					return nil, 0, model.ErrorNotFound
+				}
+				return nil, 0, err
+			}
+		}
+	}
+	orderByVotes := contest.Status == model.ContestStatusVoting || contest.Status == model.ContestStatusFinished
+	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, limit, offset, orderByVotes)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	// Load photos, videos, and vote counts for each participant
@@ -165,7 +285,10 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 		p.TotalVotes = totalVotes
 	}
 
-	return participants, nil
+	s.attachParticipantJuryScoreTotals(ctx, contest, viewer, participants)
+	s.attachParticipantWinnerFlags(ctx, contest, participants)
+
+	return participants, total, nil
 }
 
 func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
@@ -254,7 +377,12 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 		return nil, errors.New("can only add photos during draft or registration")
 	}
 
-	return s.repository.AddParticipantPhoto(ctx, participantID, url, thumbURL)
+	photo, err := s.repository.AddParticipantPhoto(ctx, participantID, url, thumbURL)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
+	return photo, nil
 }
 
 func (s *TopPetService) AddParticipantVideo(ctx context.Context, participantID model.ParticipantID, userID model.UserID, url string) (*model.Video, error) {
@@ -276,7 +404,12 @@ func (s *TopPetService) AddParticipantVideo(ctx context.Context, participantID m
 		return nil, errors.New("can only add videos during draft or registration")
 	}
 
-	return s.repository.UpsertParticipantVideo(ctx, participantID, url)
+	video, err := s.repository.UpsertParticipantVideo(ctx, participantID, url)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
+	return video, nil
 }
 
 func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
@@ -356,6 +489,7 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 		log.Printf("[Service] DeleteParticipantPhoto: ERROR - Failed to delete photo: %v", err)
 		return err
 	}
+	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 	log.Printf("[Service] DeleteParticipantPhoto: Photo deleted successfully: photoID=%s", photoID)
 
 	return nil
@@ -397,6 +531,7 @@ func (s *TopPetService) DeleteParticipantVideo(ctx context.Context, participantI
 		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to delete video: %v", err)
 		return err
 	}
+	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 	log.Printf("[Service] DeleteParticipantVideo: Video deleted successfully: participantID=%s", participantID)
 
 	return nil
@@ -461,6 +596,7 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 		log.Printf("[Service] UpdateParticipantPhotoOrder: ERROR - Failed to update order: %v", err)
 		return err
 	}
+	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 
 	log.Printf("[Service] UpdateParticipantPhotoOrder: Order updated successfully")
 	return nil

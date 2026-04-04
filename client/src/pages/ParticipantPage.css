@@ -11,6 +11,50 @@
   min-height: 400px;
 }
 
+.participant-page-missing {
+  max-width: 480px;
+  margin: 48px auto;
+  padding: 24px;
+  text-align: center;
+  color: #374151;
+}
+
+.participant-page-missing p {
+  margin-bottom: 20px;
+}
+
+.participant-page-moderation-notice {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.participant-page-moderation-notice-rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.participant-page-moderation-notice-rejected > p {
+  margin: 0 0 10px;
+}
+
+.participant-page-submission-comment {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid #dc2626;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .participant-page-header {
   display: flex;
   align-items: center;
@@ -255,6 +299,24 @@
   margin: 0;
   font-size: 16px;
   color: #333;
+}
+
+.participant-page-jury-total {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: #5b21b6;
+  font-weight: 600;
+}
+
+.participant-page-winner-notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .participant-page-comments-list {

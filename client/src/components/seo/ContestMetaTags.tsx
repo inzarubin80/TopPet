@@ -3,10 +3,11 @@ import { Helmet } from 'react-helmet-async';
 import { Contest, Participant } from '../../types/models';
 import {
   getContestUrl,
-  getMetaImage,
   getFirstParticipantPhoto,
   getContestDescription,
+  getContestShareImage,
 } from '../../utils/seo';
+import { BRAND_NAME, brandTabTitle } from '../../config/brand';
 
 interface ContestMetaTagsProps {
   contest: Contest;
@@ -19,13 +20,12 @@ export const ContestMetaTags: React.FC<ContestMetaTagsProps> = ({
   participants = [],
   contestId,
 }) => {
-  const title = `${contest.title} - Top-Pet`;
+  const title = brandTabTitle(contest.title);
   const description = getContestDescription(contest);
   const url = getContestUrl(contestId);
   
-  // Получаем первое фото первого участника для изображения
   const firstPhoto = getFirstParticipantPhoto(participants);
-  const imageUrl = getMetaImage(firstPhoto);
+  const imageUrl = getContestShareImage(contest, firstPhoto);
 
   return (
     <Helmet>
@@ -38,7 +38,7 @@ export const ContestMetaTags: React.FC<ContestMetaTagsProps> = ({
       <meta property="og:url" content={url} />
       <meta property="og:type" content="website" />
       <meta property="og:image" content={imageUrl} />
-      <meta property="og:site_name" content="Top-Pet" />
+      <meta property="og:site_name" content={BRAND_NAME} />
       
       {/* Twitter Card метатеги */}
       <meta name="twitter:card" content="summary_large_image" />

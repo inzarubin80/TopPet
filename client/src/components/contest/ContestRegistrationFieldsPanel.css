@@ -33,7 +33,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
   padding: 10px 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
@@ -67,6 +67,7 @@
 .contest-registration-fields-textarea {
   flex: 1 1 100%;
   width: 100%;
+  align-self: stretch;
   font: inherit;
   padding: 6px 8px;
   border: 1px solid #ccc;

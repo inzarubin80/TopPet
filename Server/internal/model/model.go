@@ -29,6 +29,8 @@ type (
 	User struct {
 		ID        UserID    `json:"id"`
 		Name      string    `json:"name"`
+		Email     string    `json:"email,omitempty"`
+		Role      string    `json:"role"`
 		AvatarURL string    `json:"avatar_url,omitempty"`
 		CreatedAt time.Time `json:"created_at"`
 	}
@@ -41,15 +43,54 @@ type (
 	}
 
 	Contest struct {
-		ID              ContestID     `json:"id"`
-		CreatedByUserID UserID        `json:"created_by_user_id"`
-		Title           string        `json:"title"`
-		Description     string        `json:"description"`
-		Status          ContestStatus `json:"status"`
-		Tier            string        `json:"tier,omitempty"`
-		TotalVotes      int64         `json:"total_votes,omitempty"`
-		CreatedAt       time.Time     `json:"created_at"`
-		UpdatedAt       time.Time     `json:"updated_at"`
+		ID                  ContestID     `json:"id"`
+		CreatedByUserID     UserID        `json:"created_by_user_id"`
+		Title               string        `json:"title"`
+		Description         string        `json:"description"`
+		Status              ContestStatus `json:"status"`
+		Tier                string        `json:"tier,omitempty"`
+		TotalVotes          int64         `json:"total_votes,omitempty"`
+		PublicVotingEnabled bool          `json:"public_voting_enabled"`
+		JuryVotingEnabled   bool          `json:"jury_voting_enabled"`
+		CoverUrl            string        `json:"cover_url,omitempty"`
+		Tagline             string        `json:"tagline,omitempty"`
+		RulesUrl            string        `json:"rules_url,omitempty"`
+		PrizeText           string        `json:"prize_text,omitempty"`
+		LogoUrl             string        `json:"logo_url,omitempty"`
+		ThemeColor          string        `json:"theme_color,omitempty"`
+		SponsorName         string        `json:"sponsor_name,omitempty"`
+		SponsorLogoUrl      string        `json:"sponsor_logo_url,omitempty"`
+		SponsorUrl          string        `json:"sponsor_url,omitempty"`
+		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
+		// Расписание фаз (UTC, RFC3339 в JSON). Автопереход статуса по датам — см. планировщик на сервере.
+		RegistrationStartsAt *time.Time `json:"registration_starts_at,omitempty"`
+		RegistrationEndsAt   *time.Time `json:"registration_ends_at,omitempty"`
+		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`
+		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
+		CreatedAt            time.Time  `json:"created_at"`
+		UpdatedAt            time.Time  `json:"updated_at"`
+	}
+
+	// ContestUpdate — поля для PATCH конкурса в черновике (после слияния с текущим состоянием).
+	ContestUpdate struct {
+		Title               string
+		Description         string
+		PublicVotingEnabled bool
+		JuryVotingEnabled   bool
+		CoverUrl            string
+		Tagline             string
+		RulesUrl            string
+		PrizeText           string
+		LogoUrl             string
+		ThemeColor          string
+		SponsorName         string
+		SponsorLogoUrl      string
+		SponsorUrl          string
+		CtaLabelOverride    string
+		RegistrationStartsAt *time.Time
+		RegistrationEndsAt   *time.Time
+		VotingStartsAt       *time.Time
+		VotingEndsAt         *time.Time
 	}
 
 	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).
@@ -83,6 +124,39 @@ type (
 		ScaleStep   int32  `json:"scale_step"`
 	}
 
+	// JuryMember — член жюри конкурса.
+	JuryMember struct {
+		ID        string    `json:"id"`
+		ContestID ContestID `json:"contest_id"`
+		UserID    UserID    `json:"user_id"`
+		UserName  string    `json:"user_name,omitempty"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	// JuryScore — оценка члена жюри по одному критерию для заявки.
+	JuryScore struct {
+		ID            string          `json:"id"`
+		ParticipantID ParticipantID   `json:"participant_id"`
+		CriterionID   string          `json:"criterion_id"`
+		UserID        UserID          `json:"user_id"`
+		Score         int32           `json:"score"`
+		CreatedAt     time.Time       `json:"created_at"`
+		UpdatedAt     time.Time       `json:"updated_at"`
+	}
+
+	// JuryScorePutItem — элемент тела PUT для сохранения оценок жюри.
+	JuryScorePutItem struct {
+		CriterionID string `json:"criterion_id"`
+		Score       int32  `json:"score"`
+	}
+
+	// UserSearchHit — результат поиска пользователя (имя / email).
+	UserSearchHit struct {
+		ID    UserID `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email,omitempty"`
+	}
+
 	// RegistrationField — дополнительное поле заявки участника (настраивает организатор).
 	RegistrationField struct {
 		ID          string    `json:"id"`
@@ -108,14 +182,36 @@ type (
 		ContestID           ContestID              `json:"contest_id"`
 		UserID              UserID                 `json:"user_id"`
 		UserName            string                 `json:"user_name,omitempty"`
+		NominationID        *string                `json:"nomination_id,omitempty"`
+		SubmissionStatus    string                 `json:"submission_status"`
+		SubmissionComment   *string                `json:"submission_comment,omitempty"`
 		PetName             string                 `json:"pet_name"`
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
 		Video               *Video                 `json:"video,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
+		// TotalJuryScore — сумма всех баллов жюри по всем критериям и всем членам жюри (если поле отдано клиенту).
+		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
+		// Победители (только для status=finished; внутри номинации — по голосам зрителей / сумме жюри).
+		IsAudienceWinner bool `json:"is_audience_winner,omitempty"`
+		IsJuryWinner     bool `json:"is_jury_winner,omitempty"`
 		CreatedAt           time.Time              `json:"created_at"`
 		UpdatedAt           time.Time              `json:"updated_at"`
+	}
+
+	// ParticipantScoreForWinners — данные для расчёта победителей (принятые заявки).
+	ParticipantScoreForWinners struct {
+		ParticipantID ParticipantID
+		NominationID  *string
+		VoteCount     int64
+		JurySum       int64
+	}
+
+	// ParticipantListNominationFilter — сужение списка заявок по номинации. Nil = без фильтра (все видимые заявки).
+	ParticipantListNominationFilter struct {
+		UnassignedOnly bool   // только заявки с nomination_id IS NULL
+		NominationID   string // UUID номинации конкурса; не используется при UnassignedOnly
 	}
 
 	Photo struct {
@@ -148,6 +244,7 @@ type (
 		ID            string        `json:"id"`
 		ContestID     ContestID     `json:"contest_id"`
 		ParticipantID ParticipantID `json:"participant_id"`
+		NominationID  *string       `json:"nomination_id,omitempty"`
 		UserID        UserID        `json:"user_id"`
 		CreatedAt     time.Time     `json:"created_at"`
 		UpdatedAt     time.Time     `json:"updated_at"`
@@ -167,6 +264,17 @@ type (
 		Text          string        `json:"text"`
 		CreatedAt     time.Time     `json:"created_at"`
 		UpdatedAt     time.Time     `json:"updated_at"`
+	}
+
+	// StaffCommentNotification — заявки участника с непрочитанными комментариями организатора конкурса.
+	StaffCommentNotification struct {
+		ParticipantID        ParticipantID `json:"participant_id"`
+		ContestID            ContestID     `json:"contest_id"`
+		ContestTitle         string        `json:"contest_title"`
+		PetName              string        `json:"pet_name"`
+		UnreadCount          int64         `json:"unread_count"`
+		LatestCommentAt      time.Time     `json:"latest_comment_at"`
+		LatestCommentPreview string        `json:"latest_comment_preview,omitempty"`
 	}
 
 	ChatMessage struct {
@@ -201,7 +309,28 @@ const (
 	ContestStatusRegistration ContestStatus = "registration"
 	ContestStatusVoting       ContestStatus = "voting"
 	ContestStatusFinished     ContestStatus = "finished"
+
+	UserRoleUser         = "user"
+	UserRoleContestAdmin = "contest_admin"
+	UserRoleSystemAdmin  = "system_admin"
+
+	ParticipantSubmissionPending  = "pending"
+	ParticipantSubmissionAccepted = "accepted"
+	ParticipantSubmissionRejected = "rejected"
+
+	ParticipantListScopeAll  = "all"
+	ParticipantListScopeMine = "mine"
 )
+
+// IsValidUserRole допустимые значения поля users.role.
+func IsValidUserRole(r string) bool {
+	switch r {
+	case UserRoleUser, UserRoleContestAdmin, UserRoleSystemAdmin:
+		return true
+	default:
+		return false
+	}
+}
 
 var (
 	ErrorNotFound  = errors.New("not found")

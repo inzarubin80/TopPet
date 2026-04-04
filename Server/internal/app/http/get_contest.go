@@ -11,6 +11,7 @@ import (
 type (
 	serviceGetContest interface {
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
+		UserCanManageContest(ctx context.Context, contest *model.Contest, userID model.UserID) bool
 	}
 
 	GetContestHandler struct {
@@ -48,7 +49,7 @@ func (h *GetContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication required", authErr))
 			return
 		}
-		if !ok || contest.CreatedByUserID != userID {
+		if !ok || !h.service.UserCanManageContest(r.Context(), contest, userID) {
 			uhttp.HandleError(w, uhttp.NewNotFoundError("contest not found", nil))
 			return
 		}

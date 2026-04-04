@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Contest } from '../../types/models';
 import { listNominations, createNomination, updateNomination, deleteNomination } from '../../api/nominationsApi';
@@ -26,6 +27,11 @@ interface Props {
   hideJuryCriteriaSaveButton?: boolean;
   /** Блокировка полей при сохранении всей страницы. */
   formDisabled?: boolean;
+  /** Критерии жюри — только при включённом «голосовании жюри» у конкурса. */
+  showJuryCriteriaSection?: boolean;
+  /** Критерии жюри не под номинациями, а в узле `juryCriteriaPortalHost` (страница редактирования). */
+  juryCriteriaPortalMode?: boolean;
+  juryCriteriaPortalHost?: HTMLElement | null;
 }
 
 const emptyCriterion = (): JuryCriterionInput => ({
@@ -38,7 +44,16 @@ const emptyCriterion = (): JuryCriterionInput => ({
 
 export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteriaPanelHandle, Props>(
   function ContestOrganizerCriteriaPanel(
-    { contest, isAdmin, readOnly = false, hideJuryCriteriaSaveButton = false, formDisabled = false },
+    {
+      contest,
+      isAdmin,
+      readOnly = false,
+      hideJuryCriteriaSaveButton = false,
+      formDisabled = false,
+      showJuryCriteriaSection = true,
+      juryCriteriaPortalMode = false,
+      juryCriteriaPortalHost = null,
+    },
     ref
   ) {
   const { showError, showSuccess } = useToast();
@@ -93,6 +108,9 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       if (!canEdit) {
         return true;
       }
+      if (!showJuryCriteriaSection) {
+        return true;
+      }
       const items = criteriaDraft.filter((c) => c.title.trim() !== '');
       if (items.length === 0) {
         showError('Добавьте хотя бы один критерий с названием');
@@ -124,7 +142,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         setSavingCriteria(false);
       }
     },
-    [canEdit, criteriaDraft, contest.id, showError, showSuccess]
+    [canEdit, criteriaDraft, contest.id, showError, showSuccess, showJuryCriteriaSection]
   );
 
   useImperativeHandle(
@@ -192,120 +210,14 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     return <p className="contest-organizer-criteria-muted">Загрузка номинаций и критериев…</p>;
   }
 
-  return (
-    <section className="contest-organizer-criteria">
-      <h2 className="contest-organizer-criteria-title">Номинации и критерии оценки</h2>
-      <p className="contest-organizer-criteria-hint">
-        Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.
-        {readOnly ? (
-          isAdmin && contest.status === 'draft' ? (
-            <>
-              {' '}
-              Изменить название, описание, номинации и критерии можно на{' '}
-              <Link to={`/contests/${contest.id}/edit`}>странице редактирования конкурса</Link>.
-            </>
-          ) : null
-        ) : (
-          <> Редактирование — в статусе «Черновик».</>
-        )}
-      </p>
+  const juryCriteriaInPanel = showJuryCriteriaSection && !juryCriteriaPortalMode;
+  const juryCriteriaPortaled =
+    showJuryCriteriaSection && juryCriteriaPortalMode && juryCriteriaPortalHost !== null;
 
-      <div className="contest-organizer-criteria-block">
-        <h3>Номинации</h3>
-        {nominations.length === 0 && !canEdit ? (
-          <p className="contest-organizer-criteria-muted">Номинации не заданы.</p>
-        ) : (
-          <ul className="contest-organizer-criteria-list">
-            {nominations.map((n) => (
-              <li key={n.id}>
-                {canEdit && editingNomId === n.id ? (
-                  <div className="contest-organizer-criteria-edit">
-                    <input
-                      value={editNomTitle}
-                      onChange={(e) => setEditNomTitle(e.target.value)}
-                      className="contest-organizer-criteria-input"
-                      disabled={fieldsLocked}
-                    />
-                    <textarea
-                      value={editNomDesc}
-                      onChange={(e) => setEditNomDesc(e.target.value)}
-                      rows={2}
-                      className="contest-organizer-criteria-textarea"
-                      disabled={fieldsLocked}
-                    />
-                    <div className="contest-organizer-criteria-actions">
-                      <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
-                        Сохранить
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="small"
-                        onClick={() => setEditingNomId(null)}
-                        disabled={fieldsLocked}
-                      >
-                        Отмена
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <strong>{n.title}</strong>
-                    {n.description ? <span className="contest-organizer-criteria-desc">{n.description}</span> : null}
-                    {canEdit && (
-                      <div className="contest-organizer-criteria-actions">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="small"
-                          onClick={() => startEditNom(n.id, n.title, n.description)}
-                          disabled={fieldsLocked}
-                        >
-                          Изменить
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="small"
-                          onClick={() => handleDeleteNom(n.id)}
-                          disabled={fieldsLocked}
-                        >
-                          Удалить
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {canEdit && (
-          <form onSubmit={handleAddNomination} className="contest-organizer-criteria-form">
-            <input
-              placeholder="Название номинации"
-              value={nomTitle}
-              onChange={(e) => setNomTitle(e.target.value)}
-              className="contest-organizer-criteria-input"
-              disabled={fieldsLocked}
-            />
-            <textarea
-              placeholder="Описание (необязательно)"
-              value={nomDesc}
-              onChange={(e) => setNomDesc(e.target.value)}
-              rows={2}
-              className="contest-organizer-criteria-textarea"
-              disabled={fieldsLocked}
-            />
-            <Button type="submit" disabled={fieldsLocked}>
-              Добавить номинацию
-            </Button>
-          </form>
-        )}
-      </div>
-
-      <div className="contest-organizer-criteria-block">
-        <h3>Критерии оценки жюри (на конкурс)</h3>
+  const juryCriteriaBlock =
+    showJuryCriteriaSection ? (
+      <div className="contest-organizer-criteria-block contest-organizer-criteria-block--jury">
+        <h3 className="contest-organizer-criteria-jury-subtitle">Критерии оценки (на конкурс)</h3>
         {!canEdit && (
           <ul className="contest-organizer-criteria-readonly">
             {criteriaDraft.filter((c) => c.title.trim()).map((c, idx) => (
@@ -428,6 +340,126 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           <p className="contest-organizer-criteria-muted">Критерии жюри не заданы.</p>
         )}
       </div>
+    ) : null;
+
+  return (
+    <section className="contest-organizer-criteria">
+      <h2 className="contest-organizer-criteria-title">
+        {juryCriteriaPortalMode ? 'Номинации' : 'Номинации и критерии оценки'}
+      </h2>
+      <p className="contest-organizer-criteria-hint">
+        {juryCriteriaPortalMode
+          ? 'Номинации — категории участия. Критерии оценки для жюри настраиваются в блоке «Жюри» ниже.'
+          : 'Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.'}
+        {readOnly ? (
+          isAdmin && contest.status === 'draft' ? (
+            <>
+              {' '}
+              Изменить название, описание, номинации и критерии можно на{' '}
+              <Link to={`/contests/${contest.id}/edit`}>странице редактирования конкурса</Link>.
+            </>
+          ) : null
+        ) : (
+          <> Редактирование — в статусе «Черновик».</>
+        )}
+      </p>
+
+      <div className="contest-organizer-criteria-block">
+        <h3>Номинации</h3>
+        {nominations.length === 0 && !canEdit ? (
+          <p className="contest-organizer-criteria-muted">Номинации не заданы.</p>
+        ) : (
+          <ul className="contest-organizer-criteria-list">
+            {nominations.map((n) => (
+              <li key={n.id}>
+                {canEdit && editingNomId === n.id ? (
+                  <div className="contest-organizer-criteria-edit">
+                    <input
+                      value={editNomTitle}
+                      onChange={(e) => setEditNomTitle(e.target.value)}
+                      className="contest-organizer-criteria-input"
+                      disabled={fieldsLocked}
+                    />
+                    <textarea
+                      value={editNomDesc}
+                      onChange={(e) => setEditNomDesc(e.target.value)}
+                      rows={2}
+                      className="contest-organizer-criteria-textarea"
+                      disabled={fieldsLocked}
+                    />
+                    <div className="contest-organizer-criteria-actions">
+                      <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
+                        Сохранить
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="small"
+                        onClick={() => setEditingNomId(null)}
+                        disabled={fieldsLocked}
+                      >
+                        Отмена
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <strong>{n.title}</strong>
+                    {n.description ? <span className="contest-organizer-criteria-desc">{n.description}</span> : null}
+                    {canEdit && (
+                      <div className="contest-organizer-criteria-actions">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="small"
+                          onClick={() => startEditNom(n.id, n.title, n.description)}
+                          disabled={fieldsLocked}
+                        >
+                          Изменить
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="small"
+                          onClick={() => handleDeleteNom(n.id)}
+                          disabled={fieldsLocked}
+                        >
+                          Удалить
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canEdit && (
+          <form onSubmit={handleAddNomination} className="contest-organizer-criteria-form">
+            <input
+              placeholder="Название номинации"
+              value={nomTitle}
+              onChange={(e) => setNomTitle(e.target.value)}
+              className="contest-organizer-criteria-input"
+              disabled={fieldsLocked}
+            />
+            <textarea
+              placeholder="Описание (необязательно)"
+              value={nomDesc}
+              onChange={(e) => setNomDesc(e.target.value)}
+              rows={2}
+              className="contest-organizer-criteria-textarea"
+              disabled={fieldsLocked}
+            />
+            <Button type="submit" disabled={fieldsLocked}>
+              Добавить номинацию
+            </Button>
+          </form>
+        )}
+      </div>
+
+      {juryCriteriaInPanel ? juryCriteriaBlock : null}
+      {juryCriteriaPortaled ? createPortal(juryCriteriaBlock, juryCriteriaPortalHost) : null}
     </section>
   );
   }

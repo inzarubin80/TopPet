@@ -12,7 +12,11 @@ type MessageUpdateHandler = (message: ChatMessage) => void;
 type MessageDeleteHandler = (messageId: string, contestId: string) => void;
 type ContestStatusUpdateHandler = (contestId: string, status: ContestStatus) => void;
 type VoteCountsUpdatedHandler = (contestId: string, participantId?: string, totalVotes?: number, contestTotal?: number) => void;
-type UserVoteUpdatedHandler = (contestId: string, participantId?: string | null) => void;
+type UserVoteUpdatedHandler = (
+  contestId: string,
+  participantId?: string | null,
+  nominationId?: string | null
+) => void;
 type ConnectionStateHandler = (state: WSConnectionState) => void;
 type ErrorHandler = (error: Event) => void;
 
@@ -247,9 +251,13 @@ export class WebSocketClient {
     }
     if (data.type === 'user_vote_updated' && data.contest_id) {
       if (this.onUserVoteUpdatedHandler) {
+        const nom = data.nomination_id != null && String(data.nomination_id).trim() !== ''
+          ? String(data.nomination_id)
+          : null;
         this.onUserVoteUpdatedHandler(
           String(data.contest_id),
-          data.participant_id ? String(data.participant_id) : null
+          data.participant_id ? String(data.participant_id) : null,
+          nom
         );
       }
     }

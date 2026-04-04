@@ -1,7 +1,32 @@
 import { axiosClient } from './axiosClient';
-import { Participant, Photo, Video, ParticipantID, ContestID } from '../types/models';
+import {
+  Participant,
+  Photo,
+  Video,
+  ParticipantID,
+  ContestID,
+  ParticipantSubmissionStatus,
+} from '../types/models';
 import { CreateParticipantRequest, UpdateParticipantRequest } from '../types/api';
 import type { VoterInfo } from '../types/api';
+
+/** Фильтр списка заявок: все | без номинации | id номинации */
+export type ParticipantsListNominationFilter = 'all' | 'none' | string;
+
+export type ParticipantListScope = 'all' | 'mine';
+
+export type GetParticipantsByContestOptions = {
+  limit?: number;
+  offset?: number;
+  participantScope?: ParticipantListScope;
+};
+
+export type ParticipantsListResponse = {
+  items: Participant[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 
 export const getParticipant = async (
   contestId: ContestID,
@@ -13,11 +38,41 @@ export const getParticipant = async (
   return response.data;
 };
 
-export const getParticipantsByContest = async (contestId: ContestID): Promise<Participant[]> => {
-  const response = await axiosClient.get<{ items: Participant[]; total: number }>(
-    `/contests/${contestId}/participants`
+export const getParticipantsByContest = async (
+  contestId: ContestID,
+  nominationFilter: ParticipantsListNominationFilter = 'all',
+  juryUnscoredOnly = false,
+  options?: GetParticipantsByContestOptions
+): Promise<ParticipantsListResponse> => {
+  const params = new URLSearchParams();
+  if (nominationFilter === 'none') {
+    params.set('nomination_id', 'none');
+  } else if (nominationFilter !== 'all') {
+    params.set('nomination_id', nominationFilter);
+  }
+  if (juryUnscoredOnly) {
+    params.set('jury_unscored_only', '1');
+  }
+  if (options?.participantScope === 'mine') {
+    params.set('participant_scope', 'mine');
+  }
+  if (options?.limit != null) {
+    params.set('limit', String(options.limit));
+  }
+  if (options?.offset != null) {
+    params.set('offset', String(options.offset));
+  }
+  const qs = params.toString();
+  const response = await axiosClient.get<ParticipantsListResponse>(
+    `/contests/${contestId}/participants${qs ? `?${qs}` : ''}`
   );
-  return response.data.items || [];
+  const data = response.data;
+  return {
+    items: data.items || [],
+    total: data.total ?? 0,
+    limit: data.limit ?? 10000,
+    offset: data.offset ?? 0,
+  };
 };
 
 export const getParticipantVoters = async (
@@ -69,6 +124,22 @@ export const updateParticipant = async (
   data: UpdateParticipantRequest
 ): Promise<Participant> => {
   const response = await axiosClient.patch<Participant>(`/participants/${participantId}`, data);
+  return response.data;
+};
+
+export const patchParticipantSubmission = async (
+  participantId: ParticipantID,
+  submission_status: ParticipantSubmissionStatus,
+  submission_comment?: string
+): Promise<Participant> => {
+  const body: {
+    submission_status: ParticipantSubmissionStatus;
+    submission_comment?: string;
+  } = { submission_status };
+  if (submission_status === 'rejected' && submission_comment !== undefined) {
+    body.submission_comment = submission_comment;
+  }
+  const response = await axiosClient.patch<Participant>(`/participants/${participantId}/submission`, body);
   return response.data;
 };
 

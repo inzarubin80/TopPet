@@ -13,7 +13,7 @@ import (
 
 type (
 	serviceUpdateParticipant interface {
-		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
+		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error)
 	}
 
@@ -63,7 +63,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get current participant to merge with new values
-	currentParticipant, err := h.service.GetParticipant(r.Context(), participantID)
+	currentParticipant, err := h.service.GetParticipant(r.Context(), participantID, &userID)
 	if err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to get current participant: %v", err)
 		uhttp.HandleError(w, err)

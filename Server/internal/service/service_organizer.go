@@ -55,11 +55,14 @@ func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestI
 	if err != nil {
 		return nil, err
 	}
-	if c.CreatedByUserID != adminID {
+	if !s.userCanManageContest(ctx, c, adminID) {
 		return nil, errors.New("only contest admin can edit jury criteria")
 	}
 	if c.Status != model.ContestStatusDraft {
 		return nil, errors.New("jury criteria can only be edited in draft status")
+	}
+	if !c.JuryVotingEnabled {
+		return nil, errors.New("jury voting is disabled for this contest")
 	}
 	maxC := tier.MaxJuryCriteriaForTier(contestTierString(c))
 	if len(items) > maxC {
@@ -85,7 +88,7 @@ func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.Co
 	if err != nil {
 		return nil, err
 	}
-	if c.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, c, userID) {
 		return nil, errors.New("only contest admin can add nominations")
 	}
 	if c.Status != model.ContestStatusDraft {
@@ -114,7 +117,7 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	if err != nil {
 		return nil, err
 	}
-	if c.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, c, userID) {
 		return nil, errors.New("only contest admin can edit nominations")
 	}
 	if c.Status != model.ContestStatusDraft {
@@ -128,7 +131,7 @@ func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.Co
 	if err != nil {
 		return err
 	}
-	if c.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, c, userID) {
 		return errors.New("only contest admin can delete nominations")
 	}
 	if c.Status != model.ContestStatusDraft {
@@ -146,7 +149,7 @@ func (s *TopPetService) ReplaceContestRegistrationFields(ctx context.Context, co
 	if err != nil {
 		return nil, err
 	}
-	if c.CreatedByUserID != adminID {
+	if !s.userCanManageContest(ctx, c, adminID) {
 		return nil, errors.New("only contest admin can edit registration fields")
 	}
 	if c.Status != model.ContestStatusDraft {

@@ -54,6 +54,12 @@
   color: #6b7280;
 }
 
+.profile-system-role {
+  margin-top: 8px !important;
+  font-size: 13px !important;
+  color: #475569 !important;
+}
+
 .profile-form {
   display: flex;
   flex-direction: column;

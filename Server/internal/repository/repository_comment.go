@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
@@ -188,4 +189,48 @@ func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentI
 	}
 
 	return reposqlc.DeleteComment(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
+}
+
+func (r *Repository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.UpdateParticipantOwnerStaffCommentReadAt(ctx, &sqlc_repository.UpdateParticipantOwnerStaffCommentReadAtParams{
+		ID:     pgtype.UUID{Bytes: participantUUID, Valid: true},
+		UserID: int64(ownerUserID),
+	})
+}
+
+func (r *Repository) ListStaffCommentNotificationsForUser(ctx context.Context, userID model.UserID) ([]*model.StaffCommentNotification, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	rows, err := reposqlc.ListStaffCommentNotificationsForUser(ctx, int64(userID))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.StaffCommentNotification, 0, len(rows))
+	for _, row := range rows {
+		var pid, cid string
+		if row.ParticipantID.Valid {
+			pid = uuid.UUID(row.ParticipantID.Bytes).String()
+		}
+		if row.ContestID.Valid {
+			cid = uuid.UUID(row.ContestID.Bytes).String()
+		}
+		at := time.Time{}
+		if row.LatestCommentAt.Valid {
+			at = row.LatestCommentAt.Time
+		}
+		out = append(out, &model.StaffCommentNotification{
+			ParticipantID:        model.ParticipantID(pid),
+			ContestID:            model.ContestID(cid),
+			ContestTitle:         row.ContestTitle,
+			PetName:              row.PetName,
+			UnreadCount:          row.UnreadCount,
+			LatestCommentAt:      at,
+			LatestCommentPreview: row.LatestCommentPreview,
+		})
+	}
+	return out, nil
 }

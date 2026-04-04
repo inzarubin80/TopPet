@@ -42,6 +42,7 @@ func (s *TopPetService) Login(ctx context.Context, providerKey string, authoriza
 		userID = user.ID
 	} else {
 		userID = userAuthProvider.UserID
+		_ = s.repository.SetUserEmailIfEmpty(ctx, userID, userProfileFromProvider.Email)
 	}
 
 	// Set avatar if empty and provider returned one

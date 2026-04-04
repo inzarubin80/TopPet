@@ -7,14 +7,15 @@ import { ContestCard } from '../components/contest/ContestCard';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ContestStatus } from '../types/models';
-import { buildLoginUrl } from '../utils/navigation';
+import { canCreateContests } from '../utils/contestPermissions';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { items, total, loading, filters } = useSelector((state: RootState) => state.contests);
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const showCreateContest = isAuthenticated && canCreateContests(user);
   const [statusFilter, setStatusFilter] = useState<ContestStatus | undefined>(undefined);
 
   useEffect(() => {
@@ -69,8 +70,8 @@ const HomePage: React.FC = () => {
             );
           })}
         </div>
-        <div className="home-page-list-actions">
-          {isAuthenticated ? (
+        {showCreateContest ? (
+          <div className="home-page-list-actions">
             <Button className="home-page-create-button" onClick={() => navigate('/create-contest')}>
               <span className="home-page-create-button-content">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -80,25 +81,8 @@ const HomePage: React.FC = () => {
                 Создать конкурс
               </span>
             </Button>
-          ) : (
-            <Button
-              className="home-page-create-button"
-              variant="primary"
-              onClick={() => {
-                const returnUrl = '/create-contest';
-                navigate(buildLoginUrl(returnUrl));
-              }}
-            >
-              <span className="home-page-create-button-content">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Войти для создания конкурса
-              </span>
-            </Button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {loading ? (

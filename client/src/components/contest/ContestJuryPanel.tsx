@@ -13,9 +13,11 @@ const maxJuryHint = (tier: ContestTier | undefined) =>
 interface ContestJuryPanelProps {
   contest: Contest;
   isAdmin: boolean;
+  /** Слот для переноса блока критериев жюри (например, с порталом со страницы редактирования). */
+  criteriaSlotRef?: React.RefCallback<HTMLDivElement | null>;
 }
 
-export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isAdmin }) => {
+export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isAdmin, criteriaSlotRef }) => {
   const { showError, showSuccess } = useToast();
   const [items, setItems] = useState<JuryMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +137,7 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
       <p className="contest-jury-hint">
         {maxJuryHint(tier)} Редактирование только в статусе «Черновик».
       </p>
+      {criteriaSlotRef ? <div className="contest-jury-criteria-slot" ref={criteriaSlotRef} /> : null}
       {loading ? (
         <p className="contest-jury-muted">Загрузка…</p>
       ) : items.length === 0 ? (
@@ -163,10 +166,10 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
       {canEdit && (
         <div className="contest-jury-add contest-jury-section">
           <label htmlFor="jury-search-name" className="contest-jury-label">
-            Добавить в жюри — поиск по имени
+            Добавить в жюри — поиск по email или имени
           </label>
           <p className="contest-jury-search-explainer">
-            В списке показываются имя, email (если есть в профиле) и id.
+            Введите часть почты или имени (от 2 символов). В списке — имя, email и id.
           </p>
           <div className="contest-jury-search-wrap" ref={searchWrapRef}>
             <input
@@ -176,7 +179,7 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
               value={nameQuery}
               onChange={(e) => setNameQuery(e.target.value)}
               onFocus={() => setPickerOpen(nameQuery.trim().length >= 2 && searchHits.length > 0)}
-              placeholder="Минимум 2 символа имени"
+              placeholder="Email или имя (от 2 символов)"
               disabled={submitting}
               autoComplete="off"
             />

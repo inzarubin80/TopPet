@@ -46,6 +46,23 @@ export interface CreateContestRequest {
 export interface UpdateContestRequest {
   title?: string;
   description?: string;
+  public_voting_enabled?: boolean;
+  jury_voting_enabled?: boolean;
+  cover_url?: string;
+  tagline?: string;
+  rules_url?: string;
+  prize_text?: string;
+  logo_url?: string;
+  theme_color?: string;
+  sponsor_name?: string;
+  sponsor_logo_url?: string;
+  sponsor_url?: string;
+  cta_label_override?: string;
+  /** RFC3339 или пустая строка для сброса */
+  registration_starts_at?: string;
+  registration_ends_at?: string;
+  voting_starts_at?: string;
+  voting_ends_at?: string;
 }
 
 export interface VoterInfo {
@@ -61,6 +78,7 @@ export interface UpdateContestStatusRequest {
 export interface CreateParticipantRequest {
   pet_name: string;
   pet_description: string;
+  nomination_id?: string;
   registration_answers?: Record<string, string | number | boolean>;
 }
 

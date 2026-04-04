@@ -9,7 +9,8 @@ interface ContestsState {
   total: number;
   loading: boolean;
   error: string | null;
-  userVotes: Record<ContestID, string | null>;
+  /** Голос пользователя по слоту: ключ — nominationVoteKey(nomination_id), значение — participant_id */
+  userVoteSlots: Record<ContestID, Record<string, string>>;
   filters: {
     status?: ContestStatus;
     limit: number;
@@ -23,7 +24,7 @@ const initialState: ContestsState = {
   total: 0,
   loading: false,
   error: null,
-  userVotes: {},
+  userVoteSlots: {},
   filters: {
     limit: 20,
     offset: 0,
@@ -140,11 +141,33 @@ const contestsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    setUserVote: (state, action: PayloadAction<{ contestId: ContestID; participantId: string | null }>) => {
-      state.userVotes[action.payload.contestId] = action.payload.participantId;
+    setUserVoteSlot: (
+      state,
+      action: PayloadAction<{ contestId: ContestID; nominationKey: string; participantId: string | null }>
+    ) => {
+      const { contestId, nominationKey, participantId } = action.payload;
+      if (!state.userVoteSlots[contestId]) {
+        state.userVoteSlots[contestId] = {};
+      }
+      if (!participantId) {
+        delete state.userVoteSlots[contestId][nominationKey];
+      } else {
+        state.userVoteSlots[contestId][nominationKey] = participantId;
+      }
+    },
+    setUserVotesForContest: (
+      state,
+      action: PayloadAction<{ contestId: ContestID; votes: { participant_id: string; nomination_id?: string | null }[] }>
+    ) => {
+      const m: Record<string, string> = {};
+      for (const v of action.payload.votes) {
+        const k = v.nomination_id?.trim() ? v.nomination_id : '';
+        m[k] = v.participant_id;
+      }
+      state.userVoteSlots[action.payload.contestId] = m;
     },
     clearUserVote: (state, action: PayloadAction<ContestID>) => {
-      delete state.userVotes[action.payload];
+      delete state.userVoteSlots[action.payload];
     },
     updateContestTotalVotes: (
       state,
@@ -256,7 +279,8 @@ export const {
   setFilters,
   clearCurrentContest,
   clearError,
-  setUserVote,
+  setUserVoteSlot,
+  setUserVotesForContest,
   clearUserVote,
   updateContestTotalVotes,
 } = contestsSlice.actions;

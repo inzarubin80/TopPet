@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"toppet/server/internal/model"
 )
@@ -33,11 +34,14 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 	if !commentsAllowed(contest.Status) {
 		return nil, errors.New("comments are only allowed during registration or voting")
 	}
+	if !s.participantVisible(ctx, participant, contest, &userID) {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
+	}
 
 	return s.repository.CreateComment(ctx, participantID, userID, text)
 }
 
-func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int) ([]*model.Comment, int64, error) {
+func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -45,7 +49,26 @@ func (s *TopPetService) ListComments(ctx context.Context, participantID model.Pa
 		limit = 100
 	}
 
-	return s.repository.ListCommentsByParticipant(ctx, participantID, limit, offset)
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !s.participantVisible(ctx, participant, contest, viewer) {
+		return nil, 0, fmt.Errorf("%w", model.ErrorNotFound)
+	}
+
+	comments, total, err := s.repository.ListCommentsByParticipant(ctx, participantID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	if viewer != nil && *viewer == participant.UserID {
+		_ = s.repository.UpdateParticipantOwnerStaffCommentReadAt(ctx, participantID, *viewer)
+	}
+	return comments, total, nil
 }
 
 func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error) {
@@ -102,7 +125,7 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 	}
 
 	if comment.UserID != userID {
-		if contest.CreatedByUserID != userID {
+		if !s.userCanManageContest(ctx, contest, userID) {
 			return errors.New("only comment author or contest owner can delete comment")
 		}
 	}

@@ -14,19 +14,24 @@ import (
 type (
 	serviceComments interface {
 		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error)
-		ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int) ([]*model.Comment, int64, error)
+		ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
 		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
 	}
 
 	CommentsHandler struct {
-		name    string
-		service serviceComments
+		name        string
+		service     serviceComments
+		authService serviceOptionalAuth
 	}
 )
 
 func NewCommentsHandler(name string, service serviceComments) *CommentsHandler {
-	return &CommentsHandler{name: name, service: service}
+	var authService serviceOptionalAuth
+	if svc, ok := service.(serviceOptionalAuth); ok {
+		authService = svc
+	}
+	return &CommentsHandler{name: name, service: service, authService: authService}
 }
 
 func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +51,22 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		comments, total, err := h.service.ListComments(r.Context(), participantID, limit, offset)
+		var viewer *model.UserID
+		if userIDVal := r.Context().Value(defenitions.UserID); userIDVal != nil {
+			uid := userIDVal.(model.UserID)
+			viewer = &uid
+		} else if h.authService != nil {
+			uid, ok, authErr := getOptionalUserID(r, h.authService)
+			if authErr != nil {
+				uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication error", authErr))
+				return
+			}
+			if ok {
+				viewer = &uid
+			}
+		}
+
+		comments, total, err := h.service.ListComments(r.Context(), participantID, limit, offset, viewer)
 		if err != nil {
 			uhttp.HandleError(w, err)
 			return

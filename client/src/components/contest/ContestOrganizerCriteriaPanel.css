@@ -25,9 +25,14 @@
   margin-bottom: 1.5rem;
 }
 
-.contest-organizer-criteria-block h3 {
+.contest-organizer-criteria-block h3,
+.contest-organizer-criteria-jury-subtitle {
   margin: 0 0 0.75rem;
   font-size: 1.05rem;
+}
+
+.contest-organizer-criteria-block--jury {
+  margin-top: 0;
 }
 
 .contest-organizer-criteria-list {

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,7 +14,48 @@ import (
 	sqlc_repository "toppet/server/internal/repository_sqlc"
 )
 
-func (r *Repository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error) {
+func nominationUUIDForVote(nominationID *string) pgtype.UUID {
+	if nominationID == nil || strings.TrimSpace(*nominationID) == "" {
+		return pgtype.UUID{Valid: false}
+	}
+	u, err := uuid.Parse(strings.TrimSpace(*nominationID))
+	if err != nil {
+		return pgtype.UUID{Valid: false}
+	}
+	return pgtype.UUID{Bytes: u, Valid: true}
+}
+
+func voteModelFromSQLc(vote *sqlc_repository.ContestVote) *model.Vote {
+	if vote == nil {
+		return nil
+	}
+	var voteIDStr, contestIDStr, participantIDStr string
+	if vote.ID.Valid {
+		voteIDStr = uuid.UUID(vote.ID.Bytes).String()
+	}
+	if vote.ContestID.Valid {
+		contestIDStr = uuid.UUID(vote.ContestID.Bytes).String()
+	}
+	if vote.ParticipantID.Valid {
+		participantIDStr = uuid.UUID(vote.ParticipantID.Bytes).String()
+	}
+	var nom *string
+	if vote.NominationID.Valid {
+		s := uuid.UUID(vote.NominationID.Bytes).String()
+		nom = &s
+	}
+	return &model.Vote{
+		ID:            voteIDStr,
+		ContestID:     model.ContestID(contestIDStr),
+		ParticipantID: model.ParticipantID(participantIDStr),
+		NominationID:  nom,
+		UserID:        model.UserID(vote.UserID),
+		CreatedAt:     vote.CreatedAt.Time,
+		UpdatedAt:     vote.UpdatedAt.Time,
+	}
+}
+
+func (r *Repository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	voteUUID := uuid.New()
 	contestUUID, err := uuid.Parse(string(contestID))
@@ -30,42 +72,26 @@ func (r *Repository) UpsertContestVote(ctx context.Context, contestID model.Cont
 		ContestID:     pgtype.UUID{Bytes: contestUUID, Valid: true},
 		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
 		UserID:        int64(userID),
+		NominationID:  nominationUUIDForVote(nominationID),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var voteIDStr, contestIDStr, participantIDStr string
-	if vote.ID.Valid {
-		voteIDStr = uuid.UUID(vote.ID.Bytes).String()
-	}
-	if vote.ContestID.Valid {
-		contestIDStr = uuid.UUID(vote.ContestID.Bytes).String()
-	}
-	if vote.ParticipantID.Valid {
-		participantIDStr = uuid.UUID(vote.ParticipantID.Bytes).String()
-	}
-
-	return &model.Vote{
-		ID:            voteIDStr,
-		ContestID:     model.ContestID(contestIDStr),
-		ParticipantID: model.ParticipantID(participantIDStr),
-		UserID:        model.UserID(vote.UserID),
-		CreatedAt:     vote.CreatedAt.Time,
-		UpdatedAt:     vote.UpdatedAt.Time,
-	}, nil
+	return voteModelFromSQLc(vote), nil
 }
 
-func (r *Repository) GetContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error) {
+func (r *Repository) GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		return nil, err
 	}
 
-	vote, err := reposqlc.GetContestVoteByUser(ctx, &sqlc_repository.GetContestVoteByUserParams{
-		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:    int64(userID),
+	vote, err := reposqlc.GetContestVoteForUserNominationSlot(ctx, &sqlc_repository.GetContestVoteForUserNominationSlotParams{
+		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:       int64(userID),
+		NominationID: nominationUUIDForVote(nominationID),
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -74,37 +100,40 @@ func (r *Repository) GetContestVoteByUser(ctx context.Context, contestID model.C
 		return nil, err
 	}
 
-	var voteIDStr, contestIDStr, participantIDStr string
-	if vote.ID.Valid {
-		voteIDStr = uuid.UUID(vote.ID.Bytes).String()
-	}
-	if vote.ContestID.Valid {
-		contestIDStr = uuid.UUID(vote.ContestID.Bytes).String()
-	}
-	if vote.ParticipantID.Valid {
-		participantIDStr = uuid.UUID(vote.ParticipantID.Bytes).String()
-	}
-
-	return &model.Vote{
-		ID:            voteIDStr,
-		ContestID:     model.ContestID(contestIDStr),
-		ParticipantID: model.ParticipantID(participantIDStr),
-		UserID:        model.UserID(vote.UserID),
-		CreatedAt:     vote.CreatedAt.Time,
-		UpdatedAt:     vote.UpdatedAt.Time,
-	}, nil
+	return voteModelFromSQLc(vote), nil
 }
 
-func (r *Repository) DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error) {
+func (r *Repository) ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := reposqlc.ListContestVotesByUser(ctx, &sqlc_repository.ListContestVotesByUserParams{
+		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:    int64(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Vote, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, voteModelFromSQLc(row))
+	}
+	return out, nil
+}
+
+func (r *Repository) DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		return "", err
 	}
 
-	participantID, err := reposqlc.DeleteContestVoteByUser(ctx, &sqlc_repository.DeleteContestVoteByUserParams{
-		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:    int64(userID),
+	participantID, err := reposqlc.DeleteContestVoteByUserAndNomination(ctx, &sqlc_repository.DeleteContestVoteByUserAndNominationParams{
+		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:       int64(userID),
+		NominationID: nominationUUIDForVote(nominationID),
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

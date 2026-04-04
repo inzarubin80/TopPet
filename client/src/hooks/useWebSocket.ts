@@ -4,7 +4,8 @@ import { AppDispatch, RootState } from '../store';
 import { WebSocketClient } from '../websocket/wsClient';
 import { addMessage, updateMessage, removeMessage, setConnectionState, setCurrentContestId } from '../store/slices/chatSlice';
 import { refreshTokenAsync } from '../store/slices/authSlice';
-import { fetchContest, setUserVote, updateContestTotalVotes } from '../store/slices/contestsSlice';
+import { fetchContest, setUserVoteSlot, updateContestTotalVotes } from '../store/slices/contestsSlice';
+import { nominationVoteKey } from '../utils/voteKeys';
 import { updateParticipantVotes } from '../store/slices/participantsSlice';
 import { ChatMessage, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
@@ -74,9 +75,15 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       }
     });
 
-    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload) => {
+    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload, nominationIdFromPayload) => {
       if (contestId && contestIdFromPayload === contestId) {
-        dispatch(setUserVote({ contestId, participantId: participantIdFromPayload || null }));
+        dispatch(
+          setUserVoteSlot({
+            contestId,
+            nominationKey: nominationVoteKey(nominationIdFromPayload),
+            participantId: participantIdFromPayload || null,
+          })
+        );
       }
     });
 

@@ -11,8 +11,7 @@ import (
 
 type (
 	serviceGetParticipant interface {
-		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
-		GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, userID *model.UserID) (*model.Participant, error)
+		GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 	}
 
 	GetParticipantHandler struct {
@@ -32,27 +31,23 @@ func NewGetParticipantHandler(name string, service serviceGetParticipant) *GetPa
 
 func (h *GetParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	participantID := model.ParticipantID(r.PathValue("participantId"))
-	
-	// Get userID from context or extract from token (optional auth)
-	var userID *model.UserID
+
+	var viewer *model.UserID
 	if userIDVal := r.Context().Value(defenitions.UserID); userIDVal != nil {
 		uid := userIDVal.(model.UserID)
-		userID = &uid
-	} else {
-		// Try to get userID from token if available
-		uid, ok, _ := getOptionalUserID(r, h.authService)
+		viewer = &uid
+	} else if h.authService != nil {
+		uid, ok, authErr := getOptionalUserID(r, h.authService)
+		if authErr != nil {
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication error", authErr))
+			return
+		}
 		if ok {
-			userID = &uid
+			viewer = &uid
 		}
 	}
-	
-	var participant *model.Participant
-	var err error
-	if userID != nil {
-		participant, err = h.service.GetParticipantWithLikes(r.Context(), participantID, userID)
-	} else {
-		participant, err = h.service.GetParticipant(r.Context(), participantID)
-	}
+
+	participant, err := h.service.GetParticipantWithLikes(r.Context(), participantID, viewer)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

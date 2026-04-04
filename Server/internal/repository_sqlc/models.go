@@ -9,29 +9,37 @@ import (
 )
 
 type Contest struct {
-	ID                  pgtype.UUID
-	CreatedByUserID     int64
-	Title               string
-	Description         string
-	Status              string
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	Tier                string
-	CoverUrl            string
-	RegistrationEndsAt  pgtype.Timestamptz
-	VotingStartsAt      pgtype.Timestamptz
-	VotingEndsAt        pgtype.Timestamptz
-	RequireAcceptance   bool
+	ID              pgtype.UUID
+	CreatedByUserID int64
+	Title           string
+	Description     string
+	Status          string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	Tier            string
+	CoverUrl        string
+	// Автоматический переход draft → registration при наступлении момента
+	RegistrationStartsAt pgtype.Timestamptz
+	// Конец приёма заявок (информационно для организатора)
+	RegistrationEndsAt pgtype.Timestamptz
+	// Автоматический переход registration → voting
+	VotingStartsAt pgtype.Timestamptz
+	// Автоматический переход voting → finished
+	VotingEndsAt      pgtype.Timestamptz
+	RequireAcceptance bool
+	// Если true — участники могут получать голоса посетителей
 	PublicVotingEnabled bool
-	Tagline             string
-	RulesUrl            string
-	PrizeText           string
-	LogoUrl             string
-	ThemeColor          string
-	SponsorName         string
-	SponsorLogoUrl      string
-	SponsorUrl          string
-	CtaLabelOverride    string
+	// Если true — используются критерии жюри и состав жюри
+	JuryVotingEnabled bool
+	Tagline           string
+	RulesUrl          string
+	PrizeText         string
+	LogoUrl           string
+	ThemeColor        string
+	SponsorName       string
+	SponsorLogoUrl    string
+	SponsorUrl        string
+	CtaLabelOverride  string
 }
 
 type ContestChatMessage struct {
@@ -65,34 +73,29 @@ type ContestJuryCriterium struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type ContestJuryMember struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type ContestJuryScore struct {
+	ID            pgtype.UUID
+	ParticipantID pgtype.UUID
+	CriterionID   pgtype.UUID
+	UserID        int64
+	Score         int32
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type ContestNomination struct {
 	ID          pgtype.UUID
 	ContestID   pgtype.UUID
 	Title       string
 	Description string
 	SortOrder   int32
-	CreatedAt   pgtype.Timestamptz
-}
-
-type ContestParticipant struct {
-	ID                  pgtype.UUID
-	ContestID           pgtype.UUID
-	UserID              int64
-	PetName             string
-	PetDescription      string
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	RegistrationAnswers []byte
-}
-
-type ContestRegistrationField struct {
-	ID          pgtype.UUID
-	ContestID   pgtype.UUID
-	SortOrder   int32
-	Label       string
-	FieldType   string
-	Required    bool
-	EnumOptions []byte
 	CreatedAt   pgtype.Timestamptz
 }
 
@@ -112,13 +115,26 @@ type ContestParticipantVideo struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type ContestRegistrationField struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	SortOrder   int32
+	Label       string
+	FieldType   string
+	Required    bool
+	EnumOptions []byte
+	CreatedAt   pgtype.Timestamptz
+}
+
 type ContestVote struct {
-	ID            pgtype.UUID
-	ContestID     pgtype.UUID
-	ParticipantID pgtype.UUID
-	UserID        int64
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID             pgtype.UUID
+	ContestID      pgtype.UUID
+	ParticipantID  pgtype.UUID
+	UserID         int64
+	NominationID   pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	NominationSlot pgtype.UUID
 }
 
 type PhotoLike struct {
@@ -126,6 +142,14 @@ type PhotoLike struct {
 	PhotoID   pgtype.UUID
 	UserID    int64
 	CreatedAt pgtype.Timestamptz
+}
+
+type User struct {
+	UserID    int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	Email     *string
+	Role      string
 }
 
 type UserAuthProvider struct {

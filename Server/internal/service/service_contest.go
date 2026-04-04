@@ -4,11 +4,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	appcontext "toppet/server/internal/app/context"
 	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
 )
+
+func timePtrClone(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	tt := *t
+	return &tt
+}
+
+func validateContestScheduleTimes(regS, regE, votS, votE *time.Time) error {
+	if regS != nil && regE != nil && !regS.Before(*regE) {
+		return fmt.Errorf("registration_starts_at must be before registration_ends_at")
+	}
+	if regE != nil && votS != nil && votS.Before(*regE) {
+		return fmt.Errorf("voting_starts_at must be on or after registration_ends_at")
+	}
+	if regE == nil && regS != nil && votS != nil && !regS.Before(*votS) {
+		return fmt.Errorf("registration_starts_at must be before voting_starts_at when registration_ends_at is not set")
+	}
+	if votS != nil && votE != nil && !votS.Before(*votE) {
+		return fmt.Errorf("voting_starts_at must be before voting_ends_at")
+	}
+	return nil
+}
+
+func (s *TopPetService) broadcastContestStatus(contestID model.ContestID, status model.ContestStatus) {
+	if s.hub == nil {
+		return
+	}
+	payload := wsapp.NewContestStatusUpdatedPayload(contestID, string(status))
+	_ = s.hub.BroadcastContestMessage(contestID, payload)
+}
 
 func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
 	if title == "" {
@@ -17,6 +50,14 @@ func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, 
 
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
 	defer cancel()
+
+	role, err := s.repository.GetUserRole(dbCtx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if role != model.UserRoleSystemAdmin && role != model.UserRoleContestAdmin {
+		return nil, model.ErrorForbidden
+	}
 
 	contest, err := s.repository.CreateContest(dbCtx, userID, title, description)
 	if err != nil {
@@ -89,14 +130,13 @@ func (s *TopPetService) ListContests(ctx context.Context, status *model.ContestS
 	return contests, total, nil
 }
 
-func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string) (*model.Contest, error) {
+func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.ContestID, userID model.UserID, u model.ContestUpdate) (*model.Contest, error) {
 	contest, err := s.repository.GetContest(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Only admin can update
-	if contest.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, contest, userID) {
 		return nil, errors.New("only contest admin can update contest")
 	}
 
@@ -105,7 +145,76 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
 	}
 
-	return s.repository.UpdateContest(ctx, contestID, title, description)
+	if err := validateContestScheduleTimes(u.RegistrationStartsAt, u.RegistrationEndsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
+		return nil, fmt.Errorf("%w: %v", model.ErrBadRequest, err)
+	}
+
+	return s.repository.UpdateContest(ctx, contestID, u)
+}
+
+func contestToUpdate(c *model.Contest) model.ContestUpdate {
+	return model.ContestUpdate{
+		Title:                c.Title,
+		Description:          c.Description,
+		PublicVotingEnabled:  c.PublicVotingEnabled,
+		JuryVotingEnabled:    c.JuryVotingEnabled,
+		CoverUrl:             c.CoverUrl,
+		Tagline:              c.Tagline,
+		RulesUrl:             c.RulesUrl,
+		PrizeText:            c.PrizeText,
+		LogoUrl:              c.LogoUrl,
+		ThemeColor:           c.ThemeColor,
+		SponsorName:          c.SponsorName,
+		SponsorLogoUrl:       c.SponsorLogoUrl,
+		SponsorUrl:           c.SponsorUrl,
+		CtaLabelOverride:     c.CtaLabelOverride,
+		RegistrationStartsAt: timePtrClone(c.RegistrationStartsAt),
+		RegistrationEndsAt:   timePtrClone(c.RegistrationEndsAt),
+		VotingStartsAt:       timePtrClone(c.VotingStartsAt),
+		VotingEndsAt:         timePtrClone(c.VotingEndsAt),
+	}
+}
+
+// UploadContestAsset сохраняет URL загруженного изображения (черновик, только организатор).
+func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.ContestID, userID model.UserID, kind, assetURL string) (*model.Contest, error) {
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+
+	contest, err := s.repository.GetContest(dbCtx, contestID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !s.userCanManageContest(ctx, contest, userID) {
+		return nil, errors.New("only contest admin can update contest")
+	}
+
+	if contest.Status != model.ContestStatusDraft {
+		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
+	}
+
+	u := contestToUpdate(contest)
+	switch kind {
+	case "cover":
+		u.CoverUrl = assetURL
+	case "logo":
+		u.LogoUrl = assetURL
+	case "sponsor_logo":
+		u.SponsorLogoUrl = assetURL
+	default:
+		return nil, fmt.Errorf("invalid asset kind: %s", kind)
+	}
+
+	updated, err := s.repository.UpdateContest(dbCtx, contestID, u)
+	if err != nil {
+		return nil, err
+	}
+
+	if totalVotes, err := s.repository.CountVotesByContest(dbCtx, contestID); err == nil {
+		updated.TotalVotes = totalVotes
+	}
+
+	return updated, nil
 }
 
 func (s *TopPetService) PublishContest(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
@@ -114,8 +223,7 @@ func (s *TopPetService) PublishContest(ctx context.Context, contestID model.Cont
 		return nil, err
 	}
 
-	// Only admin can publish
-	if contest.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, contest, userID) {
 		return nil, errors.New("only contest admin can publish contest")
 	}
 
@@ -133,8 +241,7 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 		return nil, err
 	}
 
-	// Only admin can finish
-	if contest.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, contest, userID) {
 		return nil, errors.New("only contest admin can finish contest")
 	}
 
@@ -152,7 +259,7 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 		return nil, err
 	}
 
-	if contest.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, contest, userID) {
 		return nil, errors.New("only contest admin can update contest status")
 	}
 
@@ -170,10 +277,7 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 		return nil, err
 	}
 
-	if s.hub != nil {
-		payload := wsapp.NewContestStatusUpdatedPayload(contestID, string(status))
-		_ = s.hub.BroadcastContestMessage(contestID, payload)
-	}
+	s.broadcastContestStatus(contestID, status)
 
 	return updated, nil
 }
@@ -184,8 +288,7 @@ func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.Conte
 		return err
 	}
 
-	// Only admin can delete
-	if contest.CreatedByUserID != userID {
+	if !s.userCanManageContest(ctx, contest, userID) {
 		return errors.New("only contest admin can delete contest")
 	}
 

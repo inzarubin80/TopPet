@@ -2,7 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
-import { createParticipant, updateParticipant, uploadPhoto, uploadVideo, deletePhoto, deleteVideo, updatePhotoOrder, fetchParticipantsByContest } from '../../store/slices/participantsSlice';
+import {
+  createParticipant,
+  updateParticipant,
+  uploadPhoto,
+  uploadVideo,
+  deletePhoto,
+  deleteVideo,
+  updatePhotoOrder,
+  fetchParticipantsByContest,
+  fetchMyParticipantsForContest,
+} from '../../store/slices/participantsSlice';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Textarea } from '../common/Textarea';
@@ -11,6 +21,7 @@ import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
 import { ContestID, Participant, Photo, RegistrationField } from '../../types/models';
+import type { ParticipantsListNominationFilter } from '../../api/participantsApi';
 import { listRegistrationFields } from '../../api/registrationFieldsApi';
 import { buildLoginUrl } from '../../utils/navigation';
 import './AddParticipantModal.css';
@@ -100,6 +111,15 @@ interface AddParticipantModalProps {
   onClose: () => void;
   contestId: ContestID;
   participant?: Participant | null;
+  /** Только при создании: id номинации с кнопки «Участвовать» */
+  nominationId?: string | null;
+  nominationTitle?: string | null;
+  /** Текущий фильтр списка на странице конкурса (после сохранения заявки) */
+  participantsListNominationFilter?: ParticipantsListNominationFilter;
+  participantsListJuryUnscoredOnly?: boolean;
+  /** Пагинация списка на странице конкурса */
+  participantsListLimit?: number;
+  participantsListOffset?: number;
 }
 
 export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
@@ -107,6 +127,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   onClose,
   contestId,
   participant,
+  nominationId: nominationIdProp = null,
+  nominationTitle = null,
+  participantsListNominationFilter = 'all',
+  participantsListJuryUnscoredOnly = false,
+  participantsListLimit = 10000,
+  participantsListOffset = 0,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -424,6 +450,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             data: {
               pet_name: petName.trim(),
               pet_description: petDescription.trim(),
+              ...(nominationIdProp ? { nomination_id: nominationIdProp } : {}),
               ...(registrationPayload !== undefined ? { registration_answers: registrationPayload } : {}),
             },
           })
@@ -471,7 +498,16 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setLoading(false);
 
       // Refresh participants list to get updated data
-      await dispatch(fetchParticipantsByContest(contestId));
+      await dispatch(
+        fetchParticipantsByContest({
+          contestId,
+          nominationFilter: participantsListNominationFilter,
+          juryUnscoredOnly: participantsListJuryUnscoredOnly,
+          limit: participantsListLimit,
+          offset: participantsListOffset,
+        })
+      );
+      void dispatch(fetchMyParticipantsForContest({ contestId }));
 
       // Close modal
       onClose();
@@ -515,7 +551,13 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEditMode ? 'Редактировать участника' : 'Добавить участника'}
+      title={
+        isEditMode
+          ? 'Редактировать участника'
+          : nominationTitle
+            ? `Участвовать: ${nominationTitle}`
+            : 'Добавить участника'
+      }
       footer={
         <div className="add-participant-modal-footer">
           <Button
@@ -537,6 +579,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       }
     >
       <form id="add-participant-form" onSubmit={handleSubmit}>
+        {!isEditMode && nominationTitle ? (
+          <p className="add-participant-nomination-hint">
+            Номинация: <strong>{nominationTitle}</strong>
+          </p>
+        ) : null}
         <Input
           label="Имя животного"
           type="text"

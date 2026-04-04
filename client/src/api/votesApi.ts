@@ -1,21 +1,15 @@
 import { axiosClient } from './axiosClient';
-import { VoteResponse, ContestID } from '../types/models';
+import { ContestID, UserVoteItem, UserVotesListResponse, VoteResponse } from '../types/models';
 import { VoteRequest } from '../types/api';
 
-export const getVote = async (contestId: ContestID): Promise<VoteResponse | null> => {
+export const getVotes = async (contestId: ContestID): Promise<UserVoteItem[]> => {
   try {
-    console.log('[votesApi] getVote request', { contestId });
-    const response = await axiosClient.get<VoteResponse>(`/contests/${contestId}/vote`);
-    console.log('[votesApi] getVote response', { contestId, participantId: response.data?.participant_id });
-    return response.data;
-  } catch (error: any) {
-    console.warn('[votesApi] getVote error', {
-      contestId,
-      status: error.response?.status,
-      message: error.message,
-    });
-    if (error.response?.status === 401 || error.response?.status === 204) {
-      return null;
+    const response = await axiosClient.get<UserVotesListResponse>(`/contests/${contestId}/vote`);
+    return response.data?.votes ?? [];
+  } catch (error: unknown) {
+    const err = error as { response?: { status?: number } };
+    if (err.response?.status === 401 || err.response?.status === 204) {
+      return [];
     }
     throw error;
   }
@@ -26,12 +20,17 @@ export const vote = async (contestId: ContestID, data: VoteRequest): Promise<Vot
   return response.data;
 };
 
-export const unvote = async (contestId: ContestID): Promise<VoteResponse | null> => {
+export const unvote = async (contestId: ContestID, nominationId?: string | null): Promise<VoteResponse | null> => {
   try {
-    const response = await axiosClient.delete<VoteResponse>(`/contests/${contestId}/vote`);
+    const params =
+      nominationId !== undefined && nominationId !== null && nominationId.trim() !== ''
+        ? { nomination_id: nominationId.trim() }
+        : {};
+    const response = await axiosClient.delete<VoteResponse>(`/contests/${contestId}/vote`, { params });
     return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 204) {
+  } catch (error: unknown) {
+    const err = error as { response?: { status?: number } };
+    if (err.response?.status === 204) {
       return null;
     }
     throw error;

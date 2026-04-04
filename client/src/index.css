@@ -5,10 +5,23 @@
 }
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  --font-display: 'Syne', system-ui, sans-serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+    'Cantarell', sans-serif;
   --font-mono: Menlo, Monaco, Consolas, 'Courier New', monospace;
+
+  --color-bg: #f4f2ef;
+  --color-bg-gradient-end: #e8ecf1;
+  --color-surface: #ffffff;
+  --color-text: #1c1917;
+  --color-text-muted: #78716c;
+  --color-accent: #c2410c;
+  --color-accent-hover: #9a3412;
+  --color-accent-soft: rgba(194, 65, 12, 0.12);
+  --color-border: #e7e5e4;
+  --color-border-strong: #d6d3d1;
+  --shadow-header: 0 6px 24px rgba(28, 25, 23, 0.07);
+  --shadow-card: 0 2px 12px rgba(28, 25, 23, 0.06);
 
   /* Typography scale */
   --font-size-2xs: 10px;
@@ -36,8 +49,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-  color: #333;
+  background-color: var(--color-bg);
+  background-image: linear-gradient(165deg, var(--color-bg) 0%, var(--color-bg-gradient-end) 55%, #e2e8f0 100%);
+  background-attachment: fixed;
+  color: var(--color-text);
 }
 
 code {
@@ -46,6 +61,17 @@ code {
 
 #root {
   min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
 }
 
 /* Responsive utilities */
@@ -62,14 +88,14 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgba(231, 229, 228, 0.6);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #a8a29e;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #78716c;
 }

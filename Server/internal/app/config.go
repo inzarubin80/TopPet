@@ -31,10 +31,12 @@ type Config struct {
 	CorsAllowedOrigins []string
 	ProvidersConf      authinterface.MapProviderOauthConf
 
-	// Base URL for og:url and og:image (e.g. https://top-pet.ru)
+	// Base URL for og:url and og:image (e.g. https://www.shotcontest.ru)
 	BaseURL string
 	// Path to built SPA index.html for meta-injected HTML (optional; when set, GET /contests/* return HTML with og/twitter meta)
 	SPAIndexPath string
+	// Интервал фонового переключения статуса конкурсов по датам (0 — выключено).
+	ContestSchedulerIntervalSec int
 }
 
 func LoadConfigFromEnv() Config {
@@ -58,8 +60,9 @@ func LoadConfigFromEnv() Config {
 		// Comma-separated
 		cfg.CorsAllowedOrigins = splitComma(envOr("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
 
-	cfg.BaseURL = envOr("BASE_URL", "https://top-pet.ru")
+	cfg.BaseURL = envOr("BASE_URL", "https://www.shotcontest.ru")
 	cfg.SPAIndexPath = envOr("SPA_INDEX_PATH", "")
+	cfg.ContestSchedulerIntervalSec = envOrInt("CONTEST_SCHEDULER_INTERVAL_SEC", 60)
 	if cfg.SPAIndexPath == "" {
 		cfg.SPAIndexPath = resolveDefaultSPAIndexPath()
 	}

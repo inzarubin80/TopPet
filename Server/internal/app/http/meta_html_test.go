@@ -26,11 +26,11 @@ func (m *mockMetaHTMLService) GetContest(ctx context.Context, contestID model.Co
 	return nil, nil
 }
 
-func (m *mockMetaHTMLService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error) {
-	return m.participants, nil
+func (m *mockMetaHTMLService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error) {
+	return m.participants, int64(len(m.participants)), nil
 }
 
-func (m *mockMetaHTMLService) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
+func (m *mockMetaHTMLService) GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error) {
 	if m.participant != nil && m.participant.ID == participantID {
 		return m.participant, nil
 	}
@@ -162,6 +162,46 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	}
 	if !strings.Contains(html, `href="https://top-pet.ru/contests/contest-1"`) {
 		t.Error("contest HTML: canonical href should match contest URL")
+	}
+
+	ogImage := extractMetaContent(html, `property="og:image"`)
+	if ogImage != "https://example.com/photo.jpg" {
+		t.Errorf("contest og:image should use first participant photo when cover empty, got %q", ogImage)
+	}
+}
+
+func TestMetaHTML_ServeContest_CoverURLWinsOverParticipantPhoto(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	contest := &model.Contest{
+		ID:          "contest-1",
+		Title:       "Конкурс",
+		Description: "Описание",
+		CoverUrl:    "https://cdn.example.com/banner.jpg",
+	}
+	participants := []*model.Participant{
+		{
+			ID:      "part-1",
+			PetName: "Мурзик",
+			Photos:  []*model.Photo{{URL: "https://example.com/photo.jpg", Position: 0}},
+		},
+	}
+	svc := &mockMetaHTMLService{contest: contest, participants: participants}
+	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1", nil)
+	req.SetPathValue("contestId", "contest-1")
+	rec := httptest.NewRecorder()
+	h.ServeContest(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rec.Code)
+	}
+	html := rec.Body.String()
+	ogImage := extractMetaContent(html, `property="og:image"`)
+	if ogImage != "https://cdn.example.com/banner.jpg" {
+		t.Errorf("og:image should prefer contest cover_url, got %q", ogImage)
 	}
 }
 
@@ -295,7 +335,7 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 	if n := utf8.RuneCountInString(ogDesc); n > 160 {
 		t.Errorf("participant og:description length %d > 160", n)
 	}
-	const ctaSuffix = " Голосуйте на Top-Pet!"
+	const ctaSuffix = " Голосуйте на ShotContest!"
 	if !strings.HasSuffix(ogDesc, ctaSuffix) {
 		t.Errorf("participant og:description must end with CTA %q, got %q", ctaSuffix, ogDesc)
 	}
@@ -327,7 +367,7 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 }
 
 func writeMinimalIndex(path string) error {
-	content := `<!DOCTYPE html><html><head><title>Top-Pet</title></head><body><div id="root"></div></body></html>`
+	content := `<!DOCTYPE html><html><head><title>ShotContest</title></head><body><div id="root"></div></body></html>`
 	return os.WriteFile(path, []byte(content), 0644)
 }
 

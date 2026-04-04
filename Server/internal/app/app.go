@@ -243,6 +243,30 @@ func (a *App) registerRoutes() {
 		a.service,
 	))
 
+	a.mux.Handle("GET /api/contests/{contestId}/jury", appHttp.NewContestJuryListHandler("/api/contests/{contestId}/jury", a.service))
+	a.mux.Handle("POST /api/contests/{contestId}/jury", middleware.NewAuthMiddleware(
+		appHttp.NewContestJuryAddHandler("/api/contests/{contestId}/jury", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/contests/{contestId}/jury/{userId}", middleware.NewAuthMiddleware(
+		appHttp.NewContestJuryRemoveHandler("/api/contests/{contestId}/jury/{userId}", a.service),
+		a.service,
+	))
+
+	a.mux.Handle("GET /api/admin/users", middleware.NewAuthMiddleware(
+		appHttp.NewAdminUsersListHandler("/api/admin/users", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/admin/users/{userId}", middleware.NewAuthMiddleware(
+		appHttp.NewAdminUserPatchHandler("/api/admin/users/{userId}", a.service),
+		a.service,
+	))
+
+	a.mux.Handle("GET /api/users/search", middleware.NewAuthMiddleware(
+		appHttp.NewUsersSearchHandler("/api/users/search", a.service),
+		a.service,
+	))
+
 	a.mux.Handle("GET /api/contests/{contestId}/registration-fields", appHttp.NewRegistrationFieldsListHandler("/api/contests/{contestId}/registration-fields", a.service))
 	a.mux.Handle("PUT /api/contests/{contestId}/registration-fields", middleware.NewAuthMiddleware(
 		appHttp.NewRegistrationFieldsReplaceHandler("/api/contests/{contestId}/registration-fields", a.service),
@@ -256,6 +280,14 @@ func (a *App) registerRoutes() {
 		appHttp.NewParticipantVotersHandler("/api/contests/{contestId}/participants/{participantId}/voters", a.service),
 		a.service,
 	))
+	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/my-jury-scores", middleware.NewAuthMiddleware(
+		appHttp.NewMyJuryScoresHandler("/api/contests/{contestId}/participants/{participantId}/my-jury-scores", a.service),
+		a.service,
+	))
+	a.mux.Handle("PUT /api/contests/{contestId}/participants/{participantId}/my-jury-scores", middleware.NewAuthMiddleware(
+		appHttp.NewMyJuryScoresHandler("/api/contests/{contestId}/participants/{participantId}/my-jury-scores", a.service),
+		a.service,
+	))
 
 	// Participants (auth required)
 	a.mux.Handle("POST /api/contests/{contestId}/participants", middleware.NewAuthMiddleware(
@@ -266,11 +298,19 @@ func (a *App) registerRoutes() {
 		appHttp.NewUpdateParticipantHandler("/api/participants/{participantId}", a.service),
 		a.service,
 	))
+	a.mux.Handle("PATCH /api/participants/{participantId}/submission", middleware.NewAuthMiddleware(
+		appHttp.NewPatchParticipantSubmissionHandler("/api/participants/{participantId}/submission", a.service),
+		a.service,
+	))
 	a.mux.Handle("DELETE /api/participants/{participantId}", middleware.NewAuthMiddleware(
 		appHttp.NewDeleteParticipantHandler("/api/participants/{participantId}", a.service),
 		a.service,
 	))
 	if a.uploader != nil {
+		a.mux.Handle("POST /api/contests/{contestId}/assets/{kind}", middleware.NewAuthMiddleware(
+			appHttp.NewUploadContestAssetHandler("/api/contests/{contestId}/assets/{kind}", a.service, a.uploader),
+			a.service,
+		))
 		a.mux.Handle("POST /api/participants/{participantId}/photos", middleware.NewAuthMiddleware(
 			appHttp.NewUploadPhotoHandler("/api/participants/{participantId}/photos", a.service, a.uploader),
 			a.service,
@@ -322,6 +362,10 @@ func (a *App) registerRoutes() {
 		http.HandlerFunc(commentsHandler.DeleteComment),
 		a.service,
 	))
+	a.mux.Handle("GET /api/me/staff-comment-notifications", middleware.NewAuthMiddleware(
+		appHttp.NewStaffCommentNotificationsHandler("/api/me/staff-comment-notifications", a.service),
+		a.service,
+	))
 
 	// Chat (public)
 	a.mux.Handle("GET /api/contests/{contestId}/chat", appHttp.NewChatHandler("/api/contests/{contestId}/chat", a.service))
@@ -339,6 +383,10 @@ func (a *App) registerRoutes() {
 
 func (a *App) ListenAndServe() error {
 	go a.hub.Run()
+	if a.config.ContestSchedulerIntervalSec > 0 {
+		iv := time.Duration(a.config.ContestSchedulerIntervalSec) * time.Second
+		go a.service.RunContestStatusScheduler(context.Background(), iv)
+	}
 	fmt.Println("start server on", a.config.Addr)
 	return a.server.ListenAndServe()
 }

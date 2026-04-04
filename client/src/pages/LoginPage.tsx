@@ -7,6 +7,7 @@ import { login } from '../store/slices/authSlice';
 import { tokenStorage } from '../utils/tokenStorage';
 import { getAndClearReturnUrl } from '../utils/navigation';
 import { useToast } from '../contexts/ToastContext';
+import { BRAND_NAME, BRAND_TAGLINE } from '../config/brand';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
@@ -73,7 +74,8 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page">
       <div className="login-page-content">
-        <h1 className="login-page-title">TOP-PET</h1>
+        <h1 className="login-page-title">{BRAND_NAME}</h1>
+        <p className="login-page-tagline">{BRAND_TAGLINE}</p>
         <p className="login-page-subtitle">
           Войдите, чтобы создавать конкурсы, добавлять участников и голосовать
         </p>

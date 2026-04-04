@@ -1,14 +1,13 @@
 import { Contest, Participant, Photo } from '../types/models';
+import { SITE_URL } from '../config/brand';
 
 /**
  * Получает базовый URL для production или development
  */
 export const getBaseUrl = (): string => {
-  // В production используем https://www.top-pet.ru
   if (process.env.NODE_ENV === 'production') {
-    return 'https://www.top-pet.ru';
+    return SITE_URL;
   }
-  // В development используем localhost
   return 'http://localhost:3000';
 };
 
@@ -42,6 +41,24 @@ export const getMetaImage = (photo?: Photo | null): string => {
   }
   // Дефолтное изображение - используем иконку сайта
   return `${getBaseUrl()}/icon.svg`;
+};
+
+/** Абсолютный URL для обложки/логотипа конкурса (http(s) или путь от корня сайта). */
+export const resolvePublicAssetUrl = (url: string): string => {
+  const u = url.trim();
+  if (!u) return '';
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('/')) return `${getBaseUrl()}${u}`;
+  return `${getBaseUrl()}/${u}`;
+};
+
+/** Картинка для шаринга страницы конкурса: обложка конкурса или первое фото участника. */
+export const getContestShareImage = (contest: Contest, firstPhoto: Photo | null): string => {
+  const cover = contest.cover_url?.trim();
+  if (cover) {
+    return resolvePublicAssetUrl(cover);
+  }
+  return getMetaImage(firstPhoto);
 };
 
 /**

@@ -12,7 +12,6 @@ import (
 
 type (
 	serviceDeleteVideo interface {
-		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 		DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error
 	}
 

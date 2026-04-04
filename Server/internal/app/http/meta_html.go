@@ -17,8 +17,8 @@ import (
 type (
 	serviceMetaHTML interface {
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error)
-		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error)
+		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 	}
 
 	metaHTMLHandler struct {
@@ -116,7 +116,7 @@ const (
 	ogDescriptionMaxRunes          = 160
 	participantDescBodyMaxRunes    = 100 // max runes for pet description body so CTA fits in card preview
 	ogParticipantTitleMaxRunes     = 50  // participant card title often shown in one line
-	participantCTASuffix           = " Голосуйте на Top-Pet!"
+	participantCTASuffix           = " Голосуйте на ShotContest!"
 	contestDescSuffix              = " Добавляйте своих питомцев"
 )
 
@@ -130,7 +130,7 @@ func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, image
 	imageURL = html.EscapeString(imageURL)
 	imageAlt = html.EscapeString(imageAlt)
 	imageSecureURL = html.EscapeString(imageSecureURL)
-	const siteName = "Top-Pet"
+	const siteName = "ShotContest"
 	var b strings.Builder
 	b.WriteString(`<meta name="description" content="`)
 	b.WriteString(description)
@@ -193,7 +193,7 @@ func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, image
 }
 
 func (h *metaHTMLHandler) injectMetaIntoHTML(htmlBytes []byte, pageTitle, metaTags, canonicalURL string) []byte {
-	oldTitle := []byte("<title>Top-Pet</title>")
+	oldTitle := []byte("<title>ShotContest</title>")
 	canonicalTag := ""
 	if canonicalURL != "" {
 		canonicalURL = html.EscapeString(canonicalURL)
@@ -222,11 +222,11 @@ func participantTitleForOG(petName, contestTitle string) string {
 	return truncateRunes(petName, ogParticipantTitleMaxRunes)
 }
 
-// participantDescription builds og:description: one line from petDesc (max participantDescBodyMaxRunes) + CTA. Total ≤ 160. Contest name is not included. If petDesc empty, "Голосуйте за [petName] на Top-Pet!".
+// participantDescription builds og:description: one line from petDesc (max participantDescBodyMaxRunes) + CTA. Total ≤ 160. Contest name is not included. If petDesc empty, "Голосуйте за [petName] на ShotContest!".
 func participantDescription(petName, petDesc string) string {
 	cta := participantCTASuffix
 	if petDesc == "" {
-		return truncateRunes("Голосуйте за "+petName+" на Top-Pet!", ogDescriptionMaxRunes)
+		return truncateRunes("Голосуйте за "+petName+" на ShotContest!", ogDescriptionMaxRunes)
 	}
 	oneLine := strings.TrimSpace(strings.ReplaceAll(petDesc, "\n", " "))
 	oneLine = strings.Join(strings.Fields(oneLine), " ")
@@ -279,8 +279,8 @@ func (h *metaHTMLHandler) injectParticipantPreviewCard(htmlBytes []byte, imageUR
 
 // homeMetaTitle and homeMetaDescription are default og values for the main page.
 const (
-	homeMetaTitle       = "Top-Pet — Платформа для конкурсов красоты животных"
-	homeMetaDescription = "Создавайте конкурсы, участвуйте, голосуйте за любимых питомцев. Top-Pet — конкурсы красоты животных."
+	homeMetaTitle       = "ShotContest — платформа фотоконкурсов"
+	homeMetaDescription = "Создавайте фотоконкурсы, участвуйте, голосуйте за работы. ShotContest — конкурсы для любителей снимать питомцев."
 )
 
 func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
@@ -292,7 +292,7 @@ func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 	description := truncateRunes(homeMetaDescription, ogDescriptionMaxRunes)
 	url := h.baseURL + "/"
 	imageURL := h.defaultImageURL()
-	imageAlt := "Top-Pet — конкурсы красоты животных"
+	imageAlt := "ShotContest — фотоконкурсы"
 	imageWidth, imageHeight := 1200, 630
 	imageSecureURL := ""
 	if strings.HasPrefix(h.baseURL, "https://") {
@@ -329,20 +329,28 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	participants, _ := h.service.ListParticipantsByContest(r.Context(), contestID)
-	imageURL := firstParticipantPhotoURL(participants)
-	if imageURL == "" {
-		imageURL = h.defaultImageURL()
-	} else {
+	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, 8, 0)
+	imageURL := strings.TrimSpace(contest.CoverUrl)
+	if imageURL != "" {
 		imageURL = h.absoluteImageURL(imageURL)
+	} else {
+		imageURL = firstParticipantPhotoURL(participants)
+		if imageURL == "" {
+			imageURL = h.defaultImageURL()
+		} else {
+			imageURL = h.absoluteImageURL(imageURL)
+		}
 	}
 
-	pageTitle := truncateRunes(contest.Title+" - Top-Pet", ogTitleMaxRunes)
+	pageTitle := truncateRunes(contest.Title+" — ShotContest", ogTitleMaxRunes)
 	description := contestDescription(contest.Title, contest.Description)
+	if t := strings.TrimSpace(contest.Tagline); t != "" {
+		description = truncateRunes(t+" — "+description, ogDescriptionMaxRunes)
+	}
 	url := h.baseURL + "/contests/" + string(contestID)
 	imageAlt := "Превью конкурса: " + contest.Title
 	if contest.Title == "" {
-		imageAlt = "Конкурс Top-Pet"
+		imageAlt = "Конкурс ShotContest"
 	}
 	imageAlt = truncateRunes(imageAlt, 100)
 	imageWidth, imageHeight := 1200, 630
@@ -380,7 +388,7 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	participant, err := h.service.GetParticipant(r.Context(), participantID)
+	participant, err := h.service.GetParticipant(r.Context(), participantID, nil)
 	if err != nil {
 		http.NotFound(w, r)
 		return

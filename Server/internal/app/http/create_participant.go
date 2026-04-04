@@ -13,7 +13,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -36,6 +36,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		PetName             string                 `json:"pet_name"`
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
+		NominationID        *string                `json:"nomination_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -52,7 +53,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription, req.RegistrationAnswers)
+	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription, req.RegistrationAnswers, req.NominationID)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)
 		uhttp.HandleError(w, err)

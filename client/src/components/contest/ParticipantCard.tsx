@@ -1,40 +1,56 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { Participant, ContestStatus } from '../../types/models';
+import { Participant, ContestStatus, RegistrationField } from '../../types/models';
+import { registrationAnswersToDisplayRows } from '../../utils/registrationAnswersDisplay';
 import { Button } from '../common/Button';
 import { buildLoginUrl } from '../../utils/navigation';
 import { vote, unvote } from '../../api/votesApi';
-import { setUserVote } from '../../store/slices/contestsSlice';
+import { setUserVoteSlot } from '../../store/slices/contestsSlice';
+import { nominationVoteKey } from '../../utils/voteKeys';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import { descriptionWithBreaks } from '../../utils/formatText';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
+import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
   participant: Participant;
   contestId: string;
   contestStatus: ContestStatus;
+  /** Показывать сумму баллов жюри, если она пришла с сервера */
+  juryVotingEnabled?: boolean;
+  /** Подпись номинации (если заявка привязана к категории) */
+  nominationTitle?: string;
+  /** Поля заявки конкурса (подписи и порядок для ответов участника) */
+  registrationFields?: RegistrationField[];
+  /** По умолчанию true — если false, кнопка голосования скрыта */
+  publicVotingEnabled?: boolean;
+  /** Подпись на кнопке голосования вместо «Голосовать» */
+  voteCtaLabel?: string;
   onEdit?: (participant: Participant) => void;
   onDelete?: (participant: Participant) => void;
   onShowVoters?: (participant: Participant) => void;
   isContestAdmin?: boolean;
   isVoted?: boolean;
-  isWinner?: boolean;
 }
 
 export const ParticipantCard: React.FC<ParticipantCardProps> = ({ 
   participant, 
   contestId, 
   contestStatus,
+  nominationTitle,
+  registrationFields,
+  publicVotingEnabled = true,
+  voteCtaLabel,
   onEdit,
   onDelete,
   onShowVoters,
   isContestAdmin,
   isVoted,
-  isWinner = false
+  juryVotingEnabled = false,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,11 +59,85 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const { showError } = useToast();
   const [isVoting, setIsVoting] = useState(false);
-  const { isOwner, canEdit, canVote } = useParticipantPermissions(participant, currentUserId, contestStatus);
+  const [moderationBusy, setModerationBusy] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectComment, setRejectComment] = useState('');
+  const { isOwner, canEdit, canVote } = useParticipantPermissions(
+    participant,
+    currentUserId,
+    contestStatus,
+    publicVotingEnabled
+  );
   const authorLabel = isOwner
     ? 'Вы'
     : participant.user_name || `Пользователь ${participant.user_id}`;
   const photos = participant.photos ?? [];
+
+  const registrationRows = useMemo(
+    () => registrationAnswersToDisplayRows(registrationFields ?? [], participant.registration_answers),
+    [registrationFields, participant.registration_answers]
+  );
+
+  const submissionStatus = participant.submission_status;
+  const showSubmissionBadge =
+    submissionStatus === 'pending' || submissionStatus === 'rejected';
+  const canModerateSubmission = isContestAdmin && submissionStatus === 'pending';
+
+  const openRejectModal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRejectComment('');
+    setRejectModalOpen(true);
+  };
+
+  const closeRejectModal = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setRejectModalOpen(false);
+  };
+
+  const handleAccept = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (moderationBusy) {
+      return;
+    }
+    try {
+      setModerationBusy(true);
+      await dispatch(
+        patchParticipantSubmission({ participantId: participant.id, submission_status: 'accepted' })
+      ).unwrap();
+    } catch (error) {
+      errorHandler.handleError(error, () => showError('Не удалось принять заявку'));
+    } finally {
+      setModerationBusy(false);
+    }
+  };
+
+  const submitReject = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const trimmed = rejectComment.trim();
+    if (!trimmed) {
+      showError('Напишите комментарий для участника');
+      return;
+    }
+    if (moderationBusy) {
+      return;
+    }
+    try {
+      setModerationBusy(true);
+      await dispatch(
+        patchParticipantSubmission({
+          participantId: participant.id,
+          submission_status: 'rejected',
+          submission_comment: trimmed,
+        })
+      ).unwrap();
+      setRejectModalOpen(false);
+      setRejectComment('');
+    } catch (error) {
+      errorHandler.handleError(error, () => showError('Не удалось отклонить заявку'));
+    } finally {
+      setModerationBusy(false);
+    }
+  };
 
   const handleClick = () => {
     navigate(`/contests/${contestId}/participants/${participant.id}`);
@@ -87,12 +177,13 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
 
     try {
       setIsVoting(true);
+      const slotKey = nominationVoteKey(participant.nomination_id);
       if (isVoted) {
-        await unvote(contestId);
-        dispatch(setUserVote({ contestId, participantId: null }));
+        await unvote(contestId, participant.nomination_id);
+        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId: null }));
       } else {
         await vote(contestId, { participant_id: participant.id });
-        dispatch(setUserVote({ contestId, participantId: participant.id }));
+        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId: participant.id }));
       }
     } catch (error) {
       const errorMessage = isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
@@ -103,6 +194,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   };
 
   return (
+    <>
     <div
       className={`participant-card ${isVoted ? 'participant-card-voted' : ''}`}
       onClick={handleClick}
@@ -121,24 +213,64 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
       <div className="participant-card-content">
         <div className="participant-card-name-wrapper">
           <h4 className="participant-card-name">{participant.pet_name}</h4>
-          {isWinner && contestStatus === 'finished' && (
+          {nominationTitle ? (
+            <span className="participant-card-nomination">{nominationTitle}</span>
+          ) : null}
+          {showSubmissionBadge ? (
+            <span
+              className={
+                submissionStatus === 'rejected'
+                  ? 'participant-card-submission-badge participant-card-submission-badge-rejected'
+                  : 'participant-card-submission-badge participant-card-submission-badge-pending'
+              }
+            >
+              {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
+            </span>
+          ) : null}
+          {contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner) && (
             <div className="participant-card-winner-badge">
               <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
                 <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="participant-card-winner-text">Победитель</span>
+              <span className="participant-card-winner-text">
+                {participant.is_audience_winner && participant.is_jury_winner
+                  ? 'Победитель зрителей и жюри'
+                  : participant.is_audience_winner
+                    ? 'Победитель зрителей'
+                    : 'Победитель жюри'}
+              </span>
             </div>
           )}
         </div>
         <p className="participant-card-description">
           {descriptionWithBreaks(participant.pet_description || 'Нет описания')}
         </p>
+        {submissionStatus === 'rejected' &&
+        (isContestAdmin || isOwner) &&
+        participant.submission_comment?.trim() ? (
+          <p className="participant-card-reject-reason">{participant.submission_comment}</p>
+        ) : null}
+        {registrationRows.length > 0 ? (
+          <dl className="participant-card-registration">
+            {registrationRows.map((row) => (
+              <div key={row.id} className="participant-card-registration-row">
+                <dt className="participant-card-registration-label">{row.label}</dt>
+                <dd className="participant-card-registration-value">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         <div className="participant-card-footer">
           <div className="participant-card-meta">
             <span className="participant-card-votes">
               Голосов: {participant.total_votes || 0}
             </span>
+            {juryVotingEnabled && participant.total_jury_score !== undefined ? (
+              <span className="participant-card-jury-total" title="Сумма оценок жюри по всем критериям">
+                Жюри: {participant.total_jury_score}
+              </span>
+            ) : null}
             <span className="participant-card-author">Автор: {authorLabel}</span>
             {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
           </div>
@@ -150,12 +282,34 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                 onClick={handleVoteClick}
                 disabled={isVoting}
               >
-                {isVoted ? 'Отменить' : 'Голосовать'}
+                {isVoted ? 'Отменить' : voteCtaLabel?.trim() || 'Голосовать'}
               </Button>
             </div>
           )}
           {(isContestAdmin || canEdit) && (
             <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
+              {canModerateSubmission && (
+                <>
+                  <button
+                    type="button"
+                    className="participant-card-moderation-btn participant-card-moderation-accept"
+                    onClick={handleAccept}
+                    disabled={moderationBusy}
+                    title="Принять заявку"
+                  >
+                    Принять
+                  </button>
+                  <button
+                    type="button"
+                    className="participant-card-moderation-btn participant-card-moderation-reject"
+                    onClick={openRejectModal}
+                    disabled={moderationBusy}
+                    title="Отклонить заявку"
+                  >
+                    Отклонить
+                  </button>
+                </>
+              )}
               {isContestAdmin && (
                 <button
                   type="button"
@@ -205,5 +359,40 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         </div>
       </div>
     </div>
+    {rejectModalOpen ? (
+      <div className="participant-card-reject-overlay" role="presentation" onClick={() => closeRejectModal()}>
+        <div
+          className="participant-card-reject-dialog"
+          role="dialog"
+          aria-labelledby="participant-reject-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 id="participant-reject-title" className="participant-card-reject-title">
+            Отклонить заявку
+          </h3>
+          <p className="participant-card-reject-hint">
+            Участник увидит этот комментарий. Поле обязательно.
+          </p>
+          <textarea
+            className="participant-card-reject-textarea"
+            value={rejectComment}
+            onChange={(e) => setRejectComment(e.target.value)}
+            placeholder="Например: уточните описание или замените фото…"
+            rows={5}
+            maxLength={2000}
+            disabled={moderationBusy}
+          />
+          <div className="participant-card-reject-actions">
+            <Button type="button" variant="secondary" size="small" onClick={(e) => closeRejectModal(e)} disabled={moderationBusy}>
+              Отмена
+            </Button>
+            <Button type="button" variant="primary" size="small" onClick={submitReject} disabled={moderationBusy}>
+              {moderationBusy ? 'Отправка…' : 'Отклонить'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 };

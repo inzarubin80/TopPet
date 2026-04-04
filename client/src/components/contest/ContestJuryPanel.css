@@ -18,6 +18,10 @@
   line-height: 1.4;
 }
 
+.contest-jury-criteria-slot {
+  margin-bottom: 1.25rem;
+}
+
 .contest-jury-muted {
   margin: 0;
   color: #9ca3af;

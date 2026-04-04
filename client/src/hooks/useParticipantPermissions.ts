@@ -13,7 +13,8 @@ interface UseParticipantPermissionsResult {
 export const useParticipantPermissions = (
   participant: Participant | null | undefined,
   currentUserId: UserID | undefined,
-  contestStatus: ContestStatus
+  contestStatus: ContestStatus,
+  publicVotingEnabled: boolean = true
 ): UseParticipantPermissionsResult => {
   return useMemo(() => {
     if (!participant || !currentUserId) {
@@ -26,12 +27,15 @@ export const useParticipantPermissions = (
 
     const isOwner = participant.user_id === currentUserId;
     const canEdit = isOwner && (contestStatus === 'draft' || contestStatus === 'registration');
-    const canVote = contestStatus === 'voting' && !isOwner;
+    const submissionOk =
+      !participant.submission_status || participant.submission_status === 'accepted';
+    const canVote =
+      contestStatus === 'voting' && !isOwner && publicVotingEnabled && submissionOk;
 
     return {
       isOwner,
       canEdit,
       canVote,
     };
-  }, [participant, currentUserId, contestStatus]);
+  }, [participant, currentUserId, contestStatus, publicVotingEnabled]);
 };

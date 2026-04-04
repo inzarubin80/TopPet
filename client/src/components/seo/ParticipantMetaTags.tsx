@@ -6,6 +6,7 @@ import {
   getMetaImage,
   getParticipantDescription,
 } from '../../utils/seo';
+import { BRAND_NAME, brandTabTitle } from '../../config/brand';
 
 interface ParticipantMetaTagsProps {
   participant: Participant;
@@ -20,7 +21,7 @@ export const ParticipantMetaTags: React.FC<ParticipantMetaTagsProps> = ({
   contestId,
   participantId,
 }) => {
-  const title = `${participant.pet_name} - Top-Pet`;
+  const title = brandTabTitle(participant.pet_name);
   const description = getParticipantDescription(participant);
   const url = getParticipantUrl(contestId, participantId);
   
@@ -45,7 +46,7 @@ export const ParticipantMetaTags: React.FC<ParticipantMetaTagsProps> = ({
       <meta property="og:url" content={url} />
       <meta property="og:type" content="website" />
       <meta property="og:image" content={imageUrl} />
-      <meta property="og:site_name" content="Top-Pet" />
+      <meta property="og:site_name" content={BRAND_NAME} />
       
       {/* Twitter Card метатеги */}
       <meta name="twitter:card" content="summary_large_image" />

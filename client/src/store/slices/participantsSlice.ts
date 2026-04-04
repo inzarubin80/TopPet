@@ -1,11 +1,16 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Participant, ParticipantID, ContestID } from '../../types/models';
+import { Participant, ParticipantID, ContestID, ParticipantSubmissionStatus } from '../../types/models';
 import * as participantsApi from '../../api/participantsApi';
+import type { ParticipantsListNominationFilter } from '../../api/participantsApi';
 import { CreateParticipantRequest, UpdateParticipantRequest, getApiErrorMessage } from '../../types/api';
 
 interface ParticipantsState {
   items: Record<ParticipantID, Participant>;
   byContest: Record<ContestID, ParticipantID[]>;
+  /** Всего записей в списке конкурса (с учётом фильтров), для пагинации */
+  listTotalByContest: Record<ContestID, number>;
+  /** Заявки текущего пользователя в конкурсе (черновик / регистрация), для кнопок «Уже участвуете» */
+  mineByContest: Record<ContestID, Participant[]>;
   loading: boolean;
   error: string | null;
 }
@@ -13,6 +18,8 @@ interface ParticipantsState {
 const initialState: ParticipantsState = {
   items: {},
   byContest: {},
+  listTotalByContest: {},
+  mineByContest: {},
   loading: false,
   error: null,
 };
@@ -30,12 +37,60 @@ export const fetchParticipant = createAsyncThunk(
   }
 );
 
+export type { ParticipantsListNominationFilter };
+
 export const fetchParticipantsByContest = createAsyncThunk(
   'participants/fetchParticipantsByContest',
-  async (contestId: ContestID, { rejectWithValue }) => {
+  async (
+    payload:
+      | ContestID
+      | {
+          contestId: ContestID;
+          nominationFilter?: ParticipantsListNominationFilter;
+          juryUnscoredOnly?: boolean;
+          limit?: number;
+          offset?: number;
+        },
+    { rejectWithValue }
+  ) => {
     try {
-      const participants = await participantsApi.getParticipantsByContest(contestId);
-      return { contestId, participants };
+      const contestId = typeof payload === 'string' ? payload : payload.contestId;
+      const nominationFilter: ParticipantsListNominationFilter =
+        typeof payload === 'string' ? 'all' : payload.nominationFilter ?? 'all';
+      const juryUnscoredOnly = typeof payload === 'string' ? false : payload.juryUnscoredOnly ?? false;
+      const limit = typeof payload === 'object' && payload.limit !== undefined ? payload.limit : undefined;
+      const offset = typeof payload === 'object' && payload.offset !== undefined ? payload.offset : undefined;
+      const listOptions =
+        limit !== undefined || offset !== undefined
+          ? { limit: limit ?? 10000, offset: offset ?? 0 }
+          : undefined;
+      const { items: participants, total, limit: appliedLimit, offset: appliedOffset } =
+        await participantsApi.getParticipantsByContest(contestId, nominationFilter, juryUnscoredOnly, listOptions);
+      return {
+        contestId,
+        participants,
+        total,
+        limit: appliedLimit,
+        offset: appliedOffset,
+        nominationFilter,
+        juryUnscoredOnly,
+      };
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
+  }
+);
+
+export const fetchMyParticipantsForContest = createAsyncThunk(
+  'participants/fetchMyParticipantsForContest',
+  async ({ contestId }: { contestId: ContestID }, { rejectWithValue }) => {
+    try {
+      const { items } = await participantsApi.getParticipantsByContest(contestId, 'all', false, {
+        participantScope: 'mine',
+        limit: 100,
+        offset: 0,
+      });
+      return { contestId, items };
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error));
     }
@@ -138,6 +193,33 @@ export const updatePhotoOrder = createAsyncThunk(
   }
 );
 
+export const patchParticipantSubmission = createAsyncThunk(
+  'participants/patchParticipantSubmission',
+  async (
+    {
+      participantId,
+      submission_status,
+      submission_comment,
+    }: {
+      participantId: ParticipantID;
+      submission_status: ParticipantSubmissionStatus;
+      submission_comment?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const participant = await participantsApi.patchParticipantSubmission(
+        participantId,
+        submission_status,
+        submission_comment
+      );
+      return participant;
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
+  }
+);
+
 const participantsSlice = createSlice({
   name: 'participants',
   initialState,
@@ -181,9 +263,8 @@ const participantsSlice = createSlice({
       })
       .addCase(fetchParticipantsByContest.fulfilled, (state, action) => {
         state.loading = false;
-        const { contestId, participants } = action.payload;
+        const { contestId, participants, total } = action.payload;
         const participantIds: ParticipantID[] = [];
-        // Ensure participants is an array
         if (Array.isArray(participants)) {
           participants.forEach((p) => {
             state.items[p.id] = p;
@@ -191,6 +272,14 @@ const participantsSlice = createSlice({
           });
         }
         state.byContest[contestId] = participantIds;
+        state.listTotalByContest[contestId] = total;
+      })
+      .addCase(fetchMyParticipantsForContest.fulfilled, (state, action) => {
+        const { contestId, items } = action.payload;
+        for (const p of items) {
+          state.items[p.id] = p;
+        }
+        state.mineByContest[contestId] = items;
       })
       .addCase(fetchParticipantsByContest.rejected, (state, action) => {
         state.loading = false;
@@ -216,6 +305,8 @@ const participantsSlice = createSlice({
             participant.photos = [];
           }
           participant.photos.push(photo);
+          participant.submission_status = 'pending';
+          participant.submission_comment = undefined;
         }
       })
       // uploadVideo
@@ -224,6 +315,8 @@ const participantsSlice = createSlice({
         const participant = state.items[participantId];
         if (participant) {
           participant.video = video;
+          participant.submission_status = 'pending';
+          participant.submission_comment = undefined;
         }
       })
       // updateParticipant
@@ -236,11 +329,12 @@ const participantsSlice = createSlice({
       // deleteParticipant
       .addCase(deleteParticipant.fulfilled, (state, action) => {
         const participantId = action.payload;
-        // Remove from items
         delete state.items[participantId];
-        // Remove from byContest
         for (const contestId in state.byContest) {
-          state.byContest[contestId] = state.byContest[contestId].filter(id => id !== participantId);
+          state.byContest[contestId] = state.byContest[contestId].filter((id) => id !== participantId);
+        }
+        for (const contestId in state.mineByContest) {
+          state.mineByContest[contestId] = state.mineByContest[contestId].filter((p) => p.id !== participantId);
         }
       })
       .addCase(deleteParticipant.rejected, (state, action) => {
@@ -252,6 +346,8 @@ const participantsSlice = createSlice({
         const participant = state.items[participantId];
         if (participant && participant.photos) {
           participant.photos = participant.photos.filter(photo => photo.id !== photoId);
+          participant.submission_status = 'pending';
+          participant.submission_comment = undefined;
         }
       })
       .addCase(deletePhoto.rejected, (state, action) => {
@@ -263,6 +359,8 @@ const participantsSlice = createSlice({
         const participant = state.items[participantId];
         if (participant) {
           participant.video = undefined;
+          participant.submission_status = 'pending';
+          participant.submission_comment = undefined;
         }
       })
       .addCase(deleteVideo.rejected, (state, action) => {
@@ -277,9 +375,17 @@ const participantsSlice = createSlice({
           participant.photos = photoIds
             .map((id) => map.get(id))
             .filter((photo): photo is NonNullable<typeof photo> => !!photo);
+          participant.submission_status = 'pending';
+          participant.submission_comment = undefined;
         }
       })
       .addCase(updatePhotoOrder.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      .addCase(patchParticipantSubmission.fulfilled, (state, action) => {
+        state.items[action.payload.id] = action.payload;
+      })
+      .addCase(patchParticipantSubmission.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },

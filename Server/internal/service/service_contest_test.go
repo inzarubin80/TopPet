@@ -8,16 +8,23 @@ import (
 	"toppet/server/internal/model"
 )
 
+func mockRoleContestAdmin(ctx context.Context, userID model.UserID) (string, error) {
+	return model.UserRoleContestAdmin, nil
+}
+
 // mockRepository мок для Repository
 type mockRepository struct {
 	createContestFunc      func(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error)
 	getContestFunc         func(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
-	updateContestFunc      func(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error)
+	updateContestFunc      func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error)
 	updateContestStatusFunc func(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
 	deleteContestFunc      func(ctx context.Context, contestID model.ContestID) error
 	listContestsFunc       func(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
 	countVotesByContestFunc func(ctx context.Context, contestID model.ContestID) (int64, error)
 	countVotesByContestsFunc func(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)
+	getUserRoleFunc          func(ctx context.Context, userID model.UserID) (string, error)
+	listUsersForAdminFunc    func(ctx context.Context, limit, offset int32) ([]*model.User, error)
+	countUsersFunc           func(ctx context.Context) (int64, error)
 }
 
 func (m *mockRepository) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
@@ -34,9 +41,9 @@ func (m *mockRepository) GetContest(ctx context.Context, contestID model.Contest
 	return nil, nil
 }
 
-func (m *mockRepository) UpdateContest(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error) {
+func (m *mockRepository) UpdateContest(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error) {
 	if m.updateContestFunc != nil {
-		return m.updateContestFunc(ctx, contestID, title, description)
+		return m.updateContestFunc(ctx, contestID, u)
 	}
 	return nil, nil
 }
@@ -45,6 +52,10 @@ func (m *mockRepository) UpdateContestStatus(ctx context.Context, contestID mode
 	if m.updateContestStatusFunc != nil {
 		return m.updateContestStatusFunc(ctx, contestID, status)
 	}
+	return nil, nil
+}
+
+func (m *mockRepository) ListContestsForStatusAutomation(ctx context.Context) ([]*model.Contest, error) {
 	return nil, nil
 }
 
@@ -85,14 +96,25 @@ func (m *mockRepository) GetUserAuthProvidersByProviderUid(ctx context.Context, 
 func (m *mockRepository) AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error) { return nil, nil }
 func (m *mockRepository) GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error) { return nil, nil }
 func (m *mockRepository) SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error { return nil }
+func (m *mockRepository) SetUserEmailIfEmpty(ctx context.Context, userID model.UserID, email string) error         { return nil }
 // ListContests, UpdateContest, UpdateContestStatus, DeleteContest реализованы ниже с поддержкой моков
-func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) { return nil, nil }
-func (m *mockRepository) GetParticipantByContestAndUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Participant, error) { return nil, nil }
-func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Participant, error) { return nil, nil }
+func (m *mockRepository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
+	return nil, model.ErrorNotFound
+}
+func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
+	return nil, 0, nil
+}
 func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+	return nil, nil
+}
+func (m *mockRepository) MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error {
+	return nil
+}
+func (m *mockRepository) SetParticipantSubmissionStatus(ctx context.Context, participantID model.ParticipantID, status string, submissionComment *string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error { return nil }
@@ -103,9 +125,21 @@ func (m *mockRepository) UpdateParticipantPhotoOrder(ctx context.Context, partic
 func (m *mockRepository) UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error) { return nil, nil }
 func (m *mockRepository) GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error) { return nil, nil }
 func (m *mockRepository) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error { return nil }
-func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error) { return nil, nil }
-func (m *mockRepository) GetContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Vote, error) { return nil, nil }
-func (m *mockRepository) DeleteContestVoteByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) (model.ParticipantID, error) { return "", nil }
+func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
+	return nil, nil
+}
+func (m *mockRepository) DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
+	return "", nil
+}
+func (m *mockRepository) ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error) {
+	return nil, nil
+}
 func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) { return nil, nil }
 // CountVotesByContest, CountVotesByContests реализованы ниже с поддержкой моков
 func (m *mockRepository) CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) { return 0, nil }
@@ -114,6 +148,12 @@ func (m *mockRepository) GetComment(ctx context.Context, commentID model.Comment
 func (m *mockRepository) ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, limit, offset int) ([]*model.Comment, int64, error) { return nil, 0, nil }
 func (m *mockRepository) UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error) { return nil, nil }
 func (m *mockRepository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error { return nil }
+func (m *mockRepository) ListStaffCommentNotificationsForUser(ctx context.Context, userID model.UserID) ([]*model.StaffCommentNotification, error) {
+	return nil, nil
+}
+func (m *mockRepository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {
+	return nil
+}
 func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool) (*model.ChatMessage, error) { return nil, nil }
 func (m *mockRepository) ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error) { return nil, 0, nil }
 func (m *mockRepository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) { return nil, nil }
@@ -152,6 +192,65 @@ func (m *mockRepository) ListRegistrationFieldsByContest(ctx context.Context, co
 }
 func (m *mockRepository) ReplaceContestRegistrationFields(ctx context.Context, contestID model.ContestID, items []*model.RegistrationFieldInput) error {
 	return nil
+}
+func (m *mockRepository) ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error) {
+	return nil, nil
+}
+func (m *mockRepository) AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
+	return nil, nil
+}
+func (m *mockRepository) RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error {
+	return nil
+}
+func (m *mockRepository) CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) IsContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (bool, error) {
+	return false, nil
+}
+func (m *mockRepository) UpsertContestJuryScore(ctx context.Context, participantID model.ParticipantID, criterionID string, userID model.UserID, score int32) (*model.JuryScore, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error) {
+	return nil, nil
+}
+func (m *mockRepository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
+	return map[model.ParticipantID]int64{}, nil
+}
+func (m *mockRepository) SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) GetUserRole(ctx context.Context, userID model.UserID) (string, error) {
+	if m.getUserRoleFunc != nil {
+		return m.getUserRoleFunc(ctx, userID)
+	}
+	return model.UserRoleUser, nil
+}
+
+func (m *mockRepository) ListUsersForAdmin(ctx context.Context, limit, offset int32) ([]*model.User, error) {
+	if m.listUsersForAdminFunc != nil {
+		return m.listUsersForAdminFunc(ctx, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *mockRepository) CountUsers(ctx context.Context) (int64, error) {
+	if m.countUsersFunc != nil {
+		return m.countUsersFunc(ctx)
+	}
+	return 0, nil
+}
+
+func (m *mockRepository) CountSystemAdmins(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockRepository) UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error) {
+	return nil, nil
 }
 
 func TestTopPetService_CreateContest(t *testing.T) {
@@ -199,12 +298,28 @@ func TestTopPetService_CreateContest(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:        "forbidden for regular user",
+			userID:      1,
+			title:       "Test Contest",
+			description: "Test Description",
+			mockFunc:    nil,
+			wantErr:     true,
+			errMsg:      model.ErrorForbidden.Error(),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &mockRepository{
 				createContestFunc: tt.mockFunc,
+			}
+			if tt.name != "forbidden for regular user" {
+				mockRepo.getUserRoleFunc = mockRoleContestAdmin
+			} else {
+				mockRepo.getUserRoleFunc = func(ctx context.Context, userID model.UserID) (string, error) {
+					return model.UserRoleUser, nil
+				}
 			}
 			service := &TopPetService{
 				repository: mockRepo,
@@ -302,22 +417,26 @@ func TestTopPetService_GetContest(t *testing.T) {
 
 func TestTopPetService_UpdateContest(t *testing.T) {
 	tests := []struct {
-		name           string
-		contestID      model.ContestID
-		userID         model.UserID
-		title          string
-		description    string
-		getContestFunc func(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
-		updateFunc     func(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error)
-		wantErr        bool
-		errMsg         string
+		name            string
+		contestID       model.ContestID
+		userID          model.UserID
+		update          model.ContestUpdate
+		getContestFunc  func(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
+		updateFunc      func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error)
+		getUserRoleFunc func(ctx context.Context, userID model.UserID) (string, error)
+		wantErr         bool
+		errMsg          string
 	}{
 		{
-			name:       "successful update",
-			contestID:  "test-id",
-			userID:     1,
-			title:      "Updated Title",
-			description: "Updated Description",
+			name:      "successful update",
+			contestID: "test-id",
+			userID:    1,
+			update: model.ContestUpdate{
+				Title:               "Updated Title",
+				Description:         "Updated Description",
+				PublicVotingEnabled: true,
+				JuryVotingEnabled:   false,
+			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
 					ID:              contestID,
@@ -325,11 +444,11 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 					Status:          model.ContestStatusDraft,
 				}, nil
 			},
-			updateFunc: func(ctx context.Context, contestID model.ContestID, title, description string) (*model.Contest, error) {
+			updateFunc: func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error) {
 				return &model.Contest{
 					ID:              contestID,
-					Title:           title,
-					Description:     description,
+					Title:           u.Title,
+					Description:     u.Description,
 					CreatedByUserID: 1,
 					Status:          model.ContestStatusDraft,
 				}, nil
@@ -337,11 +456,74 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:       "not admin",
-			contestID:  "test-id",
-			userID:     2,
-			title:      "Updated Title",
-			description: "Updated Description",
+			name:      "contest_admin_author_can_update",
+			contestID: "owned-by-admin",
+			userID:    5,
+			update: model.ContestUpdate{
+				Title:       "T",
+				Description: "D",
+			},
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{
+					ID:              contestID,
+					CreatedByUserID: 5,
+					Status:          model.ContestStatusDraft,
+				}, nil
+			},
+			updateFunc: func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error) {
+				return &model.Contest{
+					ID:              contestID,
+					Title:           u.Title,
+					Description:     u.Description,
+					CreatedByUserID: 5,
+					Status:          model.ContestStatusDraft,
+				}, nil
+			},
+			getUserRoleFunc: func(ctx context.Context, userID model.UserID) (string, error) {
+				return model.UserRoleContestAdmin, nil
+			},
+			wantErr: false,
+		},
+		{
+			name:      "contest_admin_not_author_can_update",
+			contestID: "other-authors-contest",
+			userID:    7,
+			update: model.ContestUpdate{
+				Title:       "T2",
+				Description: "D2",
+			},
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{
+					ID:              contestID,
+					CreatedByUserID: 1,
+					Status:          model.ContestStatusDraft,
+				}, nil
+			},
+			updateFunc: func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error) {
+				return &model.Contest{
+					ID:              contestID,
+					Title:           u.Title,
+					Description:     u.Description,
+					CreatedByUserID: 1,
+					Status:          model.ContestStatusDraft,
+				}, nil
+			},
+			getUserRoleFunc: func(ctx context.Context, userID model.UserID) (string, error) {
+				if userID == 7 {
+					return model.UserRoleContestAdmin, nil
+				}
+				return model.UserRoleUser, nil
+			},
+			wantErr: false,
+		},
+		{
+			name:      "not admin",
+			contestID: "test-id",
+			userID:    2,
+			update: model.ContestUpdate{
+				Title:       "Updated Title",
+				Description: "Updated Description",
+			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
 					ID:              contestID,
@@ -353,11 +535,13 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			errMsg:  "only contest admin can update contest",
 		},
 		{
-			name:       "not draft status",
-			contestID:  "test-id",
-			userID:     1,
-			title:      "Updated Title",
-			description: "Updated Description",
+			name:      "not draft status",
+			contestID: "test-id",
+			userID:    1,
+			update: model.ContestUpdate{
+				Title:       "Updated Title",
+				Description: "Updated Description",
+			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
 					ID:              contestID,
@@ -374,13 +558,14 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			mockRepo := &mockRepository{
 				getContestFunc:    tt.getContestFunc,
 				updateContestFunc: tt.updateFunc,
+				getUserRoleFunc:   tt.getUserRoleFunc,
 			}
 			service := &TopPetService{
 				repository: mockRepo,
 			}
 
 			ctx := context.Background()
-			contest, err := service.UpdateContest(ctx, tt.contestID, tt.userID, tt.title, tt.description)
+			contest, err := service.UpdateContest(ctx, tt.contestID, tt.userID, tt.update)
 
 			if tt.wantErr {
 				if err == nil {
@@ -394,8 +579,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 				}
 				if contest == nil {
 					t.Errorf("Expected contest, got nil")
-				} else if contest.Title != tt.title {
-					t.Errorf("Expected title '%s', got '%s'", tt.title, contest.Title)
+				} else if contest.Title != tt.update.Title {
+					t.Errorf("Expected title '%s', got '%s'", tt.update.Title, contest.Title)
 				}
 			}
 		})

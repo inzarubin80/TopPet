@@ -12,6 +12,7 @@ import (
 type (
 	serviceListContests interface {
 		ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
+		UserCanManageContest(ctx context.Context, contest *model.Contest, userID model.UserID) bool
 	}
 
 	ListContestsHandler struct {
@@ -71,7 +72,7 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			filtered = append(filtered, contest)
 			continue
 		}
-		if hasUser && contest.CreatedByUserID == userID {
+		if hasUser && h.service.UserCanManageContest(r.Context(), contest, userID) {
 			filtered = append(filtered, contest)
 		}
 	}

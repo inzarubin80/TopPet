@@ -65,3 +65,21 @@ export const deleteContest = async (contestId: ContestID): Promise<{ ok: boolean
   const response = await axiosClient.delete<{ ok: boolean }>(`/contests/${contestId}`);
   return response.data;
 };
+
+export type ContestAssetKind = 'cover' | 'logo' | 'sponsor_logo';
+
+export const uploadContestAsset = async (
+  contestId: ContestID,
+  kind: ContestAssetKind,
+  file: File
+): Promise<Contest> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await axiosClient.post<Contest>(`/contests/${contestId}/assets/${kind}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 300000,
+  });
+  return response.data;
+};
