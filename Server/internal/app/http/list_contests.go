@@ -13,6 +13,7 @@ type (
 	serviceListContests interface {
 		ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
 		UserCanManageContest(ctx context.Context, contest *model.Contest, userID model.UserID) bool
+		GetUserRole(ctx context.Context, userID model.UserID) (string, error)
 	}
 
 	ListContestsHandler struct {
@@ -66,13 +67,21 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Глобальные админы видят все черновики; остальным — только свои (создатель) или при роли из БД.
+	seeAllDrafts := false
+	if hasUser {
+		if role, rerr := h.service.GetUserRole(r.Context(), userID); rerr == nil {
+			seeAllDrafts = role == model.UserRoleSystemAdmin || role == model.UserRoleContestAdmin
+		}
+	}
+
 	filtered := make([]*model.Contest, 0, len(contests))
 	for _, contest := range contests {
 		if contest.Status != model.ContestStatusDraft {
 			filtered = append(filtered, contest)
 			continue
 		}
-		if hasUser && h.service.UserCanManageContest(r.Context(), contest, userID) {
+		if hasUser && (seeAllDrafts || h.service.UserCanManageContest(r.Context(), contest, userID)) {
 			filtered = append(filtered, contest)
 		}
 	}

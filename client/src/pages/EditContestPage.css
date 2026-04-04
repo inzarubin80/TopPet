@@ -293,6 +293,28 @@
   color: #64748b;
 }
 
+.edit-contest-voting-deferred {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid rgba(29, 78, 216, 0.2);
+}
+
+.edit-contest-voting-deferred-title {
+  margin: 0 0 8px;
+  font-size: var(--font-size-base-sm);
+  font-weight: var(--font-weight-semibold);
+  color: #1e3a8a;
+}
+
+.edit-contest-voting-deferred-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: #334155;
+}
+
 .edit-contest-voting-jury {
   margin-top: 20px;
   padding-top: 20px;

@@ -1,5 +1,6 @@
 -- +goose Up
 -- Идемпотентно: в «свежей» схеме из initial_schema колонки уже есть.
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -25,8 +26,10 @@ BEGIN
         CREATE UNIQUE INDEX uniq_votes_contest_user_nom_slot ON contest_votes (contest_id, user_id, nomination_slot);
     END IF;
 END $$;
+-- +goose StatementEnd
 
 -- +goose Down
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -52,3 +55,4 @@ BEGIN
         CREATE UNIQUE INDEX IF NOT EXISTS uniq_votes_contest_user ON contest_votes (contest_id, user_id);
     END IF;
 END $$;
+-- +goose StatementEnd

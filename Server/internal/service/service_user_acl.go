@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	appcontext "toppet/server/internal/app/context"
 	"toppet/server/internal/model"
 )
 
@@ -23,6 +24,13 @@ func (s *TopPetService) userCanManageContest(ctx context.Context, contest *model
 // UserCanManageContest — создатель конкурса или глобальные роли contest_admin / system_admin.
 func (s *TopPetService) UserCanManageContest(ctx context.Context, contest *model.Contest, userID model.UserID) bool {
 	return s.userCanManageContest(ctx, contest, userID)
+}
+
+// GetUserRole — роль пользователя из БД (для списка конкурсов и пр.).
+func (s *TopPetService) GetUserRole(ctx context.Context, userID model.UserID) (string, error) {
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+	return s.repository.GetUserRole(dbCtx, userID)
 }
 
 func (s *TopPetService) requireSystemAdmin(ctx context.Context, userID model.UserID) error {
