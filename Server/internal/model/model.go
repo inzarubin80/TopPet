@@ -62,11 +62,14 @@ type (
 		SponsorLogoUrl      string        `json:"sponsor_logo_url,omitempty"`
 		SponsorUrl          string        `json:"sponsor_url,omitempty"`
 		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
+		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
+		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
 		// Расписание фаз (UTC, RFC3339 в JSON). Автопереход статуса по датам — см. планировщик на сервере.
 		RegistrationStartsAt *time.Time `json:"registration_starts_at,omitempty"`
-		RegistrationEndsAt   *time.Time `json:"registration_ends_at,omitempty"`
 		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`
 		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
+		// IANA (например Europe/Moscow) — в каком поясе организатор задаёт даты на клиенте.
+		ScheduleTimezone string `json:"schedule_timezone,omitempty"`
 		CreatedAt            time.Time  `json:"created_at"`
 		UpdatedAt            time.Time  `json:"updated_at"`
 	}
@@ -87,10 +90,11 @@ type (
 		SponsorLogoUrl      string
 		SponsorUrl          string
 		CtaLabelOverride    string
+		ParticipantAllowedEmailDomains string
 		RegistrationStartsAt *time.Time
-		RegistrationEndsAt   *time.Time
 		VotingStartsAt       *time.Time
 		VotingEndsAt         *time.Time
+		ScheduleTimezone     string
 	}
 
 	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).
@@ -100,7 +104,9 @@ type (
 		Title       string    `json:"title"`
 		Description string    `json:"description"`
 		SortOrder   int       `json:"sort_order"`
-		CreatedAt   time.Time `json:"created_at"`
+		// MinPhotoCount — сколько фото нужно добавить в заявку (1–30), по умолчанию 1.
+		MinPhotoCount int       `json:"min_photo_count"`
+		CreatedAt     time.Time `json:"created_at"`
 	}
 
 	// JuryCriterion — критерий оценки жюри для всего конкурса (одинаков для всех номинаций).
@@ -320,6 +326,13 @@ const (
 
 	ParticipantListScopeAll  = "all"
 	ParticipantListScopeMine = "mine"
+
+	// Фильтр списка заявок (только для организаторов конкурса, include_all).
+	ParticipantListSubmissionAll          = "all"
+	ParticipantListSubmissionAccepted     = "accepted"
+	ParticipantListSubmissionPending      = "pending"
+	ParticipantListSubmissionRejected     = "rejected"
+	ParticipantListSubmissionNonAccepted  = "non_accepted"
 )
 
 // IsValidUserRole допустимые значения поля users.role.

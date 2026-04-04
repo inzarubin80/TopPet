@@ -17,7 +17,7 @@ import (
 type (
 	serviceMetaHTML interface {
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 	}
 
@@ -329,7 +329,7 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, 8, 0)
+	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, 8, 0)
 	imageURL := strings.TrimSpace(contest.CoverUrl)
 	if imageURL != "" {
 		imageURL = h.absoluteImageURL(imageURL)

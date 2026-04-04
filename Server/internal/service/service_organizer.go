@@ -17,6 +17,17 @@ func contestTierString(c *model.Contest) string {
 	return tier.TierFree
 }
 
+func nominationMinPhotoCountToInt32(v int) (int32, error) {
+	if v < 1 {
+		v = 1
+	}
+	const maxNominationMinPhotos = 30
+	if v > maxNominationMinPhotos {
+		return 0, fmt.Errorf("min_photo_count must be between 1 and %d", maxNominationMinPhotos)
+	}
+	return int32(v), nil
+}
+
 func normalizeJuryCriterionInput(in *model.JuryCriterionInput) {
 	if in == nil {
 		return
@@ -80,9 +91,13 @@ func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestI
 	return s.repository.ListJuryCriteriaByContest(ctx, contestID)
 }
 
-func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string) (*model.Nomination, error) {
+func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount int) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, errors.New("title is required")
+	}
+	mp, err := nominationMinPhotoCountToInt32(minPhotoCount)
+	if err != nil {
+		return nil, err
 	}
 	c, err := s.repository.GetContest(ctx, contestID)
 	if err != nil {
@@ -102,16 +117,20 @@ func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.Co
 	if int(n) >= maxN {
 		return nil, fmt.Errorf("maximum nominations for this tier is %d", maxN)
 	}
-	return s.repository.CreateNomination(ctx, contestID, strings.TrimSpace(title), strings.TrimSpace(description), int(n))
+	return s.repository.CreateNomination(ctx, contestID, strings.TrimSpace(title), strings.TrimSpace(description), int(n), mp)
 }
 
 func (s *TopPetService) ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
 	return s.repository.ListNominationsByContest(ctx, contestID)
 }
 
-func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string) (*model.Nomination, error) {
+func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount int) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, errors.New("title is required")
+	}
+	mp, err := nominationMinPhotoCountToInt32(minPhotoCount)
+	if err != nil {
+		return nil, err
 	}
 	c, err := s.repository.GetContest(ctx, contestID)
 	if err != nil {
@@ -123,7 +142,7 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	if c.Status != model.ContestStatusDraft {
 		return nil, errors.New("nominations can only be edited in draft status")
 	}
-	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description))
+	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description), mp)
 }
 
 func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error {

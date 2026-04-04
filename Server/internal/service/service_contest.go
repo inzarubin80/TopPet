@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	appcontext "toppet/server/internal/app/context"
@@ -19,15 +20,19 @@ func timePtrClone(t *time.Time) *time.Time {
 	return &tt
 }
 
-func validateContestScheduleTimes(regS, regE, votS, votE *time.Time) error {
-	if regS != nil && regE != nil && !regS.Before(*regE) {
-		return fmt.Errorf("registration_starts_at must be before registration_ends_at")
+const defaultContestScheduleTimezone = "Europe/Moscow"
+
+func normalizeContestScheduleTimezone(s string) string {
+	t := strings.TrimSpace(s)
+	if t == "" {
+		return defaultContestScheduleTimezone
 	}
-	if regE != nil && votS != nil && votS.Before(*regE) {
-		return fmt.Errorf("voting_starts_at must be on or after registration_ends_at")
-	}
-	if regE == nil && regS != nil && votS != nil && !regS.Before(*votS) {
-		return fmt.Errorf("registration_starts_at must be before voting_starts_at when registration_ends_at is not set")
+	return t
+}
+
+func validateContestScheduleTimes(regS, votS, votE *time.Time) error {
+	if regS != nil && votS != nil && !regS.Before(*votS) {
+		return fmt.Errorf("registration_starts_at must be before voting_starts_at")
 	}
 	if votS != nil && votE != nil && !votS.Before(*votE) {
 		return fmt.Errorf("voting_starts_at must be before voting_ends_at")
@@ -145,9 +150,14 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
 	}
 
-	if err := validateContestScheduleTimes(u.RegistrationStartsAt, u.RegistrationEndsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
+	if err := validateContestScheduleTimes(u.RegistrationStartsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
 		return nil, fmt.Errorf("%w: %v", model.ErrBadRequest, err)
 	}
+	tz := normalizeContestScheduleTimezone(u.ScheduleTimezone)
+	if _, err := time.LoadLocation(tz); err != nil {
+		return nil, fmt.Errorf("%w: schedule_timezone: %v", model.ErrBadRequest, err)
+	}
+	u.ScheduleTimezone = tz
 
 	return s.repository.UpdateContest(ctx, contestID, u)
 }
@@ -167,11 +177,12 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 		SponsorName:          c.SponsorName,
 		SponsorLogoUrl:       c.SponsorLogoUrl,
 		SponsorUrl:           c.SponsorUrl,
-		CtaLabelOverride:     c.CtaLabelOverride,
+		CtaLabelOverride:               c.CtaLabelOverride,
+		ParticipantAllowedEmailDomains: model.JoinParticipantEmailDomainsDB(c.ParticipantAllowedEmailDomains),
 		RegistrationStartsAt: timePtrClone(c.RegistrationStartsAt),
-		RegistrationEndsAt:   timePtrClone(c.RegistrationEndsAt),
 		VotingStartsAt:       timePtrClone(c.VotingStartsAt),
 		VotingEndsAt:         timePtrClone(c.VotingEndsAt),
+		ScheduleTimezone:     normalizeContestScheduleTimezone(c.ScheduleTimezone),
 	}
 }
 
@@ -232,7 +243,12 @@ func (s *TopPetService) PublishContest(ctx context.Context, contestID model.Cont
 		return nil, fmt.Errorf("contest must be in draft status to publish, current status: %s", contest.Status)
 	}
 
-	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusRegistration)
+	updated, err := s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusRegistration)
+	if err != nil {
+		return nil, err
+	}
+	s.broadcastContestStatus(contestID, model.ContestStatusRegistration)
+	return updated, nil
 }
 
 func (s *TopPetService) FinishContest(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
@@ -250,7 +266,12 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 		return nil, fmt.Errorf("contest must be in voting status to finish, current status: %s", contest.Status)
 	}
 
-	return s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusFinished)
+	updated, err := s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusFinished)
+	if err != nil {
+		return nil, err
+	}
+	s.broadcastContestStatus(contestID, model.ContestStatusFinished)
+	return updated, nil
 }
 
 func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model.ContestID, userID model.UserID, status model.ContestStatus) (*model.Contest, error) {

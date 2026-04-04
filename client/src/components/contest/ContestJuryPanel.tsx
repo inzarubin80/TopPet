@@ -133,7 +133,7 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
 
   return (
     <section className="contest-jury-panel" aria-labelledby="contest-jury-heading">
-      <h2 id="contest-jury-heading">Жюри</h2>
+      <h3 id="contest-jury-heading">Состав жюри</h3>
       <p className="contest-jury-hint">
         {maxJuryHint(tier)} Редактирование только в статусе «Черновик».
       </p>

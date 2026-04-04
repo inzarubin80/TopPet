@@ -9,6 +9,138 @@
 
 .contest-page-main {
   flex: 1;
+  min-width: 0;
+}
+
+/* Карточка «О конкурсе»: обложка, призы, описание, критерии — отдельно от списка работ */
+.contest-page-overview {
+  margin-bottom: 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 4px 28px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+
+.contest-page-overview-top {
+  padding: 20px 22px 4px;
+}
+
+.contest-page-overview-body {
+  padding: 8px 22px 0;
+}
+
+.contest-page-overview-body > .contest-page-prizes:first-child {
+  margin-top: 4px;
+}
+
+.contest-page-hero--in-overview {
+  margin: 0 0 0;
+  border-radius: 0;
+  padding: 28px 22px 32px;
+}
+
+.contest-page-overview-cta {
+  margin-top: 8px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid #f1f5f9;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.9) 0%, #fff 100%);
+}
+
+.contest-page-overview-cta-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+
+.contest-page-overview-cta-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contest-page-overview-cta-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.contest-page-overview-cta-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: #334155;
+  max-width: 36em;
+}
+
+.contest-page-overview-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: var(--contest-accent, #2563eb);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.contest-page-overview-cta-button:hover {
+  border-color: var(--contest-accent, #2563eb);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.15);
+  transform: translateY(-1px);
+}
+
+.contest-page-overview-cta-button:active {
+  transform: translateY(0);
+}
+
+.contest-page--themed .contest-page-overview-cta-button {
+  color: var(--contest-accent, #2563eb);
+}
+
+/* Блок работ: визуально отдельная секция */
+.contest-page-works {
+  scroll-margin-top: 88px;
+  padding: 22px 22px 24px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.contest-page-works .contest-page-participants {
+  margin: 0;
+}
+
+.contest-page-works .contest-page-participants-header {
+  padding-top: 0;
+}
+
+.contest-page-works-title-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+}
+
+.contest-page-works-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
 }
 
 .contest-page--themed .btn-primary:hover:not(:disabled) {
@@ -463,12 +595,19 @@
   accent-color: var(--contest-accent, #2563eb);
 }
 
-.contest-page-participants-header h2 {
+.contest-page-participants-header h2,
+.contest-page-works-title {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.3px;
   color: #1f2937;
+}
+
+.contest-page-works .contest-page-works-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .contest-page-participants-filter {
@@ -492,6 +631,18 @@
   font-size: 14px;
   background: #fff;
   color: #1f2937;
+}
+
+.contest-page-participants-domain-note {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1e3a5f;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  width: 100%;
 }
 
 .contest-page-participants-actions {
@@ -570,6 +721,16 @@
     flex-basis: 100%;
     width: 100%;
     font-size: 24px;
+  }
+
+  .contest-page-overview-cta-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contest-page-overview-cta-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .contest-page-participants-header {

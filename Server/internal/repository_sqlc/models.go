@@ -20,9 +20,7 @@ type Contest struct {
 	CoverUrl        string
 	// Автоматический переход draft → registration при наступлении момента
 	RegistrationStartsAt pgtype.Timestamptz
-	// Конец приёма заявок (информационно для организатора)
-	RegistrationEndsAt pgtype.Timestamptz
-	// Автоматический переход registration → voting
+	// Автоматический переход registration → voting; момент окончания приёма заявок
 	VotingStartsAt pgtype.Timestamptz
 	// Автоматический переход voting → finished
 	VotingEndsAt      pgtype.Timestamptz
@@ -40,6 +38,10 @@ type Contest struct {
 	SponsorLogoUrl    string
 	SponsorUrl        string
 	CtaLabelOverride  string
+	// Домены e-mail (разделители: перевод строки, запятая), нижний регистр; пусто — участвовать может любой авторизованный пользователь.
+	ParticipantAllowedEmailDomains string
+	// IANA TZ для ввода расписания организатором (даты в API по-прежнему UTC)
+	ScheduleTimezone string
 }
 
 type ContestChatMessage struct {
@@ -97,6 +99,8 @@ type ContestNomination struct {
 	Description string
 	SortOrder   int32
 	CreatedAt   pgtype.Timestamptz
+	// Минимальное число фото в заявке для этой номинации (по умолчанию 1).
+	MinPhotoCount int32
 }
 
 type ContestParticipantPhoto struct {

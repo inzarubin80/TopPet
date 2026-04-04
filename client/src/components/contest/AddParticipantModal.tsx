@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
@@ -20,9 +20,13 @@ import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
-import { ContestID, Participant, Photo, RegistrationField } from '../../types/models';
-import type { ParticipantsListNominationFilter } from '../../api/participantsApi';
+import { ContestID, Nomination, Participant, Photo, RegistrationField } from '../../types/models';
+import type {
+  ParticipantsListNominationFilter,
+  ParticipantsListSubmissionFilter,
+} from '../../api/participantsApi';
 import { listRegistrationFields } from '../../api/registrationFieldsApi';
+import { listNominations } from '../../api/nominationsApi';
 import { buildLoginUrl } from '../../utils/navigation';
 import './AddParticipantModal.css';
 
@@ -116,6 +120,8 @@ interface AddParticipantModalProps {
   nominationTitle?: string | null;
   /** Текущий фильтр списка на странице конкурса (после сохранения заявки) */
   participantsListNominationFilter?: ParticipantsListNominationFilter;
+  participantsListSubmissionFilter?: ParticipantsListSubmissionFilter;
+  participantsListVotedOnly?: boolean;
   participantsListJuryUnscoredOnly?: boolean;
   /** Пагинация списка на странице конкурса */
   participantsListLimit?: number;
@@ -130,6 +136,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   nominationId: nominationIdProp = null,
   nominationTitle = null,
   participantsListNominationFilter = 'all',
+  participantsListSubmissionFilter = 'all',
+  participantsListVotedOnly = false,
   participantsListJuryUnscoredOnly = false,
   participantsListLimit = 10000,
   participantsListOffset = 0,
@@ -153,8 +161,43 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
   const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
+  const [nominationsForPhotos, setNominationsForPhotos] = useState<Nomination[] | null>(null);
 
   const wasOpenRef = useRef(false);
+
+  const minPhotosRequired = useMemo(() => {
+    const nid = participant?.nomination_id ?? nominationIdProp ?? null;
+    if (!nid || !nominationsForPhotos?.length) {
+      return 1;
+    }
+    const row = nominationsForPhotos.find((x) => x.id === nid);
+    const n = row?.min_photo_count ?? 1;
+    return Math.min(30, Math.max(1, n));
+  }, [participant?.nomination_id, nominationIdProp, nominationsForPhotos]);
+
+  const currentPhotoTotal = existingPhotos.length + selectedPhotos.length;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setNominationsForPhotos(null);
+      return;
+    }
+    let cancelled = false;
+    listNominations(contestId)
+      .then((rows) => {
+        if (!cancelled) {
+          setNominationsForPhotos(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNominationsForPhotos([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, contestId]);
 
   // Redirect to login only when modal opens without auth
   useEffect(() => {
@@ -333,6 +376,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError(built.message);
       return;
     }
+    if (currentPhotoTotal < minPhotosRequired) {
+      setError(
+        `Добавьте не менее ${minPhotosRequired} фото (сейчас выбрано ${currentPhotoTotal}).`
+      );
+      return;
+    }
     const registrationPayload =
       Object.keys(built.answers).length > 0 ? built.answers : undefined;
 
@@ -502,6 +551,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         fetchParticipantsByContest({
           contestId,
           nominationFilter: participantsListNominationFilter,
+          submissionFilter: participantsListSubmissionFilter,
+          votedOnly: participantsListVotedOnly,
           juryUnscoredOnly: participantsListJuryUnscoredOnly,
           limit: participantsListLimit,
           offset: participantsListOffset,
@@ -689,7 +740,17 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         <div className="add-participant-media">
           <div className="add-participant-photos">
             <label className="add-participant-media-label">Фотографии</label>
-            
+            <p
+              className={
+                currentPhotoTotal < minPhotosRequired
+                  ? 'add-participant-photos-count add-participant-photos-count--short'
+                  : 'add-participant-photos-count'
+              }
+            >
+              Минимум фото: <strong>{minPhotosRequired}</strong>, сейчас:{' '}
+              <strong>{currentPhotoTotal}</strong>
+            </p>
+
             {/* Existing photos (edit mode) */}
             {isEditMode && existingPhotos.length > 0 && (
               <div className="add-participant-existing-photos">

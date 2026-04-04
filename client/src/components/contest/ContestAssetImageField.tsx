@@ -1,26 +1,25 @@
 import React, { useRef } from 'react';
-import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 
 export interface ContestAssetImageFieldProps {
   legend: string;
+  /** URL с сервера после загрузки — только для превью, вводить ссылку вручную нельзя. */
   url: string;
-  onUrlChange: (value: string) => void;
   onPickFile: (file: File) => void;
+  /** Сбросить изображение (очистит поле до сохранения формы). */
+  onClear?: () => void;
   uploading?: boolean;
   disabled?: boolean;
-  urlLabel?: string;
 }
 
 export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
   legend,
   url,
-  onUrlChange,
   onPickFile,
+  onClear,
   uploading = false,
   disabled = false,
-  urlLabel = 'Или ссылка на изображение',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trimmed = url.trim();
@@ -54,13 +53,13 @@ export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
         >
           {uploading ? 'Загрузка…' : 'Выбрать файл'}
         </Button>
-        {trimmed ? (
+        {trimmed && onClear ? (
           <Button
             type="button"
             variant="secondary"
             size="small"
             disabled={disabled || uploading}
-            onClick={() => onUrlChange('')}
+            onClick={onClear}
           >
             Убрать
           </Button>
@@ -74,14 +73,6 @@ export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
         aria-hidden
         tabIndex={-1}
         onChange={handleFileChange}
-      />
-      <Input
-        label={urlLabel}
-        type="url"
-        value={url}
-        onChange={(e) => onUrlChange(e.target.value)}
-        placeholder="https://…"
-        disabled={disabled || uploading}
       />
     </div>
   );

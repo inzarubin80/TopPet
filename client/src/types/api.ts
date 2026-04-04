@@ -60,9 +60,12 @@ export interface UpdateContestRequest {
   cta_label_override?: string;
   /** RFC3339 или пустая строка для сброса */
   registration_starts_at?: string;
-  registration_ends_at?: string;
   voting_starts_at?: string;
   voting_ends_at?: string;
+  /** IANA, например Europe/Moscow */
+  schedule_timezone?: string;
+  /** Домены e-mail участников; [] — сбросить ограничение. */
+  participant_allowed_email_domains?: string[];
 }
 
 export interface VoterInfo {

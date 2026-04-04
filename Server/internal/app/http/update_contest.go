@@ -71,6 +71,12 @@ func validateContestUpdate(u model.ContestUpdate) string {
 	if len([]rune(u.CtaLabelOverride)) > ctaLabelMaxRunes {
 		return "cta_label_override is too long"
 	}
+	if len([]rune(u.ScheduleTimezone)) > 120 {
+		return "schedule_timezone is too long"
+	}
+	if err := model.ValidateParticipantEmailDomainsDBString(u.ParticipantAllowedEmailDomains); err != nil {
+		return err.Error()
+	}
 	return ""
 }
 
@@ -122,10 +128,13 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		SponsorLogoUrl        *string `json:"sponsor_logo_url"`
 		SponsorUrl            *string `json:"sponsor_url"`
 		CtaLabelOverride      *string `json:"cta_label_override"`
-		RegistrationStartsAt  *string `json:"registration_starts_at"`
-		RegistrationEndsAt    *string `json:"registration_ends_at"`
-		VotingStartsAt        *string `json:"voting_starts_at"`
+		RegistrationStartsAt *string `json:"registration_starts_at"`
+		VotingStartsAt       *string `json:"voting_starts_at"`
 		VotingEndsAt          *string `json:"voting_ends_at"`
+		// IANA, например Europe/Moscow; null — не менять.
+		ScheduleTimezone *string `json:"schedule_timezone"`
+		// Список доменов e-mail; null — не менять, [] — сбросить ограничение.
+		ParticipantAllowedEmailDomains *[]string `json:"participant_allowed_email_domains"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -153,11 +162,12 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		SponsorName:          contest.SponsorName,
 		SponsorLogoUrl:       contest.SponsorLogoUrl,
 		SponsorUrl:           contest.SponsorUrl,
-		CtaLabelOverride:     contest.CtaLabelOverride,
+		CtaLabelOverride:               contest.CtaLabelOverride,
+		ParticipantAllowedEmailDomains: model.JoinParticipantEmailDomainsDB(contest.ParticipantAllowedEmailDomains),
 		RegistrationStartsAt: contestScheduleTimePtrClone(contest.RegistrationStartsAt),
-		RegistrationEndsAt:   contestScheduleTimePtrClone(contest.RegistrationEndsAt),
 		VotingStartsAt:       contestScheduleTimePtrClone(contest.VotingStartsAt),
 		VotingEndsAt:         contestScheduleTimePtrClone(contest.VotingEndsAt),
+		ScheduleTimezone:     contest.ScheduleTimezone,
 	}
 
 	if req.Title != nil {
@@ -207,10 +217,6 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		uhttp.HandleError(w, uhttp.NewBadRequestError("registration_starts_at must be RFC3339 or empty", err))
 		return
 	}
-	if err := applyContestScheduleString(req.RegistrationEndsAt, func(t *time.Time) { u.RegistrationEndsAt = t }); err != nil {
-		uhttp.HandleError(w, uhttp.NewBadRequestError("registration_ends_at must be RFC3339 or empty", err))
-		return
-	}
 	if err := applyContestScheduleString(req.VotingStartsAt, func(t *time.Time) { u.VotingStartsAt = t }); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("voting_starts_at must be RFC3339 or empty", err))
 		return
@@ -218,6 +224,19 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if err := applyContestScheduleString(req.VotingEndsAt, func(t *time.Time) { u.VotingEndsAt = t }); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("voting_ends_at must be RFC3339 or empty", err))
 		return
+	}
+
+	if req.ScheduleTimezone != nil {
+		u.ScheduleTimezone = strings.TrimSpace(*req.ScheduleTimezone)
+	}
+
+	if req.ParticipantAllowedEmailDomains != nil {
+		norm, derr := model.ValidateAndNormalizeEmailDomains(*req.ParticipantAllowedEmailDomains)
+		if derr != nil {
+			uhttp.HandleError(w, uhttp.NewBadRequestError(derr.Error(), derr))
+			return
+		}
+		u.ParticipantAllowedEmailDomains = model.JoinParticipantEmailDomainsDB(norm)
 	}
 
 	if msg := validateContestUpdate(u); msg != "" {

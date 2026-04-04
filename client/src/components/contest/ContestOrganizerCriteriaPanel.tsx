@@ -63,9 +63,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [savingCriteria, setSavingCriteria] = useState(false);
   const [nomTitle, setNomTitle] = useState('');
   const [nomDesc, setNomDesc] = useState('');
+  const [nomMinPhotos, setNomMinPhotos] = useState(1);
   const [editingNomId, setEditingNomId] = useState<string | null>(null);
   const [editNomTitle, setEditNomTitle] = useState('');
   const [editNomDesc, setEditNomDesc] = useState('');
+  const [editNomMinPhotos, setEditNomMinPhotos] = useState(1);
 
   const canEdit = !readOnly && isAdmin && contest.status === 'draft';
   const fieldsLocked = formDisabled || !canEdit;
@@ -153,6 +155,8 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     [persistJuryCriteria]
   );
 
+  const clampNominationMinPhotos = (v: number) => Math.min(30, Math.max(1, Math.round(v) || 1));
+
   const handleAddNomination = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomTitle.trim()) {
@@ -160,10 +164,15 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       return;
     }
     try {
-      const n = await createNomination(contest.id, { title: nomTitle.trim(), description: nomDesc.trim() });
+      const n = await createNomination(contest.id, {
+        title: nomTitle.trim(),
+        description: nomDesc.trim(),
+        min_photo_count: clampNominationMinPhotos(nomMinPhotos),
+      });
       setNominations((prev) => [...prev, n].sort((a, b) => a.sort_order - b.sort_order));
       setNomTitle('');
       setNomDesc('');
+      setNomMinPhotos(1);
       showSuccess('Номинация добавлена');
     } catch (err) {
       errorHandler.handleError(err, showError, false);
@@ -171,10 +180,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     }
   };
 
-  const startEditNom = (id: string, title: string, description: string) => {
+  const startEditNom = (id: string, title: string, description: string, minPhotos: number) => {
     setEditingNomId(id);
     setEditNomTitle(title);
     setEditNomDesc(description || '');
+    setEditNomMinPhotos(clampNominationMinPhotos(minPhotos));
   };
 
   const saveEditNom = async () => {
@@ -183,6 +193,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       const updated = await updateNomination(contest.id, editingNomId, {
         title: editNomTitle.trim(),
         description: editNomDesc.trim(),
+        min_photo_count: clampNominationMinPhotos(editNomMinPhotos),
       });
       setNominations((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setEditingNomId(null);
@@ -387,6 +398,18 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                       className="contest-organizer-criteria-textarea"
                       disabled={fieldsLocked}
                     />
+                    <label className="contest-organizer-criteria-nom-photos">
+                      Минимум фото в заявке
+                      <input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={editNomMinPhotos}
+                        onChange={(e) => setEditNomMinPhotos(Number(e.target.value))}
+                        disabled={fieldsLocked}
+                        className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
+                      />
+                    </label>
                     <div className="contest-organizer-criteria-actions">
                       <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
                         Сохранить
@@ -406,13 +429,18 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                   <>
                     <strong>{n.title}</strong>
                     {n.description ? <span className="contest-organizer-criteria-desc">{n.description}</span> : null}
+                    <span className="contest-organizer-criteria-nom-meta">
+                      Мин. фото: {n.min_photo_count ?? 1}
+                    </span>
                     {canEdit && (
                       <div className="contest-organizer-criteria-actions">
                         <Button
                           type="button"
                           variant="secondary"
                           size="small"
-                          onClick={() => startEditNom(n.id, n.title, n.description)}
+                          onClick={() =>
+                            startEditNom(n.id, n.title, n.description, n.min_photo_count ?? 1)
+                          }
                           disabled={fieldsLocked}
                         >
                           Изменить
@@ -451,6 +479,18 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
               className="contest-organizer-criteria-textarea"
               disabled={fieldsLocked}
             />
+            <label className="contest-organizer-criteria-nom-photos">
+              Минимум фото в заявке
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={nomMinPhotos}
+                onChange={(e) => setNomMinPhotos(Number(e.target.value))}
+                disabled={fieldsLocked}
+                className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
+              />
+            </label>
             <Button type="submit" disabled={fieldsLocked}>
               Добавить номинацию
             </Button>

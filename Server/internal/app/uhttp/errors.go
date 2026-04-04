@@ -106,6 +106,11 @@ func HandleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	if errors.Is(err, model.ErrParticipantEmailDomainNotAllowed) {
+		SendErrorResponse(w, http.StatusForbidden, "email domain not allowed for this contest")
+		return
+	}
+
 	// Неизвестная ошибка - возвращаем 500
 	SendErrorResponse(w, http.StatusInternalServerError, "internal server error")
 }

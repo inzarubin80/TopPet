@@ -110,9 +110,10 @@ SET
   sponsor_url = $14,
   cta_label_override = $15,
   registration_starts_at = $16,
-  registration_ends_at = $17,
-  voting_starts_at = $18,
-  voting_ends_at = $19,
+  voting_starts_at = $17,
+  voting_ends_at = $18,
+  participant_allowed_email_domains = $19,
+  schedule_timezone = $20,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -216,6 +217,25 @@ WHERE cp.contest_id = @contest_id
       sqlc.narg('viewer_user_id')::bigint IS NOT NULL
       AND cp.user_id = sqlc.narg('viewer_user_id')::bigint
     )
+  )
+  AND (
+    @submission_filter::text = 'all'
+    OR (@submission_filter::text = 'accepted' AND cp.submission_status = 'accepted')
+    OR (@submission_filter::text = 'pending' AND cp.submission_status = 'pending')
+    OR (@submission_filter::text = 'rejected' AND cp.submission_status = 'rejected')
+    OR (
+      @submission_filter::text = 'non_accepted'
+      AND cp.submission_status IN ('pending', 'rejected')
+    )
+  )
+  AND (
+    NOT @voted_by_viewer_only::boolean
+    OR EXISTS (
+      SELECT 1 FROM contest_votes v
+      WHERE v.contest_id = cp.contest_id
+        AND v.participant_id = cp.id
+        AND v.user_id = sqlc.narg('viewer_user_id')::bigint
+    )
   );
 
 -- name: ListParticipantsByContest :many
@@ -275,6 +295,25 @@ WHERE cp.contest_id = @contest_id
     OR (
       sqlc.narg('viewer_user_id')::bigint IS NOT NULL
       AND cp.user_id = sqlc.narg('viewer_user_id')::bigint
+    )
+  )
+  AND (
+    @submission_filter::text = 'all'
+    OR (@submission_filter::text = 'accepted' AND cp.submission_status = 'accepted')
+    OR (@submission_filter::text = 'pending' AND cp.submission_status = 'pending')
+    OR (@submission_filter::text = 'rejected' AND cp.submission_status = 'rejected')
+    OR (
+      @submission_filter::text = 'non_accepted'
+      AND cp.submission_status IN ('pending', 'rejected')
+    )
+  )
+  AND (
+    NOT @voted_by_viewer_only::boolean
+    OR EXISTS (
+      SELECT 1 FROM contest_votes v
+      WHERE v.contest_id = cp.contest_id
+        AND v.participant_id = cp.id
+        AND v.user_id = sqlc.narg('viewer_user_id')::bigint
     )
   )
 ORDER BY
@@ -575,8 +614,8 @@ WHERE photo_id = ANY($1::uuid[]) AND user_id = $2;
 -- Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
 
 -- name: CreateNomination :one
-INSERT INTO contest_nominations (id, contest_id, title, description, sort_order)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO contest_nominations (id, contest_id, title, description, sort_order, min_photo_count)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetNominationByContest :one
@@ -585,7 +624,7 @@ WHERE id = $1 AND contest_id = $2;
 
 -- name: UpdateNomination :one
 UPDATE contest_nominations
-SET title = $3, description = $4
+SET title = $3, description = $4, min_photo_count = $5
 WHERE id = $1 AND contest_id = $2
 RETURNING *;
 

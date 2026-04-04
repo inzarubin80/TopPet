@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
-import { fetchContest, updateContest } from '../store/slices/contestsSlice';
+import { fetchContest, updateContest, createContest, clearCurrentContest } from '../store/slices/contestsSlice';
 import { Input } from '../components/common/Input';
 import { Textarea } from '../components/common/Textarea';
 import { Button } from '../components/common/Button';
@@ -19,29 +19,18 @@ import {
 import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
 import { ContestAssetImageField } from '../components/contest/ContestAssetImageField';
 import { useToast } from '../contexts/ToastContext';
-import { userCanManageContest as canManageContest } from '../utils/contestPermissions';
+import { userCanManageContest as canManageContest, canCreateContests } from '../utils/contestPermissions';
 import { uploadContestAsset, type ContestAssetKind } from '../api/contestsApi';
 import { getErrorMessage } from '../utils/errorHandler';
 import { AxiosError } from 'axios';
 import type { UpdateContestRequest } from '../types/api';
+import {
+  DEFAULT_SCHEDULE_TIMEZONE,
+  SCHEDULE_TIMEZONE_OPTIONS,
+  formatUtcIsoInTimeZone,
+  zonedLocalStringToUtcIso,
+} from '../utils/scheduleTimezone';
 import './EditContestPage.css';
-
-/** ISO из API → значение для input datetime-local (локальное время браузера). */
-function contestIsoToDatetimeLocal(iso: string | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function datetimeLocalToIso(value: string): string | null {
-  const v = value.trim();
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -71,9 +60,10 @@ const EditContestPage: React.FC = () => {
   const [sponsorUrl, setSponsorUrl] = useState('');
   const [ctaLabelOverride, setCtaLabelOverride] = useState('');
   const [registrationStartsLocal, setRegistrationStartsLocal] = useState('');
-  const [registrationEndsLocal, setRegistrationEndsLocal] = useState('');
   const [votingStartsLocal, setVotingStartsLocal] = useState('');
   const [votingEndsLocal, setVotingEndsLocal] = useState('');
+  const [scheduleTimezone, setScheduleTimezone] = useState(DEFAULT_SCHEDULE_TIMEZONE);
+  const [participantEmailDomainsText, setParticipantEmailDomainsText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetUploading, setAssetUploading] = useState<ContestAssetKind | null>(null);
@@ -94,6 +84,30 @@ const EditContestPage: React.FC = () => {
       setLoadState('error');
       return;
     }
+    if (id === 'new') {
+      dispatch(clearCurrentContest());
+      setTitle('');
+      setDescription('');
+      setPublicVoting(true);
+      setJuryVoting(false);
+      setCoverUrl('');
+      setTagline('');
+      setRulesUrl('');
+      setPrizeText('');
+      setLogoUrl('');
+      setThemeColor('');
+      setSponsorName('');
+      setSponsorLogoUrl('');
+      setSponsorUrl('');
+      setCtaLabelOverride('');
+      setRegistrationStartsLocal('');
+      setVotingStartsLocal('');
+      setVotingEndsLocal('');
+      setScheduleTimezone(DEFAULT_SCHEDULE_TIMEZONE);
+      setParticipantEmailDomainsText('');
+      setLoadState('ready');
+      return;
+    }
     setLoadState('loading');
     dispatch(fetchContest(id))
       .unwrap()
@@ -112,17 +126,19 @@ const EditContestPage: React.FC = () => {
         setSponsorLogoUrl(contest.sponsor_logo_url ?? '');
         setSponsorUrl(contest.sponsor_url ?? '');
         setCtaLabelOverride(contest.cta_label_override ?? '');
-        setRegistrationStartsLocal(contestIsoToDatetimeLocal(contest.registration_starts_at));
-        setRegistrationEndsLocal(contestIsoToDatetimeLocal(contest.registration_ends_at));
-        setVotingStartsLocal(contestIsoToDatetimeLocal(contest.voting_starts_at));
-        setVotingEndsLocal(contestIsoToDatetimeLocal(contest.voting_ends_at));
+        const tz = contest.schedule_timezone?.trim() || DEFAULT_SCHEDULE_TIMEZONE;
+        setScheduleTimezone(tz);
+        setRegistrationStartsLocal(formatUtcIsoInTimeZone(contest.registration_starts_at, tz));
+        setVotingStartsLocal(formatUtcIsoInTimeZone(contest.voting_starts_at, tz));
+        setVotingEndsLocal(formatUtcIsoInTimeZone(contest.voting_ends_at, tz));
+        setParticipantEmailDomainsText((contest.participant_allowed_email_domains ?? []).join('\n'));
         setLoadState('ready');
       })
       .catch(() => setLoadState('error'));
   }, [dispatch, id]);
 
   useEffect(() => {
-    if (loadState !== 'ready' || !id || currentContest?.id !== id) {
+    if (id === 'new' || loadState !== 'ready' || !id || currentContest?.id !== id) {
       return;
     }
     setTitle(currentContest.title);
@@ -139,10 +155,12 @@ const EditContestPage: React.FC = () => {
     setSponsorLogoUrl(currentContest.sponsor_logo_url ?? '');
     setSponsorUrl(currentContest.sponsor_url ?? '');
     setCtaLabelOverride(currentContest.cta_label_override ?? '');
-    setRegistrationStartsLocal(contestIsoToDatetimeLocal(currentContest.registration_starts_at));
-    setRegistrationEndsLocal(contestIsoToDatetimeLocal(currentContest.registration_ends_at));
-    setVotingStartsLocal(contestIsoToDatetimeLocal(currentContest.voting_starts_at));
-    setVotingEndsLocal(contestIsoToDatetimeLocal(currentContest.voting_ends_at));
+    const tz = currentContest.schedule_timezone?.trim() || DEFAULT_SCHEDULE_TIMEZONE;
+    setScheduleTimezone(tz);
+    setRegistrationStartsLocal(formatUtcIsoInTimeZone(currentContest.registration_starts_at, tz));
+    setVotingStartsLocal(formatUtcIsoInTimeZone(currentContest.voting_starts_at, tz));
+    setVotingEndsLocal(formatUtcIsoInTimeZone(currentContest.voting_ends_at, tz));
+    setParticipantEmailDomainsText((currentContest.participant_allowed_email_domains ?? []).join('\n'));
   }, [loadState, id, currentContest]);
 
   const handleSaveAll = async () => {
@@ -157,7 +175,7 @@ const EditContestPage: React.FC = () => {
       const scheduleField = (local: string): string => {
         const t = local.trim();
         if (!t) return '';
-        const iso = datetimeLocalToIso(t);
+        const iso = zonedLocalStringToUtcIso(t, scheduleTimezone);
         if (!iso) {
           throw new Error('Проверьте даты расписания (некорректное значение)');
         }
@@ -180,14 +198,32 @@ const EditContestPage: React.FC = () => {
         sponsor_url: sponsorUrl.trim(),
         cta_label_override: ctaLabelOverride.trim(),
         registration_starts_at: scheduleField(registrationStartsLocal),
-        registration_ends_at: scheduleField(registrationEndsLocal),
         voting_starts_at: scheduleField(votingStartsLocal),
         voting_ends_at: scheduleField(votingEndsLocal),
+        participant_allowed_email_domains: participantEmailDomainsText
+          .split(/\r?\n|,|;/)
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+        schedule_timezone: scheduleTimezone,
       };
+
+      const isNew = id === 'new';
+      let contestId = id;
+
+      if (isNew) {
+        const created = await dispatch(
+          createContest({ title: title.trim(), description: description.trim() })
+        );
+        if (!createContest.fulfilled.match(created)) {
+          setError((created.payload as string) || 'Не удалось создать конкурс');
+          return;
+        }
+        contestId = created.payload.id;
+      }
 
       const result = await dispatch(
         updateContest({
-          contestId: id,
+          contestId,
           data,
         })
       );
@@ -197,20 +233,28 @@ const EditContestPage: React.FC = () => {
         return;
       }
 
-      await dispatch(fetchContest(id)).unwrap();
+      await dispatch(fetchContest(contestId)).unwrap();
 
-      const critOk = await panelRef.current?.saveJuryCriteria({ quietSuccess: true });
-      if (critOk === false) {
-        return;
+      if (!isNew) {
+        const critOk = await panelRef.current?.saveJuryCriteria({ quietSuccess: true });
+        if (critOk === false) {
+          return;
+        }
+
+        const regOk = await registrationFieldsRef.current?.saveRegistrationFields({ quietSuccess: true });
+        if (regOk === false) {
+          return;
+        }
       }
 
-      const regOk = await registrationFieldsRef.current?.saveRegistrationFields({ quietSuccess: true });
-      if (regOk === false) {
+      if (isNew) {
+        showSuccess('Черновик создан. Ниже можно настроить номинации и жюри.');
+        navigate(`/contests/${contestId}/edit`, { replace: true });
         return;
       }
 
       showSuccess('Изменения сохранены');
-      navigate(`/contests/${id}`);
+      navigate(`/contests/${contestId}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Не удалось сохранить';
       setError(message);
@@ -220,7 +264,7 @@ const EditContestPage: React.FC = () => {
   };
 
   const handleContestAssetFile = async (kind: ContestAssetKind, file: File) => {
-    if (!id) return;
+    if (!id || id === 'new') return;
     setError(null);
     setAssetUploading(kind);
     try {
@@ -239,12 +283,25 @@ const EditContestPage: React.FC = () => {
       const base = getErrorMessage(e);
       const message =
         status === 404
-          ? 'Загрузка файлов недоступна (нет маршрута или конкурс не найден). Укажите ссылку на изображение ниже.'
+          ? 'Загрузка файлов недоступна (нет маршрута или конкурс не найден). Проверьте настройки сервера или обратитесь к администратору.'
           : base;
       setError(message);
     } finally {
       setAssetUploading(null);
     }
+  };
+
+  const handleScheduleTimezoneChange = (next: string) => {
+    const prev = scheduleTimezone;
+    setScheduleTimezone(next);
+    const convert = (local: string): string => {
+      if (!local.trim()) return '';
+      const iso = zonedLocalStringToUtcIso(local, prev);
+      return iso ? formatUtcIsoInTimeZone(iso, next) : '';
+    };
+    setRegistrationStartsLocal((v) => convert(v));
+    setVotingStartsLocal((v) => convert(v));
+    setVotingEndsLocal((v) => convert(v));
   };
 
   if (!id) {
@@ -259,30 +316,40 @@ const EditContestPage: React.FC = () => {
     );
   }
 
-  if (loadState === 'error' || !currentContest || currentContest.id !== id) {
-    return <div className="edit-contest-page-error">Конкурс не найден</div>;
-  }
+  const isNewContest = id === 'new';
 
-  if (!currentUser || !canManageContest(currentContest, currentUser.id, currentUser)) {
-    return <Navigate to={`/contests/${id}`} replace />;
+  if (isNewContest) {
+    if (!currentUser || !canCreateContests(currentUser)) {
+      return <Navigate to="/" replace />;
+    }
+  } else {
+    if (loadState === 'error' || !currentContest || currentContest.id !== id) {
+      return <div className="edit-contest-page-error">Конкурс не найден</div>;
+    }
+    if (!currentUser || !canManageContest(currentContest, currentUser.id, currentUser)) {
+      return <Navigate to={`/contests/${id}`} replace />;
+    }
   }
 
   return (
     <div className="edit-contest-page">
       <div className="edit-contest-page-inner">
         <header className="edit-contest-page-header">
-          <Link to={`/contests/${id}`} className="edit-contest-page-back">
+          <Link to={isNewContest ? '/' : `/contests/${id}`} className="edit-contest-page-back">
             <span className="edit-contest-page-back-icon" aria-hidden>
               ‹
             </span>
-            К конкурсу
+            {isNewContest ? 'На главную' : 'К конкурсу'}
           </Link>
           <div className="edit-contest-page-heading">
             <p className="edit-contest-page-eyebrow">Настройки</p>
-            <h1 className="edit-contest-page-title">Редактировать конкурс</h1>
+            <h1 className="edit-contest-page-title">
+              {isNewContest ? 'Новый конкурс' : 'Редактировать конкурс'}
+            </h1>
             <p className="edit-contest-page-lead">
-              Название, описание, слоган и призы, затем номинации, оформление, голосование, при необходимости — жюри и
-              поля заявки. Сохраняется одной кнопкой внизу страницы.
+              {isNewContest
+                ? 'Заполните настройки и нажмите «Создать черновик». Номинации, жюри и поля заявки станут доступны после первого сохранения.'
+                : 'Название, описание, слоган и призы, затем номинации, оформление, голосование, при необходимости — жюри и поля заявки. Сохраняется одной кнопкой внизу страницы.'}
             </p>
           </div>
         </header>
@@ -332,29 +399,62 @@ const EditContestPage: React.FC = () => {
           </div>
         </section>
 
+        <section className="edit-contest-page-card" aria-labelledby="edit-section-participant-domains">
+          <h2 id="edit-section-participant-domains" className="edit-contest-page-section-label">
+            Кто может подать заявку
+          </h2>
+          <p className="edit-contest-schedule-intro">
+            Необязательно. Укажите домены корпоративной почты (по одному в строке, без символа @), например{' '}
+            <code>company.ru</code>. Заявку сможет отправить только пользователь с e-mail на один из этих доменов
+            (включая поддомены). Организаторы конкурса не ограничены. Пустое поле — участвовать может любой
+            авторизованный пользователь.
+          </p>
+          <div className="edit-contest-page-fields">
+            <Textarea
+              label="Домены e-mail"
+              value={participantEmailDomainsText}
+              onChange={(e) => setParticipantEmailDomainsText(e.target.value)}
+              placeholder={'company.ru\npartner.org'}
+              disabled={saving}
+            />
+          </div>
+        </section>
+
         <section className="edit-contest-page-card" aria-labelledby="edit-section-schedule">
           <h2 id="edit-section-schedule" className="edit-contest-page-section-label">
             Расписание фаз
           </h2>
           <p className="edit-contest-schedule-intro">
-            Даты в локальном времени браузера; на сервере хранятся в UTC. Пустое поле сбрасывает дату. Фоновый процесс
-            на сервере (интервал <code>CONTEST_SCHEDULER_INTERVAL_SEC</code>, по умолчанию 60 с) переводит статус:
-            черновик → регистрация → голосование → завершён, когда наступает соответствующий момент. Ручное открытие
-            регистрации по-прежнему доступно.
+            Время ниже задаётся в выбранном часовом поясе; на сервере моменты хранятся в UTC. Пустое поле сбрасывает
+            дату. Приём заявок идёт до «Начало голосования». Фоновый процесс (интервал{' '}
+            <code>CONTEST_SCHEDULER_INTERVAL_SEC</code>, по умолчанию 60 с) переводит статус: черновик → регистрация →
+            голосование → завершён.
           </p>
           <div className="edit-contest-page-fields">
+            <label className="edit-contest-schedule-tz">
+              <span className="edit-contest-schedule-tz-label">Часовой пояс</span>
+              <select
+                className="edit-contest-schedule-tz-select"
+                value={scheduleTimezone}
+                onChange={(e) => handleScheduleTimezoneChange(e.target.value)}
+                disabled={saving}
+                aria-label="Часовой пояс расписания"
+              >
+                {!SCHEDULE_TIMEZONE_OPTIONS.some((o) => o.value === scheduleTimezone) ? (
+                  <option value={scheduleTimezone}>{scheduleTimezone}</option>
+                ) : null}
+                {SCHEDULE_TIMEZONE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <Input
               label="Начало регистрации"
               type="datetime-local"
               value={registrationStartsLocal}
               onChange={(e) => setRegistrationStartsLocal(e.target.value)}
-              disabled={saving}
-            />
-            <Input
-              label="Окончание регистрации"
-              type="datetime-local"
-              value={registrationEndsLocal}
-              onChange={(e) => setRegistrationEndsLocal(e.target.value)}
               disabled={saving}
             />
             <Input
@@ -374,48 +474,62 @@ const EditContestPage: React.FC = () => {
           </div>
         </section>
 
-        <section
-          className="edit-contest-page-card edit-contest-page-card--organizer"
-          aria-label="Номинации"
-        >
-          <div className="edit-contest-page-organizer">
-            <ContestOrganizerCriteriaPanel
-              ref={panelRef}
-              contest={currentContest}
-              isAdmin
-              hideJuryCriteriaSaveButton
-              formDisabled={saving}
-              showJuryCriteriaSection={juryVoting}
-              juryCriteriaPortalMode={juryVoting}
-              juryCriteriaPortalHost={juryCriteriaPortalHost}
-            />
-          </div>
-        </section>
+        {isNewContest ? (
+          <section className="edit-contest-page-card" aria-labelledby="edit-section-deferred">
+            <h2 id="edit-section-deferred" className="edit-contest-page-section-label">
+              Номинации, жюри и заявка
+            </h2>
+            <p className="edit-contest-schedule-intro">
+              Эти блоки появятся сразу после первого сохранения: нужен идентификатор черновика на сервере. Нажмите
+              «Создать черновик» внизу страницы, затем настройте номинации, критерии жюри, состав жюри и поля заявки.
+            </p>
+          </section>
+        ) : (
+          <section
+            className="edit-contest-page-card edit-contest-page-card--organizer"
+            aria-label="Номинации"
+          >
+            <div className="edit-contest-page-organizer">
+              <ContestOrganizerCriteriaPanel
+                ref={panelRef}
+                contest={currentContest!}
+                isAdmin
+                hideJuryCriteriaSaveButton
+                formDisabled={saving}
+                showJuryCriteriaSection={juryVoting}
+                juryCriteriaPortalMode={juryVoting}
+                juryCriteriaPortalHost={juryCriteriaPortalHost}
+              />
+            </div>
+          </section>
+        )}
 
         <section className="edit-contest-page-card" aria-labelledby="edit-section-appearance">
           <h2 id="edit-section-appearance" className="edit-contest-page-section-label">
             Оформление страницы конкурса
           </h2>
           <p className="edit-contest-appearance-intro">
-            Баннер, логотипы и цвет акцента. В черновике можно загрузить файлы (если на сервере включено хранилище) или
-            указать прямую ссылку на изображение.
+            Баннер, логотипы и цвет акцента. Изображения выбираются только файлом (нужно включённое хранилище на сервере).
+            {isNewContest
+              ? ' Загрузка файлов будет доступна после создания черновика.'
+              : ' Чтобы убрать картинку, нажмите «Убрать» и сохраните страницу.'}
           </p>
           <div className="edit-contest-page-fields edit-contest-appearance-fields">
             <ContestAssetImageField
               legend="Баннер (обложка)"
               url={coverUrl}
-              onUrlChange={setCoverUrl}
+              onClear={() => setCoverUrl('')}
               onPickFile={(file) => handleContestAssetFile('cover', file)}
               uploading={assetUploading === 'cover'}
-              disabled={saving}
+              disabled={saving || isNewContest}
             />
             <ContestAssetImageField
               legend="Логотип конкурса"
               url={logoUrl}
-              onUrlChange={setLogoUrl}
+              onClear={() => setLogoUrl('')}
               onPickFile={(file) => handleContestAssetFile('logo', file)}
               uploading={assetUploading === 'logo'}
-              disabled={saving}
+              disabled={saving || isNewContest}
             />
             <div className="edit-contest-theme-row">
               <Input
@@ -456,10 +570,10 @@ const EditContestPage: React.FC = () => {
             <ContestAssetImageField
               legend="Логотип спонсора"
               url={sponsorLogoUrl}
-              onUrlChange={setSponsorLogoUrl}
+              onClear={() => setSponsorLogoUrl('')}
               onPickFile={(file) => handleContestAssetFile('sponsor_logo', file)}
               uploading={assetUploading === 'sponsor_logo'}
-              disabled={saving}
+              disabled={saving || isNewContest}
             />
             <Input
               label="Ссылка на сайт спонсора"
@@ -495,7 +609,7 @@ const EditContestPage: React.FC = () => {
               <span className="edit-contest-voting-text">
                 <span className="edit-contest-voting-label">Голосование жюри</span>
                 <p className="edit-contest-voting-hint">
-                  Включите, чтобы задать критерии оценки и состав жюри (доступно в черновике ниже на этой странице).
+                  Включите, чтобы задать критерии оценки и состав жюри (ниже в этом разделе, только в черновике).
                 </p>
               </span>
             </label>
@@ -515,41 +629,40 @@ const EditContestPage: React.FC = () => {
               </span>
             </label>
           </div>
+
+          {juryVoting && !isNewContest && currentContest ? (
+            <div className="edit-contest-voting-jury" aria-label="Состав жюри">
+              <div className="edit-contest-page-organizer">
+                <ContestJuryPanel
+                  contest={currentContest}
+                  isAdmin
+                  criteriaSlotRef={handleJuryCriteriaSlotRef}
+                />
+              </div>
+            </div>
+          ) : null}
         </section>
 
-        {juryVoting && (
+        {!isNewContest && currentContest ? (
           <section
             className="edit-contest-page-card edit-contest-page-card--organizer"
-            aria-label="Жюри: критерии оценки и состав"
+            aria-label="Поля заявки участника"
           >
             <div className="edit-contest-page-organizer">
-              <ContestJuryPanel
+              <ContestRegistrationFieldsPanel
+                ref={registrationFieldsRef}
                 contest={currentContest}
                 isAdmin
-                criteriaSlotRef={handleJuryCriteriaSlotRef}
+                hideSaveButton
+                formDisabled={saving}
               />
             </div>
           </section>
-        )}
-
-        <section
-          className="edit-contest-page-card edit-contest-page-card--organizer"
-          aria-label="Поля заявки участника"
-        >
-          <div className="edit-contest-page-organizer">
-            <ContestRegistrationFieldsPanel
-              ref={registrationFieldsRef}
-              contest={currentContest}
-              isAdmin
-              hideSaveButton
-              formDisabled={saving}
-            />
-          </div>
-        </section>
+        ) : null}
 
         <footer className="edit-contest-page-footer">
           <Button type="button" onClick={() => void handleSaveAll()} disabled={saving || !title.trim()}>
-            {saving ? <LoadingSpinner size="small" /> : 'Сохранить изменения'}
+            {saving ? <LoadingSpinner size="small" /> : isNewContest ? 'Создать черновик' : 'Сохранить изменения'}
           </Button>
         </footer>
       </div>

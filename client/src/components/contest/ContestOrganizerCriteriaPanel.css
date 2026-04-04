@@ -125,3 +125,22 @@
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.contest-organizer-criteria-nom-meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.contest-organizer-criteria-nom-photos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.contest-organizer-criteria-input-narrow {
+  width: 4.5rem;
+}

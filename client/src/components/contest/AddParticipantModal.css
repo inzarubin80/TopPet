@@ -20,6 +20,18 @@
   margin-top: 20px;
 }
 
+.add-participant-photos-count {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.add-participant-photos-count--short {
+  color: #b45309;
+  font-weight: 500;
+}
+
 .add-participant-media-label {
   display: block;
   font-weight: 500;

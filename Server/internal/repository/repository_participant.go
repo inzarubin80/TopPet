@@ -214,7 +214,7 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 	}, nil
 }
 
-func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
+func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
@@ -242,6 +242,8 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		NominationFilterID:   nomID,
 		JuryUnscoredOnly:     juryUnscoredOnly,
 		ParticipantScope:     participantScope,
+		SubmissionFilter:     submissionFilter,
+		VotedByViewerOnly:    votedByViewerOnly,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -255,6 +257,8 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		NominationFilterID:   nomID,
 		JuryUnscoredOnly:     juryUnscoredOnly,
 		ParticipantScope:     participantScope,
+		SubmissionFilter:     submissionFilter,
+		VotedByViewerOnly:    votedByViewerOnly,
 		OrderByVotes:         orderByVotes,
 		ListOffset:           offset,
 		ListLimit:            limit,

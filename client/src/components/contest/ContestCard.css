@@ -86,6 +86,14 @@
   overflow: hidden;
 }
 
+.contest-card-domain-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
 .contest-card-status {
   padding: 4px 8px;
   border-radius: 4px;

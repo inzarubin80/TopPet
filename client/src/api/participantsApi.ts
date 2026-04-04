@@ -13,12 +13,23 @@ import type { VoterInfo } from '../types/api';
 /** Фильтр списка заявок: все | без номинации | id номинации */
 export type ParticipantsListNominationFilter = 'all' | 'none' | string;
 
+/** Статус заявки в списке (только для организаторов, с авторизацией) */
+export type ParticipantsListSubmissionFilter =
+  | 'all'
+  | 'accepted'
+  | 'pending'
+  | 'rejected'
+  | 'non_accepted';
+
 export type ParticipantListScope = 'all' | 'mine';
 
 export type GetParticipantsByContestOptions = {
   limit?: number;
   offset?: number;
   participantScope?: ParticipantListScope;
+  submissionFilter?: ParticipantsListSubmissionFilter;
+  /** Только участники, за которых проголосовал текущий пользователь (нужна авторизация) */
+  votedOnly?: boolean;
 };
 
 export type ParticipantsListResponse = {
@@ -61,6 +72,12 @@ export const getParticipantsByContest = async (
   }
   if (options?.offset != null) {
     params.set('offset', String(options.offset));
+  }
+  if (options?.submissionFilter && options.submissionFilter !== 'all') {
+    params.set('submission_filter', options.submissionFilter);
+  }
+  if (options?.votedOnly) {
+    params.set('voted_only', '1');
   }
   const qs = params.toString();
   const response = await axiosClient.get<ParticipantsListResponse>(

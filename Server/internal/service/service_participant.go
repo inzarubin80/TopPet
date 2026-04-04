@@ -10,6 +10,22 @@ import (
 	"toppet/server/internal/model"
 )
 
+func normalizeParticipantListSubmissionFilter(includeAll bool, raw string) (string, error) {
+	s := strings.TrimSpace(strings.ToLower(raw))
+	if s == "" {
+		s = model.ParticipantListSubmissionAll
+	}
+	if !includeAll {
+		return model.ParticipantListSubmissionAll, nil
+	}
+	switch s {
+	case model.ParticipantListSubmissionAll, model.ParticipantListSubmissionAccepted, model.ParticipantListSubmissionPending, model.ParticipantListSubmissionRejected, model.ParticipantListSubmissionNonAccepted:
+		return s, nil
+	default:
+		return "", fmt.Errorf("%w: invalid submission_filter", model.ErrBadRequest)
+	}
+}
+
 func (s *TopPetService) participantVisible(ctx context.Context, p *model.Participant, contest *model.Contest, viewer *model.UserID) bool {
 	st := p.SubmissionStatus
 	if st == "" {
@@ -96,6 +112,17 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	}
 	if existing != nil {
 		return nil, errors.New("already participating in this nomination")
+	}
+
+	if len(contest.ParticipantAllowedEmailDomains) > 0 && !s.userCanManageContest(ctx, contest, userID) {
+		u, uerr := s.repository.GetUser(ctx, userID)
+		if uerr != nil {
+			return nil, uerr
+		}
+		em := strings.TrimSpace(u.Email)
+		if em == "" || !model.EmailDomainMatchesAllowlist(em, contest.ParticipantAllowedEmailDomains) {
+			return nil, model.ErrParticipantEmailDomainNotAllowed
+		}
 	}
 
 	// Create participant
@@ -221,7 +248,7 @@ func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participant
 	return participant, nil
 }
 
-func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error) {
+func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error) {
 	if participantScope != model.ParticipantListScopeAll && participantScope != model.ParticipantListScopeMine {
 		return nil, 0, fmt.Errorf("%w: invalid participant_scope", model.ErrBadRequest)
 	}
@@ -235,6 +262,9 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	includeAll := false
 	if viewer != nil {
 		includeAll = s.userCanManageContest(ctx, contest, *viewer)
+	}
+	if votedByViewerOnly && viewer == nil {
+		return nil, 0, fmt.Errorf("%w: voted_only requires authentication", model.ErrBadRequest)
 	}
 	if juryUnscoredOnly {
 		if viewer == nil {
@@ -265,8 +295,12 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 			}
 		}
 	}
+	sf, sferr := normalizeParticipantListSubmissionFilter(includeAll, submissionFilter)
+	if sferr != nil {
+		return nil, 0, sferr
+	}
 	orderByVotes := contest.Status == model.ContestStatusVoting || contest.Status == model.ContestStatusFinished
-	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, limit, offset, orderByVotes)
+	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, limit, offset, orderByVotes)
 	if err != nil {
 		return nil, 0, err
 	}

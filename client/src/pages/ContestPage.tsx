@@ -36,6 +36,8 @@ import { resolvePublicAssetUrl } from '../utils/seo';
 import { listNominations } from '../api/nominationsApi';
 import { listRegistrationFields } from '../api/registrationFieldsApi';
 import { getContestJury } from '../api/juryApi';
+import type { ParticipantsListSubmissionFilter } from '../api/participantsApi';
+import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -100,6 +102,9 @@ const ContestPage: React.FC = () => {
   const [participantsNominationFilter, setParticipantsNominationFilter] =
     useState<ParticipantsListNominationFilter>('all');
   const [participantsJuryUnscoredOnly, setParticipantsJuryUnscoredOnly] = useState(false);
+  const [participantsSubmissionFilter, setParticipantsSubmissionFilter] =
+    useState<ParticipantsListSubmissionFilter>('all');
+  const [participantsVotedOnly, setParticipantsVotedOnly] = useState(false);
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
   const [contestRegistrationFields, setContestRegistrationFields] = useState<RegistrationField[]>([]);
@@ -124,6 +129,8 @@ const ContestPage: React.FC = () => {
   const participantsListFiltersRef = useRef({
     nomination: participantsNominationFilter as string,
     juryUnscored: participantsJuryUnscoredOnly,
+    submission: participantsSubmissionFilter,
+    votedOnly: participantsVotedOnly,
   });
 
   useEffect(() => {
@@ -140,17 +147,23 @@ const ContestPage: React.FC = () => {
       participantsListContestIdRef.current = id;
       setParticipantsNominationFilter('all');
       setParticipantsJuryUnscoredOnly(false);
+      setParticipantsSubmissionFilter('all');
+      setParticipantsVotedOnly(false);
       setParticipantsPage(0);
-      participantsListFiltersRef.current = { nomination: 'all', juryUnscored: false };
+      participantsListFiltersRef.current = { nomination: 'all', juryUnscored: false, submission: 'all', votedOnly: false };
       return;
     }
     const filtersChanged =
       participantsListFiltersRef.current.nomination !== participantsNominationFilter ||
-      participantsListFiltersRef.current.juryUnscored !== participantsJuryUnscoredOnly;
+      participantsListFiltersRef.current.juryUnscored !== participantsJuryUnscoredOnly ||
+      participantsListFiltersRef.current.submission !== participantsSubmissionFilter ||
+      participantsListFiltersRef.current.votedOnly !== participantsVotedOnly;
     if (filtersChanged) {
       participantsListFiltersRef.current = {
         nomination: participantsNominationFilter as string,
         juryUnscored: participantsJuryUnscoredOnly,
+        submission: participantsSubmissionFilter,
+        votedOnly: participantsVotedOnly,
       };
       setParticipantsPage(0);
       return;
@@ -163,7 +176,9 @@ const ContestPage: React.FC = () => {
       fetchParticipantsByContest({
         contestId: id,
         nominationFilter: participantsNominationFilter,
+        submissionFilter: participantsSubmissionFilter,
         juryUnscoredOnly: participantsJuryUnscoredOnly,
+        votedOnly: participantsVotedOnly,
         limit,
         offset,
       })
@@ -174,6 +189,8 @@ const ContestPage: React.FC = () => {
     currentContest,
     participantsNominationFilter,
     participantsJuryUnscoredOnly,
+    participantsSubmissionFilter,
+    participantsVotedOnly,
     participantsPage,
   ]);
 
@@ -259,7 +276,11 @@ const ContestPage: React.FC = () => {
 
   useEffect(() => {
     const loadVote = async () => {
-      if (!id || !isAuthenticated || currentContest?.status !== 'voting') {
+      if (
+        !id ||
+        !isAuthenticated ||
+        (currentContest?.status !== 'voting' && currentContest?.status !== 'finished')
+      ) {
         if (id) {
           dispatch(setUserVotesForContest({ contestId: id, votes: [] }));
         }
@@ -274,7 +295,7 @@ const ContestPage: React.FC = () => {
       }
     };
     loadVote();
-  }, [dispatch, id, isAuthenticated, currentContest?.status]);
+  }, [dispatch, id, isAuthenticated, currentContest?.status, currentContest?.id]);
 
 
   const { isAdmin, canManageParticipants } = useContestPermissions(currentContest, currentUser);
@@ -304,6 +325,19 @@ const ContestPage: React.FC = () => {
     participantsListPaginated && participantsListTotal > 0
       ? Math.max(1, Math.ceil(participantsListTotal / PARTICIPANTS_PAGE_SIZE))
       : 1;
+
+  const showMyVotesFilter =
+    isAuthenticated &&
+    (currentContest.public_voting_enabled ?? true) &&
+    (currentContest.status === 'voting' || currentContest.status === 'finished');
+
+  const participantEmailDomains = currentContest.participant_allowed_email_domains ?? [];
+  const participantEmailDomainsActive = participantEmailDomains.length > 0;
+  const mayRegisterByEmailDomains = userMayRegisterForContest(
+    currentUser?.email,
+    participantEmailDomains,
+    isAdmin
+  );
 
   const statusLabels: Record<ContestStatus, string> = {
     draft: 'Черновик',
@@ -454,9 +488,10 @@ const ContestPage: React.FC = () => {
             </div>
           )}
         </div>
+        <section className="contest-page-overview" aria-label="О конкурсе">
         {hasHeroCover ? (
           <div
-            className="contest-page-hero"
+            className="contest-page-hero contest-page-hero--in-overview"
             style={{
               backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.5) 0%, rgba(15, 23, 42, 0.75) 100%), url(${resolvePublicAssetUrl(coverRaw)})`,
             }}
@@ -503,7 +538,7 @@ const ContestPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <>
+          <div className="contest-page-overview-top">
             <div className="contest-page-header">
               {logoRaw ? (
                 <img className="contest-page-logo" src={resolvePublicAssetUrl(logoRaw)} alt="" />
@@ -540,9 +575,10 @@ const ContestPage: React.FC = () => {
               )}
             </div>
             {taglineRaw ? <p className="contest-page-tagline">{taglineRaw}</p> : null}
-          </>
+          </div>
         )}
 
+        <div className="contest-page-overview-body">
         {prizeRaw ? (
           <div className="contest-page-prizes">
             <h2 className="contest-page-prizes-heading">Призы</h2>
@@ -613,10 +649,65 @@ const ContestPage: React.FC = () => {
           showJuryCriteriaSection={currentContest.jury_voting_enabled ?? false}
         />
 
+        <div className="contest-page-overview-cta">
+          <div className="contest-page-overview-cta-inner">
+            <div className="contest-page-overview-cta-copy">
+              <span className="contest-page-overview-cta-kicker">Заявки и работы</span>
+              <span className="contest-page-overview-cta-text">
+                Список заявок, голосование и участие — в отдельном блоке ниже
+              </span>
+            </div>
+            <button
+              type="button"
+              className="contest-page-overview-cta-button"
+              onClick={() =>
+                document.getElementById('contest-works')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                })
+              }
+            >
+              К работам участников
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14M5 12l7 7 7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        </div>
+        </section>
+
+        <section id="contest-works" className="contest-page-works" aria-labelledby="contest-works-heading">
         <div className="contest-page-participants">
           <div className="contest-page-participants-header">
             <div className="contest-page-participants-header-top">
-              <h2>Участники</h2>
+              <div className="contest-page-works-title-wrap">
+                <h2 id="contest-works-heading" className="contest-page-works-title">
+                  Работы участников
+                </h2>
+                {participantsListTotal > 0 ? (
+                  <span className="contest-page-works-count" aria-live="polite">
+                    {participantsListTotal}{' '}
+                    {participantsListTotal % 10 === 1 && participantsListTotal % 100 !== 11
+                      ? 'работа'
+                      : participantsListTotal % 10 >= 2 &&
+                          participantsListTotal % 10 <= 4 &&
+                          (participantsListTotal % 100 < 10 || participantsListTotal % 100 >= 20)
+                        ? 'работы'
+                        : 'работ'}
+                  </span>
+                ) : null}
+              </div>
               <div className="contest-page-participants-filters">
                 {contestNominations.length > 0 ? (
                   <div className="contest-page-participants-filter">
@@ -642,6 +733,25 @@ const ContestPage: React.FC = () => {
                     </select>
                   </div>
                 ) : null}
+                {isAuthenticated && isAdmin ? (
+                  <div className="contest-page-participants-filter">
+                    <label htmlFor="participants-submission-filter">Статус заявки</label>
+                    <select
+                      id="participants-submission-filter"
+                      className="contest-page-participants-filter-select"
+                      value={participantsSubmissionFilter}
+                      onChange={(e) =>
+                        setParticipantsSubmissionFilter(e.target.value as ParticipantsListSubmissionFilter)
+                      }
+                    >
+                      <option value="all">Все</option>
+                      <option value="accepted">Принятые</option>
+                      <option value="pending">На модерации</option>
+                      <option value="rejected">Отклонённые</option>
+                      <option value="non_accepted">Не принятые (модерация и отклонённые)</option>
+                    </select>
+                  </div>
+                ) : null}
                 {isCurrentUserJuror && currentContest.jury_voting_enabled ? (
                   <label className="contest-page-participants-jury-filter">
                     <input
@@ -650,6 +760,16 @@ const ContestPage: React.FC = () => {
                       onChange={(e) => setParticipantsJuryUnscoredOnly(e.target.checked)}
                     />
                     <span>Только не оценённые мной</span>
+                  </label>
+                ) : null}
+                {showMyVotesFilter ? (
+                  <label className="contest-page-participants-jury-filter">
+                    <input
+                      type="checkbox"
+                      checked={participantsVotedOnly}
+                      onChange={(e) => setParticipantsVotedOnly(e.target.checked)}
+                    />
+                    <span>Только за кого я проголосовал</span>
                   </label>
                 ) : null}
               </div>
@@ -662,6 +782,10 @@ const ContestPage: React.FC = () => {
               if (!canAddParticipant && !canManageParticipants) {
                 return null;
               }
+              const showDomainParticipationNote =
+                participantEmailDomainsActive &&
+                (currentContest?.status === 'registration' || currentContest?.status === 'draft');
+              const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
               const returnUrl = `/contests/${id}`;
               const participateIcon = (
                 <svg
@@ -681,79 +805,97 @@ const ContestPage: React.FC = () => {
                 </svg>
               );
               const hasNominations = contestNominations.length > 0;
+              const domainNote = showDomainParticipationNote ? (
+                <p className="contest-page-participants-domain-note" role="note">
+                  Участие только для адресов e-mail на доменах:{' '}
+                  <strong>{participantEmailDomains.join(', ')}</strong>.
+                  {!isAuthenticated
+                    ? ' Войдите с аккаунтом, у которого в профиле указана подходящая почта.'
+                    : blockedByEmailDomain
+                      ? ' Ваш e-mail в профиле не подходит под это ограничение.'
+                      : null}
+                </p>
+              ) : null;
               if (!isAuthenticated) {
                 return (
-                  <div className="contest-page-participants-actions">
-                    {hasNominations ? (
-                      contestNominations.map((n) => (
+                  <>
+                    {domainNote}
+                    <div className="contest-page-participants-actions">
+                      {hasNominations ? (
+                        contestNominations.map((n) => (
+                          <Button
+                            key={n.id}
+                            variant="primary"
+                            size="large"
+                            className="contest-page-add-participant-button"
+                            onClick={() => navigate(buildLoginUrl(returnUrl))}
+                          >
+                            {participateIcon}
+                            Участвовать — {n.title}
+                          </Button>
+                        ))
+                      ) : (
                         <Button
-                          key={n.id}
                           variant="primary"
                           size="large"
                           className="contest-page-add-participant-button"
                           onClick={() => navigate(buildLoginUrl(returnUrl))}
                         >
-                          {participateIcon}
-                          Участвовать — {n.title}
+                          Войти для участия
                         </Button>
-                      ))
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="large"
-                        className="contest-page-add-participant-button"
-                        onClick={() => navigate(buildLoginUrl(returnUrl))}
-                      >
-                        Войти для участия
-                      </Button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </>
                 );
               }
               return (
-                <div className="contest-page-participants-actions">
-                  {hasNominations ? (
-                    contestNominations.map((n) => {
-                      const already =
-                        userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id) &&
-                        !canManageParticipants;
-                      return (
-                        <Button
-                          key={n.id}
-                          size="large"
-                          disabled={already}
-                          className="contest-page-add-participant-button"
-                          onClick={() => {
-                            setAddParticipantNomination({ id: n.id, title: n.title });
-                            setIsAddParticipantModalOpen(true);
-                          }}
-                        >
-                          {participateIcon}
-                          {already ? 'Уже участвуете' : `Участвовать — ${n.title}`}
-                        </Button>
-                      );
-                    })
-                  ) : (
-                    <Button
-                      size="large"
-                      disabled={
-                        userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
+                <>
+                  {domainNote}
+                  <div className="contest-page-participants-actions">
+                    {hasNominations ? (
+                      contestNominations.map((n) => {
+                        const already =
+                          userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id) &&
+                          !canManageParticipants;
+                        return (
+                          <Button
+                            key={n.id}
+                            size="large"
+                            disabled={already || blockedByEmailDomain}
+                            className="contest-page-add-participant-button"
+                            onClick={() => {
+                              setAddParticipantNomination({ id: n.id, title: n.title });
+                              setIsAddParticipantModalOpen(true);
+                            }}
+                          >
+                            {participateIcon}
+                            {already ? 'Уже участвуете' : `Участвовать — ${n.title}`}
+                          </Button>
+                        );
+                      })
+                    ) : (
+                      <Button
+                        size="large"
+                        disabled={
+                          (userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
+                            !canManageParticipants) ||
+                          blockedByEmailDomain
+                        }
+                        className="contest-page-add-participant-button"
+                        onClick={() => {
+                          setAddParticipantNomination(null);
+                          setIsAddParticipantModalOpen(true);
+                        }}
+                      >
+                        {participateIcon}
+                        {userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
                         !canManageParticipants
-                      }
-                      className="contest-page-add-participant-button"
-                      onClick={() => {
-                        setAddParticipantNomination(null);
-                        setIsAddParticipantModalOpen(true);
-                      }}
-                    >
-                      {participateIcon}
-                      {userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
-                      !canManageParticipants
-                        ? 'Уже участвуете'
-                        : 'Добавить участника'}
-                    </Button>
-                  )}
-                </div>
+                          ? 'Уже участвуете'
+                          : 'Добавить участника'}
+                      </Button>
+                    )}
+                  </div>
+                </>
               );
             })()}
           </div>
@@ -765,9 +907,21 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-empty">
               {participantsJuryUnscoredOnly
                 ? 'Среди видимых работ нет таких, где вам не хватает оценок по критериям (или вы оценили все).'
-                : participantsNominationFilter !== 'all'
-                  ? 'В выбранной номинации пока нет работ'
-                  : 'Нет участников'}
+                : participantsVotedOnly
+                  ? 'Нет работ, за которые вы проголосовали (с учётом выбранных фильтров).'
+                  : participantsSubmissionFilter !== 'all'
+                  ? participantsSubmissionFilter === 'pending'
+                    ? 'Нет заявок со статусом «На модерации»'
+                    : participantsSubmissionFilter === 'rejected'
+                      ? 'Нет отклонённых заявок'
+                      : participantsSubmissionFilter === 'accepted'
+                        ? 'Нет принятых заявок'
+                        : participantsSubmissionFilter === 'non_accepted'
+                          ? 'Нет непринятых заявок'
+                          : 'Нет участников'
+                  : participantsNominationFilter !== 'all'
+                    ? 'В выбранной номинации пока нет работ'
+                    : 'Нет участников'}
             </div>
           ) : (
             <div className="contest-page-participants-list">
@@ -833,6 +987,7 @@ const ContestPage: React.FC = () => {
             </div>
           ) : null}
         </div>
+        </section>
       </div>
 
       <div className="contest-page-sidebar">
@@ -850,6 +1005,8 @@ const ContestPage: React.FC = () => {
           nominationId={addParticipantNomination?.id ?? null}
           nominationTitle={addParticipantNomination?.title ?? null}
           participantsListNominationFilter={participantsNominationFilter}
+          participantsListSubmissionFilter={participantsSubmissionFilter}
+          participantsListVotedOnly={participantsVotedOnly}
           participantsListJuryUnscoredOnly={participantsJuryUnscoredOnly}
           participantsListLimit={
             participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000
@@ -886,7 +1043,9 @@ const ContestPage: React.FC = () => {
                 fetchParticipantsByContest({
                   contestId: id,
                   nominationFilter: participantsNominationFilter,
+                  submissionFilter: participantsSubmissionFilter,
                   juryUnscoredOnly: participantsJuryUnscoredOnly,
+                  votedOnly: participantsVotedOnly,
                   limit: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
                   offset: participantsListPaginated
                     ? participantsPage * PARTICIPANTS_PAGE_SIZE

@@ -50,14 +50,16 @@ export interface Contest {
   sponsor_logo_url?: string;
   sponsor_url?: string;
   cta_label_override?: string;
+  /** Домены e-mail; пусто — заявку может подать любой. */
+  participant_allowed_email_domains?: string[];
   /** Начало регистрации (UTC, RFC3339). Автопереход draft → registration. */
   registration_starts_at?: string;
-  /** Конец приёма заявок (информационно + валидация порядка дат). */
-  registration_ends_at?: string;
-  /** Начало голосования. Автопереход registration → voting. */
+  /** Начало голосования; до этого момента приём заявок. Автопереход registration → voting. */
   voting_starts_at?: string;
   /** Окончание голосования. Автопереход voting → finished. */
   voting_ends_at?: string;
+  /** IANA; в каком поясе на форме задаются даты расписания (в API моменты в UTC). */
+  schedule_timezone?: string;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,8 @@ export interface Nomination {
   title: string;
   description: string;
   sort_order: number;
+  /** Сколько фото нужно в заявке (по умолчанию 1). */
+  min_photo_count?: number;
   created_at: string;
 }
 

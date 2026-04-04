@@ -72,7 +72,7 @@ const HomePage: React.FC = () => {
         </div>
         {showCreateContest ? (
           <div className="home-page-list-actions">
-            <Button className="home-page-create-button" onClick={() => navigate('/create-contest')}>
+            <Button className="home-page-create-button" onClick={() => navigate('/contests/new/edit')}>
               <span className="home-page-create-button-content">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <line x1="12" y1="5" x2="12" y2="19" />

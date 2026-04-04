@@ -105,7 +105,7 @@ func (m *mockRepository) GetParticipant(ctx context.Context, participantID model
 func (m *mockRepository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
 	return nil, model.ErrorNotFound
 }
-func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
+func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, orderByVotes bool) ([]*model.Participant, int64, error) {
 	return nil, 0, nil
 }
 func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
@@ -165,13 +165,13 @@ func (m *mockRepository) CountPhotoLikes(ctx context.Context, photoID string) (i
 func (m *mockRepository) ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error) { return nil, nil }
 // CountVotesByContests реализован выше с поддержкой моков
 
-func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int) (*model.Nomination, error) {
+func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error) {
 	return nil, nil
 }
-func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string) (*model.Nomination, error) {
+func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {

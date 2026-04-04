@@ -4,5 +4,5 @@ export const ROUTES = {
   CONTEST: (id: string) => `/contests/${id}`,
   PARTICIPANT: (contestId: string, participantId: string) =>
     `/contests/${contestId}/participants/${participantId}`,
-  CREATE_CONTEST: '/create-contest',
+  CREATE_CONTEST: '/contests/new/edit',
 } as const;

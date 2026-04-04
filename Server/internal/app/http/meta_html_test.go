@@ -26,7 +26,7 @@ func (m *mockMetaHTMLService) GetContest(ctx context.Context, contestID model.Co
 	return nil, nil
 }
 
-func (m *mockMetaHTMLService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error) {
+func (m *mockMetaHTMLService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error) {
 	return m.participants, int64(len(m.participants)), nil
 }
 

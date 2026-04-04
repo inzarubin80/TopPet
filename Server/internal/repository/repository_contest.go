@@ -52,11 +52,12 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		SponsorName:          c.SponsorName,
 		SponsorLogoUrl:       c.SponsorLogoUrl,
 		SponsorUrl:           c.SponsorUrl,
-		CtaLabelOverride:     c.CtaLabelOverride,
+		CtaLabelOverride:               c.CtaLabelOverride,
+		ParticipantAllowedEmailDomains: model.ParseParticipantEmailDomainsDB(c.ParticipantAllowedEmailDomains),
 		RegistrationStartsAt: pgTimestamptzToTimePtr(c.RegistrationStartsAt),
-		RegistrationEndsAt:   pgTimestamptzToTimePtr(c.RegistrationEndsAt),
 		VotingStartsAt:       pgTimestamptzToTimePtr(c.VotingStartsAt),
 		VotingEndsAt:         pgTimestamptzToTimePtr(c.VotingEndsAt),
+		ScheduleTimezone:     c.ScheduleTimezone,
 		CreatedAt:            c.CreatedAt.Time,
 		UpdatedAt:            c.UpdatedAt.Time,
 	}
@@ -151,10 +152,11 @@ func (r *Repository) UpdateContest(ctx context.Context, contestID model.ContestI
 		SponsorLogoUrl:       u.SponsorLogoUrl,
 		SponsorUrl:           u.SponsorUrl,
 		CtaLabelOverride:     u.CtaLabelOverride,
-		RegistrationStartsAt: timePtrToPgTimestamptz(u.RegistrationStartsAt),
-		RegistrationEndsAt:   timePtrToPgTimestamptz(u.RegistrationEndsAt),
-		VotingStartsAt:       timePtrToPgTimestamptz(u.VotingStartsAt),
-		VotingEndsAt:         timePtrToPgTimestamptz(u.VotingEndsAt),
+		RegistrationStartsAt:           timePtrToPgTimestamptz(u.RegistrationStartsAt),
+		VotingStartsAt:                 timePtrToPgTimestamptz(u.VotingStartsAt),
+		VotingEndsAt:                   timePtrToPgTimestamptz(u.VotingEndsAt),
+		ParticipantAllowedEmailDomains: u.ParticipantAllowedEmailDomains,
+		ScheduleTimezone:               u.ScheduleTimezone,
 	})
 	if err != nil {
 		return nil, err

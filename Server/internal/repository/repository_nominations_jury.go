@@ -21,7 +21,7 @@ func pgUUIDFromContestID(contestID model.ContestID) (pgtype.UUID, error) {
 	return pgtype.UUID{Bytes: cid, Valid: true}, nil
 }
 
-func (r *Repository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int) (*model.Nomination, error) {
+func (r *Repository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	cid, err := pgUUIDFromContestID(contestID)
 	if err != nil {
@@ -29,11 +29,12 @@ func (r *Repository) CreateNomination(ctx context.Context, contestID model.Conte
 	}
 	id := uuid.New()
 	row, err := reposqlc.CreateNomination(ctx, &sqlc_repository.CreateNominationParams{
-		ID:          pgtype.UUID{Bytes: id, Valid: true},
-		ContestID:   cid,
-		Title:       title,
-		Description: description,
-		SortOrder:   int32(sortOrder),
+		ID:            pgtype.UUID{Bytes: id, Valid: true},
+		ContestID:     cid,
+		Title:         title,
+		Description:   description,
+		SortOrder:     int32(sortOrder),
+		MinPhotoCount: minPhotoCount,
 	})
 	if err != nil {
 		return nil, err
@@ -64,7 +65,7 @@ func (r *Repository) GetNominationByContest(ctx context.Context, contestID model
 	return nominationFromSQLc(row), nil
 }
 
-func (r *Repository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string) (*model.Nomination, error) {
+func (r *Repository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	cid, err := pgUUIDFromContestID(contestID)
 	if err != nil {
@@ -75,10 +76,11 @@ func (r *Repository) UpdateNomination(ctx context.Context, contestID model.Conte
 		return nil, err
 	}
 	row, err := reposqlc.UpdateNomination(ctx, &sqlc_repository.UpdateNominationParams{
-		ID:          pgtype.UUID{Bytes: nid, Valid: true},
-		ContestID:   cid,
-		Title:       title,
-		Description: description,
+		ID:            pgtype.UUID{Bytes: nid, Valid: true},
+		ContestID:     cid,
+		Title:         title,
+		Description:   description,
+		MinPhotoCount: minPhotoCount,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -133,12 +135,13 @@ func nominationFromSQLc(n *sqlc_repository.ContestNomination) *model.Nomination 
 		cidStr = uuid.UUID(n.ContestID.Bytes).String()
 	}
 	return &model.Nomination{
-		ID:          idStr,
-		ContestID:   model.ContestID(cidStr),
-		Title:       n.Title,
-		Description: n.Description,
-		SortOrder:   int(n.SortOrder),
-		CreatedAt:   n.CreatedAt.Time,
+		ID:            idStr,
+		ContestID:     model.ContestID(cidStr),
+		Title:         n.Title,
+		Description:   n.Description,
+		SortOrder:     int(n.SortOrder),
+		MinPhotoCount: int(n.MinPhotoCount),
+		CreatedAt:     n.CreatedAt.Time,
 	}
 }
 

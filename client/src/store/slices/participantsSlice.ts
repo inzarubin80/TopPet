@@ -1,7 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Participant, ParticipantID, ContestID, ParticipantSubmissionStatus } from '../../types/models';
 import * as participantsApi from '../../api/participantsApi';
-import type { ParticipantsListNominationFilter } from '../../api/participantsApi';
+import type {
+  GetParticipantsByContestOptions,
+  ParticipantsListNominationFilter,
+  ParticipantsListSubmissionFilter,
+} from '../../api/participantsApi';
 import { CreateParticipantRequest, UpdateParticipantRequest, getApiErrorMessage } from '../../types/api';
 
 interface ParticipantsState {
@@ -48,6 +52,8 @@ export const fetchParticipantsByContest = createAsyncThunk(
           contestId: ContestID;
           nominationFilter?: ParticipantsListNominationFilter;
           juryUnscoredOnly?: boolean;
+          submissionFilter?: ParticipantsListSubmissionFilter;
+          votedOnly?: boolean;
           limit?: number;
           offset?: number;
         },
@@ -58,12 +64,26 @@ export const fetchParticipantsByContest = createAsyncThunk(
       const nominationFilter: ParticipantsListNominationFilter =
         typeof payload === 'string' ? 'all' : payload.nominationFilter ?? 'all';
       const juryUnscoredOnly = typeof payload === 'string' ? false : payload.juryUnscoredOnly ?? false;
-      const limit = typeof payload === 'object' && payload.limit !== undefined ? payload.limit : undefined;
-      const offset = typeof payload === 'object' && payload.offset !== undefined ? payload.offset : undefined;
-      const listOptions =
-        limit !== undefined || offset !== undefined
-          ? { limit: limit ?? 10000, offset: offset ?? 0 }
-          : undefined;
+      const submissionFilter: ParticipantsListSubmissionFilter =
+        typeof payload === 'string' ? 'all' : payload.submissionFilter ?? 'all';
+      const votedOnly = typeof payload === 'string' ? false : payload.votedOnly ?? false;
+      let listOptions: GetParticipantsByContestOptions | undefined;
+      if (typeof payload === 'object') {
+        const o: GetParticipantsByContestOptions = {};
+        if (payload.limit !== undefined) {
+          o.limit = payload.limit;
+        }
+        if (payload.offset !== undefined) {
+          o.offset = payload.offset;
+        }
+        if (submissionFilter !== 'all') {
+          o.submissionFilter = submissionFilter;
+        }
+        if (votedOnly) {
+          o.votedOnly = true;
+        }
+        listOptions = Object.keys(o).length > 0 ? o : undefined;
+      }
       const { items: participants, total, limit: appliedLimit, offset: appliedOffset } =
         await participantsApi.getParticipantsByContest(contestId, nominationFilter, juryUnscoredOnly, listOptions);
       return {

@@ -29,7 +29,7 @@ func parseTruthyQuery(v string) bool {
 
 type (
 	serviceListParticipants interface {
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, limit, offset int32) ([]*model.Participant, int64, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error)
 	}
 
 	ListParticipantsHandler struct {
@@ -131,7 +131,14 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		offset = int32(n)
 	}
 
-	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, limit, offset)
+	submissionFilter := strings.TrimSpace(r.URL.Query().Get("submission_filter"))
+	votedOnly := parseTruthyQuery(r.URL.Query().Get("voted_only"))
+	if votedOnly && viewer == nil {
+		uhttp.HandleError(w, uhttp.NewUnauthorizedError("voted_only requires authentication", nil))
+		return
+	}
+
+	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, submissionFilter, votedOnly, limit, offset)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

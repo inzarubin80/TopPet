@@ -59,7 +59,7 @@ const ProfilePage: React.FC = () => {
     clearProfileReferrer();
     
     // Список защищенных страниц, на которые нельзя редиректить после logout
-    const protectedPages = ['/profile', '/create-contest', '/admin'];
+    const protectedPages = ['/profile', '/contests/new/edit', '/create-contest', '/admin'];
     
     // Редиректим на сохраненный URL, если он есть, внутренний и не защищенный
     // Также проверяем, что referrer не равен текущей странице профиля

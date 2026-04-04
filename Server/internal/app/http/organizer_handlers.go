@@ -11,8 +11,8 @@ import (
 )
 
 type nominationsService interface {
-	CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string) (*model.Nomination, error)
-	UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string) (*model.Nomination, error)
+	CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount int) (*model.Nomination, error)
+	UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount int) (*model.Nomination, error)
 	ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 	DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error
 }
@@ -39,14 +39,19 @@ func (h *NominationsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		userID := r.Context().Value(defenitions.UserID).(model.UserID)
 		var body struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
+			Title          string `json:"title"`
+			Description    string `json:"description"`
+			MinPhotoCount *int   `json:"min_photo_count"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 			return
 		}
-		n, err := h.service.CreateNomination(r.Context(), contestID, userID, body.Title, body.Description)
+		minPhotos := 1
+		if body.MinPhotoCount != nil {
+			minPhotos = *body.MinPhotoCount
+		}
+		n, err := h.service.CreateNomination(r.Context(), contestID, userID, body.Title, body.Description, minPhotos)
 		if err != nil {
 			uhttp.HandleError(w, err)
 			return
@@ -75,14 +80,29 @@ func (h *PatchNominationHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	contestID := model.ContestID(r.PathValue("contestId"))
 	nominationID := r.PathValue("nominationId")
 	var body struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
+		Title           string `json:"title"`
+		Description     string `json:"description"`
+		MinPhotoCount  *int   `json:"min_photo_count"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
-	n, err := h.service.UpdateNomination(r.Context(), contestID, userID, nominationID, body.Title, body.Description)
+	minPhotos := 1
+	if body.MinPhotoCount != nil {
+		minPhotos = *body.MinPhotoCount
+	} else {
+		items, lerr := h.service.ListNominations(r.Context(), contestID)
+		if lerr == nil {
+			for _, it := range items {
+				if it.ID == nominationID {
+					minPhotos = it.MinPhotoCount
+					break
+				}
+			}
+		}
+	}
+	n, err := h.service.UpdateNomination(r.Context(), contestID, userID, nominationID, body.Title, body.Description, minPhotos)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

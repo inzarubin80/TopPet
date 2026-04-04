@@ -6,9 +6,10 @@
   background: #fafafa;
 }
 
-.contest-jury-panel h2 {
+.contest-jury-panel h3 {
   margin: 0 0 0.5rem;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .contest-jury-hint {

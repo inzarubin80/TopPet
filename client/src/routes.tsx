@@ -5,7 +5,6 @@ import { RootState } from './store';
 import HomePage from './pages/HomePage';
 import ContestPage from './pages/ContestPage';
 import ParticipantPage from './pages/ParticipantPage';
-import CreateContestPage from './pages/CreateContestPage';
 import EditContestPage from './pages/EditContestPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
@@ -14,21 +13,6 @@ import { AppHeader } from './components/common/AppHeader';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useToast } from './contexts/ToastContext';
 import { buildLoginUrl } from './utils/navigation';
-
-const ContestCreatorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-  const role = useSelector((state: RootState) => state.auth.user?.role);
-  const location = useLocation();
-
-  if (!isAuthenticated) {
-    const returnUrl = `${location.pathname}${location.search}`;
-    return <Navigate to={buildLoginUrl(returnUrl)} replace />;
-  }
-  if (role !== 'system_admin' && role !== 'contest_admin') {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-};
 
 const SystemAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -89,11 +73,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/contests/:id/participants/:participantId" element={<ParticipantPage />} />
         <Route
           path="/create-contest"
-          element={
-            <ContestCreatorRoute>
-              <CreateContestPage />
-            </ContestCreatorRoute>
-          }
+          element={<Navigate to="/contests/new/edit" replace />}
         />
         <Route
           path="/profile"
