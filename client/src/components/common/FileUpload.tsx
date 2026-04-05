@@ -8,6 +8,8 @@ interface FileUploadProps {
   disabled?: boolean;
   label?: string;
   multiple?: boolean;
+  /** id элементов с пояснением (aria-describedby для скрытого input). */
+  describedBy?: string;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -16,6 +18,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   disabled = false,
   label = 'Выбрать файл',
   multiple = false,
+  describedBy,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +51,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         disabled={disabled}
         multiple={multiple}
         className="file-upload-input"
+        aria-describedby={describedBy}
       />
       <Button type="button" onClick={handleClick} disabled={disabled} size="small">
         {label}

@@ -49,6 +49,12 @@ function revokeRegistrationImagePicks(picks: Record<string, RegistrationImagePic
 
 const REGISTRATION_TEXTAREA_MAX_RUNES = 10000;
 
+/** Текст пояснения для участника или undefined, если строка пустая. */
+function registrationFieldHelpText(raw: string | undefined): string | undefined {
+  const t = (raw ?? '').trim();
+  return t.length > 0 ? t : undefined;
+}
+
 function isValidHttpUrl(s: string): boolean {
   try {
     const u = new URL(s);
@@ -791,11 +797,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         ) : registrationFields.length > 0 ? (
           <div className="add-participant-registration-fields">
             <p className="add-participant-registration-heading">Дополнительно в заявке</p>
-            {registrationFields.map((field) => (
+            {registrationFields.map((field) => {
+              const regHelp = registrationFieldHelpText(field.help_text);
+              const regHelpId = regHelp ? `reg-field-help-${field.id}` : undefined;
+              return (
               <div key={field.id} className="add-participant-registration-row">
                 {field.field_type === 'string' && (
                   <Input
                     label={field.label + (field.required ? ' *' : '')}
+                    hint={regHelp}
                     type="text"
                     value={registrationAnswersDraft[field.id] ?? ''}
                     onChange={(e) =>
@@ -810,6 +820,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                 {field.field_type === 'number' && (
                   <Input
                     label={field.label + (field.required ? ' *' : '')}
+                    hint={regHelp}
                     type="text"
                     inputMode="decimal"
                     value={registrationAnswersDraft[field.id] ?? ''}
@@ -823,21 +834,29 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                   />
                 )}
                 {field.field_type === 'boolean' && (
-                  <label className="add-participant-registration-boolean">
-                    <input
-                      type="checkbox"
-                      checked={(registrationAnswersDraft[field.id] ?? 'false') === 'true'}
-                      onChange={(e) =>
-                        setRegistrationAnswersDraft((prev) => ({
-                          ...prev,
-                          [field.id]: e.target.checked ? 'true' : 'false',
-                        }))
-                      }
-                      disabled={loading || uploadingMedia}
-                    />
-                    <span>{field.label}</span>
-                    {field.required ? <span className="add-participant-registration-req"> *</span> : null}
-                  </label>
+                  <div className="add-participant-registration-boolean-block">
+                    {regHelp ? (
+                      <p id={regHelpId} className="add-participant-registration-hint">
+                        {regHelp}
+                      </p>
+                    ) : null}
+                    <label className="add-participant-registration-boolean">
+                      <input
+                        type="checkbox"
+                        aria-describedby={regHelpId}
+                        checked={(registrationAnswersDraft[field.id] ?? 'false') === 'true'}
+                        onChange={(e) =>
+                          setRegistrationAnswersDraft((prev) => ({
+                            ...prev,
+                            [field.id]: e.target.checked ? 'true' : 'false',
+                          }))
+                        }
+                        disabled={loading || uploadingMedia}
+                      />
+                      <span>{field.label}</span>
+                      {field.required ? <span className="add-participant-registration-req"> *</span> : null}
+                    </label>
+                  </div>
                 )}
                 {field.field_type === 'enum' && (
                   <div className="add-participant-registration-enum">
@@ -845,9 +864,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                       {field.label}
                       {field.required ? ' *' : ''}
                     </label>
+                    {regHelp ? (
+                      <p id={regHelpId} className="add-participant-registration-hint">
+                        {regHelp}
+                      </p>
+                    ) : null}
                     <select
                       id={`reg-enum-${field.id}`}
                       className="add-participant-registration-select"
+                      aria-describedby={regHelpId}
                       value={registrationAnswersDraft[field.id] ?? ''}
                       onChange={(e) =>
                         setRegistrationAnswersDraft((prev) => ({
@@ -869,6 +894,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                 {field.field_type === 'textarea' && (
                   <Textarea
                     label={field.label + (field.required ? ' *' : '')}
+                    hint={regHelp}
                     value={registrationAnswersDraft[field.id] ?? ''}
                     onChange={(e) =>
                       setRegistrationAnswersDraft((prev) => ({
@@ -886,11 +912,17 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                       {field.label}
                       {field.required ? ' *' : ''}
                     </span>
+                    {regHelp ? (
+                      <p id={regHelpId} className="add-participant-registration-hint">
+                        {regHelp}
+                      </p>
+                    ) : null}
                     <div className="add-participant-registration-image-upload">
                       <FileUpload
                         accept="image/*"
                         disabled={loading || uploadingMedia}
                         label="Выбрать изображение"
+                        describedBy={regHelpId}
                         onFileSelect={(file) => handleRegistrationImageFile(field.id, file)}
                       />
                     </div>
@@ -925,7 +957,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : null}
 

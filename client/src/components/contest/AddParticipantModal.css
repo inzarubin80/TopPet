@@ -280,6 +280,18 @@
   margin-bottom: 12px;
 }
 
+.add-participant-registration-hint {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+  white-space: pre-wrap;
+}
+
+.add-participant-registration-boolean-block {
+  margin-bottom: 4px;
+}
+
 .add-participant-registration-boolean {
   display: flex;
   align-items: flex-start;
