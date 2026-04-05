@@ -47,12 +47,6 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	logger.Debug("Request data", "handler", "CreateParticipantHandler", "pet_name", req.PetName, "pet_description", req.PetDescription)
 
-	if req.PetName == "" {
-		logger.Warn("pet_name is required", "handler", "CreateParticipantHandler")
-		uhttp.HandleError(w, uhttp.NewBadRequestError("pet_name is required", nil))
-		return
-	}
-
 	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription, req.RegistrationAnswers, req.NominationID)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)

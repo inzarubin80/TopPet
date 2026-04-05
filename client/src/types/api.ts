@@ -80,8 +80,9 @@ export interface UpdateContestStatusRequest {
 }
 
 export interface CreateParticipantRequest {
-  pet_name: string;
-  pet_description: string;
+  /** Пустая строка — сервер подставит имя из профиля пользователя. */
+  pet_name?: string;
+  pet_description?: string;
   nomination_id?: string;
   registration_answers?: Record<string, string | number | boolean>;
 }

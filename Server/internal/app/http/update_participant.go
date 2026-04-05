@@ -81,13 +81,6 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		petDescription = *req.PetDescription
 	}
 
-	// Require pet_name to be non-empty
-	if petName == "" {
-		log.Printf("[UpdateParticipantHandler] ERROR: pet_name cannot be empty")
-		uhttp.HandleError(w, uhttp.NewBadRequestError("pet_name cannot be empty", nil))
-		return
-	}
-
 	log.Printf("[UpdateParticipantHandler] Request data: pet_name=%s, pet_description=%s", petName, petDescription)
 
 	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, petName, petDescription, req.RegistrationAnswers)

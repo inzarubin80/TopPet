@@ -75,6 +75,15 @@
   resize: vertical;
 }
 
+.contest-registration-fields-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .contest-registration-fields-save {
   margin-top: 10px;
 }

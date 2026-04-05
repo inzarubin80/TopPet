@@ -49,13 +49,28 @@ func (s *TopPetService) participantVisible(ctx context.Context, p *model.Partici
 	return false
 }
 
+// resolveParticipantPetName возвращает непустое имя для заявки: из запроса или из профиля пользователя.
+func (s *TopPetService) resolveParticipantPetName(ctx context.Context, userID model.UserID, petName string) (string, error) {
+	if t := strings.TrimSpace(petName); t != "" {
+		return t, nil
+	}
+	u, err := s.repository.GetUser(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if n := strings.TrimSpace(u.Name); n != "" {
+		return n, nil
+	}
+	if em := strings.TrimSpace(u.Email); em != "" {
+		if i := strings.IndexByte(em, '@'); i > 0 {
+			return strings.TrimSpace(em[:i]), nil
+		}
+	}
+	return "Участник", nil
+}
+
 func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
-	
-	if petName == "" {
-		log.Printf("[Service] CreateParticipant: ERROR - pet_name is required")
-		return nil, errors.New("pet_name is required")
-	}
 
 	// Check contest exists and is not finished
 	log.Printf("[Service] CreateParticipant: Checking contest %s", contestID)
@@ -124,6 +139,13 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 			return nil, model.ErrParticipantEmailDomainNotAllowed
 		}
 	}
+
+	resolvedName, err := s.resolveParticipantPetName(ctx, userID, petName)
+	if err != nil {
+		return nil, err
+	}
+	petName = resolvedName
+	petDescription = strings.TrimSpace(petDescription)
 
 	// Create participant
 	log.Printf("[Service] CreateParticipant: Creating participant in repository")
@@ -327,7 +349,7 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 
 func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
 	log.Printf("[Service] UpdateParticipant: participantID=%s, userID=%d", participantID, userID)
-	
+
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to get participant: %v", err)
@@ -340,6 +362,12 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		log.Printf("[Service] UpdateParticipant: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
 		return nil, errors.New("only participant owner can update")
 	}
+
+	resolvedName, err := s.resolveParticipantPetName(ctx, userID, petName)
+	if err != nil {
+		return nil, err
+	}
+	petName = resolvedName
 
 	// Get contest to check status
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)

@@ -15,7 +15,6 @@ import {
 } from '../../store/slices/participantsSlice';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
-import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -154,9 +153,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const navigate = useNavigate();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const isEditMode = !!participant;
-  
-  const [petName, setPetName] = useState('');
-  const [petDescription, setPetDescription] = useState('');
+
   const [existingPhotos, setExistingPhotos] = useState<Photo[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<Set<string>>(new Set());
   const [selectedPhotos, setSelectedPhotos] = useState<LocalPhotoPick[]>([]);
@@ -233,8 +230,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   // Load participant data when in edit mode
   useEffect(() => {
     if (isOpen && participant) {
-      setPetName(participant.pet_name || '');
-      setPetDescription(participant.pet_description || '');
       setExistingPhotos(participant.photos ? [...participant.photos] : []);
       setPhotosToDelete(new Set());
       setSelectedPhotos((prev) => {
@@ -248,8 +243,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError(null);
     } else if (isOpen && !participant) {
       // Reset for create mode
-      setPetName('');
-      setPetDescription('');
       setExistingPhotos([]);
       setPhotosToDelete(new Set());
       setSelectedPhotos((prev) => {
@@ -394,10 +387,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       return;
     }
     e.preventDefault();
-    if (!petName.trim()) {
-      setError('Имя животного обязательно');
-      return;
-    }
 
     const fields = registrationFields ?? [];
     const built = buildRegistrationAnswers(fields, registrationAnswersDraft);
@@ -411,9 +400,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       );
       return;
     }
-    const registrationPayload =
-      Object.keys(built.answers).length > 0 ? built.answers : undefined;
-
     try {
       setLoading(true);
       setError(null);
@@ -426,9 +412,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           updateParticipant({
             participantId: participant.id,
             data: {
-              pet_name: petName.trim(),
-              pet_description: petDescription.trim(),
-              ...(registrationPayload !== undefined ? { registration_answers: registrationPayload } : {}),
+              registration_answers: built.answers,
             },
           })
         );
@@ -526,10 +510,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           createParticipant({
             contestId,
             data: {
-              pet_name: petName.trim(),
-              pet_description: petDescription.trim(),
+              pet_name: '',
+              pet_description: '',
               ...(nominationIdProp ? { nomination_id: nominationIdProp } : {}),
-              ...(registrationPayload !== undefined ? { registration_answers: registrationPayload } : {}),
+              ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
             },
           })
         );
@@ -614,8 +598,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         loading,
         uploadingMedia,
       });
-      setPetName('');
-      setPetDescription('');
       setExistingPhotos([]);
       setPhotosToDelete(new Set());
       setSelectedPhotos((prev) => {
@@ -657,7 +639,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           <Button
             type="submit"
             form="add-participant-form"
-            disabled={loading || uploadingMedia || !petName.trim() || registrationFields === null}
+            disabled={loading || uploadingMedia || registrationFields === null}
           >
             {loading || uploadingMedia ? <LoadingSpinner size="small" /> : (isEditMode ? 'Сохранить' : 'Добавить')}
           </Button>
@@ -670,22 +652,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             Номинация: <strong>{nominationTitle}</strong>
           </p>
         ) : null}
-        <Input
-          label="Имя животного"
-          type="text"
-          value={petName}
-          onChange={(e) => setPetName(e.target.value)}
-          placeholder="Введите имя вашего питомца"
-          required
-          disabled={loading}
-        />
-        <Textarea
-          label="Описание"
-          value={petDescription}
-          onChange={(e) => setPetDescription(e.target.value)}
-          placeholder="Расскажите о вашем питомце..."
-          disabled={loading || uploadingMedia}
-        />
 
         {registrationFields === null ? (
           <p className="add-participant-registration-loading">Загрузка полей заявки…</p>

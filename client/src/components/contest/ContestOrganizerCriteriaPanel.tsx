@@ -396,17 +396,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       </div>
     ) : null;
 
-  const sectionTitle = juryCriteriaPortalMode
-    ? 'Номинации'
-    : audienceView
-      ? 'Категории участия'
-      : 'Номинации и критерии оценки';
-
-  const sectionHint = juryCriteriaPortalMode
-    ? 'Номинации — категории участия. Критерии оценки для жюри настраиваются в блоке «Жюри» ниже.'
-    : audienceView
-      ? 'При подаче заявки выберите одну категорию: одна заявка соответствует одной категории. Критерии жюри одинаковы для всех категорий.'
-      : 'Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.';
+  const sectionTitle = audienceView ? 'Категории участия' : 'Номинации';
 
   return (
     <section
@@ -417,13 +407,12 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       }
     >
       <h2 className="contest-organizer-criteria-title">{sectionTitle}</h2>
-      <p className="contest-organizer-criteria-hint">
-        {sectionHint}
-        {!readOnly ? <> Сохраните изменения кнопкой внизу блока.</> : null}
-      </p>
+      {!readOnly ? (
+        <p className="contest-organizer-criteria-hint">Сохраните изменения кнопкой внизу блока.</p>
+      ) : null}
 
       <div className="contest-organizer-criteria-block">
-        <h3>{audienceView ? 'Список категорий' : 'Номинации'}</h3>
+        {audienceView ? <h3>Список категорий</h3> : null}
         {nominations.length === 0 && !canEdit ? (
           <p className="contest-organizer-criteria-muted">
             {audienceView ? 'Организатор пока не указал категории участия.' : 'Номинации не заданы.'}

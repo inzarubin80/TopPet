@@ -20,13 +20,16 @@ interface Props {
   formDisabled?: boolean;
 }
 
-const emptyField = (): RegistrationFieldInput => ({
+type DraftRegistrationFieldRow = RegistrationFieldInput & { rowKey: string };
+
+const emptyField = (): DraftRegistrationFieldRow => ({
   label: '',
   field_type: 'string',
   required: false,
+  rowKey: crypto.randomUUID(),
 });
 
-function serverToDraft(rows: RegistrationField[]): RegistrationFieldInput[] {
+function serverToDraft(rows: RegistrationField[]): DraftRegistrationFieldRow[] {
   if (rows.length === 0) {
     return [emptyField()];
   }
@@ -36,7 +39,13 @@ function serverToDraft(rows: RegistrationField[]): RegistrationFieldInput[] {
     field_type: r.field_type,
     required: r.required,
     enum_options: r.enum_options ? [...r.enum_options] : undefined,
+    rowKey: r.id,
   }));
+}
+
+function rowToPayload(row: DraftRegistrationFieldRow): RegistrationFieldInput {
+  const { rowKey: _rowKey, ...rest } = row;
+  return rest;
 }
 
 export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFieldsPanelHandle, Props>(
@@ -45,7 +54,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
     ref
   ) {
     const { showError, showSuccess } = useToast();
-    const [draft, setDraft] = useState<RegistrationFieldInput[]>([emptyField()]);
+    const [draft, setDraft] = useState<DraftRegistrationFieldRow[]>([emptyField()]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -76,13 +85,18 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
         }
         const items = draft
           .filter((x) => x.label.trim() !== '')
-          .map((x, idx) => ({
-            ...x,
-            label: x.label.trim(),
-            field_type: x.field_type,
-            enum_options:
-              x.field_type === 'enum' ? (x.enum_options || []).map((s) => s.trim()).filter(Boolean) : undefined,
-          }));
+          .map((row) => {
+            const base = rowToPayload(row);
+            return {
+              ...base,
+              label: base.label.trim(),
+              field_type: base.field_type,
+              enum_options:
+                base.field_type === 'enum'
+                  ? (base.enum_options || []).map((s) => s.trim()).filter(Boolean)
+                  : undefined,
+            };
+          });
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           if (it.field_type === 'enum' && (!it.enum_options || it.enum_options.length < 1)) {
@@ -117,6 +131,18 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
       [persist]
     );
 
+    const moveRow = (from: number, to: number) => {
+      if (to < 0 || to >= draft.length) {
+        return;
+      }
+      setDraft((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(from, 1);
+        next.splice(to, 0, removed);
+        return next;
+      });
+    };
+
     if (loading) {
       return <p className="contest-registration-fields-muted">Загрузка полей заявки…</p>;
     }
@@ -125,7 +151,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
       <section className="contest-registration-fields">
         <h2 className="contest-registration-fields-title">Поля заявки участника</h2>
         <p className="contest-registration-fields-hint">
-          Дополнительные вопросы при подаче заявки (кличка и описание питомца задаются отдельно). Типы: текст, число,
+          Дополнительные вопросы при подаче заявки (фото, видео и номинация — в форме участия). Типы: текст, число,
           да/нет, список вариантов.
           {readOnly ? (
             isAdmin ? (
@@ -142,7 +168,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
 
         <div className="contest-registration-fields-list">
           {draft.map((row, idx) => (
-            <div key={idx} className="contest-registration-fields-row">
+            <div key={row.rowKey} className="contest-registration-fields-row">
               <input
                 type="text"
                 placeholder="Подпись поля"
@@ -204,15 +230,37 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
                 />
               )}
               {canEdit && draft.length > 1 && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="small"
-                  disabled={fieldsLocked}
-                  onClick={() => setDraft((prev) => prev.filter((_, i) => i !== idx))}
-                >
-                  Удалить
-                </Button>
+                <div className="contest-registration-fields-row-actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="small"
+                    disabled={fieldsLocked || idx === 0}
+                    aria-label="Переместить поле выше"
+                    onClick={() => moveRow(idx, idx - 1)}
+                  >
+                    Вверх
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="small"
+                    disabled={fieldsLocked || idx === draft.length - 1}
+                    aria-label="Переместить поле ниже"
+                    onClick={() => moveRow(idx, idx + 1)}
+                  >
+                    Вниз
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="small"
+                    disabled={fieldsLocked}
+                    onClick={() => setDraft((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    Удалить
+                  </Button>
+                </div>
               )}
             </div>
           ))}
