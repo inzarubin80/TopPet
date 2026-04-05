@@ -37,3 +37,11 @@ export const updateComment = async (
 export const deleteComment = async (commentId: CommentID): Promise<void> => {
   await axiosClient.delete(`/comments/${commentId}`);
 };
+
+/** Владелец заявки: отметить комментарии организатора просмотренными (уведомления в шапке). */
+export const markStaffCommentsRead = async (participantId: ParticipantID): Promise<void> => {
+  await axiosClient.post<{ ok: boolean }>(
+    `/participants/${participantId}/staff-comments/mark-read`,
+    {}
+  );
+};

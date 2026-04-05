@@ -60,7 +60,7 @@ func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, 
 	if err != nil {
 		return nil, err
 	}
-	if role != model.UserRoleSystemAdmin && role != model.UserRoleContestAdmin {
+	if !model.IsGlobalContestManagerRole(role) {
 		return nil, model.ErrorForbidden
 	}
 

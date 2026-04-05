@@ -75,10 +75,8 @@ export const uploadContestAsset = async (
 ): Promise<Contest> => {
   const formData = new FormData();
   formData.append('file', file);
+  // Не задавать Content-Type вручную — браузер/axios добавит multipart с boundary.
   const response = await axiosClient.post<Contest>(`/contests/${contestId}/assets/${kind}`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
     timeout: 300000,
   });
   return response.data;

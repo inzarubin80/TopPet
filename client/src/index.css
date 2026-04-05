@@ -15,9 +15,12 @@
   --color-surface: #ffffff;
   --color-text: #1c1917;
   --color-text-muted: #78716c;
-  --color-accent: #c2410c;
-  --color-accent-hover: #9a3412;
-  --color-accent-soft: rgba(194, 65, 12, 0.12);
+  /* Спокойный сине-индиго акцент (кнопки, ссылки, фокус) — без красно-оранжевого тона */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: rgba(37, 99, 235, 0.12);
+  --color-accent-shadow: rgba(37, 99, 235, 0.35);
+  --color-accent-shadow-soft: rgba(37, 99, 235, 0.22);
   --color-border: #e7e5e4;
   --color-border-strong: #d6d3d1;
   --shadow-header: 0 6px 24px rgba(28, 25, 23, 0.07);

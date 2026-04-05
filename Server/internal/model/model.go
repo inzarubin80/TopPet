@@ -345,6 +345,17 @@ func IsValidUserRole(r string) bool {
 	}
 }
 
+// IsGlobalContestManagerRole — роли с правом управлять любым конкурсом наравне с его создателем
+// (администратор конкурса платформы и администратор системы).
+func IsGlobalContestManagerRole(r string) bool {
+	switch r {
+	case UserRoleContestAdmin, UserRoleSystemAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
 var (
 	ErrorNotFound  = errors.New("not found")
 	ErrorForbidden = errors.New("forbidden")

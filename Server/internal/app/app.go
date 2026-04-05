@@ -362,6 +362,10 @@ func (a *App) registerRoutes() {
 		http.HandlerFunc(commentsHandler.DeleteComment),
 		a.service,
 	))
+	a.mux.Handle("POST /api/participants/{participantId}/staff-comments/mark-read", middleware.NewAuthMiddleware(
+		appHttp.NewMarkStaffCommentsReadHandler("/api/participants/{participantId}/staff-comments/mark-read", a.service),
+		a.service,
+	))
 	a.mux.Handle("GET /api/me/staff-comment-notifications", middleware.NewAuthMiddleware(
 		appHttp.NewStaffCommentNotificationsHandler("/api/me/staff-comment-notifications", a.service),
 		a.service,

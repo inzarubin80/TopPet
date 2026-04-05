@@ -539,7 +539,7 @@ const EditContestPage: React.FC = () => {
                 type="text"
                 value={themeColor}
                 onChange={(e) => setThemeColor(e.target.value)}
-                placeholder="#c2410c или пусто"
+                placeholder="#2563eb или пусто"
                 disabled={saving}
               />
               <label className="edit-contest-theme-picker-wrap">
@@ -547,7 +547,7 @@ const EditContestPage: React.FC = () => {
                 <input
                   type="color"
                   className="edit-contest-theme-picker"
-                  value={/^#[0-9A-Fa-f]{6}$/.test(themeColor.trim()) ? themeColor.trim() : '#c2410c'}
+                  value={/^#[0-9A-Fa-f]{6}$/.test(themeColor.trim()) ? themeColor.trim() : '#2563eb'}
                   onChange={(e) => setThemeColor(e.target.value)}
                   disabled={saving}
                   aria-label="Выбор цвета акцента"

@@ -32,7 +32,7 @@ export const AppHeader: React.FC = () => {
     void dispatch(fetchStaffCommentNotifications());
     const intervalId = window.setInterval(() => {
       void dispatch(fetchStaffCommentNotifications());
-    }, 120000);
+    }, 45000);
     return () => clearInterval(intervalId);
   }, [dispatch, isAuthenticated]);
 

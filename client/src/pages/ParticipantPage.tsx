@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
@@ -20,6 +20,7 @@ import { ParticipantMetaTags } from '../components/seo/ParticipantMetaTags';
 import { descriptionWithBreaks } from '../utils/formatText';
 import { userCanManageContest } from '../utils/contestPermissions';
 import { ParticipantJuryScoresPanel } from '../components/contest/ParticipantJuryScoresPanel';
+import { markStaffCommentsRead } from '../api/commentsApi';
 import './ParticipantPage.css';
 
 const ParticipantPage: React.FC = () => {
@@ -58,6 +59,8 @@ const ParticipantPage: React.FC = () => {
   const [editingText, setEditingText] = useState('');
   const [openMenuCommentId, setOpenMenuCommentId] = useState<string | null>(null);
   const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
+  const commentsSectionRef = useRef<HTMLDivElement | null>(null);
+  const staffCommentsMarkedRef = useRef(false);
 
   useWebSocket(contestId ?? null, participantId ?? null);
 
@@ -79,6 +82,40 @@ const ParticipantPage: React.FC = () => {
     }
     void dispatch(fetchStaffCommentNotifications());
   }, [dispatch, isAuthenticated, isOwner, participantId, commentsLoading]);
+
+  useEffect(() => {
+    staffCommentsMarkedRef.current = false;
+  }, [participantId]);
+
+  useEffect(() => {
+    if (!participantFetchSettled || !participant || !isOwner || !participantId || !isAuthenticated) {
+      return;
+    }
+    const el = commentsSectionRef.current;
+    if (!el) {
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.some((e) => e.isIntersecting);
+        if (!visible || staffCommentsMarkedRef.current) {
+          return;
+        }
+        staffCommentsMarkedRef.current = true;
+        void (async () => {
+          try {
+            await markStaffCommentsRead(participantId);
+            dispatch(fetchStaffCommentNotifications());
+          } catch {
+            staffCommentsMarkedRef.current = false;
+          }
+        })();
+      },
+      { threshold: 0.12 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [participantFetchSettled, participant, isOwner, participantId, isAuthenticated, dispatch]);
 
   useEffect(() => {
     if (location.hash !== '#participant-comments' || !participantFetchSettled || !participant) {
@@ -336,7 +373,11 @@ const ParticipantPage: React.FC = () => {
             ) : null}
           </div>
 
-          <div className="participant-page-comments" id="participant-comments">
+          <div
+            className="participant-page-comments"
+            id="participant-comments"
+            ref={commentsSectionRef}
+          >
             <h2>Комментарии</h2>
             {currentUserId ? (
               canComment ? (

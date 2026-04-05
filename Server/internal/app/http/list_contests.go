@@ -71,7 +71,7 @@ func (h *ListContestsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	seeAllDrafts := false
 	if hasUser {
 		if role, rerr := h.service.GetUserRole(r.Context(), userID); rerr == nil {
-			seeAllDrafts = role == model.UserRoleSystemAdmin || role == model.UserRoleContestAdmin
+			seeAllDrafts = model.IsGlobalContestManagerRole(role)
 		}
 	}
 

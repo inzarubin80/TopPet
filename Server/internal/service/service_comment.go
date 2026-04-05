@@ -65,10 +65,19 @@ func (s *TopPetService) ListComments(ctx context.Context, participantID model.Pa
 	if err != nil {
 		return nil, 0, err
 	}
-	if viewer != nil && *viewer == participant.UserID {
-		_ = s.repository.UpdateParticipantOwnerStaffCommentReadAt(ctx, participantID, *viewer)
-	}
 	return comments, total, nil
+}
+
+// MarkParticipantStaffCommentsRead — владелец заявки отмечает комментарии организатора просмотренными (колокольчик).
+func (s *TopPetService) MarkParticipantStaffCommentsRead(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return err
+	}
+	if participant.UserID != userID {
+		return model.ErrorForbidden
+	}
+	return s.repository.UpdateParticipantOwnerStaffCommentReadAt(ctx, participantID, userID)
 }
 
 func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error) {

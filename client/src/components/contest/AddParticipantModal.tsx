@@ -30,6 +30,14 @@ import { listNominations } from '../../api/nominationsApi';
 import { buildLoginUrl } from '../../utils/navigation';
 import './AddParticipantModal.css';
 
+type LocalPhotoPick = { file: File; previewUrl: string };
+
+function revokeLocalPhotoPicks(picks: LocalPhotoPick[]) {
+  for (const p of picks) {
+    URL.revokeObjectURL(p.previewUrl);
+  }
+}
+
 function initRegistrationDraft(
   participant: Participant | null | undefined,
   fields: RegistrationField[]
@@ -151,7 +159,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [petDescription, setPetDescription] = useState('');
   const [existingPhotos, setExistingPhotos] = useState<Photo[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<Set<string>>(new Set());
-  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [selectedPhotos, setSelectedPhotos] = useState<LocalPhotoPick[]>([]);
+  const selectedPhotosRef = useRef<LocalPhotoPick[]>([]);
+  selectedPhotosRef.current = selectedPhotos;
+
+  useEffect(() => {
+    return () => {
+      revokeLocalPhotoPicks(selectedPhotosRef.current);
+    };
+  }, []);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [existingVideo, setExistingVideo] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<boolean>(false);
@@ -221,7 +237,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setPetDescription(participant.pet_description || '');
       setExistingPhotos(participant.photos ? [...participant.photos] : []);
       setPhotosToDelete(new Set());
-      setSelectedPhotos([]);
+      setSelectedPhotos((prev) => {
+        revokeLocalPhotoPicks(prev);
+        return [];
+      });
       setSelectedVideo(null);
       const videoUrl = participant.video?.url || null;
       setExistingVideo(videoUrl);
@@ -233,7 +252,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setPetDescription('');
       setExistingPhotos([]);
       setPhotosToDelete(new Set());
-      setSelectedPhotos([]);
+      setSelectedPhotos((prev) => {
+        revokeLocalPhotoPicks(prev);
+        return [];
+      });
       setSelectedVideo(null);
       setExistingVideo(null);
       setVideoToDelete(false);
@@ -286,7 +308,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       return;
     }
 
-    setSelectedPhotos((prev) => [...prev, file]);
+    setSelectedPhotos((prev) => [...prev, { file, previewUrl: URL.createObjectURL(file) }]);
     setError(null);
   };
 
@@ -313,7 +335,14 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   };
 
   const removePhoto = (index: number) => {
-    setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
+    setSelectedPhotos((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      const removed = prev[index];
+      if (removed) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+      return next;
+    });
   };
 
   const removeExistingPhoto = (photoId: string) => {
@@ -447,8 +476,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         if (selectedPhotos.length > 0) {
           setUploadingMedia(true);
           try {
-            for (const photo of selectedPhotos) {
-              const photoResult = await dispatch(uploadPhoto({ participantId, file: photo }));
+            for (const pick of selectedPhotos) {
+              const photoResult = await dispatch(uploadPhoto({ participantId, file: pick.file }));
               if (uploadPhoto.rejected.match(photoResult)) {
                 console.error('Failed to upload photo:', photoResult.payload);
               } else {
@@ -518,8 +547,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         if (selectedPhotos.length > 0) {
           setUploadingMedia(true);
           try {
-            for (const photo of selectedPhotos) {
-              const photoResult = await dispatch(uploadPhoto({ participantId, file: photo }));
+            for (const pick of selectedPhotos) {
+              const photoResult = await dispatch(uploadPhoto({ participantId, file: pick.file }));
               if (uploadPhoto.rejected.match(photoResult)) {
                 console.error('Failed to upload photo:', photoResult.payload);
               }
@@ -560,6 +589,9 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       );
       void dispatch(fetchMyParticipantsForContest({ contestId }));
 
+      revokeLocalPhotoPicks(selectedPhotosRef.current);
+      setSelectedPhotos([]);
+
       // Close modal
       onClose();
       
@@ -586,7 +618,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setPetDescription('');
       setExistingPhotos([]);
       setPhotosToDelete(new Set());
-      setSelectedPhotos([]);
+      setSelectedPhotos((prev) => {
+        revokeLocalPhotoPicks(prev);
+        return [];
+      });
       setSelectedVideo(null);
       setExistingVideo(null);
       setVideoToDelete(false);
@@ -803,9 +838,14 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             {selectedPhotos.length > 0 && (
               <div className="add-participant-photos-list">
                 <label className="add-participant-new-photos-label">Новые фото для загрузки:</label>
-                {selectedPhotos.map((photo, index) => (
-                  <div key={index} className="add-participant-photo-item">
-                    <span className="add-participant-photo-name">{photo.name}</span>
+                {selectedPhotos.map((pick, index) => (
+                  <div key={`${pick.previewUrl}-${index}`} className="add-participant-photo-item">
+                    <img
+                      src={pick.previewUrl}
+                      alt=""
+                      className="add-participant-photo-thumb"
+                    />
+                    <span className="add-participant-photo-name">{pick.file.name}</span>
                     <button
                       type="button"
                       className="add-participant-photo-remove"

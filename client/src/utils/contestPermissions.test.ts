@@ -26,6 +26,10 @@ describe('userCanManageContest', () => {
     expect(userCanManageContest(contest(1), 99, { id: 99, role: 'contest_admin' })).toBe(true);
   });
 
+  it('allows system_admin when they are not the author', () => {
+    expect(userCanManageContest(contest(1), 99, { id: 99, role: 'system_admin' })).toBe(true);
+  });
+
   it('denies plain user who is not the author', () => {
     expect(userCanManageContest(contest(1), 2, { id: 2, role: 'user' })).toBe(false);
   });

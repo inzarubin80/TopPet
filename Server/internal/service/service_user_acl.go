@@ -14,11 +14,13 @@ func (s *TopPetService) userCanManageContest(ctx context.Context, contest *model
 	if contest.CreatedByUserID == userID {
 		return true
 	}
-	role, err := s.repository.GetUserRole(ctx, userID)
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+	role, err := s.repository.GetUserRole(dbCtx, userID)
 	if err != nil {
 		return false
 	}
-	return role == model.UserRoleContestAdmin || role == model.UserRoleSystemAdmin
+	return model.IsGlobalContestManagerRole(role)
 }
 
 // UserCanManageContest — создатель конкурса или глобальные роли contest_admin / system_admin.
