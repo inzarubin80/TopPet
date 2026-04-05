@@ -62,11 +62,15 @@ type (
 		AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
 		RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error
 		CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error)
+		CountContestJuryCriteria(ctx context.Context, contestID model.ContestID) (int64, error)
 		IsContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (bool, error)
 		UpsertContestJuryScore(ctx context.Context, participantID model.ParticipantID, criterionID string, userID model.UserID, score int32) (*model.JuryScore, error)
 		ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error)
+		ListContestJuryScoresReportByParticipant(ctx context.Context, participantID model.ParticipantID) ([]*model.JuryScoreReportItem, error)
+		ListContestJuryVotingProgressByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryVotingProgressRow, error)
 		SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error)
 		SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
+		CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
 		SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error)
 
 		// Participant

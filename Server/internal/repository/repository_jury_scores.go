@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -81,6 +82,33 @@ func (r *Repository) SumJuryScoresByParticipantIDs(ctx context.Context, particip
 	return out, nil
 }
 
+func (r *Repository) CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
+	if len(participantIDs) == 0 {
+		return map[model.ParticipantID]int64{}, nil
+	}
+	reposqlc := sqlc_repository.New(r.conn)
+	arr := make([]pgtype.UUID, 0, len(participantIDs))
+	for _, id := range participantIDs {
+		pid, err := uuid.Parse(string(id))
+		if err != nil {
+			return nil, err
+		}
+		arr = append(arr, pgtype.UUID{Bytes: pid, Valid: true})
+	}
+	rows, err := reposqlc.CountJuryFullyScoredJurorsByParticipantIDs(ctx, arr)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[model.ParticipantID]int64, len(rows))
+	for _, row := range rows {
+		if !row.ParticipantID.Valid {
+			continue
+		}
+		out[model.ParticipantID(uuid.UUID(row.ParticipantID.Bytes).String())] = row.FullyScoredJurors
+	}
+	return out, nil
+}
+
 func (r *Repository) ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	pid, err := uuid.Parse(string(participantID))
@@ -97,6 +125,69 @@ func (r *Repository) ListContestJuryScoresByParticipantAndUser(ctx context.Conte
 	out := make([]*model.JuryScore, len(rows))
 	for i, row := range rows {
 		out[i] = juryScoreFromSQLc(row)
+	}
+	return out, nil
+}
+
+func (r *Repository) ListContestJuryScoresReportByParticipant(ctx context.Context, participantID model.ParticipantID) ([]*model.JuryScoreReportItem, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	pid, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := reposqlc.ListContestJuryScoresReportByParticipant(ctx, pgtype.UUID{Bytes: pid, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.JuryScoreReportItem, 0, len(rows))
+	for _, row := range rows {
+		var critStr string
+		if row.CriterionID.Valid {
+			critStr = uuid.UUID(row.CriterionID.Bytes).String()
+		}
+		var updated time.Time
+		if row.ScoreUpdatedAt.Valid {
+			updated = row.ScoreUpdatedAt.Time
+		}
+		out = append(out, &model.JuryScoreReportItem{
+			JurorUserID:        model.UserID(row.JurorUserID),
+			JurorName:          row.JurorName,
+			CriterionID:        critStr,
+			CriterionTitle:     row.CriterionTitle,
+			CriterionSortOrder: row.CriterionSortOrder,
+			ScaleMin:           row.ScaleMin,
+			ScaleMax:           row.ScaleMax,
+			Score:              row.Score,
+			ScoreUpdatedAt:     updated,
+		})
+	}
+	return out, nil
+}
+
+func (r *Repository) ListContestJuryVotingProgressByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryVotingProgressRow, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := reposqlc.ListContestJuryVotingProgressByContest(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.JuryVotingProgressRow, 0, len(rows))
+	for _, row := range rows {
+		var pidStr string
+		if row.ParticipantID.Valid {
+			pidStr = uuid.UUID(row.ParticipantID.Bytes).String()
+		}
+		out = append(out, &model.JuryVotingProgressRow{
+			ParticipantID:    model.ParticipantID(pidStr),
+			PetName:          row.PetName,
+			SubmissionStatus: row.SubmissionStatus,
+			JurorUserID:      model.UserID(row.JurorUserID),
+			JurorName:        row.JurorName,
+			CriteriaScored:   row.CriteriaScored,
+		})
 	}
 	return out, nil
 }

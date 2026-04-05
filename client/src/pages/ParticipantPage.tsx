@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
@@ -21,6 +21,10 @@ import { descriptionWithBreaks } from '../utils/formatText';
 import { userCanManageContest } from '../utils/contestPermissions';
 import { ParticipantJuryScoresPanel } from '../components/contest/ParticipantJuryScoresPanel';
 import { markStaffCommentsRead } from '../api/commentsApi';
+import { listRegistrationFields } from '../api/registrationFieldsApi';
+import { RegistrationField } from '../types/models';
+import { registrationAnswersToDisplayRows } from '../utils/registrationAnswersDisplay';
+import { juryCriteriaWordRu } from '../utils/juryLabels';
 import './ParticipantPage.css';
 
 const ParticipantPage: React.FC = () => {
@@ -35,7 +39,7 @@ const ParticipantPage: React.FC = () => {
     participantId ? state.comments.items[participantId] || [] : []
   ) as ParticipantComment[];
   const commentsLoading = useSelector((state: RootState) => state.comments.loading);
-  const { currentContest, loading: contestLoading } = useSelector((state: RootState) => state.contests);
+  const { currentContest } = useSelector((state: RootState) => state.contests);
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const currentUserId = currentUser?.id;
   const { isOwner, canEdit } = useParticipantPermissions(
@@ -59,10 +63,42 @@ const ParticipantPage: React.FC = () => {
   const [editingText, setEditingText] = useState('');
   const [openMenuCommentId, setOpenMenuCommentId] = useState<string | null>(null);
   const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
+  const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>([]);
   const commentsSectionRef = useRef<HTMLDivElement | null>(null);
   const staffCommentsMarkedRef = useRef(false);
 
   useWebSocket(contestId ?? null, participantId ?? null);
+
+  useEffect(() => {
+    if (!contestId) {
+      return;
+    }
+    let cancelled = false;
+    listRegistrationFields(contestId)
+      .then((rows) => {
+        if (!cancelled) {
+          setRegistrationFields(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRegistrationFields([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contestId]);
+
+  const registrationRows = useMemo(() => {
+    if (!participant) {
+      return [];
+    }
+    return registrationAnswersToDisplayRows(
+      registrationFields,
+      participant.registration_answers as Record<string, string | number | boolean> | undefined
+    );
+  }, [registrationFields, participant]);
 
   useEffect(() => {
     if (!contestId || !participantId) {
@@ -177,19 +213,6 @@ const ParticipantPage: React.FC = () => {
     setOpenMenuCommentId((prev) => (prev === commentId ? null : commentId));
   };
 
-  // Debug logging
-  useEffect(() => {
-    console.log('[ParticipantPage] Debug:', {
-      isOwner,
-      currentUserId,
-      participantUserId: participant?.user_id,
-      currentContest,
-      contestStatus: currentContest?.status,
-      canEdit,
-      contestLoading,
-    });
-  }, [isOwner, currentUserId, participant, currentContest, canEdit, contestLoading]);
-
   if (!participantFetchSettled) {
     return (
       <div className="participant-page-loading">
@@ -240,8 +263,8 @@ const ParticipantPage: React.FC = () => {
                 type="button"
                 className="participant-page-icon-btn"
                 onClick={() => setVotersModalOpen(true)}
-                title="Проголосовавшие"
-                aria-label="Проголосовавшие"
+                title="Кто проголосовал (зрители)"
+                aria-label="Кто проголосовал зрители"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -314,6 +337,28 @@ const ParticipantPage: React.FC = () => {
               ) : null}
             </div>
           )}
+
+          {registrationRows.length > 0 ? (
+            <section className="participant-page-registration" aria-labelledby="participant-registration-heading">
+              <h2 id="participant-registration-heading">Поля заявки</h2>
+              <dl className="participant-page-registration-list">
+                {registrationRows.map((row) => (
+                  <div key={row.id} className="participant-page-registration-row">
+                    <dt className="participant-page-registration-label">{row.label}</dt>
+                    <dd className="participant-page-registration-value">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
+
+          {participant.pet_description?.trim() ? (
+            <div className="participant-page-description">
+              <h2>Описание</h2>
+              <p>{descriptionWithBreaks(participant.pet_description.trim())}</p>
+            </div>
+          ) : null}
+
           {currentContest && (
             <div className="participant-page-vote-button-wrapper">
               <VoteButton
@@ -350,17 +395,32 @@ const ParticipantPage: React.FC = () => {
               />
             )}
 
-          <div className="participant-page-description">
-            <h2>Описание</h2>
-            <p>{descriptionWithBreaks(participant.pet_description || 'Нет описания')}</p>
-          </div>
-
           <div className="participant-page-votes">
             <p className="participant-page-votes-text">Голосов: {participant.total_votes || 0}</p>
             {currentContest?.jury_voting_enabled && participant.total_jury_score !== undefined ? (
-              <p className="participant-page-jury-total" title="Сумма оценок жюри по всем критериям и всем членам жюри">
-                Сумма оценок жюри: {participant.total_jury_score}
-              </p>
+              <>
+                <p
+                  className="participant-page-jury-total"
+                  title={
+                    participant.jury_member_count != null &&
+                    participant.jury_criteria_count != null &&
+                    participant.jury_fully_scored_jurors != null
+                      ? `Полностью оценили работу (${participant.jury_criteria_count} ${juryCriteriaWordRu(participant.jury_criteria_count)}): ${participant.jury_fully_scored_jurors} из ${participant.jury_member_count} членов жюри.`
+                      : 'Сумма оценок жюри по всем критериям и всем членам жюри'
+                  }
+                >
+                  Сумма оценок жюри: {participant.total_jury_score}
+                </p>
+                {participant.jury_member_count != null &&
+                participant.jury_criteria_count != null &&
+                participant.jury_fully_scored_jurors != null ? (
+                  <p className="participant-page-jury-progress">
+                    Оценили полностью все критерии: {participant.jury_fully_scored_jurors} из{' '}
+                    {participant.jury_member_count} членов жюри ({participant.jury_criteria_count}{' '}
+                    {juryCriteriaWordRu(participant.jury_criteria_count)}).
+                  </p>
+                ) : null}
+              </>
             ) : null}
             {currentContest?.status === 'finished' &&
             (participant.is_audience_winner || participant.is_jury_winner) ? (

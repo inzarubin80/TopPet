@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from './store';
 import HomePage from './pages/HomePage';
 import ContestPage from './pages/ContestPage';
+import ContestJuryVotingProgressPage from './pages/ContestJuryVotingProgressPage';
 import ParticipantPage from './pages/ParticipantPage';
 import EditContestPage from './pages/EditContestPage';
 import LoginPage from './pages/LoginPage';
@@ -66,6 +67,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <EditContestPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contests/:id/jury-voting-progress"
+          element={
+            <ProtectedRoute>
+              <ContestJuryVotingProgressPage />
             </ProtectedRoute>
           }
         />

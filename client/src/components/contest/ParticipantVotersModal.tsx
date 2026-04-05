@@ -71,7 +71,7 @@ export const ParticipantVotersModal: React.FC<ParticipantVotersModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Проголосовавшие за ${participantName}`}
+      title={`Голоса зрителей: ${participantName}`}
     >
       <div className="participant-voters-modal-body">
         {loading && (
@@ -82,18 +82,21 @@ export const ParticipantVotersModal: React.FC<ParticipantVotersModalProps> = ({
         {!loading && error && (
           <div className="participant-voters-modal-error">{error}</div>
         )}
-        {!loading && !error && voters.length === 0 && (
-          <div className="participant-voters-modal-empty">Нет голосов</div>
-        )}
-        {!loading && !error && voters.length > 0 && (
-          <ul className="participant-voters-modal-list">
-            {voters.map((v) => (
-              <li key={`${v.user_id}-${v.voted_at}`} className="participant-voters-modal-item">
-                <span className="participant-voters-modal-name">{v.user_name}</span>
-                <span className="participant-voters-modal-date">{formatVotedAt(v.voted_at)}</span>
-              </li>
-            ))}
-          </ul>
+        {!loading && !error && (
+          <>
+            {voters.length === 0 ? (
+              <div className="participant-voters-modal-empty">Пока никто из зрителей не проголосовал.</div>
+            ) : (
+              <ul className="participant-voters-modal-list">
+                {voters.map((v) => (
+                  <li key={`${v.user_id}-${v.voted_at}`} className="participant-voters-modal-item">
+                    <span className="participant-voters-modal-name">{v.user_name}</span>
+                    <span className="participant-voters-modal-date">{formatVotedAt(v.voted_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </Modal>

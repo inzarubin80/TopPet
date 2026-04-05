@@ -143,8 +143,12 @@
 .contest-page-works-title-wrap {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px 14px;
+}
+
+.contest-page-jury-progress-open {
+  flex-shrink: 0;
 }
 
 .contest-page-works-count {

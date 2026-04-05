@@ -7,13 +7,17 @@ import (
 )
 
 // shouldExposeJuryScoreTotal — когда отдавать клиенту сумму баллов жюри по заявке.
+// Во время фазы «голосование» итоговые суммы не показываем — только после завершения конкурса (status=finished).
+// На регистрации суммы видны организатору и жюри (оценка работ до открытого голосования).
 func (s *TopPetService) shouldExposeJuryScoreTotal(ctx context.Context, contest *model.Contest, viewer *model.UserID) bool {
 	if contest == nil || !contest.JuryVotingEnabled {
 		return false
 	}
 	switch contest.Status {
-	case model.ContestStatusVoting, model.ContestStatusFinished:
+	case model.ContestStatusFinished:
 		return true
+	case model.ContestStatusVoting:
+		return false
 	case model.ContestStatusDraft, model.ContestStatusPublication, model.ContestStatusRegistration:
 		if viewer == nil {
 			return false
@@ -40,10 +44,30 @@ func (s *TopPetService) attachParticipantJuryScoreTotals(ctx context.Context, co
 	if err != nil {
 		return
 	}
+	memberCount, mErr := s.repository.CountContestJuryMembers(ctx, contest.ID)
+	criteriaCount, cErr := s.repository.CountContestJuryCriteria(ctx, contest.ID)
+	progressByID, pErr := s.repository.CountJuryFullyScoredJurorsByParticipantIDs(ctx, ids)
+	showProgress := mErr == nil && cErr == nil && pErr == nil && memberCount > 0 && criteriaCount > 0
 	for _, p := range participants {
 		v := sums[p.ID]
 		p.TotalJuryScore = new(int64)
 		*p.TotalJuryScore = v
+		if mErr == nil && memberCount > 0 {
+			p.JuryMemberCount = new(int64)
+			*p.JuryMemberCount = memberCount
+		}
+		if cErr == nil && criteriaCount > 0 {
+			p.JuryCriteriaCount = new(int64)
+			*p.JuryCriteriaCount = criteriaCount
+		}
+		if showProgress {
+			n := int64(0)
+			if progressByID != nil {
+				n = progressByID[p.ID]
+			}
+			p.JuryFullyScoredJurors = new(int64)
+			*p.JuryFullyScoredJurors = n
+		}
 	}
 }
 
@@ -57,4 +81,24 @@ func (s *TopPetService) attachOneParticipantJuryScoreTotal(ctx context.Context, 
 	}
 	participant.TotalJuryScore = new(int64)
 	*participant.TotalJuryScore = sum
+	memberCount, mErr := s.repository.CountContestJuryMembers(ctx, contest.ID)
+	criteriaCount, cErr := s.repository.CountContestJuryCriteria(ctx, contest.ID)
+	progressByID, pErr := s.repository.CountJuryFullyScoredJurorsByParticipantIDs(ctx, []model.ParticipantID{participant.ID})
+	showProgress := mErr == nil && cErr == nil && pErr == nil && memberCount > 0 && criteriaCount > 0
+	if mErr == nil && memberCount > 0 {
+		participant.JuryMemberCount = new(int64)
+		*participant.JuryMemberCount = memberCount
+	}
+	if cErr == nil && criteriaCount > 0 {
+		participant.JuryCriteriaCount = new(int64)
+		*participant.JuryCriteriaCount = criteriaCount
+	}
+	if showProgress {
+		n := int64(0)
+		if progressByID != nil {
+			n = progressByID[participant.ID]
+		}
+		participant.JuryFullyScoredJurors = new(int64)
+		*participant.JuryFullyScoredJurors = n
+	}
 }

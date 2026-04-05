@@ -104,6 +104,29 @@ export interface JuryScore {
   updated_at: string;
 }
 
+/** Строка отчёта по голосованию жюри (ответ GET …/jury-scores-report). */
+export interface JuryScoreReportItem {
+  juror_user_id: UserID;
+  juror_name: string;
+  criterion_id: string;
+  criterion_title: string;
+  criterion_sort_order: number;
+  scale_min: number;
+  scale_max: number;
+  score: number;
+  score_updated_at: string;
+}
+
+/** Ячейка сводки «работа × жюри» (GET …/jury-voting-progress). */
+export interface JuryVotingProgressRow {
+  participant_id: ParticipantID;
+  pet_name: string;
+  submission_status: string;
+  juror_user_id: UserID;
+  juror_name: string;
+  criteria_scored: number;
+}
+
 export type RegistrationFieldType = 'string' | 'number' | 'boolean' | 'enum';
 
 export interface RegistrationField {
@@ -155,6 +178,12 @@ export interface Participant {
   total_votes?: number;
   /** Сумма баллов жюри по всем критериям и всем членам жюри (если API отдал поле). */
   total_jury_score?: number;
+  /** Членов жюри в конкурсе (для прогресса оценивания). */
+  jury_member_count?: number;
+  /** Число критериев оценки в конкурсе. */
+  jury_criteria_count?: number;
+  /** Сколько жюри выставили баллы по всем критериям для этой работы. */
+  jury_fully_scored_jurors?: number;
   /** Завершённый конкурс: максимум голосов зрителей в своей номинации (или в целом по конкурсу). */
   is_audience_winner?: boolean;
   /** Завершённый конкурс: максимальная сумма оценок жюри в своей номинации. */

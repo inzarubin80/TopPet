@@ -12,12 +12,13 @@ import {
   fetchMyParticipantsForContest,
   ParticipantsListNominationFilter,
 } from '../store/slices/participantsSlice';
-import { Participant, ContestStatus, Nomination, RegistrationField } from '../types/models';
+import { Participant, ContestStatus, Nomination } from '../types/models';
 import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
 import { ParticipantVotersModal } from '../components/contest/ParticipantVotersModal';
+import { ParticipantJuryReportModal } from '../components/contest/ParticipantJuryReportModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -34,7 +35,6 @@ import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrga
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
-import { listRegistrationFields } from '../api/registrationFieldsApi';
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
@@ -107,7 +107,6 @@ const ContestPage: React.FC = () => {
   const [participantsVotedOnly, setParticipantsVotedOnly] = useState(false);
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
-  const [contestRegistrationFields, setContestRegistrationFields] = useState<RegistrationField[]>([]);
   const [addParticipantNomination, setAddParticipantNomination] = useState<{ id: string; title: string } | null>(
     null
   );
@@ -119,6 +118,8 @@ const ContestPage: React.FC = () => {
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
   const [votersModalParticipant, setVotersModalParticipant] = useState<Participant | null>(null);
   const [votersModalOpen, setVotersModalOpen] = useState(false);
+  const [juryReportModalParticipant, setJuryReportModalParticipant] = useState<Participant | null>(null);
+  const [juryReportModalOpen, setJuryReportModalOpen] = useState(false);
   const userVoteSlots = useSelector((state: RootState) =>
     id ? state.contests.userVoteSlots[id] ?? {} : {}
   );
@@ -165,8 +166,10 @@ const ContestPage: React.FC = () => {
         submission: participantsSubmissionFilter,
         votedOnly: participantsVotedOnly,
       };
-      setParticipantsPage(0);
-      return;
+      if (participantsPage !== 0) {
+        setParticipantsPage(0);
+        return;
+      }
     }
     const paginated =
       currentContest.status === 'draft' ||
@@ -221,23 +224,6 @@ const ContestPage: React.FC = () => {
       })
       .catch(() => {
         if (!cancelled) setContestNominations([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) {
-      return;
-    }
-    let cancelled = false;
-    listRegistrationFields(id)
-      .then((rows) => {
-        if (!cancelled) setContestRegistrationFields(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setContestRegistrationFields([]);
       });
     return () => {
       cancelled = true;
@@ -637,6 +623,17 @@ const ContestPage: React.FC = () => {
                         : 'работ'}
                   </span>
                 ) : null}
+                {isAdmin && currentContest.jury_voting_enabled && id ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="small"
+                    className="contest-page-jury-progress-open"
+                    onClick={() => navigate(`/contests/${id}/jury-voting-progress`)}
+                  >
+                    Контроль оценок жюри
+                  </Button>
+                ) : null}
               </div>
               <div className="contest-page-participants-filters">
                 {contestNominations.length > 0 ? (
@@ -867,7 +864,6 @@ const ContestPage: React.FC = () => {
                         ? nominationTitleById[participant.nomination_id]
                         : undefined
                     }
-                    registrationFields={contestRegistrationFields}
                     contestStatus={currentContest.status}
                     publicVotingEnabled={currentContest.public_voting_enabled ?? true}
                     voteCtaLabel={voteCtaLabel}
@@ -887,6 +883,10 @@ const ContestPage: React.FC = () => {
                     onShowVoters={(p) => {
                       setVotersModalParticipant(p);
                       setVotersModalOpen(true);
+                    }}
+                    onShowJuryReport={(p) => {
+                      setJuryReportModalParticipant(p);
+                      setJuryReportModalOpen(true);
                     }}
                   />
                 ) : null;
@@ -1000,6 +1000,19 @@ const ContestPage: React.FC = () => {
           contestId={id}
           participantId={votersModalParticipant.id}
           participantName={votersModalParticipant.pet_name}
+        />
+      )}
+
+      {juryReportModalOpen && juryReportModalParticipant && id && (
+        <ParticipantJuryReportModal
+          isOpen={juryReportModalOpen}
+          onClose={() => {
+            setJuryReportModalOpen(false);
+            setJuryReportModalParticipant(null);
+          }}
+          contestId={id}
+          participantId={juryReportModalParticipant.id}
+          participantName={juryReportModalParticipant.pet_name}
         />
       )}
 

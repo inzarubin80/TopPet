@@ -693,6 +693,32 @@ WHERE contest_id = $1 AND user_id = $2;
 -- name: CountContestJuryMembers :one
 SELECT count(*)::bigint FROM contest_jury_members WHERE contest_id = $1;
 
+-- name: CountContestJuryCriteria :one
+SELECT COUNT(*)::bigint
+FROM contest_jury_criteria
+WHERE contest_id = $1;
+
+-- name: CountJuryFullyScoredJurorsByParticipantIDs :many
+-- Сколько членов жюри выставили баллы по всем критериям конкурса для каждой заявки.
+SELECT
+  sub.participant_id,
+  COUNT(*)::bigint AS fully_scored_jurors
+FROM (
+  SELECT
+    j.participant_id,
+    j.user_id
+  FROM contest_jury_scores j
+  INNER JOIN contest_participants cp ON cp.id = j.participant_id
+  WHERE j.participant_id = ANY($1::uuid[])
+  GROUP BY j.participant_id, j.user_id, cp.contest_id
+  HAVING COUNT(*)::int = (
+    SELECT COUNT(*)::int
+    FROM contest_jury_criteria cjc
+    WHERE cjc.contest_id = cp.contest_id
+  )
+) AS sub
+GROUP BY sub.participant_id;
+
 -- name: IsContestJuryMember :one
 SELECT EXISTS (
     SELECT 1 FROM contest_jury_members jm
@@ -711,6 +737,44 @@ SELECT id, participant_id, criterion_id, user_id, score, created_at, updated_at
 FROM contest_jury_scores
 WHERE participant_id = $1 AND user_id = $2
 ORDER BY criterion_id;
+
+-- Детальный отчёт по оценкам жюри для заявки (для организаторов конкурса).
+-- name: ListContestJuryScoresReportByParticipant :many
+SELECT
+  j.user_id AS juror_user_id,
+  COALESCE(u.name, 'Пользователь ' || j.user_id::text) AS juror_name,
+  j.criterion_id,
+  c.title AS criterion_title,
+  c.sort_order AS criterion_sort_order,
+  c.scale_min,
+  c.scale_max,
+  j.score,
+  j.updated_at AS score_updated_at
+FROM contest_jury_scores j
+INNER JOIN contest_participants cp ON cp.id = j.participant_id
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id AND c.contest_id = cp.contest_id
+LEFT JOIN users u ON u.user_id = j.user_id
+WHERE j.participant_id = $1
+ORDER BY j.user_id, c.sort_order ASC, c.title ASC;
+
+-- Прогресс оценивания: каждая пара (работа × член жюри) и число выставленных критериев.
+-- name: ListContestJuryVotingProgressByContest :many
+SELECT
+  cp.id AS participant_id,
+  cp.pet_name,
+  cp.submission_status,
+  jm.user_id AS juror_user_id,
+  COALESCE(u.name, 'Пользователь ' || jm.user_id::text) AS juror_name,
+  (
+    SELECT COUNT(DISTINCT j.criterion_id)::int
+    FROM contest_jury_scores j
+    WHERE j.participant_id = cp.id AND j.user_id = jm.user_id
+  ) AS criteria_scored
+FROM contest_participants cp
+CROSS JOIN contest_jury_members jm
+LEFT JOIN users u ON u.user_id = jm.user_id
+WHERE cp.contest_id = $1 AND jm.contest_id = $1
+ORDER BY cp.created_at ASC, jm.user_id ASC;
 
 -- name: SumJuryScoresByParticipantID :one
 SELECT COALESCE(SUM(score), 0)::bigint

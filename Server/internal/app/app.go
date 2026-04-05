@@ -280,6 +280,14 @@ func (a *App) registerRoutes() {
 		appHttp.NewParticipantVotersHandler("/api/contests/{contestId}/participants/{participantId}/voters", a.service),
 		a.service,
 	))
+	a.mux.Handle("GET /api/contests/{contestId}/jury-voting-progress", middleware.NewAuthMiddleware(
+		appHttp.NewJuryVotingProgressHandler("/api/contests/{contestId}/jury-voting-progress", a.service),
+		a.service,
+	))
+	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/jury-scores-report", middleware.NewAuthMiddleware(
+		appHttp.NewJuryScoresReportHandler("/api/contests/{contestId}/participants/{participantId}/jury-scores-report", a.service),
+		a.service,
+	))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/my-jury-scores", middleware.NewAuthMiddleware(
 		appHttp.NewMyJuryScoresHandler("/api/contests/{contestId}/participants/{participantId}/my-jury-scores", a.service),
 		a.service,

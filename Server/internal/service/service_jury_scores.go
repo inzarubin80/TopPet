@@ -74,6 +74,63 @@ func (s *TopPetService) GetMyJuryScoresForParticipant(ctx context.Context, conte
 	return s.repository.ListContestJuryScoresByParticipantAndUser(ctx, participantID, jurorID)
 }
 
+// GetJuryScoresReportForParticipant — детальные оценки жюри по заявке (только организатор конкурса / глобальные админы).
+func (s *TopPetService) GetJuryScoresReportForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, actorID model.UserID) ([]*model.JuryScoreReportItem, int64, error) {
+	contest, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !contest.JuryVotingEnabled {
+		return nil, 0, model.ErrorForbidden
+	}
+	if !s.userCanManageContest(ctx, contest, actorID) {
+		return nil, 0, model.ErrorForbidden
+	}
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if participant.ContestID != contestID {
+		return nil, 0, fmt.Errorf("%w", model.ErrorNotFound)
+	}
+	items, err := s.repository.ListContestJuryScoresReportByParticipant(ctx, participantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.repository.SumJuryScoresByParticipantID(ctx, participantID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
+// GetJuryVotingProgressReportForContest — матрица «работа × жюри»: сколько критериев выставлено (организаторы конкурса).
+func (s *TopPetService) GetJuryVotingProgressReportForContest(ctx context.Context, contestID model.ContestID, actorID model.UserID) ([]*model.JuryVotingProgressRow, int64, int64, error) {
+	contest, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	if !contest.JuryVotingEnabled {
+		return nil, 0, 0, model.ErrorForbidden
+	}
+	if !s.userCanManageContest(ctx, contest, actorID) {
+		return nil, 0, 0, model.ErrorForbidden
+	}
+	rows, err := s.repository.ListContestJuryVotingProgressByContest(ctx, contestID)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	criteriaTotal, cErr := s.repository.CountContestJuryCriteria(ctx, contestID)
+	if cErr != nil {
+		return nil, 0, 0, cErr
+	}
+	juryMembers, jErr := s.repository.CountContestJuryMembers(ctx, contestID)
+	if jErr != nil {
+		return nil, 0, 0, jErr
+	}
+	return rows, criteriaTotal, juryMembers, nil
+}
+
 // PutMyJuryScoresForParticipant сохраняет оценки жюри по критериям для заявки.
 func (s *TopPetService) PutMyJuryScoresForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, jurorID model.UserID, items []model.JuryScorePutItem) ([]*model.JuryScore, error) {
 	if len(items) == 0 {

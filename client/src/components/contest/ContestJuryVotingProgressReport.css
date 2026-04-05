@@ -1,0 +1,210 @@
+.contest-jury-progress-report {
+  min-height: 80px;
+}
+
+.contest-jury-progress-report-loading {
+  display: flex;
+  justify-content: center;
+  padding: 28px;
+}
+
+.contest-jury-progress-report-error {
+  padding: 16px;
+  text-align: center;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.contest-jury-progress-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 4px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.contest-jury-progress-report-meta strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.contest-jury-progress-meta-sep {
+  color: #cbd5e1;
+  user-select: none;
+}
+
+.contest-jury-progress-report-warn {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+}
+
+.contest-jury-progress-report-empty {
+  margin: 12px 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.contest-jury-progress-table-wrap {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.contest-jury-progress-table-wrap--page {
+  max-height: min(640px, calc(100vh - 320px));
+}
+
+.contest-jury-progress-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.contest-jury-progress-table th,
+.contest-jury-progress-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.contest-jury-progress-table th:last-child,
+.contest-jury-progress-table td:last-child {
+  border-right: none;
+}
+
+.contest-jury-progress-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+}
+
+.contest-jury-progress-col-work {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left !important;
+  min-width: 200px;
+  max-width: 280px;
+  background: #f8fafc;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+.contest-jury-progress-table tbody th.contest-jury-progress-col-work {
+  background: #fff;
+  z-index: 1;
+  font-weight: 500;
+  vertical-align: top;
+}
+
+.contest-jury-progress-table thead th.contest-jury-progress-col-work {
+  z-index: 4;
+}
+
+.contest-jury-progress-col-juror {
+  min-width: 100px;
+  max-width: 140px;
+}
+
+.contest-jury-progress-juror-name {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 8rem;
+  margin: 0 auto;
+}
+
+.contest-jury-progress-juror-id {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.contest-jury-progress-work-link {
+  display: block;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.contest-jury-progress-work-link:hover {
+  text-decoration: underline;
+}
+
+.contest-jury-progress-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.contest-jury-progress-status--accepted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.contest-jury-progress-status--pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.contest-jury-progress-status--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.contest-jury-progress-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.contest-jury-progress-cell--done {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.contest-jury-progress-cell--partial {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.contest-jury-progress-cell--empty {
+  background: #fafafa;
+  color: #94a3b8;
+}
+
+.contest-jury-progress-cell--na {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.contest-jury-progress-report-footnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}

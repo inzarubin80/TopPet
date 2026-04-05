@@ -101,6 +101,19 @@ func (q *Queries) CountCommentsByParticipant(ctx context.Context, participantID 
 	return count, err
 }
 
+const countContestJuryCriteria = `-- name: CountContestJuryCriteria :one
+SELECT COUNT(*)::bigint
+FROM contest_jury_criteria
+WHERE contest_id = $1
+`
+
+func (q *Queries) CountContestJuryCriteria(ctx context.Context, contestID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countContestJuryCriteria, contestID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countContestJuryMembers = `-- name: CountContestJuryMembers :one
 SELECT count(*)::bigint FROM contest_jury_members WHERE contest_id = $1
 `
@@ -122,6 +135,53 @@ func (q *Queries) CountContests(ctx context.Context, dollar_1 string) (int64, er
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countJuryFullyScoredJurorsByParticipantIDs = `-- name: CountJuryFullyScoredJurorsByParticipantIDs :many
+SELECT
+  sub.participant_id,
+  COUNT(*)::bigint AS fully_scored_jurors
+FROM (
+  SELECT
+    j.participant_id,
+    j.user_id
+  FROM contest_jury_scores j
+  INNER JOIN contest_participants cp ON cp.id = j.participant_id
+  WHERE j.participant_id = ANY($1::uuid[])
+  GROUP BY j.participant_id, j.user_id, cp.contest_id
+  HAVING COUNT(*)::int = (
+    SELECT COUNT(*)::int
+    FROM contest_jury_criteria cjc
+    WHERE cjc.contest_id = cp.contest_id
+  )
+) AS sub
+GROUP BY sub.participant_id
+`
+
+type CountJuryFullyScoredJurorsByParticipantIDsRow struct {
+	ParticipantID     pgtype.UUID
+	FullyScoredJurors int64
+}
+
+// Сколько членов жюри выставили баллы по всем критериям конкурса для каждой заявки.
+func (q *Queries) CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountJuryFullyScoredJurorsByParticipantIDsRow, error) {
+	rows, err := q.db.Query(ctx, countJuryFullyScoredJurorsByParticipantIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*CountJuryFullyScoredJurorsByParticipantIDsRow
+	for rows.Next() {
+		var i CountJuryFullyScoredJurorsByParticipantIDsRow
+		if err := rows.Scan(&i.ParticipantID, &i.FullyScoredJurors); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const countNominationsByContest = `-- name: CountNominationsByContest :one
@@ -1509,6 +1569,124 @@ func (q *Queries) ListContestJuryScoresByParticipantAndUser(ctx context.Context,
 			&i.Score,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listContestJuryScoresReportByParticipant = `-- name: ListContestJuryScoresReportByParticipant :many
+SELECT
+  j.user_id AS juror_user_id,
+  COALESCE(u.name, 'Пользователь ' || j.user_id::text) AS juror_name,
+  j.criterion_id,
+  c.title AS criterion_title,
+  c.sort_order AS criterion_sort_order,
+  c.scale_min,
+  c.scale_max,
+  j.score,
+  j.updated_at AS score_updated_at
+FROM contest_jury_scores j
+INNER JOIN contest_participants cp ON cp.id = j.participant_id
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id AND c.contest_id = cp.contest_id
+LEFT JOIN users u ON u.user_id = j.user_id
+WHERE j.participant_id = $1
+ORDER BY j.user_id, c.sort_order ASC, c.title ASC
+`
+
+type ListContestJuryScoresReportByParticipantRow struct {
+	JurorUserID        int64
+	JurorName          string
+	CriterionID        pgtype.UUID
+	CriterionTitle     string
+	CriterionSortOrder int32
+	ScaleMin           int32
+	ScaleMax           int32
+	Score              int32
+	ScoreUpdatedAt     pgtype.Timestamptz
+}
+
+// Детальный отчёт по оценкам жюри для заявки (для организаторов конкурса).
+func (q *Queries) ListContestJuryScoresReportByParticipant(ctx context.Context, participantID pgtype.UUID) ([]*ListContestJuryScoresReportByParticipantRow, error) {
+	rows, err := q.db.Query(ctx, listContestJuryScoresReportByParticipant, participantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListContestJuryScoresReportByParticipantRow
+	for rows.Next() {
+		var i ListContestJuryScoresReportByParticipantRow
+		if err := rows.Scan(
+			&i.JurorUserID,
+			&i.JurorName,
+			&i.CriterionID,
+			&i.CriterionTitle,
+			&i.CriterionSortOrder,
+			&i.ScaleMin,
+			&i.ScaleMax,
+			&i.Score,
+			&i.ScoreUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listContestJuryVotingProgressByContest = `-- name: ListContestJuryVotingProgressByContest :many
+SELECT
+  cp.id AS participant_id,
+  cp.pet_name,
+  cp.submission_status,
+  jm.user_id AS juror_user_id,
+  COALESCE(u.name, 'Пользователь ' || jm.user_id::text) AS juror_name,
+  (
+    SELECT COUNT(DISTINCT j.criterion_id)::int
+    FROM contest_jury_scores j
+    WHERE j.participant_id = cp.id AND j.user_id = jm.user_id
+  ) AS criteria_scored
+FROM contest_participants cp
+CROSS JOIN contest_jury_members jm
+LEFT JOIN users u ON u.user_id = jm.user_id
+WHERE cp.contest_id = $1 AND jm.contest_id = $1
+ORDER BY cp.created_at ASC, jm.user_id ASC
+`
+
+type ListContestJuryVotingProgressByContestRow struct {
+	ParticipantID    pgtype.UUID
+	PetName          string
+	SubmissionStatus string
+	JurorUserID      int64
+	JurorName        string
+	CriteriaScored   int32
+}
+
+// Прогресс оценивания: каждая пара (работа × член жюри) и число выставленных критериев.
+func (q *Queries) ListContestJuryVotingProgressByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListContestJuryVotingProgressByContestRow, error) {
+	rows, err := q.db.Query(ctx, listContestJuryVotingProgressByContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListContestJuryVotingProgressByContestRow
+	for rows.Next() {
+		var i ListContestJuryVotingProgressByContestRow
+		if err := rows.Scan(
+			&i.ParticipantID,
+			&i.PetName,
+			&i.SubmissionStatus,
+			&i.JurorUserID,
+			&i.JurorName,
+			&i.CriteriaScored,
 		); err != nil {
 			return nil, err
 		}

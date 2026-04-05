@@ -1,0 +1,46 @@
+.contest-jury-voting-progress-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.contest-jury-voting-progress-page--centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40vh;
+}
+
+.contest-jury-voting-progress-nav {
+  margin-bottom: 16px;
+}
+
+.contest-jury-voting-progress-back {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.contest-jury-voting-progress-back:hover {
+  text-decoration: underline;
+}
+
+.contest-jury-voting-progress-header {
+  margin-bottom: 20px;
+}
+
+.contest-jury-voting-progress-title {
+  margin: 0 0 6px;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.contest-jury-voting-progress-contest {
+  margin: 0;
+  font-size: 15px;
+  color: #64748b;
+  line-height: 1.4;
+}

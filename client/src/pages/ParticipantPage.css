@@ -203,6 +203,7 @@
 }
 
 .participant-page-description h2,
+.participant-page-registration h2,
 .participant-page-comments h2 {
   margin: 0 0 12px 0;
   font-size: 20px;
@@ -211,6 +212,49 @@
 .participant-page-description p {
   margin: 0;
   line-height: 1.6;
+}
+
+.participant-page-registration {
+  margin: 0;
+}
+
+.participant-page-registration-list {
+  margin: 0;
+  padding: 14px 16px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.participant-page-registration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
+  gap: 10px 16px;
+  align-items: start;
+}
+
+.participant-page-registration-row + .participant-page-registration-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.participant-page-registration-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.participant-page-registration-value {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .participant-page-vote-button-wrapper {
@@ -306,6 +350,13 @@
   font-size: 15px;
   color: #5b21b6;
   font-weight: 600;
+}
+
+.participant-page-jury-progress {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.45;
 }
 
 .participant-page-winner-notice {

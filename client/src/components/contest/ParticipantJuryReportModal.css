@@ -1,0 +1,101 @@
+.participant-jury-report-modal-body {
+  min-height: 100px;
+}
+
+.participant-jury-report-modal-hint {
+  margin: 0 0 10px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.participant-jury-report-modal-total {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.participant-jury-report-modal-total strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.participant-jury-report-modal-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.participant-jury-report-modal-error,
+.participant-jury-report-modal-empty {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.participant-jury-report-modal-error {
+  color: #dc3545;
+}
+
+.participant-jury-report-modal-table-wrap {
+  max-height: min(420px, 55vh);
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.participant-jury-report-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.participant-jury-report-modal-table th,
+.participant-jury-report-modal-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.participant-jury-report-modal-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.participant-jury-report-sort {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.participant-jury-report-sort:hover {
+  color: #0f172a;
+}
+
+.participant-jury-report-modal-score {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.participant-jury-report-modal-table tbody tr:last-child td {
+  border-bottom: none;
+}

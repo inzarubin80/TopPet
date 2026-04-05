@@ -104,6 +104,19 @@ func (r *Repository) CountContestJuryMembers(ctx context.Context, contestID mode
 	return n, nil
 }
 
+func (r *Repository) CountContestJuryCriteria(ctx context.Context, contestID model.ContestID) (int64, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return 0, err
+	}
+	n, err := reposqlc.CountContestJuryCriteria(ctx, cid)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 func (r *Repository) SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error) {
 	if limit < 1 {
 		limit = 20

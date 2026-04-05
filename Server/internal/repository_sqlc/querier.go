@@ -16,8 +16,11 @@ type Querier interface {
 	AddUserAuthProviders(ctx context.Context, arg *AddUserAuthProvidersParams) (*UserAuthProvider, error)
 	CountChatMessages(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
+	CountContestJuryCriteria(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountContestJuryMembers(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountContests(ctx context.Context, dollar_1 string) (int64, error)
+	// Сколько членов жюри выставили баллы по всем критериям конкурса для каждой заявки.
+	CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountJuryFullyScoredJurorsByParticipantIDsRow, error)
 	CountNominationsByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountParticipantsByContest(ctx context.Context, arg *CountParticipantsByContestParams) (int64, error)
 	CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error)
@@ -76,6 +79,10 @@ type Querier interface {
 	// Contest jury members
 	ListContestJuryMembersWithNames(ctx context.Context, contestID pgtype.UUID) ([]*ListContestJuryMembersWithNamesRow, error)
 	ListContestJuryScoresByParticipantAndUser(ctx context.Context, arg *ListContestJuryScoresByParticipantAndUserParams) ([]*ContestJuryScore, error)
+	// Детальный отчёт по оценкам жюри для заявки (для организаторов конкурса).
+	ListContestJuryScoresReportByParticipant(ctx context.Context, participantID pgtype.UUID) ([]*ListContestJuryScoresReportByParticipantRow, error)
+	// Прогресс оценивания: каждая пара (работа × член жюри) и число выставленных критериев.
+	ListContestJuryVotingProgressByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListContestJuryVotingProgressByContestRow, error)
 	ListContestVotesByUser(ctx context.Context, arg *ListContestVotesByUserParams) ([]*ContestVote, error)
 	ListContests(ctx context.Context, arg *ListContestsParams) ([]*Contest, error)
 	ListContestsForStatusAutomation(ctx context.Context) ([]*Contest, error)

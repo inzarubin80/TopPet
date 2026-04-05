@@ -205,6 +205,9 @@ func (m *mockRepository) RemoveContestJuryMember(ctx context.Context, contestID 
 func (m *mockRepository) CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error) {
 	return 0, nil
 }
+func (m *mockRepository) CountContestJuryCriteria(ctx context.Context, contestID model.ContestID) (int64, error) {
+	return 0, nil
+}
 func (m *mockRepository) IsContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (bool, error) {
 	return false, nil
 }
@@ -214,10 +217,19 @@ func (m *mockRepository) UpsertContestJuryScore(ctx context.Context, participant
 func (m *mockRepository) ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error) {
 	return nil, nil
 }
+func (m *mockRepository) ListContestJuryScoresReportByParticipant(ctx context.Context, participantID model.ParticipantID) ([]*model.JuryScoreReportItem, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListContestJuryVotingProgressByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryVotingProgressRow, error) {
+	return nil, nil
+}
 func (m *mockRepository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error) {
 	return 0, nil
 }
 func (m *mockRepository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
+	return map[model.ParticipantID]int64{}, nil
+}
+func (m *mockRepository) CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
 	return map[model.ParticipantID]int64{}, nil
 }
 func (m *mockRepository) SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error) {

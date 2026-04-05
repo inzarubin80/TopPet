@@ -160,6 +160,29 @@ type (
 		Score       int32  `json:"score"`
 	}
 
+	// JuryScoreReportItem — строка отчёта «кто какой балл по какому критерию» (для организаторов).
+	JuryScoreReportItem struct {
+		JurorUserID          UserID    `json:"juror_user_id"`
+		JurorName            string    `json:"juror_name"`
+		CriterionID          string    `json:"criterion_id"`
+		CriterionTitle       string    `json:"criterion_title"`
+		CriterionSortOrder   int32     `json:"criterion_sort_order"`
+		ScaleMin             int32     `json:"scale_min"`
+		ScaleMax             int32     `json:"scale_max"`
+		Score                int32     `json:"score"`
+		ScoreUpdatedAt       time.Time `json:"score_updated_at"`
+	}
+
+	// JuryVotingProgressRow — сколько критериев выставил член жюри по конкретной работе (сводка по конкурсу).
+	JuryVotingProgressRow struct {
+		ParticipantID    ParticipantID `json:"participant_id"`
+		PetName          string        `json:"pet_name"`
+		SubmissionStatus string        `json:"submission_status"`
+		JurorUserID      UserID        `json:"juror_user_id"`
+		JurorName        string        `json:"juror_name"`
+		CriteriaScored   int32         `json:"criteria_scored"`
+	}
+
 	// UserSearchHit — результат поиска пользователя (имя / email).
 	UserSearchHit struct {
 		ID    UserID `json:"id"`
@@ -203,6 +226,12 @@ type (
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
 		// TotalJuryScore — сумма всех баллов жюри по всем критериям и всем членам жюри (если поле отдано клиенту).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
+		// JuryMemberCount — число членов жюри конкурса (для подписи прогресса оценивания).
+		JuryMemberCount *int64 `json:"jury_member_count,omitempty"`
+		// JuryCriteriaCount — число критериев оценки.
+		JuryCriteriaCount *int64 `json:"jury_criteria_count,omitempty"`
+		// JuryFullyScoredJurors — сколько жюри выставили баллы по всем критериям для этой заявки.
+		JuryFullyScoredJurors *int64 `json:"jury_fully_scored_jurors,omitempty"`
 		// Победители (только для status=finished; внутри номинации — по голосам зрителей / сумме жюри).
 		IsAudienceWinner bool      `json:"is_audience_winner,omitempty"`
 		IsJuryWinner     bool      `json:"is_jury_winner,omitempty"`
