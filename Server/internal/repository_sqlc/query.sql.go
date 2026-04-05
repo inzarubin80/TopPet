@@ -1623,7 +1623,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 
 const listContestsForStatusAutomation = `-- name: ListContestsForStatusAutomation :many
 SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at FROM contests
-WHERE status IN ('draft', 'publication', 'registration', 'voting')
+WHERE status IN ('draft', 'publication', 'registration', 'voting', 'finished')
 ORDER BY id
 `
 

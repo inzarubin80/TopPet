@@ -131,7 +131,7 @@ RETURNING *;
 
 -- name: ListContestsForStatusAutomation :many
 SELECT * FROM contests
-WHERE status IN ('draft', 'publication', 'registration', 'voting')
+WHERE status IN ('draft', 'publication', 'registration', 'voting', 'finished')
 ORDER BY id;
 
 -- name: UpdateContestStatus :one

@@ -575,6 +575,7 @@ const ContestPage: React.FC = () => {
           contest={currentContest}
           isAdmin={isAdmin}
           readOnly
+          audienceMode={!isAdmin}
           showJuryCriteriaSection={currentContest.jury_voting_enabled ?? false}
         />
 

@@ -62,7 +62,7 @@ func (s *TopPetService) ListContestJuryCriteria(ctx context.Context, contestID m
 }
 
 func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestID model.ContestID, adminID model.UserID, items []*model.JuryCriterionInput) ([]*model.JuryCriterion, error) {
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.Co
 	if err != nil {
 		return nil, err
 	}
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	if err != nil {
 		return nil, err
 	}
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 }
 
 func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error {
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (s *TopPetService) ListContestRegistrationFields(ctx context.Context, conte
 }
 
 func (s *TopPetService) ReplaceContestRegistrationFields(ctx context.Context, contestID model.ContestID, adminID model.UserID, items []*model.RegistrationFieldInput) ([]*model.RegistrationField, error) {
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}

@@ -43,7 +43,7 @@ func juryScoresContestAllowsWrite(c *model.Contest) bool {
 
 // GetMyJuryScoresForParticipant возвращает оценки текущего жюри по заявке (по всем критериям, где уже выставлены).
 func (s *TopPetService) GetMyJuryScoresForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, jurorID model.UserID) ([]*model.JuryScore, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *TopPetService) PutMyJuryScoresForParticipant(ctx context.Context, conte
 	if len(items) == 0 {
 		return nil, fmt.Errorf("%w: items required", model.ErrBadRequest)
 	}
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}

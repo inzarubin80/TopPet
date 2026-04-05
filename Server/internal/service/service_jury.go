@@ -14,7 +14,7 @@ func (s *TopPetService) ListContestJury(ctx context.Context, contestID model.Con
 }
 
 func (s *TopPetService) AddContestJuryMember(ctx context.Context, contestID model.ContestID, adminID model.UserID, memberUserID model.UserID) (*model.JuryMember, error) {
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (s *TopPetService) AddContestJuryMember(ctx context.Context, contestID mode
 }
 
 func (s *TopPetService) RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, adminID model.UserID, memberUserID model.UserID) error {
-	c, err := s.repository.GetContest(ctx, contestID)
+	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return err
 	}

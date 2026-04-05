@@ -50,6 +50,16 @@ func (s *TopPetService) broadcastContestStatus(contestID model.ContestID, status
 	_ = s.hub.BroadcastContestMessage(contestID, payload)
 }
 
+// getContestForBusiness загружает конкурс и подставляет расчётный статус по расписанию (проверки и ответы API).
+func (s *TopPetService) getContestForBusiness(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+	c, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	model.ApplyEffectiveContestStatus(c, time.Now().UTC())
+	return c, nil
+}
+
 func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
 	if title == "" {
 		return nil, fmt.Errorf("%w: title is required", model.ErrBadRequest)
@@ -89,6 +99,7 @@ func (s *TopPetService) GetContest(ctx context.Context, contestID model.ContestI
 		contest.TotalVotes = totalVotes
 	}
 
+	model.ApplyEffectiveContestStatus(contest, time.Now().UTC())
 	return contest, nil
 }
 
@@ -134,11 +145,16 @@ func (s *TopPetService) ListContests(ctx context.Context, status *model.ContestS
 		}
 	}
 
+	now := time.Now().UTC()
+	for _, c := range contests {
+		model.ApplyEffectiveContestStatus(c, now)
+	}
+
 	return contests, total, nil
 }
 
 func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.ContestID, userID model.UserID, u model.ContestUpdate) (*model.Contest, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +172,12 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 	}
 	u.ScheduleTimezone = tz
 
-	return s.repository.UpdateContest(ctx, contestID, u)
+	updated, err := s.repository.UpdateContest(ctx, contestID, u)
+	if err != nil {
+		return nil, err
+	}
+	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
+	return updated, nil
 }
 
 func contestToUpdate(c *model.Contest) model.ContestUpdate {
@@ -189,7 +210,7 @@ func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
 	defer cancel()
 
-	contest, err := s.repository.GetContest(dbCtx, contestID)
+	contest, err := s.getContestForBusiness(dbCtx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -219,11 +240,12 @@ func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.
 		updated.TotalVotes = totalVotes
 	}
 
+	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
 }
 
 func (s *TopPetService) PublishContest(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +264,12 @@ func (s *TopPetService) PublishContest(ctx context.Context, contestID model.Cont
 		return nil, err
 	}
 	s.broadcastContestStatus(contestID, model.ContestStatusPublication)
+	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
 }
 
 func (s *TopPetService) FinishContest(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -265,11 +288,12 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 		return nil, err
 	}
 	s.broadcastContestStatus(contestID, model.ContestStatusFinished)
+	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
 }
 
 func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model.ContestID, userID model.UserID, status model.ContestStatus) (*model.Contest, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -295,11 +319,12 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 
 	s.broadcastContestStatus(contestID, status)
 
+	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
 }
 
 func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.ContestID, userID model.UserID) error {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return err
 	}

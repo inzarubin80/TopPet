@@ -34,6 +34,20 @@
   margin-top: 4px;
 }
 
+/* Меньше зазора между номинациями/критериями и блоком «Заявки и работы» */
+.contest-page-overview-body > .contest-organizer-criteria {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.contest-page-overview-body > .contest-organizer-criteria .contest-organizer-criteria-block:last-of-type {
+  margin-bottom: 0.35rem;
+}
+
+.contest-page-overview-body > .contest-page-overview-cta {
+  margin-top: 0;
+}
+
 .contest-page-hero--in-overview {
   margin: 0 0 0;
   border-radius: 0;
@@ -219,6 +233,7 @@
   line-height: 1.5;
   color: #475569;
   max-width: 42em;
+  font-variant-numeric: tabular-nums;
 }
 
 .contest-page-schedule--body {

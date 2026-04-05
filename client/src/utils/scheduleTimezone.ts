@@ -99,19 +99,55 @@ export function zonedLocalStringToUtcIso(local: string, timeZone: string): strin
   return null;
 }
 
-/** UTC instant из API → краткая строка для карточек и подписей (пояс организатора). */
-export function formatContestInstantForDisplay(iso: string | undefined, timeZone: string): string {
-  if (!iso) return '';
+/** Календарная дата в поясе timeZone (дд.мм.гггг в выводе). */
+function wallDatePartsInTimeZone(
+  iso: string | undefined,
+  timeZone: string
+): { y: string; m: string; d: string } | null {
+  if (!iso) return null;
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return new Intl.DateTimeFormat('ru-RU', {
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
-    day: 'numeric',
-    month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d);
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const g = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
+  return { y: g('year'), m: g('month'), d: g('day') };
+}
+
+/** Один момент: только дата дд.мм.гггг (пояс организатора), без времени. */
+export function formatScheduleInstantCompact(iso: string | undefined, timeZone: string): string {
+  const w = wallDatePartsInTimeZone(iso, timeZone);
+  if (!w) return '';
+  return `${w.d}.${w.m}.${w.y}`;
+}
+
+/**
+ * Интервал: только даты. Один календарный день → одна дата;
+ * тот же год → дд.мм — дд.мм.гггг; разные годы → две полные даты.
+ */
+export function formatScheduleRangeCompact(
+  startIso: string | undefined,
+  endIso: string | undefined,
+  timeZone: string
+): string {
+  const a = wallDatePartsInTimeZone(startIso, timeZone);
+  const b = wallDatePartsInTimeZone(endIso, timeZone);
+  if (!a || !b) return '';
+  if (a.y === b.y && a.m === b.m && a.d === b.d) {
+    return `${a.d}.${a.m}.${a.y}`;
+  }
+  if (a.y === b.y) {
+    return `${a.d}.${a.m} — ${b.d}.${b.m}.${b.y}`;
+  }
+  return `${a.d}.${a.m}.${a.y} — ${b.d}.${b.m}.${b.y}`;
+}
+
+/** UTC instant → дата для подписей (без времени). */
+export function formatContestInstantForDisplay(iso: string | undefined, timeZone: string): string {
+  return formatScheduleInstantCompact(iso, timeZone);
 }
 
 /** Поля конкурса, достаточные для текстовых строк расписания на карточке и странице. */
@@ -123,29 +159,32 @@ export type ContestScheduleSource = {
   voting_ends_at?: string;
 };
 
-/** Строки «Регистрация …», «Голосование …» в поясе организатора. */
+const SEP = ' · ';
+
+/** Строки расписания в поясе организатора (компактный числовой формат). */
 export function getContestScheduleDisplayLines(c: ContestScheduleSource): string[] {
   const scheduleTz = (c.schedule_timezone || '').trim() || DEFAULT_SCHEDULE_TIMEZONE;
-  const fmt = (iso?: string) => formatContestInstantForDisplay(iso, scheduleTz);
+  const point = (iso?: string) => formatScheduleInstantCompact(iso, scheduleTz);
+  const range = (a?: string, b?: string) => formatScheduleRangeCompact(a, b, scheduleTz);
 
   const lines: string[] = [];
   if (c.publication_starts_at) {
-    lines.push(`Публикация (анонс): ${fmt(c.publication_starts_at)}`);
+    lines.push(`Публикация${SEP}${point(c.publication_starts_at)}`);
   }
   if (c.registration_starts_at && c.voting_starts_at) {
-    lines.push(`Регистрация: ${fmt(c.registration_starts_at)} — ${fmt(c.voting_starts_at)}`);
+    lines.push(`Регистрация${SEP}${range(c.registration_starts_at, c.voting_starts_at)}`);
   } else if (c.registration_starts_at) {
-    lines.push(`Старт регистрации: ${fmt(c.registration_starts_at)}`);
+    lines.push(`Регистрация${SEP}${point(c.registration_starts_at)}`);
   } else if (c.voting_starts_at) {
-    lines.push(`Приём заявок до: ${fmt(c.voting_starts_at)}`);
+    lines.push(`Приём заявок до${SEP}${point(c.voting_starts_at)}`);
   }
 
   if (c.voting_starts_at && c.voting_ends_at) {
-    lines.push(`Голосование: ${fmt(c.voting_starts_at)} — ${fmt(c.voting_ends_at)}`);
+    lines.push(`Голосование${SEP}${range(c.voting_starts_at, c.voting_ends_at)}`);
   } else if (c.voting_ends_at) {
-    lines.push(`Окончание голосования: ${fmt(c.voting_ends_at)}`);
+    lines.push(`Окончание голосования${SEP}${point(c.voting_ends_at)}`);
   } else if (c.voting_starts_at && lines.length === 0) {
-    lines.push(`Старт голосования: ${fmt(c.voting_starts_at)}`);
+    lines.push(`Голосование${SEP}${point(c.voting_starts_at)}`);
   }
 
   return lines;

@@ -59,7 +59,7 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 
 	// Check contest exists and is not finished
 	log.Printf("[Service] CreateParticipant: Checking contest %s", contestID)
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		log.Printf("[Service] CreateParticipant: ERROR - Failed to get contest: %v", err)
 		return nil, err
@@ -155,7 +155,7 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 	if err != nil {
 		return nil, err
 	}
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *TopPetService) GetParticipantWithLikes(ctx context.Context, participant
 	if err != nil {
 		return nil, err
 	}
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	if participantScope == model.ParticipantListScopeMine && viewer == nil {
 		return nil, 0, fmt.Errorf("%w: participant_scope=mine requires authentication", model.ErrBadRequest)
 	}
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -342,7 +342,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	}
 
 	// Get contest to check status
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to get contest: %v", err)
 		return nil, err
@@ -403,7 +403,7 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 		return nil, errors.New("only participant owner can add photos")
 	}
 
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +430,7 @@ func (s *TopPetService) AddParticipantVideo(ctx context.Context, participantID m
 		return nil, errors.New("only participant owner can add video")
 	}
 
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +463,7 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 	}
 
 	// Get contest to check status
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		log.Printf("[Service] DeleteParticipant: ERROR - Failed to get contest: %v", err)
 		return err
@@ -504,7 +504,7 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	}
 
 	// Get contest to check status
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		log.Printf("[Service] DeleteParticipantPhoto: ERROR - Failed to get contest: %v", err)
 		return err
@@ -546,7 +546,7 @@ func (s *TopPetService) DeleteParticipantVideo(ctx context.Context, participantI
 	}
 
 	// Get contest to check status
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to get contest: %v", err)
 		return err
@@ -586,7 +586,7 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 		return errors.New("only participant owner can reorder photos")
 	}
 
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipantPhotoOrder: ERROR - Failed to get contest: %v", err)
 		return err

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import { Contest } from '../../types/models';
 import { listNominations, createNomination, updateNomination, deleteNomination } from '../../api/nominationsApi';
 import {
@@ -11,6 +10,13 @@ import {
 import { Button } from '../common/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
+import {
+  criterionPrimarySecondary,
+  juryScaleAudiencePhrase,
+  juryScaleOrganizerPhrase,
+  minPhotosAudienceHint,
+  nominationPrimarySecondary,
+} from './contestNominationsDisplay';
 import './ContestOrganizerCriteriaPanel.css';
 
 export type ContestOrganizerCriteriaPanelHandle = {
@@ -32,6 +38,11 @@ interface Props {
   /** Критерии жюри не под номинациями, а в узле `juryCriteriaPortalHost` (страница редактирования). */
   juryCriteriaPortalMode?: boolean;
   juryCriteriaPortalHost?: HTMLElement | null;
+  /**
+   * Режим для гостя/участника: другой копирайт и оформление read-only.
+   * По умолчанию: readOnly && !isAdmin.
+   */
+  audienceMode?: boolean;
 }
 
 const emptyCriterion = (): JuryCriterionInput => ({
@@ -53,6 +64,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       showJuryCriteriaSection = true,
       juryCriteriaPortalMode = false,
       juryCriteriaPortalHost = null,
+      audienceMode: audienceModeProp,
     },
     ref
   ) {
@@ -71,6 +83,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
 
   const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
+  const audienceView = audienceModeProp ?? (readOnly && !isAdmin);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,7 +231,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   };
 
   if (loading) {
-    return <p className="contest-organizer-criteria-muted">Загрузка номинаций и критериев…</p>;
+    return (
+      <p className="contest-organizer-criteria-muted">
+        {audienceView ? 'Загрузка категорий и критериев…' : 'Загрузка номинаций и критериев…'}
+      </p>
+    );
   }
 
   const juryCriteriaInPanel = showJuryCriteriaSection && !juryCriteriaPortalMode;
@@ -228,20 +245,44 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const juryCriteriaBlock =
     showJuryCriteriaSection ? (
       <div className="contest-organizer-criteria-block contest-organizer-criteria-block--jury">
-        <h3 className="contest-organizer-criteria-jury-subtitle">Критерии оценки (на конкурс)</h3>
+        <h3 className="contest-organizer-criteria-jury-subtitle">
+          {audienceView ? 'По чему жюри оценивает работы' : 'Критерии оценки (на конкурс)'}
+        </h3>
         {!canEdit && (
-          <ul className="contest-organizer-criteria-readonly">
-            {criteriaDraft.filter((c) => c.title.trim()).map((c, idx) => (
-              <li key={idx}>
-                <strong>{c.title}</strong>
-                {c.description ? ` — ${c.description}` : ''}
-                <span className="contest-organizer-criteria-scale">
-                  {' '}
-                  (шкала {c.scale_min}–{c.scale_max}
-                  {c.scale_step !== 1 ? `, шаг ${c.scale_step}` : ''})
-                </span>
-              </li>
-            ))}
+          <ul
+            className={
+              audienceView
+                ? 'contest-organizer-criteria-readonly contest-organizer-criteria-readonly--audience'
+                : 'contest-organizer-criteria-readonly'
+            }
+          >
+            {criteriaDraft.filter((c) => c.title.trim()).map((c, idx) => {
+              const { primary, secondary } = criterionPrimarySecondary(c);
+              const scaleText = audienceView
+                ? juryScaleAudiencePhrase(c.scale_min, c.scale_max, c.scale_step)
+                : juryScaleOrganizerPhrase(c.scale_min, c.scale_max, c.scale_step);
+              return (
+                <li key={idx}>
+                  {audienceView ? (
+                    <>
+                      <div className="contest-organizer-criteria-criterion-audience-title">{primary}</div>
+                      {secondary ? (
+                        <p className="contest-organizer-criteria-criterion-audience-desc">{secondary}</p>
+                      ) : null}
+                      <span className="contest-organizer-criteria-scale contest-organizer-criteria-scale--audience">
+                        {scaleText}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{primary}</strong>
+                      {secondary ? ` — ${secondary}` : ''}
+                      <span className="contest-organizer-criteria-scale"> ({scaleText})</span>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {canEdit && criteriaDraft.map((c, idx) => (
@@ -348,118 +389,154 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           </>
         )}
         {!canEdit && criteriaDraft.every((c) => !c.title.trim()) && (
-          <p className="contest-organizer-criteria-muted">Критерии жюри не заданы.</p>
+          <p className="contest-organizer-criteria-muted">
+            {audienceView ? 'Критерии оценки пока не опубликованы.' : 'Критерии жюри не заданы.'}
+          </p>
         )}
       </div>
     ) : null;
 
+  const sectionTitle = juryCriteriaPortalMode
+    ? 'Номинации'
+    : audienceView
+      ? 'Категории участия'
+      : 'Номинации и критерии оценки';
+
+  const sectionHint = juryCriteriaPortalMode
+    ? 'Номинации — категории участия. Критерии оценки для жюри настраиваются в блоке «Жюри» ниже.'
+    : audienceView
+      ? 'При подаче заявки выберите одну категорию: одна заявка соответствует одной категории. Критерии жюри одинаковы для всех категорий.'
+      : 'Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.';
+
   return (
-    <section className="contest-organizer-criteria">
-      <h2 className="contest-organizer-criteria-title">
-        {juryCriteriaPortalMode ? 'Номинации' : 'Номинации и критерии оценки'}
-      </h2>
+    <section
+      className={
+        audienceView
+          ? 'contest-organizer-criteria contest-organizer-criteria--audience'
+          : 'contest-organizer-criteria'
+      }
+    >
+      <h2 className="contest-organizer-criteria-title">{sectionTitle}</h2>
       <p className="contest-organizer-criteria-hint">
-        {juryCriteriaPortalMode
-          ? 'Номинации — категории участия. Критерии оценки для жюри настраиваются в блоке «Жюри» ниже.'
-          : 'Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.'}
-        {readOnly ? (
-          isAdmin ? (
-            <>
-              {' '}
-              Изменить название, описание, номинации и критерии можно на{' '}
-              <Link to={`/contests/${contest.id}/edit`}>странице редактирования конкурса</Link>.
-            </>
-          ) : null
-        ) : (
-          <> Сохраните изменения кнопкой внизу блока.</>
-        )}
+        {sectionHint}
+        {!readOnly ? <> Сохраните изменения кнопкой внизу блока.</> : null}
       </p>
 
       <div className="contest-organizer-criteria-block">
-        <h3>Номинации</h3>
+        <h3>{audienceView ? 'Список категорий' : 'Номинации'}</h3>
         {nominations.length === 0 && !canEdit ? (
-          <p className="contest-organizer-criteria-muted">Номинации не заданы.</p>
+          <p className="contest-organizer-criteria-muted">
+            {audienceView ? 'Организатор пока не указал категории участия.' : 'Номинации не заданы.'}
+          </p>
         ) : (
-          <ul className="contest-organizer-criteria-list">
-            {nominations.map((n) => (
-              <li key={n.id}>
-                {canEdit && editingNomId === n.id ? (
-                  <div className="contest-organizer-criteria-edit">
-                    <input
-                      value={editNomTitle}
-                      onChange={(e) => setEditNomTitle(e.target.value)}
-                      className="contest-organizer-criteria-input"
-                      disabled={fieldsLocked}
-                    />
-                    <textarea
-                      value={editNomDesc}
-                      onChange={(e) => setEditNomDesc(e.target.value)}
-                      rows={2}
-                      className="contest-organizer-criteria-textarea"
-                      disabled={fieldsLocked}
-                    />
-                    <label className="contest-organizer-criteria-nom-photos">
-                      Минимум фото в заявке
+          <ul
+            className={
+              audienceView
+                ? 'contest-organizer-criteria-list contest-organizer-criteria-list--audience'
+                : 'contest-organizer-criteria-list'
+            }
+          >
+            {nominations.map((n) => {
+              const { primary, secondary } = nominationPrimarySecondary(n.title, n.description || '');
+              const photoHint = minPhotosAudienceHint(n.min_photo_count);
+              return (
+                <li key={n.id}>
+                  {canEdit && editingNomId === n.id ? (
+                    <div className="contest-organizer-criteria-edit">
                       <input
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={editNomMinPhotos}
-                        onChange={(e) => setEditNomMinPhotos(Number(e.target.value))}
+                        value={editNomTitle}
+                        onChange={(e) => setEditNomTitle(e.target.value)}
+                        className="contest-organizer-criteria-input"
                         disabled={fieldsLocked}
-                        className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
                       />
-                    </label>
-                    <div className="contest-organizer-criteria-actions">
-                      <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
-                        Сохранить
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="small"
-                        onClick={() => setEditingNomId(null)}
+                      <textarea
+                        value={editNomDesc}
+                        onChange={(e) => setEditNomDesc(e.target.value)}
+                        rows={2}
+                        className="contest-organizer-criteria-textarea"
                         disabled={fieldsLocked}
-                      >
-                        Отмена
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <strong>{n.title}</strong>
-                    {n.description ? <span className="contest-organizer-criteria-desc">{n.description}</span> : null}
-                    <span className="contest-organizer-criteria-nom-meta">
-                      Мин. фото: {n.min_photo_count ?? 1}
-                    </span>
-                    {canEdit && (
+                      />
+                      <label className="contest-organizer-criteria-nom-photos">
+                        Минимум фото в заявке
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={editNomMinPhotos}
+                          onChange={(e) => setEditNomMinPhotos(Number(e.target.value))}
+                          disabled={fieldsLocked}
+                          className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
+                        />
+                      </label>
                       <div className="contest-organizer-criteria-actions">
+                        <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
+                          Сохранить
+                        </Button>
                         <Button
                           type="button"
                           variant="secondary"
                           size="small"
-                          onClick={() =>
-                            startEditNom(n.id, n.title, n.description, n.min_photo_count ?? 1)
-                          }
+                          onClick={() => setEditingNomId(null)}
                           disabled={fieldsLocked}
                         >
-                          Изменить
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="small"
-                          onClick={() => handleDeleteNom(n.id)}
-                          disabled={fieldsLocked}
-                        >
-                          Удалить
+                          Отмена
                         </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </li>
-            ))}
+                    </div>
+                  ) : (
+                    <>
+                      {audienceView ? (
+                        <div className="contest-organizer-criteria-nom-card">
+                          <div className="contest-organizer-criteria-nom-card-title">{primary}</div>
+                          {secondary ? (
+                            <p className="contest-organizer-criteria-nom-card-desc">{secondary}</p>
+                          ) : null}
+                          {photoHint ? (
+                            <span className="contest-organizer-criteria-nom-meta contest-organizer-criteria-nom-meta--audience">
+                              {photoHint}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <>
+                          <strong>{primary}</strong>
+                          {secondary ? (
+                            <span className="contest-organizer-criteria-desc">{secondary}</span>
+                          ) : null}
+                          <span className="contest-organizer-criteria-nom-meta">
+                            Мин. фото: {n.min_photo_count ?? 1}
+                          </span>
+                        </>
+                      )}
+                      {canEdit && (
+                        <div className="contest-organizer-criteria-actions">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="small"
+                            onClick={() =>
+                              startEditNom(n.id, n.title, n.description, n.min_photo_count ?? 1)
+                            }
+                            disabled={fieldsLocked}
+                          >
+                            Изменить
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="small"
+                            onClick={() => handleDeleteNom(n.id)}
+                            disabled={fieldsLocked}
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {canEdit && (

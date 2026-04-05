@@ -27,7 +27,7 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 		return nil, err
 	}
 
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (s *TopPetService) ListComments(ctx context.Context, participantID model.Pa
 	if err != nil {
 		return nil, 0, err
 	}
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -99,7 +99,7 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 	if err != nil {
 		return nil, err
 	}
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 	if err != nil {
 		return err
 	}
-	contest, err := s.repository.GetContest(ctx, participant.ContestID)
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return err
 	}

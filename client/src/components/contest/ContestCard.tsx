@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Contest } from '../../types/models';
 import { resolvePublicAssetUrl } from '../../utils/seo';
-import { getContestScheduleDisplayLines } from '../../utils/scheduleTimezone';
 import './ContestCard.css';
 
 interface ContestCardProps {
@@ -48,9 +47,6 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
     return `status-${status}`;
   };
 
-  const scheduleLines = useMemo(() => getContestScheduleDisplayLines(contest), [contest]);
-  const hasSchedule = scheduleLines.length > 0;
-
   return (
     <div
       className={`contest-card${hasThemedAccent ? ' contest-card--themed' : ''}${coverRaw ? ' contest-card--has-cover' : ''}`}
@@ -95,23 +91,12 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
           </span>
         </div>
         <p className="contest-card-description">{contest.description || 'Нет описания'}</p>
-        {hasSchedule ? (
-          <div className="contest-card-schedule" aria-label="Расписание конкурса">
-            {scheduleLines.map((line, i) => (
-              <div key={`schedule-${i}`} className="contest-card-schedule-line">
-                {line}
-              </div>
-            ))}
-          </div>
-        ) : null}
         <div className="contest-card-footer">
           <span className="contest-card-votes">
             Голосов: {contest.total_votes || 0}
           </span>
           <span className="contest-card-date">
-            {hasSchedule
-              ? `Создан ${new Date(contest.created_at).toLocaleDateString('ru-RU')}`
-              : new Date(contest.created_at).toLocaleDateString('ru-RU')}
+            Создан {new Date(contest.created_at).toLocaleDateString('ru-RU')}
           </span>
         </div>
       </div>

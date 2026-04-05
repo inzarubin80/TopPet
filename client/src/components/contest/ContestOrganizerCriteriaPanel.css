@@ -144,3 +144,87 @@
 .contest-organizer-criteria-input-narrow {
   width: 4.5rem;
 }
+
+/* Публичный просмотр (гость / участник) */
+.contest-organizer-criteria--audience {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.contest-organizer-criteria--audience .contest-organizer-criteria-title {
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+.contest-organizer-criteria-list--audience {
+  margin-bottom: 0.5rem;
+}
+
+.contest-organizer-criteria-list--audience li {
+  padding: 0;
+  margin-bottom: 0.65rem;
+  border-bottom: none;
+}
+
+.contest-organizer-criteria-nom-card {
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.contest-organizer-criteria-nom-card-title {
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.contest-organizer-criteria-nom-card-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.contest-organizer-criteria-nom-meta--audience {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.contest-organizer-criteria-readonly--audience {
+  list-style: none;
+  padding-left: 0;
+}
+
+.contest-organizer-criteria-readonly--audience li {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.contest-organizer-criteria-readonly--audience li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.contest-organizer-criteria-criterion-audience-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.contest-organizer-criteria-criterion-audience-desc {
+  margin: 0.3rem 0 0.35rem;
+  font-size: 0.88rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.contest-organizer-criteria-scale--audience {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+}

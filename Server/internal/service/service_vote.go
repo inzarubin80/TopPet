@@ -21,7 +21,7 @@ func voteNominationSlotFromParticipant(participant *model.Participant) *string {
 }
 
 func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *TopPetService) ListUserVotesForContest(ctx context.Context, contestID m
 }
 
 func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return "", err
 	}
@@ -153,7 +153,7 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 }
 
 func (s *TopPetService) ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) ([]*model.VoterInfo, error) {
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}

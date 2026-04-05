@@ -23,7 +23,7 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 	}
 
 	// Check contest exists and status allows chat
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (s *TopPetService) ListChatMessages(ctx context.Context, contestID model.Co
 		limit = 100
 	}
 
-	contest, err := s.repository.GetContest(ctx, contestID)
+	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		log.Printf("[Service] ListChatMessages: ERROR - Failed to get contest: %v", err)
 		return nil, 0, err

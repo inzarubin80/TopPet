@@ -54,13 +54,13 @@ export interface Contest {
   cta_label_override?: string;
   /** Домены e-mail; пусто — заявку может подать любой. */
   participant_allowed_email_domains?: string[];
-  /** Старт фазы «публикация» (UTC). Автопереход draft → publication. */
+  /** Старт фазы «публикация» (UTC). Планировщик сверяет время с датами и выставляет статус. */
   publication_starts_at?: string;
-  /** Начало регистрации (UTC, RFC3339). Автопереход draft|publication → registration. */
+  /** Начало регистрации (UTC, RFC3339). */
   registration_starts_at?: string;
-  /** Начало голосования; до этого момента приём заявок. Автопереход registration → voting. */
+  /** Начало голосования. */
   voting_starts_at?: string;
-  /** Окончание голосования. Автопереход voting → finished. */
+  /** Окончание голосования. */
   voting_ends_at?: string;
   /** IANA; в каком поясе на форме задаются даты расписания (в API моменты в UTC). */
   schedule_timezone?: string;

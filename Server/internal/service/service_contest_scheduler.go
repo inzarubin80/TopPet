@@ -9,9 +9,10 @@ import (
 	"toppet/server/internal/model"
 )
 
-// RunContestStatusScheduler периодически переводит конкурсы по расписанию (UTC):
-// draft → publication (publication_starts_at), draft|publication → registration (registration_starts_at),
-// registration → voting (voting_starts_at), voting → finished (voting_ends_at).
+// RunContestStatusScheduler периодически выставляет статус конкурса по расписанию (UTC, моменты в БД).
+// Ожидаемый статус (сверка «сейчас»): voting_ends_at → finished; voting_starts_at → voting;
+// registration_starts_at → registration; publication_starts_at → publication; иначе → draft.
+// Если фактический статус отличается — обновляется (в т.ч. откат при переносе дат в будущее).
 func (s *TopPetService) RunContestStatusScheduler(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		return
@@ -46,7 +47,7 @@ func (s *TopPetService) tickContestStatuses(ctx context.Context) {
 
 	now := time.Now().UTC()
 	for _, c := range contests {
-		next, changed := computeAutoContestStatus(c, now)
+		next, changed := reconcileContestStatusWithSchedule(c, now)
 		if !changed {
 			continue
 		}
@@ -59,40 +60,7 @@ func (s *TopPetService) tickContestStatuses(ctx context.Context) {
 	}
 }
 
-func computeAutoContestStatus(c *model.Contest, now time.Time) (model.ContestStatus, bool) {
-	orig := c.Status
-	st := c.Status
-	for {
-		switch st {
-		case model.ContestStatusDraft:
-			if c.PublicationStartsAt != nil && !now.Before(*c.PublicationStartsAt) {
-				st = model.ContestStatusPublication
-				continue
-			}
-			if c.RegistrationStartsAt != nil && !now.Before(*c.RegistrationStartsAt) {
-				st = model.ContestStatusRegistration
-				continue
-			}
-			return st, st != orig
-		case model.ContestStatusPublication:
-			if c.RegistrationStartsAt != nil && !now.Before(*c.RegistrationStartsAt) {
-				st = model.ContestStatusRegistration
-				continue
-			}
-			return st, st != orig
-		case model.ContestStatusRegistration:
-			if c.VotingStartsAt != nil && !now.Before(*c.VotingStartsAt) {
-				st = model.ContestStatusVoting
-				continue
-			}
-			return st, st != orig
-		case model.ContestStatusVoting:
-			if c.VotingEndsAt != nil && !now.Before(*c.VotingEndsAt) {
-				return model.ContestStatusFinished, true
-			}
-			return st, st != orig
-		default:
-			return st, st != orig
-		}
-	}
+func reconcileContestStatusWithSchedule(c *model.Contest, now time.Time) (model.ContestStatus, bool) {
+	next := model.ExpectedContestStatusAt(c, now)
+	return next, next != c.Status
 }

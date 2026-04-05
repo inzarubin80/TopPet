@@ -66,7 +66,7 @@ type (
 		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
 		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
 		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
-		// Расписание фаз (UTC, RFC3339 в JSON). Автопереходы: draft→publication, draft|publication→registration, … — см. планировщик.
+		// Расписание фаз (UTC, RFC3339 в JSON). Планировщик сверяет «сейчас» с датами и выставляет статус (в т.ч. откат в черновик).
 		PublicationStartsAt  *time.Time `json:"publication_starts_at,omitempty"`
 		RegistrationStartsAt *time.Time `json:"registration_starts_at,omitempty"`
 		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`

@@ -27,7 +27,7 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	if err != nil {
 		return nil, err
 	}
-	contest, err := s.repository.GetContest(ctx, p.ContestID)
+	contest, err := s.getContestForBusiness(ctx, p.ContestID)
 	if err != nil {
 		return nil, err
 	}
