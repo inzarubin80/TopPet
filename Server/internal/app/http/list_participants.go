@@ -29,7 +29,7 @@ func parseTruthyQuery(v string) bool {
 
 type (
 	serviceListParticipants interface {
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
 	}
 
 	ListParticipantsHandler struct {
@@ -138,7 +138,15 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, submissionFilter, votedOnly, limit, offset)
+	sortParam := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("sort")))
+	switch sortParam {
+	case "", model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt:
+	default:
+		uhttp.HandleError(w, uhttp.NewBadRequestError("sort must be votes, jury or created_at (or omit for default)", nil))
+		return
+	}
+
+	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, submissionFilter, votedOnly, limit, offset, sortParam)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

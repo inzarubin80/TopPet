@@ -270,6 +270,11 @@ LEFT JOIN (
     FROM contest_votes
     GROUP BY participant_id
 ) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, COALESCE(SUM(score), 0)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
 WHERE cp.contest_id = @contest_id
   AND (
     cp.submission_status = 'accepted'
@@ -328,7 +333,8 @@ WHERE cp.contest_id = @contest_id
     )
   )
 ORDER BY
-  CASE WHEN @order_by_votes::boolean THEN COALESCE(vc.vote_cnt, 0::bigint) ELSE 0::bigint END DESC,
+  CASE WHEN @list_order::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN @list_order::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
   cp.created_at ASC
 LIMIT @list_limit::int OFFSET @list_offset::int;
 

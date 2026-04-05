@@ -375,6 +375,11 @@ const (
 	ParticipantListSubmissionPending     = "pending"
 	ParticipantListSubmissionRejected    = "rejected"
 	ParticipantListSubmissionNonAccepted = "non_accepted"
+
+	// Порядок выдачи списка заявок (GET .../participants?sort=).
+	ParticipantListSortVotes     = "votes"
+	ParticipantListSortJury      = "jury"
+	ParticipantListSortCreatedAt = "created_at"
 )
 
 // IsValidUserRole допустимые значения поля users.role.

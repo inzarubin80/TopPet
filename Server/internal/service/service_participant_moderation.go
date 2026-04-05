@@ -34,6 +34,11 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	if !s.userCanManageContest(ctx, contest, actorID) {
 		return nil, model.ErrorForbidden
 	}
+	if status == model.ParticipantSubmissionAccepted {
+		if err := s.ensureParticipantPhotoCountAtLeastMin(ctx, p); err != nil {
+			return nil, err
+		}
+	}
 	var commentArg *string
 	if status == model.ParticipantSubmissionRejected && submissionComment != nil {
 		t := strings.TrimSpace(*submissionComment)

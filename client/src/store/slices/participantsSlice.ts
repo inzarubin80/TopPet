@@ -4,6 +4,7 @@ import * as participantsApi from '../../api/participantsApi';
 import type {
   GetParticipantsByContestOptions,
   ParticipantsListNominationFilter,
+  ParticipantsListSort,
   ParticipantsListSubmissionFilter,
 } from '../../api/participantsApi';
 import { CreateParticipantRequest, UpdateParticipantRequest, getApiErrorMessage } from '../../types/api';
@@ -56,6 +57,7 @@ export const fetchParticipantsByContest = createAsyncThunk(
           votedOnly?: boolean;
           limit?: number;
           offset?: number;
+          sort?: ParticipantsListSort;
         },
     { rejectWithValue }
   ) => {
@@ -81,6 +83,9 @@ export const fetchParticipantsByContest = createAsyncThunk(
         }
         if (votedOnly) {
           o.votedOnly = true;
+        }
+        if (payload.sort) {
+          o.sort = payload.sort;
         }
         listOptions = Object.keys(o).length > 0 ? o : undefined;
       }

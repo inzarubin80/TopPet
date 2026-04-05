@@ -2011,6 +2011,11 @@ LEFT JOIN (
     FROM contest_votes
     GROUP BY participant_id
 ) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, COALESCE(SUM(score), 0)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
 WHERE cp.contest_id = $1
   AND (
     cp.submission_status = 'accepted'
@@ -2069,7 +2074,8 @@ WHERE cp.contest_id = $1
     )
   )
 ORDER BY
-  CASE WHEN $10::boolean THEN COALESCE(vc.vote_cnt, 0::bigint) ELSE 0::bigint END DESC,
+  CASE WHEN $10::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN $10::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
   cp.created_at ASC
 LIMIT $12::int OFFSET $11::int
 `
@@ -2084,7 +2090,7 @@ type ListParticipantsByContestParams struct {
 	ParticipantScope     string
 	SubmissionFilter     string
 	VotedByViewerOnly    bool
-	OrderByVotes         bool
+	ListOrder            string
 	ListOffset           int32
 	ListLimit            int32
 }
@@ -2115,7 +2121,7 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 		arg.ParticipantScope,
 		arg.SubmissionFilter,
 		arg.VotedByViewerOnly,
-		arg.OrderByVotes,
+		arg.ListOrder,
 		arg.ListOffset,
 		arg.ListLimit,
 	)

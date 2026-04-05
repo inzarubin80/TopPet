@@ -173,6 +173,8 @@ OAuth callback endpoint (используется провайдером).
 #### GET /api/contests/{contestId}/participants
 Получить список участников конкурса.
 
+Query `sort` (опционально): `votes` — по числу голосов зрителей (убыв.), `jury` — по сумме баллов жюри (убыв.), `created_at` — по дате подачи заявки. Без параметра: для фаз голосования и завершения — как `votes`, иначе как `created_at`.
+
 #### GET /api/contests/{contestId}/participants/{participantId}
 Получить информацию об участнике.
 

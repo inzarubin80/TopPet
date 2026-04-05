@@ -36,7 +36,7 @@ import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
 import { getContestJury } from '../api/juryApi';
-import type { ParticipantsListSubmissionFilter } from '../api/participantsApi';
+import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import './ContestPage.css';
 
@@ -77,26 +77,6 @@ const ContestPage: React.FC = () => {
     id ? state.participants.mineByContest[id] ?? [] : []
   );
   
-  // Sort participants by votes (descending) for voting and finished contests
-  const sortedParticipantIds = useMemo(() => {
-    if (!currentContest || !participantIds.length) {
-      return participantIds;
-    }
-    
-    const status = currentContest.status;
-    if (status === 'voting' || status === 'finished') {
-      // Sort by total_votes descending
-      return [...participantIds].sort((a, b) => {
-        const votesA = participants[a]?.total_votes ?? 0;
-        const votesB = participants[b]?.total_votes ?? 0;
-        return votesB - votesA; // Descending order
-      });
-    }
-    
-    // For draft, publication and registration, keep original order (by created_at)
-    return participantIds;
-  }, [participantIds, participants, currentContest]);
-  
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
   const [contestNominations, setContestNominations] = useState<Nomination[]>([]);
   const [participantsNominationFilter, setParticipantsNominationFilter] =
@@ -105,6 +85,7 @@ const ContestPage: React.FC = () => {
   const [participantsSubmissionFilter, setParticipantsSubmissionFilter] =
     useState<ParticipantsListSubmissionFilter>('all');
   const [participantsVotedOnly, setParticipantsVotedOnly] = useState(false);
+  const [participantsSort, setParticipantsSort] = useState<ParticipantsListSort>('created_at');
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
   const [addParticipantNomination, setAddParticipantNomination] = useState<{ id: string; title: string } | null>(
@@ -132,6 +113,7 @@ const ContestPage: React.FC = () => {
     juryUnscored: participantsJuryUnscoredOnly,
     submission: participantsSubmissionFilter,
     votedOnly: participantsVotedOnly,
+    sort: participantsSort,
   });
 
   useEffect(() => {
@@ -150,21 +132,32 @@ const ContestPage: React.FC = () => {
       setParticipantsJuryUnscoredOnly(false);
       setParticipantsSubmissionFilter('all');
       setParticipantsVotedOnly(false);
+      setParticipantsSort(
+        currentContest.status === 'voting' || currentContest.status === 'finished' ? 'votes' : 'created_at'
+      );
       setParticipantsPage(0);
-      participantsListFiltersRef.current = { nomination: 'all', juryUnscored: false, submission: 'all', votedOnly: false };
+      participantsListFiltersRef.current = {
+        nomination: 'all',
+        juryUnscored: false,
+        submission: 'all',
+        votedOnly: false,
+        sort: currentContest.status === 'voting' || currentContest.status === 'finished' ? 'votes' : 'created_at',
+      };
       return;
     }
     const filtersChanged =
       participantsListFiltersRef.current.nomination !== participantsNominationFilter ||
       participantsListFiltersRef.current.juryUnscored !== participantsJuryUnscoredOnly ||
       participantsListFiltersRef.current.submission !== participantsSubmissionFilter ||
-      participantsListFiltersRef.current.votedOnly !== participantsVotedOnly;
+      participantsListFiltersRef.current.votedOnly !== participantsVotedOnly ||
+      participantsListFiltersRef.current.sort !== participantsSort;
     if (filtersChanged) {
       participantsListFiltersRef.current = {
         nomination: participantsNominationFilter as string,
         juryUnscored: participantsJuryUnscoredOnly,
         submission: participantsSubmissionFilter,
         votedOnly: participantsVotedOnly,
+        sort: participantsSort,
       };
       if (participantsPage !== 0) {
         setParticipantsPage(0);
@@ -184,6 +177,7 @@ const ContestPage: React.FC = () => {
         submissionFilter: participantsSubmissionFilter,
         juryUnscoredOnly: participantsJuryUnscoredOnly,
         votedOnly: participantsVotedOnly,
+        sort: participantsSort,
         limit,
         offset,
       })
@@ -196,6 +190,7 @@ const ContestPage: React.FC = () => {
     participantsJuryUnscoredOnly,
     participantsSubmissionFilter,
     participantsVotedOnly,
+    participantsSort,
     participantsPage,
   ]);
 
@@ -625,6 +620,19 @@ const ContestPage: React.FC = () => {
                     </select>
                   </div>
                 ) : null}
+                <div className="contest-page-participants-filter">
+                  <label htmlFor="participants-sort">Порядок</label>
+                  <select
+                    id="participants-sort"
+                    className="contest-page-participants-filter-select"
+                    value={participantsSort}
+                    onChange={(e) => setParticipantsSort(e.target.value as ParticipantsListSort)}
+                  >
+                    <option value="created_at">По дате подачи</option>
+                    <option value="votes">По голосам зрителей</option>
+                    <option value="jury">По баллам жюри</option>
+                  </select>
+                </div>
                 {isAuthenticated && isAdmin ? (
                   <div className="contest-page-participants-filter">
                     <label htmlFor="participants-submission-filter">Статус заявки</label>
@@ -805,7 +813,7 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-loading">
               <LoadingSpinner size="medium" />
             </div>
-          ) : sortedParticipantIds.length === 0 ? (
+          ) : participantIds.length === 0 ? (
             <div className="contest-page-participants-empty">
               {participantsJuryUnscoredOnly
                 ? 'Среди видимых работ нет таких, где вам не хватает оценок по критериям (или вы оценили все).'
@@ -827,7 +835,7 @@ const ContestPage: React.FC = () => {
             </div>
           ) : (
             <div className="contest-page-participants-list">
-              {sortedParticipantIds.map((participantId) => {
+              {participantIds.map((participantId) => {
                 const participant = participants[participantId];
                 return participant ? (
                   <ParticipantCard 
@@ -919,6 +927,7 @@ const ContestPage: React.FC = () => {
           participantsListOffset={
             participantsListPaginated ? participantsPage * PARTICIPANTS_PAGE_SIZE : 0
           }
+          participantsListSort={participantsSort}
         />
       )}
 
@@ -951,6 +960,7 @@ const ContestPage: React.FC = () => {
                   submissionFilter: participantsSubmissionFilter,
                   juryUnscoredOnly: participantsJuryUnscoredOnly,
                   votedOnly: participantsVotedOnly,
+                  sort: participantsSort,
                   limit: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
                   offset: participantsListPaginated
                     ? participantsPage * PARTICIPANTS_PAGE_SIZE

@@ -23,6 +23,9 @@ export type ParticipantsListSubmissionFilter =
 
 export type ParticipantListScope = 'all' | 'mine';
 
+/** Порядок списка заявок (query `sort`) */
+export type ParticipantsListSort = 'votes' | 'jury' | 'created_at';
+
 export type GetParticipantsByContestOptions = {
   limit?: number;
   offset?: number;
@@ -30,6 +33,8 @@ export type GetParticipantsByContestOptions = {
   submissionFilter?: ParticipantsListSubmissionFilter;
   /** Только участники, за которых проголосовал текущий пользователь (нужна авторизация) */
   votedOnly?: boolean;
+  /** Сортировка: голоса зрителей, сумма баллов жюри или дата подачи */
+  sort?: ParticipantsListSort;
 };
 
 export type ParticipantsListResponse = {
@@ -78,6 +83,9 @@ export const getParticipantsByContest = async (
   }
   if (options?.votedOnly) {
     params.set('voted_only', '1');
+  }
+  if (options?.sort) {
+    params.set('sort', options.sort);
   }
   const qs = params.toString();
   const response = await axiosClient.get<ParticipantsListResponse>(

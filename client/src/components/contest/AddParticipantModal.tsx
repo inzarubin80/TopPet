@@ -23,6 +23,7 @@ import { Textarea } from '../common/Textarea';
 import { ContestID, Nomination, Participant, Photo, RegistrationField } from '../../types/models';
 import type {
   ParticipantsListNominationFilter,
+  ParticipantsListSort,
   ParticipantsListSubmissionFilter,
 } from '../../api/participantsApi';
 import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
@@ -191,6 +192,7 @@ interface AddParticipantModalProps {
   /** Пагинация списка на странице конкурса */
   participantsListLimit?: number;
   participantsListOffset?: number;
+  participantsListSort?: ParticipantsListSort;
 }
 
 export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
@@ -206,6 +208,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   participantsListJuryUnscoredOnly = false,
   participantsListLimit = 10000,
   participantsListOffset = 0,
+  participantsListSort,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -692,6 +695,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           juryUnscoredOnly: participantsListJuryUnscoredOnly,
           limit: participantsListLimit,
           offset: participantsListOffset,
+          sort: participantsListSort,
         })
       );
       void dispatch(fetchMyParticipantsForContest({ contestId }));

@@ -209,7 +209,7 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 	return participant, nil
 }
 
-func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32) ([]*model.Participant, int64, error) {
+func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error) {
 	if participantScope != model.ParticipantListScopeAll && participantScope != model.ParticipantListScopeMine {
 		return nil, 0, fmt.Errorf("%w: invalid participant_scope", model.ErrBadRequest)
 	}
@@ -260,8 +260,19 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	if sferr != nil {
 		return nil, 0, sferr
 	}
-	orderByVotes := contest.Status == model.ContestStatusVoting || contest.Status == model.ContestStatusFinished
-	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, limit, offset, orderByVotes)
+	listOrder := strings.TrimSpace(strings.ToLower(sort))
+	switch listOrder {
+	case "":
+		if contest.Status == model.ContestStatusVoting || contest.Status == model.ContestStatusFinished {
+			listOrder = model.ParticipantListSortVotes
+		} else {
+			listOrder = model.ParticipantListSortCreatedAt
+		}
+	case model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt:
+	default:
+		return nil, 0, fmt.Errorf("%w: sort must be votes, jury or created_at", model.ErrBadRequest)
+	}
+	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, limit, offset, listOrder)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -333,6 +344,10 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, err
 	}
 	if err := ValidateRegistrationAnswers(fields, merged); err != nil {
+		return nil, err
+	}
+
+	if err := s.ensureParticipantPhotoCountAtLeastMin(ctx, participant); err != nil {
 		return nil, err
 	}
 
