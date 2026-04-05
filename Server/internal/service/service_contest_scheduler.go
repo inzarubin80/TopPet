@@ -10,7 +10,8 @@ import (
 )
 
 // RunContestStatusScheduler периодически переводит конкурсы по расписанию (UTC):
-// draft|publication → registration (registration_starts_at), registration → voting (voting_starts_at), voting → finished (voting_ends_at).
+// draft → publication (publication_starts_at), draft|publication → registration (registration_starts_at),
+// registration → voting (voting_starts_at), voting → finished (voting_ends_at).
 func (s *TopPetService) RunContestStatusScheduler(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		return
@@ -63,7 +64,17 @@ func computeAutoContestStatus(c *model.Contest, now time.Time) (model.ContestSta
 	st := c.Status
 	for {
 		switch st {
-		case model.ContestStatusDraft, model.ContestStatusPublication:
+		case model.ContestStatusDraft:
+			if c.PublicationStartsAt != nil && !now.Before(*c.PublicationStartsAt) {
+				st = model.ContestStatusPublication
+				continue
+			}
+			if c.RegistrationStartsAt != nil && !now.Before(*c.RegistrationStartsAt) {
+				st = model.ContestStatusRegistration
+				continue
+			}
+			return st, st != orig
+		case model.ContestStatusPublication:
 			if c.RegistrationStartsAt != nil && !now.Before(*c.RegistrationStartsAt) {
 				st = model.ContestStatusRegistration
 				continue

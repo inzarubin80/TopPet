@@ -54,6 +54,8 @@ export interface Contest {
   cta_label_override?: string;
   /** Домены e-mail; пусто — заявку может подать любой. */
   participant_allowed_email_domains?: string[];
+  /** Старт фазы «публикация» (UTC). Автопереход draft → publication. */
+  publication_starts_at?: string;
   /** Начало регистрации (UTC, RFC3339). Автопереход draft|publication → registration. */
   registration_starts_at?: string;
   /** Начало голосования; до этого момента приём заявок. Автопереход registration → voting. */

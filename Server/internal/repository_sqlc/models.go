@@ -42,6 +42,8 @@ type Contest struct {
 	ParticipantAllowedEmailDomains string
 	// IANA TZ для ввода расписания организатором (даты в API по-прежнему UTC)
 	ScheduleTimezone string
+	// Автоматический переход draft → publication при наступлении момента
+	PublicationStartsAt pgtype.Timestamptz
 }
 
 type ContestChatMessage struct {

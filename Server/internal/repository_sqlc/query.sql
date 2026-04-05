@@ -119,11 +119,12 @@ SET
   sponsor_logo_url = $13,
   sponsor_url = $14,
   cta_label_override = $15,
-  registration_starts_at = $16,
-  voting_starts_at = $17,
-  voting_ends_at = $18,
-  participant_allowed_email_domains = $19,
-  schedule_timezone = $20,
+  publication_starts_at = $16,
+  registration_starts_at = $17,
+  voting_starts_at = $18,
+  voting_ends_at = $19,
+  participant_allowed_email_domains = $20,
+  schedule_timezone = $21,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;

@@ -114,23 +114,24 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req struct {
-		Title                 *string `json:"title"`
-		Description           *string `json:"description"`
-		PublicVotingEnabled   *bool   `json:"public_voting_enabled"`
-		JuryVotingEnabled     *bool   `json:"jury_voting_enabled"`
-		CoverUrl              *string `json:"cover_url"`
-		Tagline               *string `json:"tagline"`
-		RulesUrl              *string `json:"rules_url"`
-		PrizeText             *string `json:"prize_text"`
-		LogoUrl               *string `json:"logo_url"`
-		ThemeColor            *string `json:"theme_color"`
-		SponsorName           *string `json:"sponsor_name"`
-		SponsorLogoUrl        *string `json:"sponsor_logo_url"`
-		SponsorUrl            *string `json:"sponsor_url"`
-		CtaLabelOverride      *string `json:"cta_label_override"`
+		Title                *string `json:"title"`
+		Description          *string `json:"description"`
+		PublicVotingEnabled  *bool   `json:"public_voting_enabled"`
+		JuryVotingEnabled    *bool   `json:"jury_voting_enabled"`
+		CoverUrl             *string `json:"cover_url"`
+		Tagline              *string `json:"tagline"`
+		RulesUrl             *string `json:"rules_url"`
+		PrizeText            *string `json:"prize_text"`
+		LogoUrl              *string `json:"logo_url"`
+		ThemeColor           *string `json:"theme_color"`
+		SponsorName          *string `json:"sponsor_name"`
+		SponsorLogoUrl       *string `json:"sponsor_logo_url"`
+		SponsorUrl           *string `json:"sponsor_url"`
+		CtaLabelOverride     *string `json:"cta_label_override"`
+		PublicationStartsAt  *string `json:"publication_starts_at"`
 		RegistrationStartsAt *string `json:"registration_starts_at"`
 		VotingStartsAt       *string `json:"voting_starts_at"`
-		VotingEndsAt          *string `json:"voting_ends_at"`
+		VotingEndsAt         *string `json:"voting_ends_at"`
 		// IANA, например Europe/Moscow; null — не менять.
 		ScheduleTimezone *string `json:"schedule_timezone"`
 		// Список доменов e-mail; null — не менять, [] — сбросить ограничение.
@@ -149,25 +150,26 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	u := model.ContestUpdate{
-		Title:                contest.Title,
-		Description:          contest.Description,
-		PublicVotingEnabled:  contest.PublicVotingEnabled,
-		JuryVotingEnabled:    contest.JuryVotingEnabled,
-		CoverUrl:             contest.CoverUrl,
-		Tagline:              contest.Tagline,
-		RulesUrl:             contest.RulesUrl,
-		PrizeText:            contest.PrizeText,
-		LogoUrl:              contest.LogoUrl,
-		ThemeColor:           contest.ThemeColor,
-		SponsorName:          contest.SponsorName,
-		SponsorLogoUrl:       contest.SponsorLogoUrl,
-		SponsorUrl:           contest.SponsorUrl,
+		Title:                          contest.Title,
+		Description:                    contest.Description,
+		PublicVotingEnabled:            contest.PublicVotingEnabled,
+		JuryVotingEnabled:              contest.JuryVotingEnabled,
+		CoverUrl:                       contest.CoverUrl,
+		Tagline:                        contest.Tagline,
+		RulesUrl:                       contest.RulesUrl,
+		PrizeText:                      contest.PrizeText,
+		LogoUrl:                        contest.LogoUrl,
+		ThemeColor:                     contest.ThemeColor,
+		SponsorName:                    contest.SponsorName,
+		SponsorLogoUrl:                 contest.SponsorLogoUrl,
+		SponsorUrl:                     contest.SponsorUrl,
 		CtaLabelOverride:               contest.CtaLabelOverride,
 		ParticipantAllowedEmailDomains: model.JoinParticipantEmailDomainsDB(contest.ParticipantAllowedEmailDomains),
-		RegistrationStartsAt: contestScheduleTimePtrClone(contest.RegistrationStartsAt),
-		VotingStartsAt:       contestScheduleTimePtrClone(contest.VotingStartsAt),
-		VotingEndsAt:         contestScheduleTimePtrClone(contest.VotingEndsAt),
-		ScheduleTimezone:     contest.ScheduleTimezone,
+		PublicationStartsAt:            contestScheduleTimePtrClone(contest.PublicationStartsAt),
+		RegistrationStartsAt:           contestScheduleTimePtrClone(contest.RegistrationStartsAt),
+		VotingStartsAt:                 contestScheduleTimePtrClone(contest.VotingStartsAt),
+		VotingEndsAt:                   contestScheduleTimePtrClone(contest.VotingEndsAt),
+		ScheduleTimezone:               contest.ScheduleTimezone,
 	}
 
 	if req.Title != nil {
@@ -213,6 +215,10 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		u.CtaLabelOverride = strings.TrimSpace(*req.CtaLabelOverride)
 	}
 
+	if err := applyContestScheduleString(req.PublicationStartsAt, func(t *time.Time) { u.PublicationStartsAt = t }); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("publication_starts_at must be RFC3339 or empty", err))
+		return
+	}
 	if err := applyContestScheduleString(req.RegistrationStartsAt, func(t *time.Time) { u.RegistrationStartsAt = t }); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("registration_starts_at must be RFC3339 or empty", err))
 		return

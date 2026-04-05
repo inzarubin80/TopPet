@@ -59,6 +59,7 @@ export interface UpdateContestRequest {
   sponsor_url?: string;
   cta_label_override?: string;
   /** RFC3339 или пустая строка для сброса */
+  publication_starts_at?: string;
   registration_starts_at?: string;
   voting_starts_at?: string;
   voting_ends_at?: string;

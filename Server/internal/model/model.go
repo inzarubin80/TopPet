@@ -66,37 +66,39 @@ type (
 		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
 		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
 		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
-		// Расписание фаз (UTC, RFC3339 в JSON). Автопереходы: draft|publication→registration, registration→voting, voting→finished — см. планировщик.
+		// Расписание фаз (UTC, RFC3339 в JSON). Автопереходы: draft→publication, draft|publication→registration, … — см. планировщик.
+		PublicationStartsAt  *time.Time `json:"publication_starts_at,omitempty"`
 		RegistrationStartsAt *time.Time `json:"registration_starts_at,omitempty"`
 		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`
 		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
 		// IANA (например Europe/Moscow) — в каком поясе организатор задаёт даты на клиенте.
-		ScheduleTimezone string `json:"schedule_timezone,omitempty"`
-		CreatedAt            time.Time  `json:"created_at"`
-		UpdatedAt            time.Time  `json:"updated_at"`
+		ScheduleTimezone string    `json:"schedule_timezone,omitempty"`
+		CreatedAt        time.Time `json:"created_at"`
+		UpdatedAt        time.Time `json:"updated_at"`
 	}
 
 	// ContestUpdate — поля для PATCH конкурса в черновике (после слияния с текущим состоянием).
 	ContestUpdate struct {
-		Title               string
-		Description         string
-		PublicVotingEnabled bool
-		JuryVotingEnabled   bool
-		CoverUrl            string
-		Tagline             string
-		RulesUrl            string
-		PrizeText           string
-		LogoUrl             string
-		ThemeColor          string
-		SponsorName         string
-		SponsorLogoUrl      string
-		SponsorUrl          string
-		CtaLabelOverride    string
+		Title                          string
+		Description                    string
+		PublicVotingEnabled            bool
+		JuryVotingEnabled              bool
+		CoverUrl                       string
+		Tagline                        string
+		RulesUrl                       string
+		PrizeText                      string
+		LogoUrl                        string
+		ThemeColor                     string
+		SponsorName                    string
+		SponsorLogoUrl                 string
+		SponsorUrl                     string
+		CtaLabelOverride               string
 		ParticipantAllowedEmailDomains string
-		RegistrationStartsAt *time.Time
-		VotingStartsAt       *time.Time
-		VotingEndsAt         *time.Time
-		ScheduleTimezone     string
+		PublicationStartsAt            *time.Time
+		RegistrationStartsAt           *time.Time
+		VotingStartsAt                 *time.Time
+		VotingEndsAt                   *time.Time
+		ScheduleTimezone               string
 	}
 
 	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).
@@ -143,13 +145,13 @@ type (
 
 	// JuryScore — оценка члена жюри по одному критерию для заявки.
 	JuryScore struct {
-		ID            string          `json:"id"`
-		ParticipantID ParticipantID   `json:"participant_id"`
-		CriterionID   string          `json:"criterion_id"`
-		UserID        UserID          `json:"user_id"`
-		Score         int32           `json:"score"`
-		CreatedAt     time.Time       `json:"created_at"`
-		UpdatedAt     time.Time       `json:"updated_at"`
+		ID            string        `json:"id"`
+		ParticipantID ParticipantID `json:"participant_id"`
+		CriterionID   string        `json:"criterion_id"`
+		UserID        UserID        `json:"user_id"`
+		Score         int32         `json:"score"`
+		CreatedAt     time.Time     `json:"created_at"`
+		UpdatedAt     time.Time     `json:"updated_at"`
 	}
 
 	// JuryScorePutItem — элемент тела PUT для сохранения оценок жюри.
@@ -202,10 +204,10 @@ type (
 		// TotalJuryScore — сумма всех баллов жюри по всем критериям и всем членам жюри (если поле отдано клиенту).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
 		// Победители (только для status=finished; внутри номинации — по голосам зрителей / сумме жюри).
-		IsAudienceWinner bool `json:"is_audience_winner,omitempty"`
-		IsJuryWinner     bool `json:"is_jury_winner,omitempty"`
-		CreatedAt           time.Time              `json:"created_at"`
-		UpdatedAt           time.Time              `json:"updated_at"`
+		IsAudienceWinner bool      `json:"is_audience_winner,omitempty"`
+		IsJuryWinner     bool      `json:"is_jury_winner,omitempty"`
+		CreatedAt        time.Time `json:"created_at"`
+		UpdatedAt        time.Time `json:"updated_at"`
 	}
 
 	// ParticipantScoreForWinners — данные для расчёта победителей (принятые заявки).
@@ -331,11 +333,11 @@ const (
 	ParticipantListScopeMine = "mine"
 
 	// Фильтр списка заявок (только для организаторов конкурса, include_all).
-	ParticipantListSubmissionAll          = "all"
-	ParticipantListSubmissionAccepted     = "accepted"
-	ParticipantListSubmissionPending      = "pending"
-	ParticipantListSubmissionRejected     = "rejected"
-	ParticipantListSubmissionNonAccepted  = "non_accepted"
+	ParticipantListSubmissionAll         = "all"
+	ParticipantListSubmissionAccepted    = "accepted"
+	ParticipantListSubmissionPending     = "pending"
+	ParticipantListSubmissionRejected    = "rejected"
+	ParticipantListSubmissionNonAccepted = "non_accepted"
 )
 
 // IsValidUserRole допустимые значения поля users.role.

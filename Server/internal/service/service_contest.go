@@ -29,7 +29,10 @@ func normalizeContestScheduleTimezone(s string) string {
 	return t
 }
 
-func validateContestScheduleTimes(regS, votS, votE *time.Time) error {
+func validateContestScheduleTimes(pubS, regS, votS, votE *time.Time) error {
+	if pubS != nil && regS != nil && !pubS.Before(*regS) {
+		return fmt.Errorf("publication_starts_at must be before registration_starts_at")
+	}
 	if regS != nil && votS != nil && !regS.Before(*votS) {
 		return fmt.Errorf("registration_starts_at must be before voting_starts_at")
 	}
@@ -144,7 +147,7 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 		return nil, fmt.Errorf("%w: only contest admin can update contest", model.ErrForbidden)
 	}
 
-	if err := validateContestScheduleTimes(u.RegistrationStartsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
+	if err := validateContestScheduleTimes(u.PublicationStartsAt, u.RegistrationStartsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
 		return nil, fmt.Errorf("%w: %v", model.ErrBadRequest, err)
 	}
 	tz := normalizeContestScheduleTimezone(u.ScheduleTimezone)
@@ -158,25 +161,26 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 
 func contestToUpdate(c *model.Contest) model.ContestUpdate {
 	return model.ContestUpdate{
-		Title:                c.Title,
-		Description:          c.Description,
-		PublicVotingEnabled:  c.PublicVotingEnabled,
-		JuryVotingEnabled:    c.JuryVotingEnabled,
-		CoverUrl:             c.CoverUrl,
-		Tagline:              c.Tagline,
-		RulesUrl:             c.RulesUrl,
-		PrizeText:            c.PrizeText,
-		LogoUrl:              c.LogoUrl,
-		ThemeColor:           c.ThemeColor,
-		SponsorName:          c.SponsorName,
-		SponsorLogoUrl:       c.SponsorLogoUrl,
-		SponsorUrl:           c.SponsorUrl,
+		Title:                          c.Title,
+		Description:                    c.Description,
+		PublicVotingEnabled:            c.PublicVotingEnabled,
+		JuryVotingEnabled:              c.JuryVotingEnabled,
+		CoverUrl:                       c.CoverUrl,
+		Tagline:                        c.Tagline,
+		RulesUrl:                       c.RulesUrl,
+		PrizeText:                      c.PrizeText,
+		LogoUrl:                        c.LogoUrl,
+		ThemeColor:                     c.ThemeColor,
+		SponsorName:                    c.SponsorName,
+		SponsorLogoUrl:                 c.SponsorLogoUrl,
+		SponsorUrl:                     c.SponsorUrl,
 		CtaLabelOverride:               c.CtaLabelOverride,
 		ParticipantAllowedEmailDomains: model.JoinParticipantEmailDomainsDB(c.ParticipantAllowedEmailDomains),
-		RegistrationStartsAt: timePtrClone(c.RegistrationStartsAt),
-		VotingStartsAt:       timePtrClone(c.VotingStartsAt),
-		VotingEndsAt:         timePtrClone(c.VotingEndsAt),
-		ScheduleTimezone:     normalizeContestScheduleTimezone(c.ScheduleTimezone),
+		PublicationStartsAt:            timePtrClone(c.PublicationStartsAt),
+		RegistrationStartsAt:           timePtrClone(c.RegistrationStartsAt),
+		VotingStartsAt:                 timePtrClone(c.VotingStartsAt),
+		VotingEndsAt:                   timePtrClone(c.VotingEndsAt),
+		ScheduleTimezone:               normalizeContestScheduleTimezone(c.ScheduleTimezone),
 	}
 }
 

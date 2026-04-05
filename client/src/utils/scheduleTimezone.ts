@@ -117,6 +117,7 @@ export function formatContestInstantForDisplay(iso: string | undefined, timeZone
 /** Поля конкурса, достаточные для текстовых строк расписания на карточке и странице. */
 export type ContestScheduleSource = {
   schedule_timezone?: string;
+  publication_starts_at?: string;
   registration_starts_at?: string;
   voting_starts_at?: string;
   voting_ends_at?: string;
@@ -128,6 +129,9 @@ export function getContestScheduleDisplayLines(c: ContestScheduleSource): string
   const fmt = (iso?: string) => formatContestInstantForDisplay(iso, scheduleTz);
 
   const lines: string[] = [];
+  if (c.publication_starts_at) {
+    lines.push(`Публикация (анонс): ${fmt(c.publication_starts_at)}`);
+  }
   if (c.registration_starts_at && c.voting_starts_at) {
     lines.push(`Регистрация: ${fmt(c.registration_starts_at)} — ${fmt(c.voting_starts_at)}`);
   } else if (c.registration_starts_at) {

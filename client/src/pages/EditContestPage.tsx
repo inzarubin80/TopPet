@@ -59,6 +59,7 @@ const EditContestPage: React.FC = () => {
   const [sponsorLogoUrl, setSponsorLogoUrl] = useState('');
   const [sponsorUrl, setSponsorUrl] = useState('');
   const [ctaLabelOverride, setCtaLabelOverride] = useState('');
+  const [publicationStartsLocal, setPublicationStartsLocal] = useState('');
   const [registrationStartsLocal, setRegistrationStartsLocal] = useState('');
   const [votingStartsLocal, setVotingStartsLocal] = useState('');
   const [votingEndsLocal, setVotingEndsLocal] = useState('');
@@ -100,6 +101,7 @@ const EditContestPage: React.FC = () => {
       setSponsorLogoUrl('');
       setSponsorUrl('');
       setCtaLabelOverride('');
+      setPublicationStartsLocal('');
       setRegistrationStartsLocal('');
       setVotingStartsLocal('');
       setVotingEndsLocal('');
@@ -128,6 +130,7 @@ const EditContestPage: React.FC = () => {
         setCtaLabelOverride(contest.cta_label_override ?? '');
         const tz = contest.schedule_timezone?.trim() || DEFAULT_SCHEDULE_TIMEZONE;
         setScheduleTimezone(tz);
+        setPublicationStartsLocal(formatUtcIsoInTimeZone(contest.publication_starts_at, tz));
         setRegistrationStartsLocal(formatUtcIsoInTimeZone(contest.registration_starts_at, tz));
         setVotingStartsLocal(formatUtcIsoInTimeZone(contest.voting_starts_at, tz));
         setVotingEndsLocal(formatUtcIsoInTimeZone(contest.voting_ends_at, tz));
@@ -157,6 +160,7 @@ const EditContestPage: React.FC = () => {
     setCtaLabelOverride(currentContest.cta_label_override ?? '');
     const tz = currentContest.schedule_timezone?.trim() || DEFAULT_SCHEDULE_TIMEZONE;
     setScheduleTimezone(tz);
+    setPublicationStartsLocal(formatUtcIsoInTimeZone(currentContest.publication_starts_at, tz));
     setRegistrationStartsLocal(formatUtcIsoInTimeZone(currentContest.registration_starts_at, tz));
     setVotingStartsLocal(formatUtcIsoInTimeZone(currentContest.voting_starts_at, tz));
     setVotingEndsLocal(formatUtcIsoInTimeZone(currentContest.voting_ends_at, tz));
@@ -197,6 +201,7 @@ const EditContestPage: React.FC = () => {
         sponsor_logo_url: sponsorLogoUrl.trim(),
         sponsor_url: sponsorUrl.trim(),
         cta_label_override: ctaLabelOverride.trim(),
+        publication_starts_at: scheduleField(publicationStartsLocal),
         registration_starts_at: scheduleField(registrationStartsLocal),
         voting_starts_at: scheduleField(votingStartsLocal),
         voting_ends_at: scheduleField(votingEndsLocal),
@@ -299,6 +304,7 @@ const EditContestPage: React.FC = () => {
       const iso = zonedLocalStringToUtcIso(local, prev);
       return iso ? formatUtcIsoInTimeZone(iso, next) : '';
     };
+    setPublicationStartsLocal((v) => convert(v));
     setRegistrationStartsLocal((v) => convert(v));
     setVotingStartsLocal((v) => convert(v));
     setVotingEndsLocal((v) => convert(v));
@@ -427,8 +433,9 @@ const EditContestPage: React.FC = () => {
           <p className="edit-contest-schedule-intro">
             Время ниже задаётся в выбранном часовом поясе; на сервере моменты хранятся в UTC. Пустое поле сбрасывает
             дату. Приём заявок идёт до «Начало голосования». Фоновый процесс (интервал{' '}
-            <code>CONTEST_SCHEDULER_INTERVAL_SEC</code>, по умолчанию 60 с) переводит статус: черновик → регистрация →
-            голосование → завершён.
+            <code>CONTEST_SCHEDULER_INTERVAL_SEC</code>, по умолчанию 60 с) переводит статус: при указанной дате
+            публикации — черновик → публикация → регистрация; без даты публикации черновик может сразу перейти в
+            регистрацию по дате начала регистрации → голосование → завершён.
           </p>
           <div className="edit-contest-page-fields">
             <label className="edit-contest-schedule-tz">
@@ -450,6 +457,13 @@ const EditContestPage: React.FC = () => {
                 ))}
               </select>
             </label>
+            <Input
+              label="Начало публикации (анонс)"
+              type="datetime-local"
+              value={publicationStartsLocal}
+              onChange={(e) => setPublicationStartsLocal(e.target.value)}
+              disabled={saving}
+            />
             <Input
               label="Начало регистрации"
               type="datetime-local"
