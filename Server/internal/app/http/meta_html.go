@@ -217,8 +217,8 @@ func contestDescription(contestTitle, contestDesc string) string {
 	return oneLine + contestDescSuffix
 }
 
-// participantTitleForOG returns only pet name (truncated to ogParticipantTitleMaxRunes). Contest name is not in title; use participantDescription with contestTitle for "other line".
-func participantTitleForOG(petName, contestTitle string) string {
+// participantTitleForOG returns only pet name (truncated to ogParticipantTitleMaxRunes). Contest name is not in title; description carries context via participantDescription.
+func participantTitleForOG(petName string) string {
 	return truncateRunes(petName, ogParticipantTitleMaxRunes)
 }
 
@@ -394,12 +394,7 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	contest, _ := h.service.GetContest(r.Context(), contestID)
-	contestTitle := ""
-	if contest != nil {
-		contestTitle = contest.Title
-	}
-	pageTitle := participantTitleForOG(participant.PetName, contestTitle)
+	pageTitle := participantTitleForOG(participant.PetName)
 	description := participantDescription(participant.PetName, participant.PetDescription)
 
 	// Prefer thumbnail for og:image so crawlers get a lighter image (heavy full-size can break preview)

@@ -23,6 +23,10 @@ axiosClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // FormData: убрать дефолтный application/json, иначе сервер не разберёт multipart (баннер, фото, видео).
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
     // Debug logging
     console.log('[axiosClient] Request:', {
       method: config.method?.toUpperCase(),

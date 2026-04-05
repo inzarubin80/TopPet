@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -48,9 +49,18 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	size := header.Size
+	if size <= 0 {
+		size = -1
+	}
+	ct := header.Header.Get("Content-Type")
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
 	key := "contests/participants/" + string(participantID) + "/video/" + uuid.New().String()
-	url, err := h.uploader.Upload(uploadCtx, key, file, header.Size, header.Header.Get("Content-Type"))
+	url, err := h.uploader.Upload(uploadCtx, key, file, size, ct)
 	if err != nil {
+		log.Printf("upload participant video participant=%s: %v", participantID, err)
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}

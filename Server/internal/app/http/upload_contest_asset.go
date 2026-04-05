@@ -2,7 +2,10 @@ package http
 
 import (
 	"context"
+	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -73,15 +76,25 @@ func (h *UploadContestAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 	defer file.Close()
 
-	ct := header.Header.Get("Content-Type")
+	ct := strings.TrimSpace(header.Header.Get("Content-Type"))
+	if ct == "" {
+		ct = mime.TypeByExtension(strings.ToLower(filepath.Ext(header.Filename)))
+	}
 	if !isAllowedContestImageContentType(ct) {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("file must be an image (not svg)", nil))
 		return
 	}
 
+	size := header.Size
+	if size <= 0 {
+		// Часть клиентов не присылает Content-Length части; MinIO нужен -1 для потоковой загрузки.
+		size = -1
+	}
+
 	key := "contests/" + string(contestID) + "/" + kind + "/" + uuid.New().String()
-	url, err := h.uploader.Upload(uploadCtx, key, file, header.Size, ct)
+	url, err := h.uploader.Upload(uploadCtx, key, file, size, ct)
 	if err != nil {
+		log.Printf("upload contest asset kind=%s contest=%s: %v", kind, contestID, err)
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}
