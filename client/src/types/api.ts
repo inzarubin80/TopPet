@@ -131,7 +131,20 @@ export const isApiError = (error: unknown): error is ApiError => {
 
 export const getApiErrorMessage = (error: unknown): string => {
   if (isApiError(error)) {
-    return error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error';
+    const fromBody = error.response?.data?.message || error.response?.data?.error;
+    if (fromBody) {
+      if (fromBody === 'already participating in this nomination') {
+        return 'Вы уже подали заявку в этой номинации';
+      }
+      if (fromBody === 'already participating in this contest') {
+        return 'Вы уже подали заявку в этом конкурсе';
+      }
+      return fromBody;
+    }
+    if (error.response?.status === 409) {
+      return 'Такая запись уже существует. Обновите страницу и проверьте список заявок.';
+    }
+    return error.message || 'Unknown error';
   }
   if (error instanceof Error) {
     return error.message;

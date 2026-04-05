@@ -2,6 +2,8 @@ import { axiosClient } from './axiosClient';
 import { ContestID, JuryCriterion } from '../types/models';
 
 export type JuryCriterionInput = {
+  /** Сохранённый критерий; не передавать для новой строки. */
+  id?: string;
   title: string;
   description?: string;
   scale_min: number;

@@ -48,6 +48,7 @@ type Querier interface {
 	DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error
 	DeleteContestVoteByUserAndNomination(ctx context.Context, arg *DeleteContestVoteByUserAndNominationParams) (pgtype.UUID, error)
 	DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error
+	DeleteJuryCriterionForContest(ctx context.Context, arg *DeleteJuryCriterionForContestParams) error
 	DeleteNomination(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipant(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
@@ -74,6 +75,7 @@ type Querier interface {
 	InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*ContestRegistrationField, error)
 	IsContestJuryMember(ctx context.Context, arg *IsContestJuryMemberParams) (bool, error)
 	ListAcceptedParticipantScoresForContest(ctx context.Context, contestID pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestRow, error)
+	ListAcceptedParticipantScoresForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestsRow, error)
 	ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error)
 	ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ListCommentsByParticipantRow, error)
 	// Contest jury members
@@ -89,6 +91,7 @@ type Querier interface {
 	// Contest jury criteria (общие для всего конкурса)
 	ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error)
 	ListNominationsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestNomination, error)
+	ListNominationsForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ContestNomination, error)
 	ListParticipantsByContest(ctx context.Context, arg *ListParticipantsByContestParams) ([]*ListParticipantsByContestRow, error)
 	ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error)
 	// Contest registration fields (поля заявки участника)
@@ -106,7 +109,9 @@ type Querier interface {
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
 	UpdateContestStatus(ctx context.Context, arg *UpdateContestStatusParams) (*Contest, error)
+	UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error)
 	UpdateNomination(ctx context.Context, arg *UpdateNominationParams) (*ContestNomination, error)
+	UpdateNominationLogoUrl(ctx context.Context, arg *UpdateNominationLogoUrlParams) (*ContestNomination, error)
 	UpdateParticipant(ctx context.Context, arg *UpdateParticipantParams) (*UpdateParticipantRow, error)
 	UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, arg *UpdateParticipantOwnerStaffCommentReadAtParams) error
 	UpdateParticipantPhotoOrder(ctx context.Context, arg *UpdateParticipantPhotoOrderParams) error

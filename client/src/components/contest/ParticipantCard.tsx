@@ -200,115 +200,118 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
       className={`participant-card ${isVoted ? 'participant-card-voted' : ''}`}
       onClick={handleClick}
     >
-      <div className="participant-card-image">
-        {photos.length > 0 ? (
-          <img 
-            src={photos[0].thumb_url || photos[0].url} 
-            alt={participant.pet_name}
-            className="participant-card-single-image"
-          />
-        ) : (
-          <div className="participant-card-placeholder">Нет фото</div>
-        )}
-      </div>
-      <div className="participant-card-content">
-        <div className="participant-card-name-wrapper">
-          <h4 className="participant-card-name">{participant.pet_name}</h4>
-          {nominationTitle ? (
-            <span className="participant-card-nomination">{nominationTitle}</span>
-          ) : null}
-          {showSubmissionBadge ? (
-            <span
-              className={
-                submissionStatus === 'rejected'
-                  ? 'participant-card-submission-badge participant-card-submission-badge-rejected'
-                  : 'participant-card-submission-badge participant-card-submission-badge-pending'
-              }
-            >
-              {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
-            </span>
-          ) : null}
-          {contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner) && (
-            <div className="participant-card-winner-badge">
-              <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
-                <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="participant-card-winner-text">
-                {participant.is_audience_winner && participant.is_jury_winner
-                  ? 'Победитель зрителей и жюри'
-                  : participant.is_audience_winner
-                    ? 'Победитель зрителей'
-                    : 'Победитель жюри'}
-              </span>
-            </div>
+      <div className="participant-card-main">
+        <div className="participant-card-image">
+          {photos.length > 0 ? (
+            <img
+              src={photos[0].thumb_url || photos[0].url}
+              alt={participant.pet_name}
+              className="participant-card-single-image"
+            />
+          ) : (
+            <div className="participant-card-placeholder">Нет фото</div>
           )}
         </div>
-        {participant.pet_description?.trim() ? (
-          <p className="participant-card-description">
-            {descriptionWithBreaks(participant.pet_description.trim())}
-          </p>
-        ) : null}
-        {submissionStatus === 'rejected' &&
-        (isContestAdmin || isOwner) &&
-        participant.submission_comment?.trim() ? (
-          <p className="participant-card-reject-reason">{participant.submission_comment}</p>
-        ) : null}
-        <div className="participant-card-footer">
-          <div className="participant-card-meta">
-            <span className="participant-card-votes">
-              Голосов: {participant.total_votes || 0}
-            </span>
-            {juryVotingEnabled && participant.total_jury_score !== undefined ? (
-              <div className="participant-card-jury">
-                <span
-                  className="participant-card-jury-total"
-                  title="Сумма оценок жюри по всем критериям и членам жюри"
-                >
-                  Жюри: {participant.total_jury_score}
+        <div className="participant-card-content">
+          <div className="participant-card-name-wrapper">
+            <h4 className="participant-card-name">{participant.pet_name}</h4>
+            {nominationTitle ? (
+              <span className="participant-card-nomination">{nominationTitle}</span>
+            ) : null}
+            {showSubmissionBadge ? (
+              <span
+                className={
+                  submissionStatus === 'rejected'
+                    ? 'participant-card-submission-badge participant-card-submission-badge-rejected'
+                    : 'participant-card-submission-badge participant-card-submission-badge-pending'
+                }
+              >
+                {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
+              </span>
+            ) : null}
+            {contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner) && (
+              <div className="participant-card-winner-badge">
+                <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
+                  <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="participant-card-winner-text">
+                  {participant.is_audience_winner && participant.is_jury_winner
+                    ? 'Победитель зрителей и жюри'
+                    : participant.is_audience_winner
+                      ? 'Победитель зрителей'
+                      : 'Победитель жюри'}
                 </span>
               </div>
-            ) : null}
-            <span className="participant-card-author">Автор: {authorLabel}</span>
-            {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
+            )}
           </div>
-          {canVote && isAuthenticated && (
-            <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
-              <Button
-                size="small"
-                variant={isVoted ? 'secondary' : 'primary'}
-                onClick={handleVoteClick}
-                disabled={isVoting}
+          {participant.pet_description?.trim() ? (
+            <p className="participant-card-description">
+              {descriptionWithBreaks(participant.pet_description.trim())}
+            </p>
+          ) : null}
+          {submissionStatus === 'rejected' &&
+          (isContestAdmin || isOwner) &&
+          participant.submission_comment?.trim() ? (
+            <p className="participant-card-reject-reason">{participant.submission_comment}</p>
+          ) : null}
+        </div>
+      </div>
+      <div className="participant-card-footer">
+        <div className="participant-card-meta">
+          <span className="participant-card-votes">
+            Голосов: {participant.total_votes || 0}
+          </span>
+          {juryVotingEnabled && participant.total_jury_score !== undefined ? (
+            <div className="participant-card-jury">
+              <span
+                className="participant-card-jury-total"
+                title="Сумма оценок жюри по всем критериям и членам жюри"
               >
-                {isVoted ? 'Отменить' : voteCtaLabel?.trim() || 'Голосовать'}
-              </Button>
+                Жюри: {participant.total_jury_score}
+              </span>
             </div>
-          )}
-          {(isContestAdmin || canEdit) && (
-            <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
-              {canModerateSubmission ? (
-                <div className="participant-card-moderation-row">
-                  <button
-                    type="button"
-                    className="participant-card-moderation-btn participant-card-moderation-accept"
-                    onClick={handleAccept}
-                    disabled={moderationBusy}
-                    title="Принять заявку"
-                  >
-                    Принять
-                  </button>
-                  <button
-                    type="button"
-                    className="participant-card-moderation-btn participant-card-moderation-reject"
-                    onClick={openRejectModal}
-                    disabled={moderationBusy}
-                    title="Отклонить заявку"
-                  >
-                    Отклонить
-                  </button>
-                </div>
-              ) : null}
-              <div className="participant-card-icon-toolbar">
+          ) : null}
+          <span className="participant-card-author">Автор: {authorLabel}</span>
+          {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
+        </div>
+        {canVote && isAuthenticated && (
+          <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
+            <Button
+              size="small"
+              variant={isVoted ? 'secondary' : 'primary'}
+              onClick={handleVoteClick}
+              disabled={isVoting}
+            >
+              {isVoted ? 'Отменить' : voteCtaLabel?.trim() || 'Голосовать'}
+            </Button>
+          </div>
+        )}
+        {(isContestAdmin || canEdit) && (
+          <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
+            {canModerateSubmission ? (
+              <div className="participant-card-moderation-row">
+                <button
+                  type="button"
+                  className="participant-card-moderation-btn participant-card-moderation-accept"
+                  onClick={handleAccept}
+                  disabled={moderationBusy}
+                  title="Принять заявку"
+                >
+                  Принять
+                </button>
+                <button
+                  type="button"
+                  className="participant-card-moderation-btn participant-card-moderation-reject"
+                  onClick={openRejectModal}
+                  disabled={moderationBusy}
+                  title="Отклонить заявку"
+                >
+                  Отклонить
+                </button>
+              </div>
+            ) : null}
+            <div className="participant-card-icon-toolbar">
               {isContestAdmin && (
                 <>
                   <button
@@ -371,10 +374,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                   </button>
                 </>
               )}
-              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
     {rejectModalOpen ? (

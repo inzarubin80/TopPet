@@ -30,6 +30,15 @@ export interface UserSearchHit {
 
 export type ContestTier = 'free' | 'pro';
 
+/** Победитель в ответе списка/карточки конкурса (после завершения). */
+export interface ContestWinnerBrief {
+  participant_id: ParticipantID;
+  pet_name: string;
+  nomination_id?: string;
+  nomination_title?: string;
+  score: number;
+}
+
 export interface Contest {
   id: ContestID;
   created_by_user_id: UserID;
@@ -66,6 +75,9 @@ export interface Contest {
   schedule_timezone?: string;
   created_at: string;
   updated_at: string;
+  /** Заполняется для завершённых конкурсов (GET /api/contests, GET один). */
+  audience_winners?: ContestWinnerBrief[];
+  jury_winners?: ContestWinnerBrief[];
 }
 
 /** Категория трека (без шкал на номинации — шкалы у критериев конкурса). */
@@ -77,6 +89,8 @@ export interface Nomination {
   sort_order: number;
   /** Сколько фото нужно в заявке (по умолчанию 1). */
   min_photo_count?: number;
+  /** Публичный URL логотипа номинации (object storage). */
+  logo_url?: string;
   created_at: string;
 }
 

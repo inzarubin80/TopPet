@@ -103,6 +103,8 @@ type ContestNomination struct {
 	CreatedAt   pgtype.Timestamptz
 	// Минимальное число фото в заявке для этой номинации (по умолчанию 1).
 	MinPhotoCount int32
+	// Публичный URL логотипа номинации (object storage), пусто — нет логотипа
+	LogoUrl string
 }
 
 type ContestParticipantPhoto struct {

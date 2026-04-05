@@ -29,3 +29,28 @@ export const updateNomination = async (
 export const deleteNomination = async (contestId: ContestID, nominationId: string): Promise<void> => {
   await axiosClient.delete(`/contests/${contestId}/nominations/${nominationId}`);
 };
+
+export const uploadNominationLogo = async (
+  contestId: ContestID,
+  nominationId: string,
+  file: File
+): Promise<Nomination> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await axiosClient.post<Nomination>(
+    `/contests/${contestId}/nominations/${nominationId}/logo`,
+    formData,
+    { timeout: 300000 }
+  );
+  return res.data;
+};
+
+export const clearNominationLogo = async (
+  contestId: ContestID,
+  nominationId: string
+): Promise<Nomination> => {
+  const res = await axiosClient.delete<Nomination>(
+    `/contests/${contestId}/nominations/${nominationId}/logo`
+  );
+  return res.data;
+};

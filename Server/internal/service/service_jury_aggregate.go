@@ -6,30 +6,14 @@ import (
 	"toppet/server/internal/model"
 )
 
-// shouldExposeJuryScoreTotal — когда отдавать клиенту сумму баллов жюри по заявке.
-// Во время фазы «голосование» итоговые суммы не показываем — только после завершения конкурса (status=finished).
-// На регистрации суммы видны организатору и жюри (оценка работ до открытого голосования).
+// shouldExposeJuryScoreTotal — когда отдавать клиенту сумму баллов жюри по заявке (total_jury_score и связанные поля).
+// Обычные пользователи и члены жюри не получают эти поля; видят только создатель конкурса и глобальные роли
+// contest_admin / system_admin (см. userCanManageContest), на любой фазе конкурса.
 func (s *TopPetService) shouldExposeJuryScoreTotal(ctx context.Context, contest *model.Contest, viewer *model.UserID) bool {
-	if contest == nil || !contest.JuryVotingEnabled {
+	if contest == nil || !contest.JuryVotingEnabled || viewer == nil {
 		return false
 	}
-	switch contest.Status {
-	case model.ContestStatusFinished:
-		return true
-	case model.ContestStatusVoting:
-		return false
-	case model.ContestStatusDraft, model.ContestStatusPublication, model.ContestStatusRegistration:
-		if viewer == nil {
-			return false
-		}
-		if s.userCanManageContest(ctx, contest, *viewer) {
-			return true
-		}
-		ok, err := s.repository.IsContestJuryMember(ctx, contest.ID, *viewer)
-		return err == nil && ok
-	default:
-		return false
-	}
+	return s.userCanManageContest(ctx, contest, *viewer)
 }
 
 func (s *TopPetService) attachParticipantJuryScoreTotals(ctx context.Context, contest *model.Contest, viewer *model.UserID, participants []*model.Participant) {

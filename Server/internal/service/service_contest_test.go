@@ -140,6 +140,9 @@ func (m *mockRepository) DeleteContestVoteByUserAndNomination(ctx context.Contex
 func (m *mockRepository) ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error) {
 	return nil, nil
 }
+func (m *mockRepository) ListAcceptedParticipantScoresForContests(ctx context.Context, contestIDs []model.ContestID) ([]model.ParticipantScoreForWinners, error) {
+	return nil, nil
+}
 func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) { return nil, nil }
 // CountVotesByContest, CountVotesByContests реализованы ниже с поддержкой моков
 func (m *mockRepository) CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) { return 0, nil }
@@ -174,7 +177,13 @@ func (m *mockRepository) GetNominationByContest(ctx context.Context, contestID m
 func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error) {
 	return nil, nil
 }
+func (m *mockRepository) UpdateNominationLogoUrl(ctx context.Context, contestID model.ContestID, nominationID string, logoURL string) (*model.Nomination, error) {
+	return &model.Nomination{ID: nominationID, ContestID: contestID, Title: "n", LogoUrl: logoURL}, nil
+}
 func (m *mockRepository) ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListNominationsForContests(ctx context.Context, contestIDs []model.ContestID) ([]*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) DeleteNomination(ctx context.Context, nominationID string) error { return nil }

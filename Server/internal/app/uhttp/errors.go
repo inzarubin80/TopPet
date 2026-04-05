@@ -111,6 +111,15 @@ func HandleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	if errors.Is(err, model.ErrAlreadyParticipatingInNomination) {
+		SendErrorResponse(w, http.StatusConflict, "Вы уже подали заявку в этой номинации")
+		return
+	}
+	if errors.Is(err, model.ErrAlreadyParticipatingInContest) {
+		SendErrorResponse(w, http.StatusConflict, "Вы уже подали заявку в этом конкурсе")
+		return
+	}
+
 	// Неизвестная ошибка - возвращаем 500
 	SendErrorResponse(w, http.StatusInternalServerError, "internal server error")
 }

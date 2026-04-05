@@ -13,5 +13,10 @@ var (
 
 	// ErrParticipantEmailDomainNotAllowed — заявка отклонена: e-mail не из разрешённых доменов конкурса.
 	ErrParticipantEmailDomainNotAllowed = errors.New("participant email domain not allowed for this contest")
+
+	// ErrAlreadyParticipatingInNomination — пользователь уже подал заявку в эту номинацию.
+	ErrAlreadyParticipatingInNomination = errors.New("already participating in this nomination")
+	// ErrAlreadyParticipatingInContest — пользователь уже подал заявку в конкурс без номинаций.
+	ErrAlreadyParticipatingInContest = errors.New("already participating in this contest")
 )
 

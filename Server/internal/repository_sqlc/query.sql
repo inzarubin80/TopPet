@@ -431,6 +431,7 @@ RETURNING participant_id;
 SELECT
     cp.id AS participant_id,
     cp.nomination_id,
+    cp.pet_name,
     COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
     COALESCE(js.jury_sum, 0)::bigint AS jury_sum
 FROM contest_participants cp
@@ -445,6 +446,27 @@ LEFT JOIN (
     GROUP BY participant_id
 ) js ON js.participant_id = cp.id
 WHERE cp.contest_id = $1 AND cp.submission_status = 'accepted';
+
+-- name: ListAcceptedParticipantScoresForContests :many
+SELECT
+    cp.contest_id,
+    cp.id AS participant_id,
+    cp.nomination_id,
+    cp.pet_name,
+    COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
+    COALESCE(js.jury_sum, 0)::bigint AS jury_sum
+FROM contest_participants cp
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS vote_cnt
+    FROM contest_votes
+    GROUP BY participant_id
+) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, SUM(score)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
+WHERE cp.contest_id = ANY($1::uuid[]) AND cp.submission_status = 'accepted';
 
 -- name: CountVotesByContest :one
 SELECT count(1) FROM contest_votes
@@ -639,10 +661,21 @@ SET title = $3, description = $4, min_photo_count = $5
 WHERE id = $1 AND contest_id = $2
 RETURNING *;
 
+-- name: UpdateNominationLogoUrl :one
+UPDATE contest_nominations
+SET logo_url = $3
+WHERE id = $1 AND contest_id = $2
+RETURNING *;
+
 -- name: ListNominationsByContest :many
 SELECT * FROM contest_nominations
 WHERE contest_id = $1
 ORDER BY sort_order ASC, created_at ASC;
+
+-- name: ListNominationsForContests :many
+SELECT * FROM contest_nominations
+WHERE contest_id = ANY($1::uuid[])
+ORDER BY contest_id ASC, sort_order ASC, created_at ASC;
 
 -- name: DeleteNomination :exec
 DELETE FROM contest_nominations WHERE id = $1;
@@ -666,6 +699,22 @@ INSERT INTO contest_jury_criteria (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
+
+-- name: UpdateJuryCriterion :one
+UPDATE contest_jury_criteria
+SET
+    title = $3,
+    description = $4,
+    scale_min = $5,
+    scale_max = $6,
+    scale_step = $7,
+    sort_order = $8
+WHERE id = $1 AND contest_id = $2
+RETURNING *;
+
+-- name: DeleteJuryCriterionForContest :exec
+DELETE FROM contest_jury_criteria
+WHERE id = $1 AND contest_id = $2;
 
 -- Contest jury members
 

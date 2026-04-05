@@ -49,7 +49,9 @@ type (
 		CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error)
 		GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error)
 		UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error)
+		UpdateNominationLogoUrl(ctx context.Context, contestID model.ContestID, nominationID string, logoURL string) (*model.Nomination, error)
 		ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
+		ListNominationsForContests(ctx context.Context, contestIDs []model.ContestID) ([]*model.Nomination, error)
 		DeleteNomination(ctx context.Context, nominationID string) error
 		CountNominationsByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		ListJuryCriteriaByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryCriterion, error)
@@ -98,6 +100,7 @@ type (
 		ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error)
 		DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error)
 		ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error)
+		ListAcceptedParticipantScoresForContests(ctx context.Context, contestIDs []model.ContestID) ([]model.ParticipantScoreForWinners, error)
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error)
 		CountVotesByContests(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)

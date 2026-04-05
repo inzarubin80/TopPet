@@ -332,23 +332,16 @@
   color: #333;
 }
 
-.add-participant-registration-image-file {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #475569;
-  cursor: pointer;
+.add-participant-registration-image-upload {
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
 }
 
-.add-participant-registration-image-file-input {
-  font: inherit;
-  max-width: 100%;
-}
-
-.add-participant-registration-image-file-text {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.add-participant-registration-image-upload .file-upload {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .add-participant-registration-image-preview-wrap {
@@ -359,7 +352,7 @@
 }
 
 .add-participant-registration-image-preview {
-  max-width: min(100%, 280px);
+  max-width: 100%;
   max-height: 200px;
   width: auto;
   height: auto;

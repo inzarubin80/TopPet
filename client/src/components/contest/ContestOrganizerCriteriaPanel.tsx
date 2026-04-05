@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Contest } from '../../types/models';
-import { listNominations, createNomination, updateNomination, deleteNomination } from '../../api/nominationsApi';
+import {
+  listNominations,
+  createNomination,
+  updateNomination,
+  deleteNomination,
+  uploadNominationLogo,
+  clearNominationLogo,
+} from '../../api/nominationsApi';
 import {
   listJuryCriteria,
   replaceJuryCriteria,
@@ -17,6 +24,8 @@ import {
   minPhotosAudienceHint,
   nominationPrimarySecondary,
 } from './contestNominationsDisplay';
+import { ContestAssetImageField } from './ContestAssetImageField';
+import { resolvePublicAssetUrl } from '../../utils/seo';
 import './ContestOrganizerCriteriaPanel.css';
 
 export type ContestOrganizerCriteriaPanelHandle = {
@@ -80,6 +89,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [editNomTitle, setEditNomTitle] = useState('');
   const [editNomDesc, setEditNomDesc] = useState('');
   const [editNomMinPhotos, setEditNomMinPhotos] = useState(1);
+  const [logoUploadingNomId, setLogoUploadingNomId] = useState<string | null>(null);
 
   const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
@@ -96,6 +106,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       if (crit.length > 0) {
         setCriteriaDraft(
           crit.map((c) => ({
+            id: c.id,
             title: c.title,
             description: c.description || '',
             scale_min: c.scale_min,
@@ -126,7 +137,19 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       if (!showJuryCriteriaSection) {
         return true;
       }
-      const items = criteriaDraft.filter((c) => c.title.trim() !== '');
+      const items = criteriaDraft
+        .filter((c) => c.title.trim() !== '')
+        .map((c) => {
+          const base = {
+            title: c.title.trim(),
+            description: (c.description || '').trim(),
+            scale_min: c.scale_min,
+            scale_max: c.scale_max,
+            scale_step: c.scale_step,
+          };
+          const tid = c.id?.trim();
+          return tid ? { ...base, id: tid } : base;
+        });
       if (items.length === 0) {
         showError('Добавьте хотя бы один критерий с названием');
         return false;
@@ -137,6 +160,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         setCriteriaDraft(
           saved.length > 0
             ? saved.map((c) => ({
+                id: c.id,
                 title: c.title,
                 description: c.description || '',
                 scale_min: c.scale_min,
@@ -230,6 +254,36 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     }
   };
 
+  const handleNominationLogoFile = async (nominationId: string, file: File) => {
+    if (!canEdit || fieldsLocked) return;
+    setLogoUploadingNomId(nominationId);
+    try {
+      const updated = await uploadNominationLogo(contest.id, nominationId, file);
+      setNominations((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      showSuccess('Логотип обновлён');
+    } catch (err) {
+      errorHandler.handleError(err, showError, false);
+      showError('Не удалось загрузить логотип');
+    } finally {
+      setLogoUploadingNomId(null);
+    }
+  };
+
+  const handleClearNominationLogo = async (nominationId: string) => {
+    if (!canEdit || fieldsLocked) return;
+    setLogoUploadingNomId(nominationId);
+    try {
+      const updated = await clearNominationLogo(contest.id, nominationId);
+      setNominations((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      showSuccess('Логотип убран');
+    } catch (err) {
+      errorHandler.handleError(err, showError, false);
+      showError('Не удалось убрать логотип');
+    } finally {
+      setLogoUploadingNomId(null);
+    }
+  };
+
   if (loading) {
     return (
       <p className="contest-organizer-criteria-muted">
@@ -245,9 +299,9 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const juryCriteriaBlock =
     showJuryCriteriaSection ? (
       <div className="contest-organizer-criteria-block contest-organizer-criteria-block--jury">
-        <h3 className="contest-organizer-criteria-jury-subtitle">
+        <h2 className="contest-section-heading contest-organizer-criteria-jury-subtitle">
           {audienceView ? 'По чему жюри оценивает работы' : 'Критерии оценки (на конкурс)'}
-        </h3>
+        </h2>
         {!canEdit && (
           <ul
             className={
@@ -406,13 +460,13 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           : 'contest-organizer-criteria'
       }
     >
-      <h2 className="contest-organizer-criteria-title">{sectionTitle}</h2>
+      <h2 className="contest-section-heading contest-organizer-criteria-title">{sectionTitle}</h2>
       {!readOnly ? (
         <p className="contest-organizer-criteria-hint">Сохраните изменения кнопкой внизу блока.</p>
       ) : null}
 
       <div className="contest-organizer-criteria-block">
-        {audienceView ? <h3>Список категорий</h3> : null}
+        {audienceView ? <h3 className="contest-section-subheading">Список категорий</h3> : null}
         {nominations.length === 0 && !canEdit ? (
           <p className="contest-organizer-criteria-muted">
             {audienceView ? 'Организатор пока не указал категории участия.' : 'Номинации не заданы.'}
@@ -457,6 +511,14 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                           className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
                         />
                       </label>
+                      <ContestAssetImageField
+                        legend="Логотип номинации"
+                        url={n.logo_url || ''}
+                        onPickFile={(file) => void handleNominationLogoFile(n.id, file)}
+                        onClear={() => void handleClearNominationLogo(n.id)}
+                        uploading={logoUploadingNomId === n.id}
+                        disabled={fieldsLocked}
+                      />
                       <div className="contest-organizer-criteria-actions">
                         <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
                           Сохранить
@@ -476,6 +538,13 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                     <>
                       {audienceView ? (
                         <div className="contest-organizer-criteria-nom-card">
+                          {(n.logo_url || '').trim() ? (
+                            <img
+                              className="contest-organizer-criteria-nom-card-logo"
+                              src={resolvePublicAssetUrl((n.logo_url || '').trim())}
+                              alt=""
+                            />
+                          ) : null}
                           <div className="contest-organizer-criteria-nom-card-title">{primary}</div>
                           {secondary ? (
                             <p className="contest-organizer-criteria-nom-card-desc">{secondary}</p>
@@ -495,6 +564,28 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                           <span className="contest-organizer-criteria-nom-meta">
                             Мин. фото: {n.min_photo_count ?? 1}
                           </span>
+                          {canEdit ? (
+                            <ContestAssetImageField
+                              legend="Логотип номинации"
+                              url={n.logo_url || ''}
+                              onPickFile={(file) => void handleNominationLogoFile(n.id, file)}
+                              onClear={() => void handleClearNominationLogo(n.id)}
+                              uploading={logoUploadingNomId === n.id}
+                              disabled={fieldsLocked}
+                            />
+                          ) : (n.logo_url || '').trim() ? (
+                            <div className="contest-organizer-criteria-nom-logo-readonly">
+                              <span className="contest-organizer-criteria-nom-logo-readonly-label">
+                                Логотип номинации
+                              </span>
+                              <div className="contest-organizer-criteria-nom-logo-readonly-wrap">
+                                <img
+                                  src={resolvePublicAssetUrl((n.logo_url || '').trim())}
+                                  alt=""
+                                />
+                              </div>
+                            </div>
+                          ) : null}
                         </>
                       )}
                       {canEdit && (

@@ -209,6 +209,15 @@
   color: #475569;
 }
 
+.edit-contest-page-organizer .contest-organizer-criteria-jury-subtitle.contest-section-heading {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-base-md);
+  font-weight: var(--font-weight-semibold);
+  color: #475569;
+  letter-spacing: normal;
+  line-height: 1.3;
+}
+
 .edit-contest-page-organizer .contest-organizer-criteria-criterion {
   padding: 0.65rem 0.75rem;
   margin-bottom: 0.5rem;

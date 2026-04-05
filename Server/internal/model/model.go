@@ -75,6 +75,18 @@ type (
 		ScheduleTimezone string    `json:"schedule_timezone,omitempty"`
 		CreatedAt        time.Time `json:"created_at"`
 		UpdatedAt        time.Time `json:"updated_at"`
+		// Победители после завершения конкурса (заполняются в GET списка/одного конкурса).
+		AudienceWinners []ContestWinnerBrief `json:"audience_winners,omitempty"`
+		JuryWinners     []ContestWinnerBrief `json:"jury_winners,omitempty"`
+	}
+
+	// ContestWinnerBrief — строка для карточки/списка конкурсов (зрители или жюри).
+	ContestWinnerBrief struct {
+		ParticipantID   ParticipantID `json:"participant_id"`
+		PetName         string        `json:"pet_name"`
+		NominationID    *string       `json:"nomination_id,omitempty"`
+		NominationTitle string        `json:"nomination_title,omitempty"`
+		Score           int64         `json:"score"`
 	}
 
 	// ContestUpdate — поля для PATCH конкурса в черновике (после слияния с текущим состоянием).
@@ -110,6 +122,7 @@ type (
 		SortOrder   int       `json:"sort_order"`
 		// MinPhotoCount — сколько фото нужно добавить в заявку (1–30), по умолчанию 1.
 		MinPhotoCount int       `json:"min_photo_count"`
+		LogoUrl       string    `json:"logo_url,omitempty"`
 		CreatedAt     time.Time `json:"created_at"`
 	}
 
@@ -127,6 +140,8 @@ type (
 	}
 
 	JuryCriterionInput struct {
+		// ID существующего критерия; пусто — создать новую строку (новый UUID).
+		ID          string `json:"id,omitempty"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
 		ScaleMin    int32  `json:"scale_min"`
@@ -224,7 +239,7 @@ type (
 		Photos              []*Photo               `json:"photos,omitempty"`
 		Video               *Video                 `json:"video,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
-		// TotalJuryScore — сумма всех баллов жюри по всем критериям и всем членам жюри (если поле отдано клиенту).
+		// TotalJuryScore — сумма баллов жюри (отдаётся только создателю конкурса и глобальным админам платформы).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
 		// JuryMemberCount — число членов жюри конкурса (для подписи прогресса оценивания).
 		JuryMemberCount *int64 `json:"jury_member_count,omitempty"`
@@ -241,7 +256,9 @@ type (
 
 	// ParticipantScoreForWinners — данные для расчёта победителей (принятые заявки).
 	ParticipantScoreForWinners struct {
+		ContestID     ContestID // для батч-запроса; в одиночном запросе пусто.
 		ParticipantID ParticipantID
+		PetName       string
 		NominationID  *string
 		VoteCount     int64
 		JurySum       int64

@@ -90,7 +90,7 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
-			return nil, errors.New("already participating in this nomination")
+			return nil, model.ErrAlreadyParticipatingInNomination
 		}
 		log.Printf("[Repository] CreateParticipant: ERROR - SQL insert failed: %v", err)
 		return nil, err

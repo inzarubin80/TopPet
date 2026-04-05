@@ -27,14 +27,13 @@
 }
 
 .contest-page-overview-body {
-  padding: 8px 22px 0;
+  padding: 8px 22px 22px;
 }
 
 .contest-page-overview-body > .contest-page-prizes:first-child {
   margin-top: 4px;
 }
 
-/* Меньше зазора между номинациями/критериями и блоком «Заявки и работы» */
 .contest-page-overview-body > .contest-organizer-criteria {
   margin-bottom: 0;
   padding-bottom: 0;
@@ -44,82 +43,10 @@
   margin-bottom: 0.35rem;
 }
 
-.contest-page-overview-body > .contest-page-overview-cta {
-  margin-top: 0;
-}
-
 .contest-page-hero--in-overview {
   margin: 0 0 0;
   border-radius: 0;
   padding: 28px 22px 32px;
-}
-
-.contest-page-overview-cta {
-  margin-top: 8px;
-  padding: 18px 22px 22px;
-  border-top: 1px solid #f1f5f9;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.9) 0%, #fff 100%);
-}
-
-.contest-page-overview-cta-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px 20px;
-}
-
-.contest-page-overview-cta-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.contest-page-overview-cta-kicker {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.contest-page-overview-cta-text {
-  font-size: 15px;
-  line-height: 1.45;
-  color: #334155;
-  max-width: 36em;
-}
-
-.contest-page-overview-cta-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: 12px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  color: var(--contest-accent, #2563eb);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.contest-page-overview-cta-button:hover {
-  border-color: var(--contest-accent, #2563eb);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.15);
-  transform: translateY(-1px);
-}
-
-.contest-page-overview-cta-button:active {
-  transform: translateY(0);
-}
-
-.contest-page--themed .contest-page-overview-cta-button {
-  color: var(--contest-accent, #2563eb);
 }
 
 /* Блок работ: визуально отдельная секция */
@@ -214,30 +141,27 @@
 }
 
 .contest-page-schedule-block {
-  margin: 20px 0 18px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #f8fafc;
-  max-width: 42em;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  max-width: none;
+  width: 100%;
 }
 
 .contest-page-schedule-heading {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--contest-accent, #2563eb);
+  margin-bottom: 0.5rem;
 }
 
 .contest-page-schedule {
-  margin-top: 14px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #475569;
-  max-width: 42em;
+  margin-top: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #374151;
+  max-width: none;
   font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 
 .contest-page-schedule--body {
@@ -290,12 +214,7 @@
 }
 
 .contest-page-prizes-heading {
-  margin: 0 0 6px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--contest-accent, var(--color-accent));
+  margin-bottom: 0.5rem;
 }
 
 .contest-page-prizes-text {
@@ -303,6 +222,7 @@
   font-size: 15px;
   line-height: 1.55;
   color: #374151;
+  text-align: left;
 }
 
 .contest-page-rules-wrap {
@@ -568,16 +488,10 @@
 .contest-page-participants-header h2,
 .contest-page-works-title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: #1f2937;
 }
 
 .contest-page-works .contest-page-works-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #0f172a;
+  margin: 0;
 }
 
 .contest-page-participants-filter {
@@ -611,6 +525,18 @@
   color: #1e3a5f;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  width: 100%;
+}
+
+.contest-page-participants-all-nominations-taken {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   width: 100%;
 }
@@ -665,8 +591,7 @@
   justify-content: center;
   gap: 16px;
   margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  padding-top: 8px;
 }
 
 .contest-page-participants-pager-info {
@@ -691,16 +616,6 @@
     flex-basis: 100%;
     width: 100%;
     font-size: 24px;
-  }
-
-  .contest-page-overview-cta-inner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .contest-page-overview-cta-button {
-    width: 100%;
-    justify-content: center;
   }
 
   .contest-page-participants-header {

@@ -100,7 +100,7 @@ function buildRegistrationAnswers(
         if (!trimmed) {
           return {
             ok: false,
-            message: `Загрузите изображение или укажите ссылку для «${f.label}»`,
+            message: `Загрузите изображение для «${f.label}»`,
           };
         }
       } else if (!trimmed) {
@@ -882,43 +882,14 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                       {field.label}
                       {field.required ? ' *' : ''}
                     </span>
-                    <Input
-                      label="Ссылка на изображение"
-                      type="url"
-                      placeholder="https://…"
-                      value={registrationAnswersDraft[field.id] ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setRegistrationImagePicks((prev) => {
-                          const cur = prev[field.id];
-                          if (cur) {
-                            URL.revokeObjectURL(cur.previewUrl);
-                          }
-                          const next = { ...prev };
-                          delete next[field.id];
-                          return next;
-                        });
-                        setRegistrationAnswersDraft((prev) => ({
-                          ...prev,
-                          [field.id]: v,
-                        }));
-                      }}
-                      disabled={loading || uploadingMedia}
-                    />
-                    <label className="add-participant-registration-image-file">
-                      <span className="add-participant-registration-image-file-text">Или загрузить файл</span>
-                      <input
-                        type="file"
+                    <div className="add-participant-registration-image-upload">
+                      <FileUpload
                         accept="image/*"
-                        className="add-participant-registration-image-file-input"
                         disabled={loading || uploadingMedia}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] ?? null;
-                          e.target.value = '';
-                          handleRegistrationImageFile(field.id, f);
-                        }}
+                        label="Выбрать изображение"
+                        onFileSelect={(file) => handleRegistrationImageFile(field.id, file)}
                       />
-                    </label>
+                    </div>
                     {registrationImagePicks[field.id] ? (
                       <div className="add-participant-registration-image-preview-wrap">
                         <img
@@ -945,8 +916,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                       </div>
                     ) : null}
                     <p className="add-participant-registration-image-hint">
-                      До 10&nbsp;МБ, форматы изображений (не SVG). При выборе файла он будет загружен при отправке
-                      заявки.
+                      До 10&nbsp;МБ, форматы изображений (не SVG). Файл будет загружен при отправке заявки.
                     </p>
                   </div>
                 )}

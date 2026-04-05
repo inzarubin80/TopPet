@@ -138,6 +138,47 @@
   overflow: hidden;
 }
 
+.contest-card-winners {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contest-card-winners-block {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.contest-card-winners-label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.contest-card-winners-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #1f2937;
+}
+
+.contest-card-winners-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.contest-card-winners-score {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 .contest-card-footer {
   display: flex;
   justify-content: space-between;

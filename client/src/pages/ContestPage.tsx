@@ -478,7 +478,7 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-overview-body">
         {prizeRaw ? (
           <div className="contest-page-prizes">
-            <h2 className="contest-page-prizes-heading">Призы</h2>
+            <h2 className="contest-section-heading contest-page-prizes-heading">Призы</h2>
             <p className="contest-page-prizes-text">{prizeRaw}</p>
           </div>
         ) : null}
@@ -544,7 +544,7 @@ const ContestPage: React.FC = () => {
             className="contest-page-schedule-block"
             aria-labelledby="contest-schedule-heading"
           >
-            <h2 id="contest-schedule-heading" className="contest-page-schedule-heading">
+            <h2 id="contest-schedule-heading" className="contest-section-heading contest-page-schedule-heading">
               Расписание проведения
             </h2>
             <div className="contest-page-schedule contest-page-schedule--body">
@@ -565,41 +565,6 @@ const ContestPage: React.FC = () => {
           showJuryCriteriaSection={currentContest.jury_voting_enabled ?? false}
         />
 
-        <div className="contest-page-overview-cta">
-          <div className="contest-page-overview-cta-inner">
-            <div className="contest-page-overview-cta-copy">
-              <span className="contest-page-overview-cta-kicker">Заявки и работы</span>
-              <span className="contest-page-overview-cta-text">
-                Список заявок, голосование и участие — в отдельном блоке ниже
-              </span>
-            </div>
-            <button
-              type="button"
-              className="contest-page-overview-cta-button"
-              onClick={() =>
-                document.getElementById('contest-works')?.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start',
-                })
-              }
-            >
-              К работам участников
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 5v14M5 12l7 7 7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
         </div>
         </section>
 
@@ -608,7 +573,7 @@ const ContestPage: React.FC = () => {
           <div className="contest-page-participants-header">
             <div className="contest-page-participants-header-top">
               <div className="contest-page-works-title-wrap">
-                <h2 id="contest-works-heading" className="contest-page-works-title">
+                <h2 id="contest-works-heading" className="contest-section-heading contest-page-works-title">
                   Работы участников
                 </h2>
                 {participantsListTotal > 0 ? (
@@ -732,6 +697,14 @@ const ContestPage: React.FC = () => {
                 </svg>
               );
               const hasNominations = contestNominations.length > 0;
+              const nominationsOpenToUser = hasNominations
+                ? contestNominations.filter(
+                    (n) => !userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id)
+                  )
+                : [];
+              const alreadyInContestWithoutNominations =
+                !hasNominations &&
+                userHasParticipantForNomination(myContestParticipants, currentUser?.id, null);
               const domainNote = showDomainParticipationNote ? (
                 <p className="contest-page-participants-domain-note" role="note">
                   Участие только для адресов e-mail на доменах:{' '}
@@ -780,34 +753,25 @@ const ContestPage: React.FC = () => {
                   {domainNote}
                   <div className="contest-page-participants-actions">
                     {hasNominations ? (
-                      contestNominations.map((n) => {
-                        const already =
-                          userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id) &&
-                          !canManageParticipants;
-                        return (
-                          <Button
-                            key={n.id}
-                            size="large"
-                            disabled={already || blockedByEmailDomain}
-                            className="contest-page-add-participant-button"
-                            onClick={() => {
-                              setAddParticipantNomination({ id: n.id, title: n.title });
-                              setIsAddParticipantModalOpen(true);
-                            }}
-                          >
-                            {participateIcon}
-                            {already ? 'Уже участвуете' : `Участвовать — ${n.title}`}
-                          </Button>
-                        );
-                      })
-                    ) : (
+                      nominationsOpenToUser.map((n) => (
+                        <Button
+                          key={n.id}
+                          size="large"
+                          disabled={blockedByEmailDomain}
+                          className="contest-page-add-participant-button"
+                          onClick={() => {
+                            setAddParticipantNomination({ id: n.id, title: n.title });
+                            setIsAddParticipantModalOpen(true);
+                          }}
+                        >
+                          {participateIcon}
+                          Участвовать — {n.title}
+                        </Button>
+                      ))
+                    ) : !alreadyInContestWithoutNominations ? (
                       <Button
                         size="large"
-                        disabled={
-                          (userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
-                            !canManageParticipants) ||
-                          blockedByEmailDomain
-                        }
+                        disabled={blockedByEmailDomain}
                         className="contest-page-add-participant-button"
                         onClick={() => {
                           setAddParticipantNomination(null);
@@ -815,13 +779,24 @@ const ContestPage: React.FC = () => {
                         }}
                       >
                         {participateIcon}
-                        {userHasParticipantForNomination(myContestParticipants, currentUser?.id, null) &&
-                        !canManageParticipants
-                          ? 'Уже участвуете'
-                          : 'Добавить участника'}
+                        Добавить участника
                       </Button>
-                    )}
+                    ) : null}
                   </div>
+                  {isAuthenticated &&
+                  !blockedByEmailDomain &&
+                  hasNominations &&
+                  nominationsOpenToUser.length === 0 &&
+                  contestNominations.length > 0 ? (
+                    <p className="contest-page-participants-all-nominations-taken" role="status">
+                      Вы уже подали заявки во всех номинациях этого конкурса.
+                    </p>
+                  ) : null}
+                  {isAuthenticated && !blockedByEmailDomain && !hasNominations && alreadyInContestWithoutNominations ? (
+                    <p className="contest-page-participants-all-nominations-taken" role="status">
+                      Вы уже подали заявку в этом конкурсе.
+                    </p>
+                  ) : null}
                 </>
               );
             })()}

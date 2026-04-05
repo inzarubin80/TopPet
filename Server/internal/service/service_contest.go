@@ -100,6 +100,7 @@ func (s *TopPetService) GetContest(ctx context.Context, contestID model.ContestI
 	}
 
 	model.ApplyEffectiveContestStatus(contest, time.Now().UTC())
+	s.enrichContestWithWinners(dbCtx, contest)
 	return contest, nil
 }
 
@@ -149,6 +150,8 @@ func (s *TopPetService) ListContests(ctx context.Context, status *model.ContestS
 	for _, c := range contests {
 		model.ApplyEffectiveContestStatus(c, now)
 	}
+
+	s.enrichContestsWithWinners(dbCtx, contests)
 
 	return contests, total, nil
 }

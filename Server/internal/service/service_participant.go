@@ -126,7 +126,10 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		return nil, err
 	}
 	if existing != nil {
-		return nil, errors.New("already participating in this nomination")
+		if nCount > 0 {
+			return nil, model.ErrAlreadyParticipatingInNomination
+		}
+		return nil, model.ErrAlreadyParticipatingInContest
 	}
 
 	if len(contest.ParticipantAllowedEmailDomains) > 0 && !s.userCanManageContest(ctx, contest, userID) {

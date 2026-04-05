@@ -136,6 +136,20 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description), mp)
 }
 
+func (s *TopPetService) UpdateNominationLogoURL(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, logoURL string) (*model.Nomination, error) {
+	c, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.userCanManageContest(ctx, c, userID) {
+		return nil, errors.New("only contest admin can upload nomination logo")
+	}
+	if _, err := s.repository.GetNominationByContest(ctx, contestID, nominationID); err != nil {
+		return nil, err
+	}
+	return s.repository.UpdateNominationLogoUrl(ctx, contestID, nominationID, strings.TrimSpace(logoURL))
+}
+
 func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error {
 	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {

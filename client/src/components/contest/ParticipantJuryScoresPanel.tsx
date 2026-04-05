@@ -128,7 +128,7 @@ export const ParticipantJuryScoresPanel: React.FC<Props> = ({
     <section className="participant-jury-scores" aria-labelledby="participant-jury-scores-heading">
       <h2 id="participant-jury-scores-heading">Оценки жюри</h2>
       <p className="participant-jury-scores-hint">
-        Ваши баллы по критериям. Личные оценки других не видны; на карточке работы отображается общая сумма баллов жюри по конкурсу.
+        Ваши баллы по критериям. Оценки других членов жюри не видны. Сводную сумму по работе видят только организаторы конкурса и администраторы платформы.
       </p>
       <ul className="participant-jury-scores-list">
         {criteria.map((c) => (
