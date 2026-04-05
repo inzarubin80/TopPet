@@ -286,18 +286,6 @@ func (q *Queries) CountParticipantsByContest(ctx context.Context, arg *CountPart
 	return column_1, err
 }
 
-const countPhotoLikes = `-- name: CountPhotoLikes :one
-SELECT count(1) FROM photo_likes
-WHERE photo_id = $1
-`
-
-func (q *Queries) CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countPhotoLikes, photoID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countSystemAdmins = `-- name: CountSystemAdmins :one
 SELECT count(*)::bigint AS count FROM users WHERE role = 'system_admin'
 `
@@ -777,21 +765,6 @@ func (q *Queries) DeleteParticipantVideo(ctx context.Context, participantID pgty
 	return err
 }
 
-const deletePhotoLike = `-- name: DeletePhotoLike :exec
-DELETE FROM photo_likes
-WHERE photo_id = $1 AND user_id = $2
-`
-
-type DeletePhotoLikeParams struct {
-	PhotoID pgtype.UUID
-	UserID  int64
-}
-
-func (q *Queries) DeletePhotoLike(ctx context.Context, arg *DeletePhotoLikeParams) error {
-	_, err := q.db.Exec(ctx, deletePhotoLike, arg.PhotoID, arg.UserID)
-	return err
-}
-
 const deleteRegistrationFieldsByContest = `-- name: DeleteRegistrationFieldsByContest :exec
 DELETE FROM contest_registration_fields WHERE contest_id = $1
 `
@@ -1046,28 +1019,6 @@ func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetP
 		&i.SubmissionComment,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return &i, err
-}
-
-const getPhotoLikeByUser = `-- name: GetPhotoLikeByUser :one
-SELECT id, photo_id, user_id, created_at FROM photo_likes
-WHERE photo_id = $1 AND user_id = $2
-`
-
-type GetPhotoLikeByUserParams struct {
-	PhotoID pgtype.UUID
-	UserID  int64
-}
-
-func (q *Queries) GetPhotoLikeByUser(ctx context.Context, arg *GetPhotoLikeByUserParams) (*PhotoLike, error) {
-	row := q.db.QueryRow(ctx, getPhotoLikeByUser, arg.PhotoID, arg.UserID)
-	var i PhotoLike
-	err := row.Scan(
-		&i.ID,
-		&i.PhotoID,
-		&i.UserID,
-		&i.CreatedAt,
 	)
 	return &i, err
 }
@@ -2199,42 +2150,6 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 	return items, nil
 }
 
-const listPhotoLikesByPhotos = `-- name: ListPhotoLikesByPhotos :many
-SELECT id, photo_id, user_id, created_at
-FROM photo_likes
-WHERE photo_id = ANY($1::uuid[]) AND user_id = $2
-`
-
-type ListPhotoLikesByPhotosParams struct {
-	Column1 []pgtype.UUID
-	UserID  int64
-}
-
-func (q *Queries) ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error) {
-	rows, err := q.db.Query(ctx, listPhotoLikesByPhotos, arg.Column1, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []*PhotoLike
-	for rows.Next() {
-		var i PhotoLike
-		if err := rows.Scan(
-			&i.ID,
-			&i.PhotoID,
-			&i.UserID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listRegistrationFieldsByContest = `-- name: ListRegistrationFieldsByContest :many
 
 SELECT id, contest_id, sort_order, label, field_type, required, enum_options, created_at
@@ -3182,34 +3097,6 @@ func (q *Queries) UpsertParticipantVideo(ctx context.Context, arg *UpsertPartici
 		&i.ID,
 		&i.ParticipantID,
 		&i.Url,
-		&i.CreatedAt,
-	)
-	return &i, err
-}
-
-const upsertPhotoLike = `-- name: UpsertPhotoLike :one
-
-INSERT INTO photo_likes (id, photo_id, user_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (photo_id, user_id) DO UPDATE
-SET id = photo_likes.id
-RETURNING id, photo_id, user_id, created_at
-`
-
-type UpsertPhotoLikeParams struct {
-	ID      pgtype.UUID
-	PhotoID pgtype.UUID
-	UserID  int64
-}
-
-// Photo Likes
-func (q *Queries) UpsertPhotoLike(ctx context.Context, arg *UpsertPhotoLikeParams) (*PhotoLike, error) {
-	row := q.db.QueryRow(ctx, upsertPhotoLike, arg.ID, arg.PhotoID, arg.UserID)
-	var i PhotoLike
-	err := row.Scan(
-		&i.ID,
-		&i.PhotoID,
-		&i.UserID,
 		&i.CreatedAt,
 	)
 	return &i, err

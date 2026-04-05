@@ -201,17 +201,6 @@ CREATE TABLE contest_chat_messages (
 
 CREATE INDEX idx_chat_contest_id_created_at ON contest_chat_messages (contest_id, created_at);
 
-CREATE TABLE photo_likes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    photo_id UUID NOT NULL,
-    user_id BIGINT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX uniq_photo_likes_photo_user ON photo_likes (photo_id, user_id);
-CREATE INDEX idx_photo_likes_photo_id ON photo_likes (photo_id);
-CREATE INDEX idx_photo_likes_user_id ON photo_likes (user_id);
-
 CREATE TABLE payments (
     id UUID PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -233,7 +222,6 @@ CREATE INDEX idx_payments_contest ON payments (contest_id);
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS photo_likes;
 DROP TABLE IF EXISTS contest_chat_messages;
 DROP TABLE IF EXISTS contest_comments;
 DROP TABLE IF EXISTS contest_votes;

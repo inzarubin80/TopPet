@@ -4,7 +4,6 @@ import contestsReducer from './slices/contestsSlice';
 import participantsReducer from './slices/participantsSlice';
 import commentsReducer from './slices/commentsSlice';
 import chatReducer from './slices/chatSlice';
-import photoLikesReducer from './slices/photoLikesSlice';
 import notificationsReducer from './slices/notificationsSlice';
 
 export const store = configureStore({
@@ -14,7 +13,6 @@ export const store = configureStore({
     participants: participantsReducer,
     comments: commentsReducer,
     chat: chatReducer,
-    photoLikes: photoLikesReducer,
     notifications: notificationsReducer,
   },
 });

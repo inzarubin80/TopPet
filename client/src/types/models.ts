@@ -212,15 +212,6 @@ export interface Photo {
   url: string;
   thumb_url?: string;
   position?: number;
-  like_count?: number;
-  is_liked?: boolean;
-  created_at: string;
-}
-
-export interface PhotoLike {
-  id: string;
-  photo_id: string;
-  user_id: UserID;
   created_at: string;
 }
 
@@ -303,11 +294,6 @@ export interface UserVoteItem {
 
 export interface UserVotesListResponse {
   votes: UserVoteItem[];
-}
-
-export interface PhotoLikeResponse {
-  like_count: number;
-  is_liked: boolean;
 }
 
 export interface Provider {

@@ -310,7 +310,7 @@ const ParticipantPage: React.FC = () => {
       <div className="participant-page-content">
         <div className="participant-page-media">
           {participant.photos && participant.photos.length > 0 && (
-            <PhotoGallery photos={participant.photos} participantId={participant.id} />
+            <PhotoGallery photos={participant.photos} />
           )}
           {participant.video && (
             <div className="participant-page-video">

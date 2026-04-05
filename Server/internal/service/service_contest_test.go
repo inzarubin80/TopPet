@@ -161,11 +161,6 @@ func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.
 func (m *mockRepository) ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error) { return nil, 0, nil }
 func (m *mockRepository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) { return nil, nil }
 func (m *mockRepository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error) { return "", nil }
-func (m *mockRepository) UpsertPhotoLike(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error) { return nil, nil }
-func (m *mockRepository) DeletePhotoLike(ctx context.Context, photoID string, userID model.UserID) error { return nil }
-func (m *mockRepository) GetPhotoLikeByUser(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error) { return nil, nil }
-func (m *mockRepository) CountPhotoLikes(ctx context.Context, photoID string) (int64, error) { return 0, nil }
-func (m *mockRepository) ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error) { return nil, nil }
 // CountVotesByContests реализован выше с поддержкой моков
 
 func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error) {

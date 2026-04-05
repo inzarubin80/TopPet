@@ -23,7 +23,6 @@ type Querier interface {
 	CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountJuryFullyScoredJurorsByParticipantIDsRow, error)
 	CountNominationsByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountParticipantsByContest(ctx context.Context, arg *CountParticipantsByContestParams) (int64, error)
-	CountPhotoLikes(ctx context.Context, photoID pgtype.UUID) (int64, error)
 	CountSystemAdmins(ctx context.Context) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
@@ -53,7 +52,6 @@ type Querier interface {
 	DeleteParticipant(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantVideo(ctx context.Context, participantID pgtype.UUID) error
-	DeletePhotoLike(ctx context.Context, arg *DeletePhotoLikeParams) error
 	DeleteRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) error
 	DeleteVotesByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
@@ -63,7 +61,6 @@ type Querier interface {
 	GetNominationByContest(ctx context.Context, arg *GetNominationByContestParams) (*ContestNomination, error)
 	GetParticipantByContestUserAndNomination(ctx context.Context, arg *GetParticipantByContestUserAndNominationParams) (*GetParticipantByContestUserAndNominationRow, error)
 	GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetParticipantByIDRow, error)
-	GetPhotoLikeByUser(ctx context.Context, arg *GetPhotoLikeByUserParams) (*PhotoLike, error)
 	GetPhotosByParticipantID(ctx context.Context, participantID pgtype.UUID) ([]*ContestParticipantPhoto, error)
 	GetUserAuthProvidersByProviderUid(ctx context.Context, arg *GetUserAuthProvidersByProviderUidParams) (*UserAuthProvider, error)
 	GetUserAuthProvidersByUserID(ctx context.Context, userID int64) ([]*UserAuthProvider, error)
@@ -93,7 +90,6 @@ type Querier interface {
 	ListNominationsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestNomination, error)
 	ListNominationsForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ContestNomination, error)
 	ListParticipantsByContest(ctx context.Context, arg *ListParticipantsByContestParams) ([]*ListParticipantsByContestRow, error)
-	ListPhotoLikesByPhotos(ctx context.Context, arg *ListPhotoLikesByPhotosParams) ([]*PhotoLike, error)
 	// Contest registration fields (поля заявки участника)
 	ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestRegistrationField, error)
 	ListStaffCommentNotificationsForUser(ctx context.Context, userID int64) ([]*ListStaffCommentNotificationsForUserRow, error)
@@ -122,8 +118,6 @@ type Querier interface {
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)
 	// Contest Participant Videos
 	UpsertParticipantVideo(ctx context.Context, arg *UpsertParticipantVideoParams) (*ContestParticipantVideo, error)
-	// Photo Likes
-	UpsertPhotoLike(ctx context.Context, arg *UpsertPhotoLikeParams) (*PhotoLike, error)
 }
 
 var _ Querier = (*Queries)(nil)

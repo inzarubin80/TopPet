@@ -145,13 +145,6 @@ type ContestVote struct {
 	NominationSlot pgtype.UUID
 }
 
-type PhotoLike struct {
-	ID        pgtype.UUID
-	PhotoID   pgtype.UUID
-	UserID    int64
-	CreatedAt pgtype.Timestamptz
-}
-
 type User struct {
 	UserID    int64
 	Name      string

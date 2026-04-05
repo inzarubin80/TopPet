@@ -121,12 +121,6 @@ type (
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
 		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error)
 
-		// Photo Likes
-		UpsertPhotoLike(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error)
-		DeletePhotoLike(ctx context.Context, photoID string, userID model.UserID) error
-		GetPhotoLikeByUser(ctx context.Context, photoID string, userID model.UserID) (*model.PhotoLike, error)
-		CountPhotoLikes(ctx context.Context, photoID string) (int64, error)
-		ListPhotoLikesByPhotos(ctx context.Context, photoIDs []string, userID model.UserID) (map[string]*model.PhotoLike, error)
 	}
 
 	// TokenService интерфейс для работы с JWT токенами

@@ -276,16 +276,7 @@ type (
 		URL           string        `json:"url"`
 		ThumbURL      *string       `json:"thumb_url,omitempty"`
 		Position      int           `json:"position"`
-		LikeCount     *int64        `json:"like_count,omitempty"`
-		IsLiked       *bool         `json:"is_liked,omitempty"`
 		CreatedAt     time.Time     `json:"created_at"`
-	}
-
-	PhotoLike struct {
-		ID        string    `json:"id"`
-		PhotoID   string    `json:"photo_id"`
-		UserID    UserID    `json:"user_id"`
-		CreatedAt time.Time `json:"created_at"`
 	}
 
 	Video struct {

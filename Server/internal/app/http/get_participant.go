@@ -11,7 +11,7 @@ import (
 
 type (
 	serviceGetParticipant interface {
-		GetParticipantWithLikes(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
+		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 	}
 
 	GetParticipantHandler struct {
@@ -47,7 +47,7 @@ func (h *GetParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	participant, err := h.service.GetParticipantWithLikes(r.Context(), participantID, viewer)
+	participant, err := h.service.GetParticipant(r.Context(), participantID, viewer)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

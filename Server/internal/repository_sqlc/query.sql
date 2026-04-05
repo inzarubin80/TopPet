@@ -618,32 +618,6 @@ DELETE FROM contest_chat_messages
 WHERE id = $1 AND user_id = $2 AND is_system = FALSE
 RETURNING contest_id;
 
--- Photo Likes
-
--- name: UpsertPhotoLike :one
-INSERT INTO photo_likes (id, photo_id, user_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (photo_id, user_id) DO UPDATE
-SET id = photo_likes.id
-RETURNING *;
-
--- name: DeletePhotoLike :exec
-DELETE FROM photo_likes
-WHERE photo_id = $1 AND user_id = $2;
-
--- name: GetPhotoLikeByUser :one
-SELECT * FROM photo_likes
-WHERE photo_id = $1 AND user_id = $2;
-
--- name: CountPhotoLikes :one
-SELECT count(1) FROM photo_likes
-WHERE photo_id = $1;
-
--- name: ListPhotoLikesByPhotos :many
-SELECT id, photo_id, user_id, created_at
-FROM photo_likes
-WHERE photo_id = ANY($1::uuid[]) AND user_id = $2;
-
 -- Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
 
 -- name: CreateNomination :one

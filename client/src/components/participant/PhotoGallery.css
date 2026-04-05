@@ -93,97 +93,6 @@
   z-index: 10;
 }
 
-.photo-gallery-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.photo-gallery-like-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border: 2px solid #ddd;
-  background: #fff;
-  border-radius: 24px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  color: #666;
-}
-
-.photo-gallery-like-button:hover:not(:disabled) {
-  border-color: #007bff;
-  background: #f0f8ff;
-  transform: scale(1.05);
-}
-
-.photo-gallery-like-button:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.photo-gallery-like-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.photo-gallery-like-button-active {
-  border-color: #e91e63;
-  background: #fff5f8;
-  color: #e91e63;
-}
-
-.photo-gallery-like-button-active:hover:not(:disabled) {
-  border-color: #c2185b;
-  background: #ffeef5;
-}
-
-.photo-gallery-like-button-unauthorized {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-.photo-gallery-like-button-unauthorized:hover:not(:disabled) {
-  border-color: #007bff;
-  background: #f0f8ff;
-  opacity: 1;
-}
-
-.photo-gallery-like-icon {
-  font-size: 20px;
-  line-height: 1;
-  transition: transform 0.2s ease;
-}
-
-.photo-gallery-like-button:hover:not(:disabled) .photo-gallery-like-icon {
-  transform: scale(1.2);
-}
-
-.photo-gallery-like-count-text {
-  font-size: 16px;
-  font-weight: 600;
-  min-width: 20px;
-  text-align: center;
-}
-
-.photo-gallery-like-count-display {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  color: #666;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.photo-gallery-like-count-display .photo-gallery-like-icon {
-  font-size: 20px;
-}
-
 @media (max-width: 768px) {
   .photo-gallery-image-container {
     min-height: 300px;
@@ -212,18 +121,5 @@
     right: 8px;
     font-size: 12px;
     padding: 4px 8px;
-  }
-
-  .photo-gallery-like-button {
-    padding: 8px 14px;
-    font-size: 14px;
-  }
-
-  .photo-gallery-like-icon {
-    font-size: 18px;
-  }
-
-  .photo-gallery-like-count-text {
-    font-size: 14px;
   }
 }

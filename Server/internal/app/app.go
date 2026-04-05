@@ -353,12 +353,6 @@ func (a *App) registerRoutes() {
 		a.service,
 	))
 
-	// Photo Likes
-	photoLikeHandler := appHttp.NewPhotoLikeHandler("/api/photos/{photoId}/like", a.service)
-	a.mux.Handle("GET /api/photos/{photoId}/like", photoLikeHandler)
-	a.mux.Handle("POST /api/photos/{photoId}/like", middleware.NewAuthMiddleware(photoLikeHandler, a.service))
-	a.mux.Handle("DELETE /api/photos/{photoId}/like", middleware.NewAuthMiddleware(photoLikeHandler, a.service))
-
 	// Votes
 	a.mux.Handle("GET /api/contests/{contestId}/vote", appHttp.NewVoteHandler("/api/contests/{contestId}/vote", a.service))
 	a.mux.Handle("POST /api/contests/{contestId}/vote", middleware.NewAuthMiddleware(
