@@ -28,7 +28,6 @@
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  margin-right: 6px;
 }
 
 .participant-card-moderation-btn:disabled {
@@ -284,9 +283,10 @@
   padding-top: 14px;
   border-top: 1px solid #f1f5f9;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
 }
 
 .participant-card-meta {
@@ -330,10 +330,32 @@
 
 .participant-card-icon-actions {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 8px;
-  margin-left: auto;
-  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.participant-card-moderation-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.participant-card-moderation-row .participant-card-moderation-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.participant-card-icon-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
 }
 
 .participant-card-icon-btn {
@@ -374,6 +396,10 @@
   box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.2), 0 2px 14px rgba(15, 23, 42, 0.06);
 }
 
+.participant-card-vote {
+  align-self: flex-start;
+}
+
 @media (max-width: 560px) {
   .participant-card {
     flex-direction: column;
@@ -389,14 +415,3 @@
   }
 }
 
-@media (max-width: 480px) {
-  .participant-card-footer {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .participant-card-icon-actions {
-    margin-left: 0;
-    align-self: flex-end;
-  }
-}

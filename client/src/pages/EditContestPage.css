@@ -221,14 +221,13 @@
   max-width: none;
 }
 
-/* Футер с действием */
-.edit-contest-page-footer {
+/* Кнопка сохранения вверху (под шапкой) */
+.edit-contest-page-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
-  padding-top: 16px;
+  margin-bottom: 12px;
 }
 
 /* Состояния загрузки и ошибки */
@@ -429,11 +428,7 @@
     padding: 16px 14px 18px;
   }
 
-  .edit-contest-page-footer {
-    padding-top: 12px;
-  }
-
-  .edit-contest-page-footer .btn {
+  .edit-contest-page-actions .btn {
     width: 100%;
   }
 }

@@ -4,6 +4,7 @@ export type RegistrationAnswerDisplayRow = {
   id: string;
   label: string;
   value: string;
+  fieldType: RegistrationFieldType;
 };
 
 function isPresent(raw: unknown): boolean {
@@ -41,7 +42,7 @@ export function registrationAnswersToDisplayRows(
     if (!Object.prototype.hasOwnProperty.call(answers, f.id)) continue;
     const raw = answers[f.id];
     if (!isPresent(raw)) continue;
-    out.push({ id: f.id, label: f.label, value: formatValue(f, raw) });
+    out.push({ id: f.id, label: f.label, value: formatValue(f, raw), fieldType: f.field_type });
   }
   return out;
 }

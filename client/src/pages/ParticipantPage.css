@@ -257,6 +257,22 @@
   word-break: break-word;
 }
 
+.participant-page-registration-textarea {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.participant-page-registration-img {
+  display: block;
+  max-width: min(100%, 360px);
+  max-height: 280px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  object-fit: contain;
+}
+
 .participant-page-vote-button-wrapper {
   margin-bottom: 24px;
   width: 100%;

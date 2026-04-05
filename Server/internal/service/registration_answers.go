@@ -2,10 +2,14 @@ package service
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"toppet/server/internal/model"
 )
+
+const maxRegistrationTextareaRunes = 10000
 
 func cloneAnswersMap(m map[string]interface{}) map[string]interface{} {
 	if m == nil {
@@ -62,6 +66,33 @@ func validateOneAnswer(f *model.RegistrationField, raw interface{}) error {
 		}
 		if strings.TrimSpace(s) == "" {
 			return fmt.Errorf("value cannot be empty")
+		}
+		return nil
+	case "textarea":
+		s, ok := raw.(string)
+		if !ok {
+			return fmt.Errorf("expected string")
+		}
+		t := strings.TrimSpace(s)
+		if t == "" {
+			return fmt.Errorf("value cannot be empty")
+		}
+		if utf8.RuneCountInString(t) > maxRegistrationTextareaRunes {
+			return fmt.Errorf("text is too long (max %d characters)", maxRegistrationTextareaRunes)
+		}
+		return nil
+	case "image":
+		s, ok := raw.(string)
+		if !ok {
+			return fmt.Errorf("expected string (image URL)")
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return fmt.Errorf("value cannot be empty")
+		}
+		u, err := url.Parse(s)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("value must be a valid http(s) URL")
 		}
 		return nil
 	case "number":

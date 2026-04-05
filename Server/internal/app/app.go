@@ -319,6 +319,10 @@ func (a *App) registerRoutes() {
 			appHttp.NewUploadContestAssetHandler("/api/contests/{contestId}/assets/{kind}", a.service, a.uploader),
 			a.service,
 		))
+		a.mux.Handle("POST /api/contests/{contestId}/registration-image-upload", middleware.NewAuthMiddleware(
+			appHttp.NewUploadRegistrationFieldImageHandler("/api/contests/{contestId}/registration-image-upload", a.service, a.uploader),
+			a.service,
+		))
 		a.mux.Handle("POST /api/participants/{participantId}/photos", middleware.NewAuthMiddleware(
 			appHttp.NewUploadPhotoHandler("/api/participants/{participantId}/photos", a.service, a.uploader),
 			a.service,

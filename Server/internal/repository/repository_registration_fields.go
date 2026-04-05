@@ -64,7 +64,7 @@ func (r *Repository) ReplaceContestRegistrationFields(ctx context.Context, conte
 	}
 	for i, it := range items {
 		ft := it.FieldType
-		if ft != "string" && ft != "number" && ft != "boolean" && ft != "enum" {
+		if ft != "string" && ft != "number" && ft != "boolean" && ft != "enum" && ft != "textarea" && ft != "image" {
 			return errors.New("invalid field_type")
 		}
 		if ft == "enum" && len(it.EnumOptions) < 1 {

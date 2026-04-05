@@ -19,21 +19,42 @@ import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
+import { Textarea } from '../common/Textarea';
 import { ContestID, Nomination, Participant, Photo, RegistrationField } from '../../types/models';
 import type {
   ParticipantsListNominationFilter,
   ParticipantsListSubmissionFilter,
 } from '../../api/participantsApi';
-import { listRegistrationFields } from '../../api/registrationFieldsApi';
+import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
 import { listNominations } from '../../api/nominationsApi';
 import { buildLoginUrl } from '../../utils/navigation';
+import { resolvePublicAssetUrl } from '../../utils/seo';
 import './AddParticipantModal.css';
 
 type LocalPhotoPick = { file: File; previewUrl: string };
+type RegistrationImagePick = { file: File; previewUrl: string };
 
 function revokeLocalPhotoPicks(picks: LocalPhotoPick[]) {
   for (const p of picks) {
     URL.revokeObjectURL(p.previewUrl);
+  }
+}
+
+function revokeRegistrationImagePicks(picks: Record<string, RegistrationImagePick>) {
+  for (const p of Object.values(picks)) {
+    URL.revokeObjectURL(p.previewUrl);
+  }
+}
+
+const REGISTRATION_TEXTAREA_MAX_RUNES = 10000;
+
+function isValidHttpUrl(s: string): boolean {
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    return u.hostname.length > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -75,6 +96,13 @@ function buildRegistrationAnswers(
         if (!raw) {
           return { ok: false, message: `Выберите значение для «${f.label}»` };
         }
+      } else if (f.field_type === 'image') {
+        if (!trimmed) {
+          return {
+            ok: false,
+            message: `Загрузите изображение или укажите ссылку для «${f.label}»`,
+          };
+        }
       } else if (!trimmed) {
         return { ok: false, message: `Заполните поле «${f.label}»` };
       }
@@ -86,6 +114,23 @@ function buildRegistrationAnswers(
           break;
         }
         answers[f.id] = trimmed;
+        break;
+      }
+      case 'textarea': {
+        const t = raw.trim();
+        if (!f.required && t === '') {
+          break;
+        }
+        if (f.required && t === '') {
+          return { ok: false, message: `Заполните поле «${f.label}»` };
+        }
+        if (Array.from(t).length > REGISTRATION_TEXTAREA_MAX_RUNES) {
+          return {
+            ok: false,
+            message: `Поле «${f.label}»: не более ${REGISTRATION_TEXTAREA_MAX_RUNES} символов`,
+          };
+        }
+        answers[f.id] = t;
         break;
       }
       case 'number': {
@@ -108,6 +153,19 @@ function buildRegistrationAnswers(
           break;
         }
         answers[f.id] = raw;
+        break;
+      }
+      case 'image': {
+        if (!f.required && !trimmed) {
+          break;
+        }
+        if (!isValidHttpUrl(trimmed)) {
+          return {
+            ok: false,
+            message: `Поле «${f.label}»: укажите корректную ссылку (http или https)`,
+          };
+        }
+        answers[f.id] = trimmed;
         break;
       }
       default:
@@ -174,9 +232,21 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
   const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
+  const [registrationImagePicks, setRegistrationImagePicks] = useState<
+    Record<string, RegistrationImagePick>
+  >({});
   const [nominationsForPhotos, setNominationsForPhotos] = useState<Nomination[] | null>(null);
 
+  const registrationImagePicksRef = useRef<Record<string, RegistrationImagePick>>({});
+  registrationImagePicksRef.current = registrationImagePicks;
+
   const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      revokeRegistrationImagePicks(registrationImagePicksRef.current);
+    };
+  }, []);
 
   const minPhotosRequired = useMemo(() => {
     const nid = participant?.nomination_id ?? nominationIdProp ?? null;
@@ -284,6 +354,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     if (!isOpen || registrationFields === null) {
       return;
     }
+    setRegistrationImagePicks((prev) => {
+      revokeRegistrationImagePicks(prev);
+      return {};
+    });
     setRegistrationAnswersDraft(initRegistrationDraft(participant, registrationFields));
   }, [isOpen, participant, registrationFields]);
 
@@ -378,6 +452,41 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     setDraggedIndex(null);
   };
 
+  const handleRegistrationImageFile = (fieldId: string, file: File | null) => {
+    if (!file) {
+      setRegistrationImagePicks((prev) => {
+        const cur = prev[fieldId];
+        if (cur) {
+          URL.revokeObjectURL(cur.previewUrl);
+        }
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('Пожалуйста, выберите изображение');
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('Размер файла не должен превышать 10MB');
+      return;
+    }
+    setRegistrationImagePicks((prev) => {
+      const cur = prev[fieldId];
+      if (cur) {
+        URL.revokeObjectURL(cur.previewUrl);
+      }
+      return {
+        ...prev,
+        [fieldId]: { file, previewUrl: URL.createObjectURL(file) },
+      };
+    });
+    setError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     // Double check authentication before submitting
     if (!isAuthenticated) {
@@ -389,11 +498,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     e.preventDefault();
 
     const fields = registrationFields ?? [];
-    const built = buildRegistrationAnswers(fields, registrationAnswersDraft);
-    if (!built.ok) {
-      setError(built.message);
-      return;
-    }
     if (currentPhotoTotal < minPhotosRequired) {
       setError(
         `Добавьте не менее ${minPhotosRequired} фото (сейчас выбрано ${currentPhotoTotal}).`
@@ -403,6 +507,25 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     try {
       setLoading(true);
       setError(null);
+
+      let workingDraft = { ...registrationAnswersDraft };
+      for (const f of fields) {
+        if (f.field_type !== 'image') {
+          continue;
+        }
+        const pick = registrationImagePicks[f.id];
+        if (pick) {
+          const url = await uploadRegistrationFieldImage(contestId, pick.file, f.id);
+          workingDraft[f.id] = url;
+        }
+      }
+
+      const built = buildRegistrationAnswers(fields, workingDraft);
+      if (!built.ok) {
+        setError(built.message);
+        setLoading(false);
+        return;
+      }
 
       let participantId: string;
 
@@ -575,6 +698,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
       revokeLocalPhotoPicks(selectedPhotosRef.current);
       setSelectedPhotos([]);
+      revokeRegistrationImagePicks(registrationImagePicksRef.current);
+      setRegistrationImagePicks({});
 
       // Close modal
       onClose();
@@ -610,6 +735,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setDraggedIndex(null);
       setRegistrationFields(null);
       setRegistrationAnswersDraft({});
+      setRegistrationImagePicks((prev) => {
+        revokeRegistrationImagePicks(prev);
+        return {};
+      });
       setError(null);
       onClose();
     }
@@ -731,6 +860,94 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+                {field.field_type === 'textarea' && (
+                  <Textarea
+                    label={field.label + (field.required ? ' *' : '')}
+                    value={registrationAnswersDraft[field.id] ?? ''}
+                    onChange={(e) =>
+                      setRegistrationAnswersDraft((prev) => ({
+                        ...prev,
+                        [field.id]: e.target.value,
+                      }))
+                    }
+                    disabled={loading || uploadingMedia}
+                    rows={4}
+                  />
+                )}
+                {field.field_type === 'image' && (
+                  <div className="add-participant-registration-image">
+                    <span className="add-participant-registration-image-label">
+                      {field.label}
+                      {field.required ? ' *' : ''}
+                    </span>
+                    <Input
+                      label="Ссылка на изображение"
+                      type="url"
+                      placeholder="https://…"
+                      value={registrationAnswersDraft[field.id] ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRegistrationImagePicks((prev) => {
+                          const cur = prev[field.id];
+                          if (cur) {
+                            URL.revokeObjectURL(cur.previewUrl);
+                          }
+                          const next = { ...prev };
+                          delete next[field.id];
+                          return next;
+                        });
+                        setRegistrationAnswersDraft((prev) => ({
+                          ...prev,
+                          [field.id]: v,
+                        }));
+                      }}
+                      disabled={loading || uploadingMedia}
+                    />
+                    <label className="add-participant-registration-image-file">
+                      <span className="add-participant-registration-image-file-text">Или загрузить файл</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="add-participant-registration-image-file-input"
+                        disabled={loading || uploadingMedia}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          e.target.value = '';
+                          handleRegistrationImageFile(field.id, f);
+                        }}
+                      />
+                    </label>
+                    {registrationImagePicks[field.id] ? (
+                      <div className="add-participant-registration-image-preview-wrap">
+                        <img
+                          src={registrationImagePicks[field.id].previewUrl}
+                          alt=""
+                          className="add-participant-registration-image-preview"
+                        />
+                        <button
+                          type="button"
+                          className="add-participant-registration-image-remove"
+                          disabled={loading || uploadingMedia}
+                          onClick={() => handleRegistrationImageFile(field.id, null)}
+                        >
+                          Убрать файл
+                        </button>
+                      </div>
+                    ) : (registrationAnswersDraft[field.id] ?? '').trim() ? (
+                      <div className="add-participant-registration-image-preview-wrap">
+                        <img
+                          src={resolvePublicAssetUrl((registrationAnswersDraft[field.id] ?? '').trim())}
+                          alt=""
+                          className="add-participant-registration-image-preview"
+                        />
+                      </div>
+                    ) : null}
+                    <p className="add-participant-registration-image-hint">
+                      До 10&nbsp;МБ, форматы изображений (не SVG). При выборе файла он будет загружен при отправке
+                      заявки.
+                    </p>
                   </div>
                 )}
               </div>

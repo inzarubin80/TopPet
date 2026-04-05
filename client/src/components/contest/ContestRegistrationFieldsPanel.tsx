@@ -151,8 +151,8 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
       <section className="contest-registration-fields">
         <h2 className="contest-registration-fields-title">Поля заявки участника</h2>
         <p className="contest-registration-fields-hint">
-          Дополнительные вопросы при подаче заявки (фото, видео и номинация — в форме участия). Типы: текст, число,
-          да/нет, список вариантов.
+          Дополнительные вопросы при подаче заявки (фото, видео и номинация — в форме участия). Типы: строка, многострочный
+          текст, число, да/нет, список вариантов, картинка (файл в заявке).
           {readOnly ? (
             isAdmin ? (
               <>
@@ -197,9 +197,11 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
                 }}
               >
                 <option value="string">Строка</option>
+                <option value="textarea">Многострочный текст</option>
                 <option value="number">Число</option>
                 <option value="boolean">Да / нет</option>
                 <option value="enum">Перечисление</option>
+                <option value="image">Картинка</option>
               </select>
               <label className="contest-registration-fields-check">
                 <input

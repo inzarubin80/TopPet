@@ -127,7 +127,7 @@ export interface JuryVotingProgressRow {
   criteria_scored: number;
 }
 
-export type RegistrationFieldType = 'string' | 'number' | 'boolean' | 'enum';
+export type RegistrationFieldType = 'string' | 'number' | 'boolean' | 'enum' | 'textarea' | 'image';
 
 export interface RegistrationField {
   id: string;

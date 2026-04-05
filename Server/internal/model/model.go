@@ -196,7 +196,7 @@ type (
 		ContestID   ContestID `json:"contest_id"`
 		SortOrder   int       `json:"sort_order"`
 		Label       string    `json:"label"`
-		FieldType   string    `json:"field_type"` // string | number | boolean | enum
+		FieldType   string    `json:"field_type"` // string | number | boolean | enum | textarea | image
 		Required    bool      `json:"required"`
 		EnumOptions []string  `json:"enum_options,omitempty"`
 		CreatedAt   time.Time `json:"created_at"`

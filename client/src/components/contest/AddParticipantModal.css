@@ -318,3 +318,75 @@
   border: 1px solid #ccc;
   max-width: 100%;
 }
+
+.add-participant-registration-image {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.add-participant-registration-image-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.add-participant-registration-image-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.add-participant-registration-image-file-input {
+  font: inherit;
+  max-width: 100%;
+}
+
+.add-participant-registration-image-file-text {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.add-participant-registration-image-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.add-participant-registration-image-preview {
+  max-width: min(100%, 280px);
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  object-fit: contain;
+}
+
+.add-participant-registration-image-remove {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.add-participant-registration-image-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-participant-registration-image-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}

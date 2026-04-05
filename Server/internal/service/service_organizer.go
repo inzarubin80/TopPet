@@ -165,7 +165,7 @@ func (s *TopPetService) ReplaceContestRegistrationFields(ctx context.Context, co
 			return nil, fmt.Errorf("field %d: label is required", i+1)
 		}
 		ft := items[i].FieldType
-		if ft != "string" && ft != "number" && ft != "boolean" && ft != "enum" {
+		if ft != "string" && ft != "number" && ft != "boolean" && ft != "enum" && ft != "textarea" && ft != "image" {
 			return nil, fmt.Errorf("field %d: invalid field_type", i+1)
 		}
 		if ft == "enum" && len(items[i].EnumOptions) < 1 {

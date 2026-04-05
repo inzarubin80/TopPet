@@ -286,8 +286,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           )}
           {(isContestAdmin || canEdit) && (
             <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
-              {canModerateSubmission && (
-                <>
+              {canModerateSubmission ? (
+                <div className="participant-card-moderation-row">
                   <button
                     type="button"
                     className="participant-card-moderation-btn participant-card-moderation-accept"
@@ -306,8 +306,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                   >
                     Отклонить
                   </button>
-                </>
-              )}
+                </div>
+              ) : null}
+              <div className="participant-card-icon-toolbar">
               {isContestAdmin && (
                 <>
                   <button
@@ -370,6 +371,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                   </button>
                 </>
               )}
+              </div>
             </div>
           )}
         </div>

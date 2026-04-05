@@ -24,6 +24,7 @@ import { markStaffCommentsRead } from '../api/commentsApi';
 import { listRegistrationFields } from '../api/registrationFieldsApi';
 import { RegistrationField } from '../types/models';
 import { registrationAnswersToDisplayRows } from '../utils/registrationAnswersDisplay';
+import { resolvePublicAssetUrl } from '../utils/seo';
 import { juryCriteriaWordRu } from '../utils/juryLabels';
 import './ParticipantPage.css';
 
@@ -345,7 +346,19 @@ const ParticipantPage: React.FC = () => {
                 {registrationRows.map((row) => (
                   <div key={row.id} className="participant-page-registration-row">
                     <dt className="participant-page-registration-label">{row.label}</dt>
-                    <dd className="participant-page-registration-value">{row.value}</dd>
+                    <dd className="participant-page-registration-value">
+                      {row.fieldType === 'image' && row.value ? (
+                        <img
+                          className="participant-page-registration-img"
+                          src={resolvePublicAssetUrl(row.value)}
+                          alt=""
+                        />
+                      ) : row.fieldType === 'textarea' ? (
+                        <span className="participant-page-registration-textarea">{row.value}</span>
+                      ) : (
+                        row.value
+                      )}
+                    </dd>
                   </div>
                 ))}
               </dl>
