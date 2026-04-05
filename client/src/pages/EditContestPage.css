@@ -390,6 +390,11 @@
   gap: 14px;
 }
 
+.edit-contest-rules-textarea {
+  min-height: 200px;
+  resize: vertical;
+}
+
 .edit-contest-theme-row {
   display: flex;
   flex-wrap: wrap;

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
@@ -28,7 +29,8 @@ type (
 
 var (
 	themeColorPattern = regexp.MustCompile(`^(|#[0-9A-Fa-f]{6})$`)
-	ctaLabelMaxRunes  = 64
+	ctaLabelMaxRunes        = 64
+	contestRulesTextMaxRunes = 80000
 )
 
 func NewUpdateContestHandler(name string, service serviceUpdateContest) *UpdateContestHandler {
@@ -59,8 +61,8 @@ func validateContestUpdate(u model.ContestUpdate) string {
 	if !isEmptyOrAllowedURL(u.LogoUrl) {
 		return "logo_url must be empty, absolute http(s) URL, or path starting with /"
 	}
-	if !isEmptyOrAllowedURL(u.RulesUrl) {
-		return "rules_url must be empty, absolute http(s) URL, or path starting with /"
+	if utf8.RuneCountInString(u.RulesText) > contestRulesTextMaxRunes {
+		return "rules_text is too long"
 	}
 	if !isEmptyOrAllowedURL(u.SponsorLogoUrl) {
 		return "sponsor_logo_url must be empty, absolute http(s) URL, or path starting with /"
@@ -120,7 +122,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		JuryVotingEnabled    *bool   `json:"jury_voting_enabled"`
 		CoverUrl             *string `json:"cover_url"`
 		Tagline              *string `json:"tagline"`
-		RulesUrl             *string `json:"rules_url"`
+		RulesText            *string `json:"rules_text"`
 		PrizeText            *string `json:"prize_text"`
 		LogoUrl              *string `json:"logo_url"`
 		ThemeColor           *string `json:"theme_color"`
@@ -156,7 +158,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		JuryVotingEnabled:              contest.JuryVotingEnabled,
 		CoverUrl:                       contest.CoverUrl,
 		Tagline:                        contest.Tagline,
-		RulesUrl:                       contest.RulesUrl,
+		RulesText:                      contest.RulesText,
 		PrizeText:                      contest.PrizeText,
 		LogoUrl:                        contest.LogoUrl,
 		ThemeColor:                     contest.ThemeColor,
@@ -190,8 +192,8 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if req.Tagline != nil {
 		u.Tagline = strings.TrimSpace(*req.Tagline)
 	}
-	if req.RulesUrl != nil {
-		u.RulesUrl = strings.TrimSpace(*req.RulesUrl)
+	if req.RulesText != nil {
+		u.RulesText = *req.RulesText
 	}
 	if req.PrizeText != nil {
 		u.PrizeText = strings.TrimSpace(*req.PrizeText)

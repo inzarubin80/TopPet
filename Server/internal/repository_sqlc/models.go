@@ -30,14 +30,15 @@ type Contest struct {
 	// Если true — используются критерии жюри и состав жюри
 	JuryVotingEnabled bool
 	Tagline           string
-	RulesUrl          string
-	PrizeText         string
-	LogoUrl           string
-	ThemeColor        string
-	SponsorName       string
-	SponsorLogoUrl    string
-	SponsorUrl        string
-	CtaLabelOverride  string
+	// Полный текст правил конкурса (многострочный); пусто — блок не показывается.
+	RulesText        string
+	PrizeText        string
+	LogoUrl          string
+	ThemeColor       string
+	SponsorName      string
+	SponsorLogoUrl   string
+	SponsorUrl       string
+	CtaLabelOverride string
 	// Домены e-mail (разделители: перевод строки, запятая), нижний регистр; пусто — участвовать может любой авторизованный пользователь.
 	ParticipantAllowedEmailDomains string
 	// IANA TZ для ввода расписания организатором (даты в API по-прежнему UTC)

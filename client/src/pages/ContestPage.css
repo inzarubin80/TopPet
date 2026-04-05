@@ -30,7 +30,8 @@
   padding: 8px 22px 22px;
 }
 
-.contest-page-overview-body > .contest-page-prizes:first-child {
+.contest-page-overview-body > .contest-page-prizes:first-child,
+.contest-page-overview-body > .contest-page-winners:first-child {
   margin-top: 4px;
 }
 
@@ -225,18 +226,85 @@
   text-align: left;
 }
 
+.contest-page-winners {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.07), rgba(253, 230, 138, 0.35));
+  border: 1px solid rgba(180, 83, 9, 0.12);
+}
+
+.contest-page-winners-heading {
+  margin-bottom: 0.65rem;
+}
+
+.contest-page-winners-block + .contest-page-winners-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(180, 83, 9, 0.15);
+}
+
+.contest-page-winners-subheading {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.contest-page-winners-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: #1f2937;
+}
+
+.contest-page-winners-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.contest-page-winners-item:last-child {
+  margin-bottom: 0;
+}
+
+.contest-page-winners-link {
+  font-weight: 600;
+  color: var(--contest-accent, #2563eb);
+  text-decoration: none;
+}
+
+.contest-page-winners-link:hover {
+  text-decoration: underline;
+}
+
+.contest-page-winners-score {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #78716c;
+}
+
 .contest-page-rules-wrap {
   margin: 0 0 16px;
 }
 
-.contest-page-rules-link {
+.contest-page-rules-open {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
   font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   color: var(--contest-accent, var(--color-accent));
-  text-decoration: none;
 }
 
-.contest-page-rules-link:hover {
-  text-decoration: underline;
+.contest-page-rules-open:hover {
+  filter: brightness(0.92);
 }
 
 .contest-page-sponsor {

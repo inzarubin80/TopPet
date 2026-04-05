@@ -1,15 +1,9 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Contest, ContestWinnerBrief } from '../../types/models';
+import { Contest } from '../../types/models';
 import { resolvePublicAssetUrl } from '../../utils/seo';
+import { ContestRulesViewer } from './ContestRulesViewer';
 import './ContestCard.css';
-
-function formatWinnerLine(w: ContestWinnerBrief): string {
-  const name = (w.pet_name || '').trim() || 'Участник';
-  const nom = (w.nomination_title || '').trim();
-  const suffix = nom ? ` (${nom})` : '';
-  return `${name}${suffix}`;
-}
 
 interface ContestCardProps {
   contest: Contest;
@@ -98,48 +92,25 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
           </span>
         </div>
         <p className="contest-card-description">{contest.description || 'Нет описания'}</p>
-        {contest.status === 'finished' &&
-        ((contest.audience_winners?.length ?? 0) > 0 || (contest.jury_winners?.length ?? 0) > 0) ? (
-          <div className="contest-card-winners" aria-label="Победители конкурса">
-            {(contest.audience_winners?.length ?? 0) > 0 && contest.public_voting_enabled ? (
-              <div className="contest-card-winners-block">
-                <span className="contest-card-winners-label">Победители голосования зрителей</span>
-                <ul className="contest-card-winners-list">
-                  {contest.audience_winners!.map((w) => (
-                    <li key={`a-${w.participant_id}`} className="contest-card-winners-item">
-                      {formatWinnerLine(w)}
-                      <span className="contest-card-winners-score" aria-label="голосов">
-                        {w.score}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {(contest.jury_winners?.length ?? 0) > 0 && contest.jury_voting_enabled ? (
-              <div className="contest-card-winners-block">
-                <span className="contest-card-winners-label">Победители голосования жюри</span>
-                <ul className="contest-card-winners-list">
-                  {contest.jury_winners!.map((w) => (
-                    <li key={`j-${w.participant_id}`} className="contest-card-winners-item">
-                      {formatWinnerLine(w)}
-                      <span className="contest-card-winners-score" aria-label="сумма баллов жюри">
-                        {w.score}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
         <div className="contest-card-footer">
-          <span className="contest-card-votes">
-            Голосов: {contest.total_votes || 0}
-          </span>
-          <span className="contest-card-date">
-            Создан {new Date(contest.created_at).toLocaleDateString('ru-RU')}
-          </span>
+          {(contest.rules_text ?? '').trim() ? (
+            <div className="contest-card-footer-left">
+              <ContestRulesViewer
+                rulesText={contest.rules_text}
+                contestTitle={contest.title}
+                stopPropagation
+                triggerClassName="contest-card-rules-btn"
+              />
+            </div>
+          ) : null}
+          <div className="contest-card-footer-right">
+            <span className="contest-card-votes">
+              Голосов: {contest.total_votes || 0}
+            </span>
+            <span className="contest-card-date">
+              Создан {new Date(contest.created_at).toLocaleDateString('ru-RU')}
+            </span>
+          </div>
         </div>
       </div>
     </div>

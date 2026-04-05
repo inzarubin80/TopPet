@@ -42,7 +42,7 @@ CREATE TABLE contests (
     public_voting_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     jury_voting_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     tagline TEXT NOT NULL DEFAULT '',
-    rules_url TEXT NOT NULL DEFAULT '',
+    rules_text TEXT NOT NULL DEFAULT '',
     prize_text TEXT NOT NULL DEFAULT '',
     logo_url TEXT NOT NULL DEFAULT '',
     theme_color TEXT NOT NULL DEFAULT '',

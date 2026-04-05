@@ -50,7 +50,7 @@ export interface UpdateContestRequest {
   jury_voting_enabled?: boolean;
   cover_url?: string;
   tagline?: string;
-  rules_url?: string;
+  rules_text?: string;
   prize_text?: string;
   logo_url?: string;
   theme_color?: string;

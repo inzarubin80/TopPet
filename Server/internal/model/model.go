@@ -56,7 +56,7 @@ type (
 		JuryVotingEnabled   bool          `json:"jury_voting_enabled"`
 		CoverUrl            string        `json:"cover_url,omitempty"`
 		Tagline             string        `json:"tagline,omitempty"`
-		RulesUrl            string        `json:"rules_url,omitempty"`
+		RulesText           string        `json:"rules_text,omitempty"`
 		PrizeText           string        `json:"prize_text,omitempty"`
 		LogoUrl             string        `json:"logo_url,omitempty"`
 		ThemeColor          string        `json:"theme_color,omitempty"`
@@ -97,7 +97,7 @@ type (
 		JuryVotingEnabled              bool
 		CoverUrl                       string
 		Tagline                        string
-		RulesUrl                       string
+		RulesText                      string
 		PrizeText                      string
 		LogoUrl                        string
 		ThemeColor                     string

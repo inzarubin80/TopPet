@@ -1,0 +1,22 @@
+.contest-rules-viewer-trigger {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--contest-card-accent, #2563eb);
+}
+
+.contest-rules-viewer-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #1f2937;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+}

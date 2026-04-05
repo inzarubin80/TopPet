@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
@@ -32,12 +32,14 @@ import { useContestPermissions } from '../hooks/useContestPermissions';
 import { nominationVoteKey } from '../utils/voteKeys';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
+import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
+import { formatContestWinnerLine } from '../utils/contestWinnersFormat';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -346,12 +348,21 @@ const ContestPage: React.FC = () => {
   const logoRaw = (currentContest.logo_url || '').trim();
   const taglineRaw = (currentContest.tagline || '').trim();
   const prizeRaw = (currentContest.prize_text || '').trim();
-  const rulesRaw = (currentContest.rules_url || '').trim();
   const sponsorNameRaw = (currentContest.sponsor_name || '').trim();
   const sponsorLogoRaw = (currentContest.sponsor_logo_url || '').trim();
   const sponsorUrlRaw = (currentContest.sponsor_url || '').trim();
   const hasSponsorBlock = Boolean(sponsorUrlRaw || sponsorNameRaw || sponsorLogoRaw);
   const voteCtaLabel = (currentContest.cta_label_override || '').trim() || undefined;
+
+  const hasAudienceWinners =
+    currentContest.status === 'finished' &&
+    (currentContest.audience_winners?.length ?? 0) > 0 &&
+    currentContest.public_voting_enabled;
+  const hasJuryWinners =
+    currentContest.status === 'finished' &&
+    (currentContest.jury_winners?.length ?? 0) > 0 &&
+    currentContest.jury_voting_enabled;
+  const showContestWinnersSection = hasAudienceWinners || hasJuryWinners;
 
   const contestPageStyle =
     hasThemedAccent
@@ -478,17 +489,62 @@ const ContestPage: React.FC = () => {
           </div>
         ) : null}
 
-        {rulesRaw ? (
-          <p className="contest-page-rules-wrap">
-            <a
-              href={resolvePublicAssetUrl(rulesRaw)}
-              className="contest-page-rules-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Полные правила конкурса
-            </a>
-          </p>
+        {showContestWinnersSection && id ? (
+          <section className="contest-page-winners" aria-labelledby="contest-winners-heading">
+            <h2 id="contest-winners-heading" className="contest-section-heading contest-page-winners-heading">
+              Победители
+            </h2>
+            {hasAudienceWinners ? (
+              <div className="contest-page-winners-block">
+                <h3 className="contest-page-winners-subheading">По голосам зрителей</h3>
+                <ul className="contest-page-winners-list">
+                  {currentContest.audience_winners!.map((w) => (
+                    <li key={`a-${w.participant_id}`} className="contest-page-winners-item">
+                      <Link
+                        to={`/contests/${id}/participants/${w.participant_id}`}
+                        className="contest-page-winners-link"
+                      >
+                        {formatContestWinnerLine(w)}
+                      </Link>
+                      <span className="contest-page-winners-score" aria-label="голосов">
+                        {w.score}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {hasJuryWinners ? (
+              <div className="contest-page-winners-block">
+                <h3 className="contest-page-winners-subheading">По сумме баллов жюри</h3>
+                <ul className="contest-page-winners-list">
+                  {currentContest.jury_winners!.map((w) => (
+                    <li key={`j-${w.participant_id}`} className="contest-page-winners-item">
+                      <Link
+                        to={`/contests/${id}/participants/${w.participant_id}`}
+                        className="contest-page-winners-link"
+                      >
+                        {formatContestWinnerLine(w)}
+                      </Link>
+                      <span className="contest-page-winners-score" aria-label="сумма баллов жюри">
+                        {w.score}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {(currentContest.rules_text ?? '').trim() ? (
+          <div className="contest-page-rules-wrap">
+            <ContestRulesViewer
+              rulesText={currentContest.rules_text}
+              contestTitle={currentContest.title}
+              triggerClassName="contest-page-rules-open"
+            />
+          </div>
         ) : null}
 
         {hasSponsorBlock ? (

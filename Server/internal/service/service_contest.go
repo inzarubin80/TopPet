@@ -191,7 +191,7 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 		JuryVotingEnabled:              c.JuryVotingEnabled,
 		CoverUrl:                       c.CoverUrl,
 		Tagline:                        c.Tagline,
-		RulesUrl:                       c.RulesUrl,
+		RulesText:                      c.RulesText,
 		PrizeText:                      c.PrizeText,
 		LogoUrl:                        c.LogoUrl,
 		ThemeColor:                     c.ThemeColor,

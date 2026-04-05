@@ -111,7 +111,7 @@ SET
   jury_voting_enabled = $5,
   cover_url = $6,
   tagline = $7,
-  rules_url = $8,
+  rules_text = $8,
   prize_text = $9,
   logo_url = $10,
   theme_color = $11,

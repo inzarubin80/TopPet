@@ -53,7 +53,8 @@ export interface Contest {
   jury_voting_enabled?: boolean;
   cover_url?: string;
   tagline?: string;
-  rules_url?: string;
+  /** Многострочный текст правил; пусто — кнопка не показывается. */
+  rules_text?: string;
   prize_text?: string;
   logo_url?: string;
   theme_color?: string;

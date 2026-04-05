@@ -138,54 +138,43 @@
   overflow: hidden;
 }
 
-.contest-card-winners {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.contest-card-winners-block {
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.contest-card-winners-label {
-  display: block;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 4px;
-}
-
-.contest-card-winners-list {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: #1f2937;
-}
-
-.contest-card-winners-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.contest-card-winners-score {
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
 .contest-card-footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 8px 12px;
   margin-top: 12px;
   font-size: 12px;
   color: #999;
+}
+
+.contest-card-footer-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.contest-card-footer-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.contest-card-rules-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--contest-card-accent, #2563eb);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-align: left;
 }
 
 .contest-card-votes {

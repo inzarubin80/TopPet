@@ -51,7 +51,7 @@ const EditContestPage: React.FC = () => {
   const [juryVoting, setJuryVoting] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
   const [tagline, setTagline] = useState('');
-  const [rulesUrl, setRulesUrl] = useState('');
+  const [rulesText, setRulesText] = useState('');
   const [prizeText, setPrizeText] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [themeColor, setThemeColor] = useState('');
@@ -93,7 +93,7 @@ const EditContestPage: React.FC = () => {
       setJuryVoting(false);
       setCoverUrl('');
       setTagline('');
-      setRulesUrl('');
+      setRulesText('');
       setPrizeText('');
       setLogoUrl('');
       setThemeColor('');
@@ -120,7 +120,7 @@ const EditContestPage: React.FC = () => {
         setJuryVoting(contest.jury_voting_enabled ?? false);
         setCoverUrl(contest.cover_url ?? '');
         setTagline(contest.tagline ?? '');
-        setRulesUrl(contest.rules_url ?? '');
+        setRulesText(contest.rules_text ?? '');
         setPrizeText(contest.prize_text ?? '');
         setLogoUrl(contest.logo_url ?? '');
         setThemeColor(contest.theme_color ?? '');
@@ -150,7 +150,7 @@ const EditContestPage: React.FC = () => {
     setJuryVoting(currentContest.jury_voting_enabled ?? false);
     setCoverUrl(currentContest.cover_url ?? '');
     setTagline(currentContest.tagline ?? '');
-    setRulesUrl(currentContest.rules_url ?? '');
+    setRulesText(currentContest.rules_text ?? '');
     setPrizeText(currentContest.prize_text ?? '');
     setLogoUrl(currentContest.logo_url ?? '');
     setThemeColor(currentContest.theme_color ?? '');
@@ -193,7 +193,7 @@ const EditContestPage: React.FC = () => {
         jury_voting_enabled: juryVoting,
         cover_url: coverUrl.trim(),
         tagline: tagline.trim(),
-        rules_url: rulesUrl.trim(),
+        rules_text: rulesText,
         prize_text: prizeText.trim(),
         logo_url: logoUrl.trim(),
         theme_color: themeColor.trim(),
@@ -575,13 +575,14 @@ const EditContestPage: React.FC = () => {
                 />
               </label>
             </div>
-            <Input
-              label="Ссылка на полные правила"
-              type="url"
-              value={rulesUrl}
-              onChange={(e) => setRulesUrl(e.target.value)}
-              placeholder="https://…"
+            <Textarea
+              label="Правила конкурса (многострочный текст)"
+              value={rulesText}
+              onChange={(e) => setRulesText(e.target.value)}
+              placeholder="Условия участия, критерии, запреты…"
+              rows={10}
               disabled={saving}
+              className="edit-contest-rules-textarea"
             />
             <Input
               label="Название спонсора"
