@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
   fetchContest,
-  updateContestStatus,
   deleteContest,
   setUserVotesForContest,
 } from '../store/slices/contestsSlice';
@@ -33,6 +32,7 @@ import { nominationVoteKey } from '../utils/voteKeys';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
 import { resolvePublicAssetUrl } from '../utils/seo';
+import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
 import { listRegistrationFields } from '../api/registrationFieldsApi';
 import { getContestJury } from '../api/juryApi';
@@ -93,7 +93,7 @@ const ContestPage: React.FC = () => {
       });
     }
     
-    // For draft and registration, keep original order (by created_at)
+    // For draft, publication and registration, keep original order (by created_at)
     return participantIds;
   }, [participantIds, participants, currentContest]);
   
@@ -169,7 +169,9 @@ const ContestPage: React.FC = () => {
       return;
     }
     const paginated =
-      currentContest.status === 'draft' || currentContest.status === 'registration';
+      currentContest.status === 'draft' ||
+      currentContest.status === 'publication' ||
+      currentContest.status === 'registration';
     const limit = paginated ? PARTICIPANTS_PAGE_SIZE : 10000;
     const offset = paginated ? participantsPage * PARTICIPANTS_PAGE_SIZE : 0;
     dispatch(
@@ -202,7 +204,7 @@ const ContestPage: React.FC = () => {
       return;
     }
     const s = currentContest.status;
-    if (s !== 'draft' && s !== 'registration') {
+    if (s !== 'draft' && s !== 'publication' && s !== 'registration') {
       return;
     }
     dispatch(fetchMyParticipantsForContest({ contestId: id }));
@@ -307,6 +309,13 @@ const ContestPage: React.FC = () => {
     return m;
   }, [contestNominations]);
 
+  const contestScheduleLines = useMemo(() => {
+    if (!currentContest) {
+      return [] as string[];
+    }
+    return getContestScheduleDisplayLines(currentContest);
+  }, [currentContest]);
+
   if (loading) {
     return (
       <div className="contest-page-loading">
@@ -320,7 +329,9 @@ const ContestPage: React.FC = () => {
   }
 
   const participantsListPaginated =
-    currentContest.status === 'draft' || currentContest.status === 'registration';
+    currentContest.status === 'draft' ||
+    currentContest.status === 'publication' ||
+    currentContest.status === 'registration';
   const participantsTotalPages =
     participantsListPaginated && participantsListTotal > 0
       ? Math.max(1, Math.ceil(participantsListTotal / PARTICIPANTS_PAGE_SIZE))
@@ -341,6 +352,7 @@ const ContestPage: React.FC = () => {
 
   const statusLabels: Record<ContestStatus, string> = {
     draft: 'Черновик',
+    publication: 'Публикация',
     registration: 'Регистрация',
     voting: 'Голосование',
     finished: 'Завершен',
@@ -387,107 +399,6 @@ const ContestPage: React.FC = () => {
         />
       )}
       <div className="contest-page-main">
-        <div className="contest-page-top-actions">
-          <button
-            type="button"
-            className="contest-page-back-button"
-            onClick={() => navigate('/')}
-            aria-label="Назад"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-          </button>
-          {isAdmin && (
-            <div className="contest-page-admin-actions">
-              <div className="contest-page-admin-status">
-                <select
-                  className="contest-page-admin-status-select"
-                  value={currentContest.status}
-                  onChange={async (event) => {
-                    const nextStatus = event.target.value as ContestStatus;
-                    if (nextStatus === currentContest.status) {
-                      return;
-                    }
-                    try {
-                      await dispatch(
-                        updateContestStatus({ contestId: currentContest.id, status: nextStatus })
-                      ).unwrap();
-                    } catch (error) {
-                      errorHandler.handleError(error, showError, false);
-                      showError('Не удалось обновить статус');
-                    }
-                  }}
-                >
-                  <option value="draft">Черновик</option>
-                  <option value="registration">Регистрация</option>
-                  <option value="voting">Голосование</option>
-                  <option value="finished">Завершен</option>
-                </select>
-              </div>
-            {currentContest.status === 'draft' && (
-              <Button
-                onClick={async () => {
-                  try {
-                    await dispatch(
-                      updateContestStatus({ contestId: currentContest.id, status: 'registration' })
-                    ).unwrap();
-                  } catch (error) {
-                    errorHandler.handleError(error, showError, false);
-                    showError('Не удалось открыть регистрацию');
-                  }
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14"></path>
-                  <path d="M12 5l7 7-7 7"></path>
-                </svg>
-                Открыть регистрацию
-              </Button>
-            )}
-            {currentContest.status === 'registration' && (
-              <Button
-                onClick={async () => {
-                  try {
-                    await dispatch(
-                      updateContestStatus({ contestId: currentContest.id, status: 'voting' })
-                    ).unwrap();
-                  } catch (error) {
-                    errorHandler.handleError(error, showError, false);
-                    showError('Не удалось начать голосование');
-                  }
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                Начать голосование
-              </Button>
-            )}
-            {currentContest.status === 'voting' && (
-              <Button
-                variant="success"
-                onClick={async () => {
-                  try {
-                    await dispatch(
-                      updateContestStatus({ contestId: currentContest.id, status: 'finished' })
-                    ).unwrap();
-                  } catch (error) {
-                    errorHandler.handleError(error, showError, false);
-                    showError('Не удалось завершить конкурс');
-                  }
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Завершить
-              </Button>
-            )}
-            </div>
-          )}
-        </div>
         <section className="contest-page-overview" aria-label="О конкурсе">
         {hasHeroCover ? (
           <div
@@ -641,6 +552,24 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-description">
           <p>{currentContest.description || 'Нет описания'}</p>
         </div>
+
+        {contestScheduleLines.length > 0 ? (
+          <section
+            className="contest-page-schedule-block"
+            aria-labelledby="contest-schedule-heading"
+          >
+            <h2 id="contest-schedule-heading" className="contest-page-schedule-heading">
+              Расписание проведения
+            </h2>
+            <div className="contest-page-schedule contest-page-schedule--body">
+              {contestScheduleLines.map((line, i) => (
+                <div key={`schedule-${i}`} className="contest-page-schedule-line">
+                  {line}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <ContestOrganizerCriteriaPanel
           contest={currentContest}

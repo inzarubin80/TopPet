@@ -69,7 +69,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [editNomDesc, setEditNomDesc] = useState('');
   const [editNomMinPhotos, setEditNomMinPhotos] = useState(1);
 
-  const canEdit = !readOnly && isAdmin && contest.status === 'draft';
+  const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
 
   const load = useCallback(async () => {
@@ -363,7 +363,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           ? 'Номинации — категории участия. Критерии оценки для жюри настраиваются в блоке «Жюри» ниже.'
           : 'Номинации — категории участия. Критерии жюри задаются на весь конкурс и одинаковы для всех номинаций.'}
         {readOnly ? (
-          isAdmin && contest.status === 'draft' ? (
+          isAdmin ? (
             <>
               {' '}
               Изменить название, описание, номинации и критерии можно на{' '}
@@ -371,7 +371,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             </>
           ) : null
         ) : (
-          <> Редактирование — в статусе «Черновик».</>
+          <> Сохраните изменения кнопкой внизу блока.</>
         )}
       </p>
 

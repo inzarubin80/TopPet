@@ -33,10 +33,10 @@ export const ParticipantJuryScoresPanel: React.FC<Props> = ({
   const [values, setValues] = useState<Record<string, number>>({});
 
   const readOnly =
-    contestStatus === 'finished' || contestStatus === 'draft';
+    contestStatus === 'finished' || contestStatus === 'draft' || contestStatus === 'publication';
 
   const load = useCallback(async () => {
-    if (contestStatus === 'draft') {
+    if (contestStatus === 'draft' || contestStatus === 'publication') {
       setVisible(false);
       setLoading(false);
       return;

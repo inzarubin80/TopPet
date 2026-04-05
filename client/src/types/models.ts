@@ -6,7 +6,7 @@ export type ParticipantID = string;
 export type CommentID = string;
 export type ChatMessageID = string;
 
-export type ContestStatus = 'draft' | 'registration' | 'voting' | 'finished';
+export type ContestStatus = 'draft' | 'publication' | 'registration' | 'voting' | 'finished';
 
 /** Глобальная роль в системе (поле users.role). */
 export type UserRole = 'user' | 'contest_admin' | 'system_admin';
@@ -18,6 +18,8 @@ export interface User {
   role?: UserRole;
   avatar_url?: string;
   created_at: string;
+  /** Только ответ GET /api/admin/users — OAuth-провайдеры, привязанные к аккаунту. */
+  auth_providers?: string[];
 }
 
 export interface UserSearchHit {
@@ -52,7 +54,7 @@ export interface Contest {
   cta_label_override?: string;
   /** Домены e-mail; пусто — заявку может подать любой. */
   participant_allowed_email_domains?: string[];
-  /** Начало регистрации (UTC, RFC3339). Автопереход draft → registration. */
+  /** Начало регистрации (UTC, RFC3339). Автопереход draft|publication → registration. */
   registration_starts_at?: string;
   /** Начало голосования; до этого момента приём заявок. Автопереход registration → voting. */
   voting_starts_at?: string;

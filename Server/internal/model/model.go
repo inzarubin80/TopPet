@@ -33,6 +33,8 @@ type (
 		Role      string    `json:"role"`
 		AvatarURL string    `json:"avatar_url,omitempty"`
 		CreatedAt time.Time `json:"created_at"`
+		// AuthProviders заполняется только в GET /api/admin/users (OAuth-провайдеры аккаунта).
+		AuthProviders []string `json:"auth_providers,omitempty"`
 	}
 
 	UserAuthProvider struct {
@@ -64,7 +66,7 @@ type (
 		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
 		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
 		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
-		// Расписание фаз (UTC, RFC3339 в JSON). Автопереход статуса по датам — см. планировщик на сервере.
+		// Расписание фаз (UTC, RFC3339 в JSON). Автопереходы: draft|publication→registration, registration→voting, voting→finished — см. планировщик.
 		RegistrationStartsAt *time.Time `json:"registration_starts_at,omitempty"`
 		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`
 		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
@@ -312,6 +314,7 @@ const (
 	RefreshTokenType = "refresh"
 
 	ContestStatusDraft        ContestStatus = "draft"
+	ContestStatusPublication  ContestStatus = "publication"
 	ContestStatusRegistration ContestStatus = "registration"
 	ContestStatusVoting       ContestStatus = "voting"
 	ContestStatusFinished     ContestStatus = "finished"

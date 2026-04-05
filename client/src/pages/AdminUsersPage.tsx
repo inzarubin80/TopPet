@@ -82,6 +82,11 @@ const AdminUsersPage: React.FC = () => {
           Назначение глобальных ролей. «Администратор конкурса» может управлять любыми конкурсами так же, как создатель.
           «Администратор системы» имеет доступ к этому списку. Нельзя снять последнего администратора системы.
         </p>
+        <p className="admin-users-hint">
+          Почта в профиле берётся из OAuth при входе: при повторной авторизации пустое поле заполняется, если провайдер
+          отдаёт адрес. Если e-mail пустой при наличии провайдера — провайдер его не передал, либо такой адрес уже
+          закреплён за другим пользователем (уникальность в базе).
+        </p>
         {error && <ErrorMessage message={error} />}
         {loading ? (
           <div className="admin-users-loading">
@@ -99,6 +104,7 @@ const AdminUsersPage: React.FC = () => {
                     <th>ID</th>
                     <th>Имя</th>
                     <th>Email</th>
+                    <th>Вход (OAuth)</th>
                     <th>Роль</th>
                   </tr>
                 </thead>
@@ -108,6 +114,11 @@ const AdminUsersPage: React.FC = () => {
                       <td>{u.id}</td>
                       <td>{u.name}</td>
                       <td>{u.email || '—'}</td>
+                      <td className="admin-users-providers">
+                        {u.auth_providers && u.auth_providers.length > 0
+                          ? u.auth_providers.join(', ')
+                          : '—'}
+                      </td>
                       <td>
                         <select
                           className="admin-users-role-select"

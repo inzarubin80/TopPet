@@ -334,6 +334,7 @@ const ParticipantPage: React.FC = () => {
           {currentContest &&
             currentContest.jury_voting_enabled &&
             currentContest.status !== 'draft' &&
+            currentContest.status !== 'publication' &&
             isAuthenticated &&
             currentUserId !== undefined && (
               <ParticipantJuryScoresPanel

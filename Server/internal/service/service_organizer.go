@@ -69,9 +69,6 @@ func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestI
 	if !s.userCanManageContest(ctx, c, adminID) {
 		return nil, errors.New("only contest admin can edit jury criteria")
 	}
-	if c.Status != model.ContestStatusDraft {
-		return nil, errors.New("jury criteria can only be edited in draft status")
-	}
 	if !c.JuryVotingEnabled {
 		return nil, errors.New("jury voting is disabled for this contest")
 	}
@@ -106,9 +103,6 @@ func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.Co
 	if !s.userCanManageContest(ctx, c, userID) {
 		return nil, errors.New("only contest admin can add nominations")
 	}
-	if c.Status != model.ContestStatusDraft {
-		return nil, errors.New("nominations can only be edited in draft status")
-	}
 	n, err := s.repository.CountNominationsByContest(ctx, contestID)
 	if err != nil {
 		return nil, err
@@ -139,9 +133,6 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	if !s.userCanManageContest(ctx, c, userID) {
 		return nil, errors.New("only contest admin can edit nominations")
 	}
-	if c.Status != model.ContestStatusDraft {
-		return nil, errors.New("nominations can only be edited in draft status")
-	}
 	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description), mp)
 }
 
@@ -152,9 +143,6 @@ func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.Co
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
 		return errors.New("only contest admin can delete nominations")
-	}
-	if c.Status != model.ContestStatusDraft {
-		return errors.New("nominations can only be deleted in draft status")
 	}
 	return s.repository.DeleteNomination(ctx, nominationID)
 }
@@ -170,9 +158,6 @@ func (s *TopPetService) ReplaceContestRegistrationFields(ctx context.Context, co
 	}
 	if !s.userCanManageContest(ctx, c, adminID) {
 		return nil, errors.New("only contest admin can edit registration fields")
-	}
-	if c.Status != model.ContestStatusDraft {
-		return nil, errors.New("registration fields can only be edited in draft status")
 	}
 	for i := range items {
 		items[i].Label = strings.TrimSpace(items[i].Label)

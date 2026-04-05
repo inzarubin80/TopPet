@@ -63,6 +63,11 @@ func NewInternalServerError(message string, err error) *AppError {
 	return NewAppError(http.StatusInternalServerError, message, err)
 }
 
+// NewBadGatewayError — 502 (object storage недоступен или неверный бакет).
+func NewBadGatewayError(message string, err error) *AppError {
+	return NewAppError(http.StatusBadGateway, message, err)
+}
+
 // HandleError обрабатывает ошибку и отправляет соответствующий HTTP ответ.
 // Автоматически определяет HTTP статус на основе типа ошибки.
 func HandleError(w http.ResponseWriter, err error) {
@@ -77,23 +82,18 @@ func HandleError(w http.ResponseWriter, err error) {
 		SendErrorResponse(w, http.StatusNotFound, "not found")
 		return
 	}
-	if errors.Is(err, model.ErrorForbidden) {
-		SendErrorResponse(w, http.StatusForbidden, "forbidden")
-		return
-	}
-
 	if errors.Is(err, model.ErrUnauthorized) {
 		SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	if errors.Is(err, model.ErrForbidden) {
-		SendErrorResponse(w, http.StatusForbidden, "forbidden")
+	if errors.Is(err, model.ErrorForbidden) || errors.Is(err, model.ErrForbidden) {
+		SendErrorResponse(w, http.StatusForbidden, err.Error())
 		return
 	}
 
 	if errors.Is(err, model.ErrBadRequest) {
-		SendErrorResponse(w, http.StatusBadRequest, "bad request")
+		SendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

@@ -286,7 +286,7 @@ func TestTopPetService_CreateContest(t *testing.T) {
 			description: "Test Description",
 			mockFunc:    nil,
 			wantErr:     true,
-			errMsg:      "title is required",
+			errMsg:      "bad request: title is required",
 		},
 		{
 			name:        "repository error",
@@ -532,10 +532,10 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 				}, nil
 			},
 			wantErr: true,
-			errMsg:  "only contest admin can update contest",
+			errMsg:  "forbidden: only contest admin can update contest",
 		},
 		{
-			name:      "not draft status",
+			name:      "update_when_voting",
 			contestID: "test-id",
 			userID:    1,
 			update: model.ContestUpdate{
@@ -546,10 +546,19 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 				return &model.Contest{
 					ID:              contestID,
 					CreatedByUserID: 1,
-					Status:          model.ContestStatusVoting, // Not draft
+					Status:          model.ContestStatusVoting,
 				}, nil
 			},
-			wantErr: true,
+			updateFunc: func(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error) {
+				return &model.Contest{
+					ID:              contestID,
+					Title:           u.Title,
+					Description:     u.Description,
+					CreatedByUserID: 1,
+					Status:          model.ContestStatusVoting,
+				}, nil
+			},
+			wantErr: false,
 		},
 	}
 
@@ -623,7 +632,7 @@ func TestTopPetService_DeleteContest(t *testing.T) {
 				}, nil
 			},
 			wantErr: true,
-			errMsg:  "only contest admin can delete contest",
+			errMsg:  "forbidden: only contest admin can delete contest",
 		},
 	}
 

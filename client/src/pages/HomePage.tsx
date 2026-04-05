@@ -30,6 +30,7 @@ const HomePage: React.FC = () => {
   const filterOptions = [
     { value: undefined, label: 'Все', status: 'all', icon: '☰' },
     { value: 'draft' as ContestStatus, label: 'Черновики', status: 'draft', icon: '📝' },
+    { value: 'publication' as ContestStatus, label: 'Публикация', status: 'publication', icon: '📢' },
     { value: 'registration' as ContestStatus, label: 'Регистрация', status: 'registration', icon: '➕' },
     { value: 'voting' as ContestStatus, label: 'Голосование', status: 'voting', icon: '🗳️' },
     { value: 'finished' as ContestStatus, label: 'Завершенные', status: 'finished', icon: '✅' },

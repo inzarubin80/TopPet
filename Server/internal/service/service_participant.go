@@ -40,7 +40,7 @@ func (s *TopPetService) participantVisible(ctx context.Context, p *model.Partici
 	if viewer != nil && s.userCanManageContest(ctx, contest, *viewer) {
 		return true
 	}
-	if viewer != nil && contest.JuryVotingEnabled && contest.Status != model.ContestStatusDraft {
+	if viewer != nil && contest.JuryVotingEnabled && contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusPublication {
 		ok, err := s.repository.IsContestJuryMember(ctx, contest.ID, *viewer)
 		if err == nil && ok {
 			return true

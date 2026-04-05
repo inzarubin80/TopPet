@@ -98,3 +98,51 @@ export function zonedLocalStringToUtcIso(local: string, timeZone: string): strin
   }
   return null;
 }
+
+/** UTC instant из API → краткая строка для карточек и подписей (пояс организатора). */
+export function formatContestInstantForDisplay(iso: string | undefined, timeZone: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
+}
+
+/** Поля конкурса, достаточные для текстовых строк расписания на карточке и странице. */
+export type ContestScheduleSource = {
+  schedule_timezone?: string;
+  registration_starts_at?: string;
+  voting_starts_at?: string;
+  voting_ends_at?: string;
+};
+
+/** Строки «Регистрация …», «Голосование …» в поясе организатора. */
+export function getContestScheduleDisplayLines(c: ContestScheduleSource): string[] {
+  const scheduleTz = (c.schedule_timezone || '').trim() || DEFAULT_SCHEDULE_TIMEZONE;
+  const fmt = (iso?: string) => formatContestInstantForDisplay(iso, scheduleTz);
+
+  const lines: string[] = [];
+  if (c.registration_starts_at && c.voting_starts_at) {
+    lines.push(`Регистрация: ${fmt(c.registration_starts_at)} — ${fmt(c.voting_starts_at)}`);
+  } else if (c.registration_starts_at) {
+    lines.push(`Старт регистрации: ${fmt(c.registration_starts_at)}`);
+  } else if (c.voting_starts_at) {
+    lines.push(`Приём заявок до: ${fmt(c.voting_starts_at)}`);
+  }
+
+  if (c.voting_starts_at && c.voting_ends_at) {
+    lines.push(`Голосование: ${fmt(c.voting_starts_at)} — ${fmt(c.voting_ends_at)}`);
+  } else if (c.voting_ends_at) {
+    lines.push(`Окончание голосования: ${fmt(c.voting_ends_at)}`);
+  } else if (c.voting_starts_at && lines.length === 0) {
+    lines.push(`Старт голосования: ${fmt(c.voting_starts_at)}`);
+  }
+
+  return lines;
+}

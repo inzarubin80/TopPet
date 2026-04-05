@@ -195,6 +195,41 @@
   opacity: 0.95;
 }
 
+.contest-page-schedule-block {
+  margin: 20px 0 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  max-width: 42em;
+}
+
+.contest-page-schedule-heading {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--contest-accent, #2563eb);
+}
+
+.contest-page-schedule {
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
+  max-width: 42em;
+}
+
+.contest-page-schedule--body {
+  margin-top: 0;
+  max-width: none;
+}
+
+.contest-page-schedule-line + .contest-page-schedule-line {
+  margin-top: 6px;
+}
+
 .contest-page-status--on-hero {
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
 }
@@ -342,58 +377,11 @@
   color: #999;
 }
 
-.contest-page-top-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.contest-page-admin-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .contest-page-header {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
-}
-
-.contest-page-back-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid #ddd;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #666;
-  flex-shrink: 0;
-}
-
-.contest-page-back-button:hover {
-  background: #f5f5f5;
-  border-color: #007bff;
-  color: #007bff;
-  transform: translateX(-2px);
-}
-
-.contest-page-back-button:active {
-  transform: translateX(0);
-}
-
-.contest-page-back-button svg {
-  width: 20px;
-  height: 20px;
 }
 
 .contest-page-header h1 {
@@ -468,48 +456,6 @@
   height: 20px;
 }
 
-.contest-page-admin-status {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-right: 4px;
-}
-
-.contest-page-admin-status-select {
-  padding: 10px 32px 10px 20px;
-  height: auto;
-  min-height: 40px;
-  border: 1px solid #d9dee8;
-  border-radius: 8px;
-  background-color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1f2937;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-position: right 12px center;
-  background-repeat: no-repeat;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.contest-page-admin-status-select:hover {
-  border-color: #007bff;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.15);
-  transform: translateY(-1px);
-}
-
-.contest-page-admin-status-select:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-}
-
-.contest-page-admin-status-select:active {
-  transform: translateY(0);
-}
-
 .contest-page-description {
   margin-bottom: 20px;
   text-align: left;
@@ -537,6 +483,11 @@
 .contest-page-status-draft {
   background-color: #f3f4f6;
   color: #6b7280;
+}
+
+.contest-page-status-publication {
+  background-color: #e0e7ff;
+  color: #3730a3;
 }
 
 .contest-page-status-registration {

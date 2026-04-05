@@ -4,8 +4,10 @@ import { userCanManageContest } from '../utils/contestPermissions';
 
 interface UseContestPermissionsResult {
   isAdmin: boolean;
+  /** Подача и правка заявок организатором — только черновик и регистрация (как на сервере). */
   canManageParticipants: boolean;
   canVote: boolean;
+  /** Настройки конкурса на странице редактирования — для организатора в любом статусе. */
   canEdit: boolean;
 }
 
@@ -30,7 +32,7 @@ export const useContestPermissions = (
     const isAdmin = userCanManageContest(contest, currentUserId, currentUser);
     const canManageParticipants = isAdmin && (contest.status === 'draft' || contest.status === 'registration');
     const canVote = contest.status === 'voting';
-    const canEdit = isAdmin && (contest.status === 'draft' || contest.status === 'registration');
+    const canEdit = isAdmin;
 
     return {
       isAdmin,

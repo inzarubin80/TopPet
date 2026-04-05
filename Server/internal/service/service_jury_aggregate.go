@@ -14,7 +14,7 @@ func (s *TopPetService) shouldExposeJuryScoreTotal(ctx context.Context, contest 
 	switch contest.Status {
 	case model.ContestStatusVoting, model.ContestStatusFinished:
 		return true
-	case model.ContestStatusDraft, model.ContestStatusRegistration:
+	case model.ContestStatusDraft, model.ContestStatusPublication, model.ContestStatusRegistration:
 		if viewer == nil {
 			return false
 		}

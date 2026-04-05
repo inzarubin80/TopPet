@@ -25,9 +25,19 @@ WHERE user_id = $1;
 SELECT role FROM users WHERE user_id = $1;
 
 -- name: ListUsersForAdmin :many
-SELECT user_id, name, email, created_at, role
-FROM users
-ORDER BY user_id ASC
+SELECT
+  u.user_id,
+  u.name,
+  u.email,
+  u.created_at,
+  u.role,
+  COALESCE((
+    SELECT string_agg(DISTINCT p.provider, ', ' ORDER BY p.provider)
+    FROM user_auth_providers p
+    WHERE p.user_id = u.user_id
+  ), '') AS auth_providers
+FROM users u
+ORDER BY u.user_id ASC
 LIMIT $1 OFFSET $2;
 
 -- name: CountUsers :one
@@ -120,7 +130,7 @@ RETURNING *;
 
 -- name: ListContestsForStatusAutomation :many
 SELECT * FROM contests
-WHERE status IN ('draft', 'registration', 'voting')
+WHERE status IN ('draft', 'publication', 'registration', 'voting')
 ORDER BY id;
 
 -- name: UpdateContestStatus :one

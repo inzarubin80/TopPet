@@ -49,7 +49,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const canEdit = !readOnly && isAdmin && contest.status === 'draft';
+    const canEdit = !readOnly && isAdmin;
     const fieldsLocked = formDisabled || !canEdit;
 
     const load = useCallback(async () => {
@@ -128,7 +128,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
           Дополнительные вопросы при подаче заявки (кличка и описание питомца задаются отдельно). Типы: текст, число,
           да/нет, список вариантов.
           {readOnly ? (
-            isAdmin && contest.status === 'draft' ? (
+            isAdmin ? (
               <>
                 {' '}
                 Редактировать можно на{' '}
@@ -136,7 +136,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
               </>
             ) : null
           ) : (
-            <> Настройка — в статусе «Черновик».</>
+            <> Сохраните изменения кнопкой ниже.</>
           )}
         </p>
 

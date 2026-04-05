@@ -194,6 +194,25 @@ func (r *Repository) GetUserRole(ctx context.Context, userID model.UserID) (stri
 	return role, nil
 }
 
+func authProvidersListFromSQL(v interface{}) []string {
+	if v == nil {
+		return nil
+	}
+	var s string
+	switch x := v.(type) {
+	case string:
+		s = strings.TrimSpace(x)
+	case []byte:
+		s = strings.TrimSpace(string(x))
+	default:
+		s = strings.TrimSpace(fmt.Sprint(x))
+	}
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ", ")
+}
+
 func (r *Repository) ListUsersForAdmin(ctx context.Context, limit, offset int32) ([]*model.User, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	rows, err := reposqlc.ListUsersForAdmin(ctx, &sqlc_repository.ListUsersForAdminParams{
@@ -212,7 +231,9 @@ func (r *Repository) ListUsersForAdmin(ctx context.Context, limit, offset int32)
 			Email:     row.Email,
 			Role:      row.Role,
 		}
-		out = append(out, sqlcUserToModel(u))
+		mu := sqlcUserToModel(u)
+		mu.AuthProviders = authProvidersListFromSQL(row.AuthProviders)
+		out = append(out, mu)
 	}
 	return out, nil
 }

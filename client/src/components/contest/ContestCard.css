@@ -108,6 +108,11 @@
   color: #6b7280;
 }
 
+.status-publication {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
 .status-registration {
   background-color: #fef3c7;
   color: #92400e;
@@ -131,6 +136,17 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.contest-card-schedule {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.contest-card-schedule-line + .contest-card-schedule-line {
+  margin-top: 4px;
 }
 
 .contest-card-footer {

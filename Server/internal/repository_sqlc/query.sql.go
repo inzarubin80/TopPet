@@ -1620,7 +1620,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 
 const listContestsForStatusAutomation = `-- name: ListContestsForStatusAutomation :many
 SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_url, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone FROM contests
-WHERE status IN ('draft', 'registration', 'voting')
+WHERE status IN ('draft', 'publication', 'registration', 'voting')
 ORDER BY id
 `
 
@@ -2054,9 +2054,19 @@ func (q *Queries) ListStaffCommentNotificationsForUser(ctx context.Context, user
 }
 
 const listUsersForAdmin = `-- name: ListUsersForAdmin :many
-SELECT user_id, name, email, created_at, role
-FROM users
-ORDER BY user_id ASC
+SELECT
+  u.user_id,
+  u.name,
+  u.email,
+  u.created_at,
+  u.role,
+  COALESCE((
+    SELECT string_agg(DISTINCT p.provider, ', ' ORDER BY p.provider)
+    FROM user_auth_providers p
+    WHERE p.user_id = u.user_id
+  ), '') AS auth_providers
+FROM users u
+ORDER BY u.user_id ASC
 LIMIT $1 OFFSET $2
 `
 
@@ -2066,11 +2076,12 @@ type ListUsersForAdminParams struct {
 }
 
 type ListUsersForAdminRow struct {
-	UserID    int64
-	Name      string
-	Email     *string
-	CreatedAt pgtype.Timestamptz
-	Role      string
+	UserID        int64
+	Name          string
+	Email         *string
+	CreatedAt     pgtype.Timestamptz
+	Role          string
+	AuthProviders interface{}
 }
 
 func (q *Queries) ListUsersForAdmin(ctx context.Context, arg *ListUsersForAdminParams) ([]*ListUsersForAdminRow, error) {
@@ -2088,6 +2099,7 @@ func (q *Queries) ListUsersForAdmin(ctx context.Context, arg *ListUsersForAdminP
 			&i.Email,
 			&i.CreatedAt,
 			&i.Role,
+			&i.AuthProviders,
 		); err != nil {
 			return nil, err
 		}

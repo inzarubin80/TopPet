@@ -46,7 +46,7 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
     load();
   }, [load]);
 
-  const canEdit = isAdmin && contest.status === 'draft';
+  const canEdit = isAdmin;
   const tier = contest.tier || 'free';
 
   const juryUserIds = new Set(items.map((j) => j.user_id));
@@ -135,7 +135,7 @@ export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isA
     <section className="contest-jury-panel" aria-labelledby="contest-jury-heading">
       <h3 id="contest-jury-heading">Состав жюри</h3>
       <p className="contest-jury-hint">
-        {maxJuryHint(tier)} Редактирование только в статусе «Черновик».
+        {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса.
       </p>
       {criteriaSlotRef ? <div className="contest-jury-criteria-slot" ref={criteriaSlotRef} /> : null}
       {loading ? (

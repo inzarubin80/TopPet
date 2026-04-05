@@ -21,9 +21,6 @@ func (s *TopPetService) AddContestJuryMember(ctx context.Context, contestID mode
 	if !s.userCanManageContest(ctx, c, adminID) {
 		return nil, errors.New("only contest admin can manage jury")
 	}
-	if c.Status != model.ContestStatusDraft {
-		return nil, errors.New("jury can only be edited in draft status")
-	}
 	if !c.JuryVotingEnabled {
 		return nil, errors.New("jury voting is disabled for this contest")
 	}
@@ -45,9 +42,6 @@ func (s *TopPetService) RemoveContestJuryMember(ctx context.Context, contestID m
 	}
 	if !s.userCanManageContest(ctx, c, adminID) {
 		return errors.New("only contest admin can manage jury")
-	}
-	if c.Status != model.ContestStatusDraft {
-		return errors.New("jury can only be edited in draft status")
 	}
 	if !c.JuryVotingEnabled {
 		return errors.New("jury voting is disabled for this contest")

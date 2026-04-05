@@ -61,6 +61,13 @@ func (h *UploadVideoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	url, err := h.uploader.Upload(uploadCtx, key, file, size, ct)
 	if err != nil {
 		log.Printf("upload participant video participant=%s: %v", participantID, err)
+		if objectstorage.IsNoSuchBucketError(err) {
+			uhttp.HandleError(w, uhttp.NewBadGatewayError(
+				"Object storage bucket is missing or S3_BUCKET is wrong. Create the bucket in your provider or fix S3_BUCKET in .env.",
+				err,
+			))
+			return
+		}
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}

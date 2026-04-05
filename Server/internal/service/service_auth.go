@@ -42,6 +42,8 @@ func (s *TopPetService) Login(ctx context.Context, providerKey string, authoriza
 		userID = user.ID
 	} else {
 		userID = userAuthProvider.UserID
+		// Дозаполняем email при каждом OAuth-входе, если в БД пусто и провайдер отдал адрес
+		// (уникальный индекс: не обновим, если тот же email уже у другого пользователя).
 		_ = s.repository.SetUserEmailIfEmpty(ctx, userID, userProfileFromProvider.Email)
 	}
 

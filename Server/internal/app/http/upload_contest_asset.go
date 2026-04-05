@@ -95,6 +95,13 @@ func (h *UploadContestAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	url, err := h.uploader.Upload(uploadCtx, key, file, size, ct)
 	if err != nil {
 		log.Printf("upload contest asset kind=%s contest=%s: %v", kind, contestID, err)
+		if objectstorage.IsNoSuchBucketError(err) {
+			uhttp.HandleError(w, uhttp.NewBadGatewayError(
+				"Object storage bucket is missing or S3_BUCKET is wrong. Create the bucket in your provider (e.g. Yandex Cloud console) or set S3_BUCKET in .env to an existing bucket.",
+				err,
+			))
+			return
+		}
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to upload file", err))
 		return
 	}

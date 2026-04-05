@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -50,7 +49,7 @@ func (s *TopPetService) broadcastContestStatus(contestID model.ContestID, status
 
 func (s *TopPetService) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
 	if title == "" {
-		return nil, errors.New("title is required")
+		return nil, fmt.Errorf("%w: title is required", model.ErrBadRequest)
 	}
 
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
@@ -142,12 +141,7 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, errors.New("only contest admin can update contest")
-	}
-
-	// Only draft can be updated
-	if contest.Status != model.ContestStatusDraft {
-		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
+		return nil, fmt.Errorf("%w: only contest admin can update contest", model.ErrForbidden)
 	}
 
 	if err := validateContestScheduleTimes(u.RegistrationStartsAt, u.VotingStartsAt, u.VotingEndsAt); err != nil {
@@ -186,7 +180,7 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 	}
 }
 
-// UploadContestAsset сохраняет URL загруженного изображения (черновик, только организатор).
+// UploadContestAsset сохраняет URL загруженного изображения (только организатор; статус конкурса любой).
 func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.ContestID, userID model.UserID, kind, assetURL string) (*model.Contest, error) {
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
 	defer cancel()
@@ -197,11 +191,7 @@ func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, errors.New("only contest admin can update contest")
-	}
-
-	if contest.Status != model.ContestStatusDraft {
-		return nil, fmt.Errorf("contest must be in draft status to update, current status: %s", contest.Status)
+		return nil, fmt.Errorf("%w: only contest admin can upload contest assets", model.ErrForbidden)
 	}
 
 	u := contestToUpdate(contest)
@@ -213,7 +203,7 @@ func (s *TopPetService) UploadContestAsset(ctx context.Context, contestID model.
 	case "sponsor_logo":
 		u.SponsorLogoUrl = assetURL
 	default:
-		return nil, fmt.Errorf("invalid asset kind: %s", kind)
+		return nil, fmt.Errorf("%w: invalid asset kind: %s", model.ErrBadRequest, kind)
 	}
 
 	updated, err := s.repository.UpdateContest(dbCtx, contestID, u)
@@ -235,19 +225,19 @@ func (s *TopPetService) PublishContest(ctx context.Context, contestID model.Cont
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, errors.New("only contest admin can publish contest")
+		return nil, fmt.Errorf("%w: only contest admin can publish contest", model.ErrForbidden)
 	}
 
 	// Only draft can be opened for registration
 	if contest.Status != model.ContestStatusDraft {
-		return nil, fmt.Errorf("contest must be in draft status to publish, current status: %s", contest.Status)
+		return nil, fmt.Errorf("%w: contest must be in draft status to publish, current status: %s", model.ErrBadRequest, contest.Status)
 	}
 
-	updated, err := s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusRegistration)
+	updated, err := s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusPublication)
 	if err != nil {
 		return nil, err
 	}
-	s.broadcastContestStatus(contestID, model.ContestStatusRegistration)
+	s.broadcastContestStatus(contestID, model.ContestStatusPublication)
 	return updated, nil
 }
 
@@ -258,12 +248,12 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, errors.New("only contest admin can finish contest")
+		return nil, fmt.Errorf("%w: only contest admin can finish contest", model.ErrForbidden)
 	}
 
 	// Only voting can be finished
 	if contest.Status != model.ContestStatusVoting {
-		return nil, fmt.Errorf("contest must be in voting status to finish, current status: %s", contest.Status)
+		return nil, fmt.Errorf("%w: contest must be in voting status to finish, current status: %s", model.ErrBadRequest, contest.Status)
 	}
 
 	updated, err := s.repository.UpdateContestStatus(ctx, contestID, model.ContestStatusFinished)
@@ -281,16 +271,17 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, errors.New("only contest admin can update contest status")
+		return nil, fmt.Errorf("%w: only contest admin can update contest status", model.ErrForbidden)
 	}
 
 	switch status {
 	case model.ContestStatusDraft,
+		model.ContestStatusPublication,
 		model.ContestStatusRegistration,
 		model.ContestStatusVoting,
 		model.ContestStatusFinished:
 	default:
-		return nil, fmt.Errorf("invalid contest status %s", status)
+		return nil, fmt.Errorf("%w: invalid contest status %s", model.ErrBadRequest, status)
 	}
 
 	updated, err := s.repository.UpdateContestStatus(ctx, contestID, status)
@@ -310,7 +301,7 @@ func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.Conte
 	}
 
 	if !s.userCanManageContest(ctx, contest, userID) {
-		return errors.New("only contest admin can delete contest")
+		return fmt.Errorf("%w: only contest admin can delete contest", model.ErrForbidden)
 	}
 
 	return s.repository.DeleteContest(ctx, contestID)

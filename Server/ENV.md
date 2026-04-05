@@ -55,7 +55,7 @@ S3_ACCESS_KEY=
 # Secret Key для S3
 S3_SECRET_KEY=
 
-# Имя bucket'а
+# Имя bucket'а (должен уже существовать в консоли провайдера; иначе загрузки вернут 502)
 S3_BUCKET=
 
 # Базовый URL CDN (если используется CDN перед S3)
@@ -147,6 +147,7 @@ STORE_SECRET=dev-store-secret-change-in-production
 S3_ENDPOINT=
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
+# Бакет должен быть создан в консоли провайдера заранее
 S3_BUCKET=
 S3_CDN_BASE_URL=
 S3_SECURE=true

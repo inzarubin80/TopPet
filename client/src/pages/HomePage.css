@@ -155,6 +155,11 @@
   color: #6b7280;
 }
 
+.filter-button-publication.active {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
 .filter-button-registration.active {
   background-color: #fef3c7;
   color: #92400e;
