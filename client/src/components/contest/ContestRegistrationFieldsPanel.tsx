@@ -26,6 +26,7 @@ const emptyField = (): DraftRegistrationFieldRow => ({
   label: '',
   field_type: 'string',
   required: false,
+  help_text: '',
   rowKey: crypto.randomUUID(),
 });
 
@@ -39,6 +40,7 @@ function serverToDraft(rows: RegistrationField[]): DraftRegistrationFieldRow[] {
     field_type: r.field_type,
     required: r.required,
     enum_options: r.enum_options ? [...r.enum_options] : undefined,
+    help_text: r.help_text ?? '',
     rowKey: r.id,
   }));
 }
@@ -91,6 +93,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
               ...base,
               label: base.label.trim(),
               field_type: base.field_type,
+              help_text: (base.help_text ?? '').trim(),
               enum_options:
                 base.field_type === 'enum'
                   ? (base.enum_options || []).map((s) => s.trim()).filter(Boolean)
@@ -152,7 +155,8 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
         <h2 className="contest-registration-fields-title">Поля заявки участника</h2>
         <p className="contest-registration-fields-hint">
           Дополнительные вопросы при подаче заявки (фото, видео и номинация — в форме участия). Типы: строка, многострочный
-          текст, число, да/нет, список вариантов, картинка (файл в заявке).
+          текст, число, да/нет, список вариантов, картинка (файл в заявке). Пояснение к полю видно участнику под подписью при
+          заполнении заявки.
           {readOnly ? (
             isAdmin ? (
               <>
@@ -231,6 +235,18 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
                   }}
                 />
               )}
+              <textarea
+                placeholder="Пояснение для участника (необязательно)"
+                value={row.help_text ?? ''}
+                disabled={fieldsLocked}
+                rows={2}
+                className="contest-registration-fields-help"
+                onChange={(e) => {
+                  const next = [...draft];
+                  next[idx] = { ...next[idx], help_text: e.target.value };
+                  setDraft(next);
+                }}
+              />
               {canEdit && draft.length > 1 && (
                 <div className="contest-registration-fields-row-actions">
                   <Button

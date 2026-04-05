@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"toppet/server/internal/model"
 	"toppet/server/internal/tier"
 )
+
+const maxRegistrationFieldHelpRunes = 2000
 
 func contestTierString(c *model.Contest) string {
 	if c.Tier != "" {
@@ -177,6 +180,10 @@ func (s *TopPetService) ReplaceContestRegistrationFields(ctx context.Context, co
 		items[i].Label = strings.TrimSpace(items[i].Label)
 		if items[i].Label == "" {
 			return nil, fmt.Errorf("field %d: label is required", i+1)
+		}
+		items[i].HelpText = strings.TrimSpace(items[i].HelpText)
+		if utf8.RuneCountInString(items[i].HelpText) > maxRegistrationFieldHelpRunes {
+			return nil, fmt.Errorf("field %d: help_text too long (max %d characters)", i+1, maxRegistrationFieldHelpRunes)
 		}
 		ft := items[i].FieldType
 		if ft != "string" && ft != "number" && ft != "boolean" && ft != "enum" && ft != "textarea" && ft != "image" {

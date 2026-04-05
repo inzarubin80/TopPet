@@ -10,6 +10,14 @@
   color: #333;
 }
 
+.textarea-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+  white-space: pre-wrap;
+}
+
 .textarea {
   padding: 8px 12px;
   border: 1px solid #ddd;

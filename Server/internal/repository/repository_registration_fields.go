@@ -12,7 +12,7 @@ import (
 	sqlc_repository "toppet/server/internal/repository_sqlc"
 )
 
-func registrationFieldFromSQLc(r *sqlc_repository.ContestRegistrationField) *model.RegistrationField {
+func registrationFieldFromListRow(r *sqlc_repository.ListRegistrationFieldsByContestRow) *model.RegistrationField {
 	var idStr, cidStr string
 	if r.ID.Valid {
 		idStr = uuid.UUID(r.ID.Bytes).String()
@@ -32,6 +32,7 @@ func registrationFieldFromSQLc(r *sqlc_repository.ContestRegistrationField) *mod
 		FieldType:   r.FieldType,
 		Required:    r.Required,
 		EnumOptions: opts,
+		HelpText:    r.HelpText,
 		CreatedAt:   r.CreatedAt.Time,
 	}
 }
@@ -48,7 +49,7 @@ func (r *Repository) ListRegistrationFieldsByContest(ctx context.Context, contes
 	}
 	out := make([]*model.RegistrationField, len(rows))
 	for i, row := range rows {
-		out[i] = registrationFieldFromSQLc(row)
+		out[i] = registrationFieldFromListRow(row)
 	}
 	return out, nil
 }
@@ -92,6 +93,7 @@ func (r *Repository) ReplaceContestRegistrationFields(ctx context.Context, conte
 			FieldType:   ft,
 			Required:    it.Required,
 			EnumOptions: enumJSON,
+			HelpText:    it.HelpText,
 		})
 		if err != nil {
 			return err

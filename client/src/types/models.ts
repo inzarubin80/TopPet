@@ -152,6 +152,8 @@ export interface RegistrationField {
   field_type: RegistrationFieldType;
   required: boolean;
   enum_options?: string[];
+  /** Пояснение для участника при заполнении заявки. */
+  help_text?: string;
   created_at: string;
 }
 
@@ -161,6 +163,7 @@ export interface RegistrationFieldInput {
   field_type: RegistrationFieldType;
   required: boolean;
   enum_options?: string[];
+  help_text?: string;
 }
 
 export interface JuryMember {

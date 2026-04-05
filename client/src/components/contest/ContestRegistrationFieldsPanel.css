@@ -75,6 +75,19 @@
   resize: vertical;
 }
 
+.contest-registration-fields-help {
+  flex: 1 1 100%;
+  width: 100%;
+  align-self: stretch;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 52px;
+  color: #334155;
+}
+
 .contest-registration-fields-row-actions {
   display: flex;
   flex-wrap: wrap;

@@ -124,17 +124,6 @@ type ContestParticipantVideo struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
-type ContestRegistrationField struct {
-	ID          pgtype.UUID
-	ContestID   pgtype.UUID
-	SortOrder   int32
-	Label       string
-	FieldType   string
-	Required    bool
-	EnumOptions []byte
-	CreatedAt   pgtype.Timestamptz
-}
-
 type ContestVote struct {
 	ID             pgtype.UUID
 	ContestID      pgtype.UUID

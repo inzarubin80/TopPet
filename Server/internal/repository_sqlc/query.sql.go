@@ -1225,10 +1225,10 @@ func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriter
 
 const insertRegistrationField = `-- name: InsertRegistrationField :one
 INSERT INTO contest_registration_fields (
-    id, contest_id, sort_order, label, field_type, required, enum_options
+    id, contest_id, sort_order, label, field_type, required, enum_options, help_text
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at
 `
 
 type InsertRegistrationFieldParams struct {
@@ -1239,9 +1239,22 @@ type InsertRegistrationFieldParams struct {
 	FieldType   string
 	Required    bool
 	EnumOptions []byte
+	HelpText    string
 }
 
-func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*ContestRegistrationField, error) {
+type InsertRegistrationFieldRow struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	SortOrder   int32
+	Label       string
+	FieldType   string
+	Required    bool
+	EnumOptions []byte
+	HelpText    string
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*InsertRegistrationFieldRow, error) {
 	row := q.db.QueryRow(ctx, insertRegistrationField,
 		arg.ID,
 		arg.ContestID,
@@ -1250,8 +1263,9 @@ func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegist
 		arg.FieldType,
 		arg.Required,
 		arg.EnumOptions,
+		arg.HelpText,
 	)
-	var i ContestRegistrationField
+	var i InsertRegistrationFieldRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContestID,
@@ -1260,6 +1274,7 @@ func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegist
 		&i.FieldType,
 		&i.Required,
 		&i.EnumOptions,
+		&i.HelpText,
 		&i.CreatedAt,
 	)
 	return &i, err
@@ -2158,22 +2173,34 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 
 const listRegistrationFieldsByContest = `-- name: ListRegistrationFieldsByContest :many
 
-SELECT id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+SELECT id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at
 FROM contest_registration_fields
 WHERE contest_id = $1
 ORDER BY sort_order ASC, created_at ASC
 `
 
+type ListRegistrationFieldsByContestRow struct {
+	ID          pgtype.UUID
+	ContestID   pgtype.UUID
+	SortOrder   int32
+	Label       string
+	FieldType   string
+	Required    bool
+	EnumOptions []byte
+	HelpText    string
+	CreatedAt   pgtype.Timestamptz
+}
+
 // Contest registration fields (поля заявки участника)
-func (q *Queries) ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestRegistrationField, error) {
+func (q *Queries) ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListRegistrationFieldsByContestRow, error) {
 	rows, err := q.db.Query(ctx, listRegistrationFieldsByContest, contestID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ContestRegistrationField
+	var items []*ListRegistrationFieldsByContestRow
 	for rows.Next() {
-		var i ContestRegistrationField
+		var i ListRegistrationFieldsByContestRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContestID,
@@ -2182,6 +2209,7 @@ func (q *Queries) ListRegistrationFieldsByContest(ctx context.Context, contestID
 			&i.FieldType,
 			&i.Required,
 			&i.EnumOptions,
+			&i.HelpText,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

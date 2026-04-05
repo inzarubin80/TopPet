@@ -819,7 +819,7 @@ GROUP BY participant_id;
 -- Contest registration fields (поля заявки участника)
 
 -- name: ListRegistrationFieldsByContest :many
-SELECT id, contest_id, sort_order, label, field_type, required, enum_options, created_at
+SELECT id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at
 FROM contest_registration_fields
 WHERE contest_id = $1
 ORDER BY sort_order ASC, created_at ASC;
@@ -829,7 +829,7 @@ DELETE FROM contest_registration_fields WHERE contest_id = $1;
 
 -- name: InsertRegistrationField :one
 INSERT INTO contest_registration_fields (
-    id, contest_id, sort_order, label, field_type, required, enum_options
+    id, contest_id, sort_order, label, field_type, required, enum_options, help_text
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, created_at;
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at;

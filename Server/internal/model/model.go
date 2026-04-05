@@ -214,6 +214,7 @@ type (
 		FieldType   string    `json:"field_type"` // string | number | boolean | enum | textarea | image
 		Required    bool      `json:"required"`
 		EnumOptions []string  `json:"enum_options,omitempty"`
+		HelpText    string    `json:"help_text,omitempty"`
 		CreatedAt   time.Time `json:"created_at"`
 	}
 
@@ -223,6 +224,7 @@ type (
 		FieldType   string   `json:"field_type"`
 		Required    bool     `json:"required"`
 		EnumOptions []string `json:"enum_options,omitempty"`
+		HelpText    string   `json:"help_text,omitempty"`
 	}
 
 	Participant struct {
