@@ -22,6 +22,8 @@ type mockRepository struct {
 	listContestsFunc       func(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
 	countVotesByContestFunc func(ctx context.Context, contestID model.ContestID) (int64, error)
 	countVotesByContestsFunc func(ctx context.Context, contestIDs []model.ContestID) (map[model.ContestID]int64, error)
+	listNominationsByContestFunc      func(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
+	reorderNominationsByContestFunc   func(ctx context.Context, contestID model.ContestID, orderedIDs []string) error
 	getUserRoleFunc          func(ctx context.Context, userID model.UserID) (string, error)
 	listUsersForAdminFunc    func(ctx context.Context, limit, offset int32) ([]*model.User, error)
 	countUsersFunc           func(ctx context.Context) (int64, error)
@@ -176,12 +178,21 @@ func (m *mockRepository) UpdateNominationLogoUrl(ctx context.Context, contestID 
 	return &model.Nomination{ID: nominationID, ContestID: contestID, Title: "n", LogoUrl: logoURL}, nil
 }
 func (m *mockRepository) ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+	if m.listNominationsByContestFunc != nil {
+		return m.listNominationsByContestFunc(ctx, contestID)
+	}
 	return nil, nil
 }
 func (m *mockRepository) ListNominationsForContests(ctx context.Context, contestIDs []model.ContestID) ([]*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) DeleteNomination(ctx context.Context, nominationID string) error { return nil }
+func (m *mockRepository) ReorderNominationsByContest(ctx context.Context, contestID model.ContestID, orderedIDs []string) error {
+	if m.reorderNominationsByContestFunc != nil {
+		return m.reorderNominationsByContestFunc(ctx, contestID, orderedIDs)
+	}
+	return nil
+}
 func (m *mockRepository) CountNominationsByContest(ctx context.Context, contestID model.ContestID) (int64, error) {
 	return 0, nil
 }
@@ -678,4 +689,97 @@ func TestTopPetService_DeleteContest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTopPetService_ReorderNominations(t *testing.T) {
+	cid := model.ContestID("c1")
+	uid := model.UserID(1)
+	noms := []*model.Nomination{
+		{ID: "a", ContestID: cid, Title: "A"},
+		{ID: "b", ContestID: cid, Title: "B"},
+	}
+	afterReorder := []*model.Nomination{
+		{ID: "b", ContestID: cid, Title: "B", SortOrder: 0},
+		{ID: "a", ContestID: cid, Title: "A", SortOrder: 1},
+	}
+
+	t.Run("wrong count", func(t *testing.T) {
+		mockRepo := &mockRepository{
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{ID: contestID, CreatedByUserID: uid}, nil
+			},
+			listNominationsByContestFunc: func(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+				return noms, nil
+			},
+		}
+		svc := &TopPetService{repository: mockRepo}
+		_, err := svc.ReorderNominations(context.Background(), cid, uid, []string{"a"})
+		if err == nil || !errors.Is(err, model.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+	})
+
+	t.Run("unknown id", func(t *testing.T) {
+		mockRepo := &mockRepository{
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{ID: contestID, CreatedByUserID: uid}, nil
+			},
+			listNominationsByContestFunc: func(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+				return noms, nil
+			},
+		}
+		svc := &TopPetService{repository: mockRepo}
+		_, err := svc.ReorderNominations(context.Background(), cid, uid, []string{"a", "x"})
+		if err == nil || !errors.Is(err, model.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+	})
+
+	t.Run("duplicate id", func(t *testing.T) {
+		mockRepo := &mockRepository{
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{ID: contestID, CreatedByUserID: uid}, nil
+			},
+			listNominationsByContestFunc: func(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+				return noms, nil
+			},
+		}
+		svc := &TopPetService{repository: mockRepo}
+		_, err := svc.ReorderNominations(context.Background(), cid, uid, []string{"a", "a"})
+		if err == nil || !errors.Is(err, model.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reorderArg []string
+		listCalls := 0
+		mockRepo := &mockRepository{
+			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+				return &model.Contest{ID: contestID, CreatedByUserID: uid}, nil
+			},
+			listNominationsByContestFunc: func(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+				listCalls++
+				if listCalls == 1 {
+					return noms, nil
+				}
+				return afterReorder, nil
+			},
+			reorderNominationsByContestFunc: func(ctx context.Context, contestID model.ContestID, orderedIDs []string) error {
+				reorderArg = orderedIDs
+				return nil
+			},
+		}
+		svc := &TopPetService{repository: mockRepo}
+		got, err := svc.ReorderNominations(context.Background(), cid, uid, []string{"b", "a"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(reorderArg) != 2 || reorderArg[0] != "b" || reorderArg[1] != "a" {
+			t.Fatalf("reorder args: %v", reorderArg)
+		}
+		if len(got) != 2 || got[0].ID != "b" {
+			t.Fatalf("got %v", got)
+		}
+	})
 }

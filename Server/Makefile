@@ -71,6 +71,13 @@ test:
 	@echo "Running tests..."
 	go test ./...
 
+# Интеграционные сценарии: большой конкурс 300×3×3×3 (contest_flow_test.go), жюри+зрители (jury_audience_flow_test.go).
+# Требуется PostgreSQL с применёнными миграциями. DATABASE_URL из .env или значение по умолчанию ниже.
+# INTEGRATION_SCALE=300 по умолчанию; для быстрой проверки: INTEGRATION_SCALE=9
+.PHONY: integration-test
+integration-test:
+	INTEGRATION_DATABASE_URL="$(DATABASE_URL)" go test -tags=integration -timeout 30m -v ./integration/...
+
 .PHONY: run-all
 run-all:
 	@echo "Building and starting containers..."

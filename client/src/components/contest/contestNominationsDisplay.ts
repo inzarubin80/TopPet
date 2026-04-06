@@ -1,4 +1,5 @@
 import type { JuryCriterionInput } from '../../api/juryCriteriaApi';
+import type { Nomination } from '../../types/models';
 
 /** Заголовок и необязательное отличное от него описание (без дубля title === description). */
 export function nominationPrimarySecondary(title: string, description: string): {
@@ -61,4 +62,11 @@ export function criterionPrimarySecondary(c: JuryCriterionInput): {
     return { primary: t, secondary: null };
   }
   return { primary: t, secondary: d };
+}
+
+/** Стабильная сортировка списка номинаций по полю порядка с сервера. */
+export function sortNominationsByOrder(a: Nomination, b: Nomination): number {
+  const so = a.sort_order - b.sort_order;
+  if (so !== 0) return so;
+  return a.created_at.localeCompare(b.created_at);
 }

@@ -26,8 +26,38 @@ func nominationBucketKey(nominationID *string) string {
 	return *nominationID
 }
 
+// sortNominationBucketKeys — порядок ведёр как в настройках номинаций (sort_order; ведро без номинации — в конце).
+func sortNominationBucketKeys(keys []string, nominationSortOrder map[string]int) {
+	if len(keys) <= 1 {
+		return
+	}
+	if nominationSortOrder == nil {
+		sort.Strings(keys)
+		return
+	}
+	const tailEmpty = 1 << 30
+	sort.Slice(keys, func(i, j int) bool {
+		oi := nominationKeyOrder(keys[i], nominationSortOrder, tailEmpty)
+		oj := nominationKeyOrder(keys[j], nominationSortOrder, tailEmpty)
+		if oi != oj {
+			return oi < oj
+		}
+		return keys[i] < keys[j]
+	})
+}
+
+func nominationKeyOrder(k string, m map[string]int, tailEmpty int) int {
+	if k == "" {
+		return tailEmpty
+	}
+	if v, ok := m[k]; ok {
+		return v
+	}
+	return tailEmpty - 1
+}
+
 // computeContestWinnerOutcome — общая логика: ведра по номинации, максимум голосов/жюри, ничья = все лидеры.
-func computeContestWinnerOutcome(contest *model.Contest, rows []model.ParticipantScoreForWinners, nominationTitle func(*string) string) contestWinnerOutcome {
+func computeContestWinnerOutcome(contest *model.Contest, rows []model.ParticipantScoreForWinners, nominationTitle func(*string) string, nominationSortOrder map[string]int) contestWinnerOutcome {
 	empty := contestWinnerOutcome{
 		audienceSet: make(map[model.ParticipantID]struct{}),
 		jurySet:     make(map[model.ParticipantID]struct{}),
@@ -48,7 +78,7 @@ func computeContestWinnerOutcome(contest *model.Contest, rows []model.Participan
 	for k := range buckets {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	sortNominationBucketKeys(keys, nominationSortOrder)
 
 	out := contestWinnerOutcome{
 		audienceSet: make(map[model.ParticipantID]struct{}),
@@ -122,7 +152,7 @@ func (s *TopPetService) computeContestWinnerSets(ctx context.Context, contest *m
 	if err != nil || len(rows) == 0 {
 		return empty
 	}
-	o := computeContestWinnerOutcome(contest, rows, nil)
+	o := computeContestWinnerOutcome(contest, rows, nil, nil)
 	return contestWinnerSets{audience: o.audienceSet, jury: o.jurySet}
 }
 
@@ -164,15 +194,17 @@ func (s *TopPetService) enrichContestWithWinners(ctx context.Context, contest *m
 		noms = nil
 	}
 	nomMap := make(map[string]string)
+	nomSortOrder := make(map[string]int)
 	for _, n := range noms {
 		nomMap[n.ID] = n.Title
+		nomSortOrder[n.ID] = n.SortOrder
 	}
 	o := computeContestWinnerOutcome(contest, rows, func(nid *string) string {
 		if nid == nil || *nid == "" {
 			return ""
 		}
 		return nomMap[*nid]
-	})
+	}, nomSortOrder)
 	contest.AudienceWinners = o.audience
 	contest.JuryWinners = o.jury
 }
@@ -199,11 +231,16 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 		noms = nil
 	}
 	nomByContest := make(map[model.ContestID]map[string]string)
+	nomSortByContest := make(map[model.ContestID]map[string]int)
 	for _, n := range noms {
 		if nomByContest[n.ContestID] == nil {
 			nomByContest[n.ContestID] = make(map[string]string)
 		}
 		nomByContest[n.ContestID][n.ID] = n.Title
+		if nomSortByContest[n.ContestID] == nil {
+			nomSortByContest[n.ContestID] = make(map[string]int)
+		}
+		nomSortByContest[n.ContestID][n.ID] = n.SortOrder
 	}
 	byContest := make(map[model.ContestID][]model.ParticipantScoreForWinners)
 	for _, r := range rows {
@@ -220,12 +257,16 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 		if nm == nil {
 			nm = map[string]string{}
 		}
+		ns := nomSortByContest[c.ID]
+		if ns == nil {
+			ns = map[string]int{}
+		}
 		o := computeContestWinnerOutcome(c, byContest[c.ID], func(nid *string) string {
 			if nid == nil || *nid == "" {
 				return ""
 			}
 			return nm[*nid]
-		})
+		}, ns)
 		c.AudienceWinners = o.audience
 		c.JuryWinners = o.jury
 	}

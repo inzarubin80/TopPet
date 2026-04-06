@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
@@ -36,10 +36,11 @@ import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
+import { sortNominationsByOrder } from '../components/contest/contestNominationsDisplay';
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
-import { formatContestWinnerLine } from '../utils/contestWinnersFormat';
+import { ContestWinnersSection } from '../components/contest/ContestWinnersSection';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -217,7 +218,7 @@ const ContestPage: React.FC = () => {
     let cancelled = false;
     listNominations(id)
       .then((rows) => {
-        if (!cancelled) setContestNominations(rows);
+        if (!cancelled) setContestNominations([...rows].sort(sortNominationsByOrder));
       })
       .catch(() => {
         if (!cancelled) setContestNominations([]);
@@ -490,51 +491,11 @@ const ContestPage: React.FC = () => {
         ) : null}
 
         {showContestWinnersSection && id ? (
-          <section className="contest-page-winners" aria-labelledby="contest-winners-heading">
-            <h2 id="contest-winners-heading" className="contest-section-heading contest-page-winners-heading">
-              Победители
-            </h2>
-            {hasAudienceWinners ? (
-              <div className="contest-page-winners-block">
-                <h3 className="contest-page-winners-subheading">По голосам зрителей</h3>
-                <ul className="contest-page-winners-list">
-                  {currentContest.audience_winners!.map((w) => (
-                    <li key={`a-${w.participant_id}`} className="contest-page-winners-item">
-                      <Link
-                        to={`/contests/${id}/participants/${w.participant_id}`}
-                        className="contest-page-winners-link"
-                      >
-                        {formatContestWinnerLine(w)}
-                      </Link>
-                      <span className="contest-page-winners-score" aria-label="голосов">
-                        {w.score}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {hasJuryWinners ? (
-              <div className="contest-page-winners-block">
-                <h3 className="contest-page-winners-subheading">По сумме баллов жюри</h3>
-                <ul className="contest-page-winners-list">
-                  {currentContest.jury_winners!.map((w) => (
-                    <li key={`j-${w.participant_id}`} className="contest-page-winners-item">
-                      <Link
-                        to={`/contests/${id}/participants/${w.participant_id}`}
-                        className="contest-page-winners-link"
-                      >
-                        {formatContestWinnerLine(w)}
-                      </Link>
-                      <span className="contest-page-winners-score" aria-label="сумма баллов жюри">
-                        {w.score}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </section>
+          <ContestWinnersSection
+            contestId={id}
+            audienceWinners={hasAudienceWinners ? currentContest.audience_winners : undefined}
+            juryWinners={hasJuryWinners ? currentContest.jury_winners : undefined}
+          />
         ) : null}
 
         {(currentContest.rules_text ?? '').trim() ? (

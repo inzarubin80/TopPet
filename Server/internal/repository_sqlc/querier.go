@@ -108,6 +108,7 @@ type Querier interface {
 	UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error)
 	UpdateNomination(ctx context.Context, arg *UpdateNominationParams) (*ContestNomination, error)
 	UpdateNominationLogoUrl(ctx context.Context, arg *UpdateNominationLogoUrlParams) (*ContestNomination, error)
+	UpdateNominationSortOrder(ctx context.Context, arg *UpdateNominationSortOrderParams) (int64, error)
 	UpdateParticipant(ctx context.Context, arg *UpdateParticipantParams) (*UpdateParticipantRow, error)
 	UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, arg *UpdateParticipantOwnerStaffCommentReadAtParams) error
 	UpdateParticipantPhotoOrder(ctx context.Context, arg *UpdateParticipantPhotoOrderParams) error

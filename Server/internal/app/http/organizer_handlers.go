@@ -15,6 +15,7 @@ type nominationsService interface {
 	UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount int) (*model.Nomination, error)
 	ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 	DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error
+	ReorderNominations(ctx context.Context, contestID model.ContestID, userID model.UserID, orderedIDs []string) ([]*model.Nomination, error)
 }
 
 type NominationsHandler struct {
@@ -132,6 +133,40 @@ func (h *DeleteNominationHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	_ = uhttp.SendSuccess(w, map[string]bool{"ok": true})
+}
+
+type PutNominationOrderHandler struct {
+	name    string
+	service nominationsService
+}
+
+func NewPutNominationOrderHandler(name string, service nominationsService) *PutNominationOrderHandler {
+	return &PutNominationOrderHandler{name: name, service: service}
+}
+
+func (h *PutNominationOrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("method not allowed", nil))
+		return
+	}
+	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	contestID := model.ContestID(r.PathValue("contestId"))
+	var body struct {
+		NominationIDs []string `json:"nomination_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
+		return
+	}
+	if body.NominationIDs == nil {
+		body.NominationIDs = []string{}
+	}
+	items, err := h.service.ReorderNominations(r.Context(), contestID, userID, body.NominationIDs)
+	if err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	_ = uhttp.SendSuccess(w, map[string]interface{}{"items": items})
 }
 
 type juryCriteriaService interface {

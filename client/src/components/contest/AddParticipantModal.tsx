@@ -28,6 +28,7 @@ import type {
 } from '../../api/participantsApi';
 import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
 import { listNominations } from '../../api/nominationsApi';
+import { sortNominationsByOrder } from './contestNominationsDisplay';
 import { buildLoginUrl } from '../../utils/navigation';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import './AddParticipantModal.css';
@@ -278,7 +279,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     listNominations(contestId)
       .then((rows) => {
         if (!cancelled) {
-          setNominationsForPhotos(rows);
+          setNominationsForPhotos([...rows].sort(sortNominationsByOrder));
         }
       })
       .catch(() => {
@@ -550,7 +551,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         );
 
         if (!updateParticipant.fulfilled.match(result)) {
-          const errorMessage = result.payload as string || 'Не удалось обновить участника';
+          const errorMessage = result.payload as string || 'Не удалось сохранить заявку';
           setError(errorMessage);
           setLoading(false);
           return;
@@ -719,7 +720,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         navigate(`/contests/${contestId}/participants/${participantId}`);
       }
     } catch (err: any) {
-      setError(err.message || (isEditMode ? 'Не удалось обновить участника' : 'Не удалось добавить участника'));
+      setError(err.message || (isEditMode ? 'Не удалось сохранить заявку' : 'Не удалось добавить участника'));
       setLoading(false);
       setUploadingMedia(false);
     }
@@ -758,9 +759,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
+      showHeaderDivider={false}
+      showFooterDivider={false}
       title={
         isEditMode
-          ? 'Редактировать участника'
+          ? 'Редактировать заявку участника'
           : nominationTitle
             ? `Участвовать: ${nominationTitle}`
             : 'Добавить участника'
@@ -791,6 +794,95 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             Номинация: <strong>{nominationTitle}</strong>
           </p>
         ) : null}
+
+        <div className="add-participant-form-stack">
+          <div className="add-participant-photos">
+            <label className="add-participant-media-label">Фотографии</label>
+            <p
+              className={
+                currentPhotoTotal < minPhotosRequired
+                  ? 'add-participant-photos-count add-participant-photos-count--short'
+                  : 'add-participant-photos-count'
+              }
+            >
+              Минимум фото: <strong>{minPhotosRequired}</strong>, сейчас:{' '}
+              <strong>{currentPhotoTotal}</strong>
+            </p>
+
+            {/* Existing photos (edit mode) */}
+            {isEditMode && existingPhotos.length > 0 && (
+              <div className="add-participant-existing-photos">
+                <label className="add-participant-existing-photos-label">Существующие фото:</label>
+                <div className="add-participant-existing-photos-list">
+                  {existingPhotos.map((photo, index) => (
+                    <div
+                      key={photo.id}
+                      className="add-participant-existing-photo-item"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        opacity: draggedIndex === index ? 0.5 : 1,
+                        cursor: 'move',
+                      }}
+                    >
+                      <img
+                        src={photo.thumb_url || photo.url}
+                        alt={`${index + 1}`}
+                        className="add-participant-existing-photo-preview"
+                      />
+                      <button
+                        type="button"
+                        className="add-participant-existing-photo-remove"
+                        onClick={() => removeExistingPhoto(photo.id)}
+                        disabled={loading || uploadingMedia}
+                        title="Удалить фото"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="add-participant-media-hint">Перетащите фото для изменения порядка</p>
+              </div>
+            )}
+
+            {/* Add new photos */}
+            <FileUpload
+              accept="image/*"
+              onFileSelect={handlePhotoSelect}
+              disabled={loading || uploadingMedia}
+              label={isEditMode ? 'Добавить еще фото' : 'Добавить фото'}
+              multiple={true}
+            />
+
+            {/* New photos to upload */}
+            {selectedPhotos.length > 0 && (
+              <div className="add-participant-photos-list">
+                <label className="add-participant-new-photos-label">Новые фото для загрузки:</label>
+                {selectedPhotos.map((pick, index) => (
+                  <div key={`${pick.previewUrl}-${index}`} className="add-participant-photo-item">
+                    <img
+                      src={pick.previewUrl}
+                      alt=""
+                      className="add-participant-photo-thumb"
+                    />
+                    <span className="add-participant-photo-name">{pick.file.name}</span>
+                    <button
+                      type="button"
+                      className="add-participant-photo-remove"
+                      onClick={() => removePhoto(index)}
+                      disabled={loading || uploadingMedia}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="add-participant-media-hint">Можно загрузить несколько фотографий (макс. 10MB каждая)</p>
+          </div>
 
         {registrationFields === null ? (
           <p className="add-participant-registration-loading">Загрузка полей заявки…</p>
@@ -961,95 +1053,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             })}
           </div>
         ) : null}
-
-        <div className="add-participant-media">
-          <div className="add-participant-photos">
-            <label className="add-participant-media-label">Фотографии</label>
-            <p
-              className={
-                currentPhotoTotal < minPhotosRequired
-                  ? 'add-participant-photos-count add-participant-photos-count--short'
-                  : 'add-participant-photos-count'
-              }
-            >
-              Минимум фото: <strong>{minPhotosRequired}</strong>, сейчас:{' '}
-              <strong>{currentPhotoTotal}</strong>
-            </p>
-
-            {/* Existing photos (edit mode) */}
-            {isEditMode && existingPhotos.length > 0 && (
-              <div className="add-participant-existing-photos">
-                <label className="add-participant-existing-photos-label">Существующие фото:</label>
-                <div className="add-participant-existing-photos-list">
-                  {existingPhotos.map((photo, index) => (
-                    <div
-                      key={photo.id}
-                      className="add-participant-existing-photo-item"
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
-                      style={{
-                        opacity: draggedIndex === index ? 0.5 : 1,
-                        cursor: 'move',
-                      }}
-                    >
-                      <img
-                        src={photo.thumb_url || photo.url}
-                        alt={`${index + 1}`}
-                        className="add-participant-existing-photo-preview"
-                      />
-                      <button
-                        type="button"
-                        className="add-participant-existing-photo-remove"
-                        onClick={() => removeExistingPhoto(photo.id)}
-                        disabled={loading || uploadingMedia}
-                        title="Удалить фото"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <p className="add-participant-media-hint">Перетащите фото для изменения порядка</p>
-              </div>
-            )}
-
-            {/* Add new photos */}
-            <FileUpload
-              accept="image/*"
-              onFileSelect={handlePhotoSelect}
-              disabled={loading || uploadingMedia}
-              label={isEditMode ? 'Добавить еще фото' : 'Добавить фото'}
-              multiple={true}
-            />
-            
-            {/* New photos to upload */}
-            {selectedPhotos.length > 0 && (
-              <div className="add-participant-photos-list">
-                <label className="add-participant-new-photos-label">Новые фото для загрузки:</label>
-                {selectedPhotos.map((pick, index) => (
-                  <div key={`${pick.previewUrl}-${index}`} className="add-participant-photo-item">
-                    <img
-                      src={pick.previewUrl}
-                      alt=""
-                      className="add-participant-photo-thumb"
-                    />
-                    <span className="add-participant-photo-name">{pick.file.name}</span>
-                    <button
-                      type="button"
-                      className="add-participant-photo-remove"
-                      onClick={() => removePhoto(index)}
-                      disabled={loading || uploadingMedia}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="add-participant-media-hint">Можно загрузить несколько фотографий (макс. 10MB каждая)</p>
-          </div>
 
           <div className="add-participant-video">
             <label className="add-participant-media-label">Видео</label>

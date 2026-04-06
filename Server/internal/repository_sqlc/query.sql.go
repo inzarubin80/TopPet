@@ -2896,6 +2896,26 @@ func (q *Queries) UpdateNominationLogoUrl(ctx context.Context, arg *UpdateNomina
 	return &i, err
 }
 
+const updateNominationSortOrder = `-- name: UpdateNominationSortOrder :execrows
+UPDATE contest_nominations
+SET sort_order = $3
+WHERE id = $1 AND contest_id = $2
+`
+
+type UpdateNominationSortOrderParams struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+	SortOrder int32
+}
+
+func (q *Queries) UpdateNominationSortOrder(ctx context.Context, arg *UpdateNominationSortOrderParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateNominationSortOrder, arg.ID, arg.ContestID, arg.SortOrder)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateParticipant = `-- name: UpdateParticipant :one
 UPDATE contest_participants
 SET pet_name = $2, pet_description = $3, registration_answers = $4, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()

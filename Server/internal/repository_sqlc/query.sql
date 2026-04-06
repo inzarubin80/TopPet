@@ -647,6 +647,11 @@ SET logo_url = $3
 WHERE id = $1 AND contest_id = $2
 RETURNING *;
 
+-- name: UpdateNominationSortOrder :execrows
+UPDATE contest_nominations
+SET sort_order = $3
+WHERE id = $1 AND contest_id = $2;
+
 -- name: ListNominationsByContest :many
 SELECT * FROM contest_nominations
 WHERE contest_id = $1

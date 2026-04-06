@@ -13,11 +13,11 @@
   color: #374151;
 }
 
-.add-participant-media {
+.add-participant-form-stack {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .add-participant-photos-count {
@@ -258,15 +258,15 @@
 }
 
 .add-participant-registration-loading {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 14px;
   color: #64748b;
 }
 
 .add-participant-registration-fields {
-  margin: 16px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid #e8e8e8;
+  margin: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .add-participant-registration-heading {

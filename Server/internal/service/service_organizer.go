@@ -164,6 +164,52 @@ func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.Co
 	return s.repository.DeleteNomination(ctx, nominationID)
 }
 
+func (s *TopPetService) ReorderNominations(ctx context.Context, contestID model.ContestID, userID model.UserID, orderedIDs []string) ([]*model.Nomination, error) {
+	c, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.userCanManageContest(ctx, c, userID) {
+		return nil, errors.New("only contest admin can reorder nominations")
+	}
+	current, err := s.repository.ListNominationsByContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	normalized := make([]string, len(orderedIDs))
+	for i, id := range orderedIDs {
+		normalized[i] = strings.TrimSpace(id)
+	}
+	if len(normalized) != len(current) {
+		return nil, fmt.Errorf("%w: nomination_ids must list every nomination exactly once", model.ErrBadRequest)
+	}
+	want := make(map[string]struct{}, len(current))
+	for _, n := range current {
+		want[n.ID] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(normalized))
+	for _, id := range normalized {
+		if id == "" {
+			return nil, fmt.Errorf("%w: empty nomination id", model.ErrBadRequest)
+		}
+		if _, dup := seen[id]; dup {
+			return nil, fmt.Errorf("%w: duplicate nomination id", model.ErrBadRequest)
+		}
+		seen[id] = struct{}{}
+		if _, ok := want[id]; !ok {
+			return nil, fmt.Errorf("%w: unknown nomination id", model.ErrBadRequest)
+		}
+	}
+	if len(seen) != len(want) {
+		return nil, fmt.Errorf("%w: nomination_ids must list every nomination exactly once", model.ErrBadRequest)
+	}
+
+	if err := s.repository.ReorderNominationsByContest(ctx, contestID, normalized); err != nil {
+		return nil, err
+	}
+	return s.repository.ListNominationsByContest(ctx, contestID)
+}
+
 func (s *TopPetService) ListContestRegistrationFields(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error) {
 	return s.repository.ListRegistrationFieldsByContest(ctx, contestID)
 }

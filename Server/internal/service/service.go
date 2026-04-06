@@ -53,6 +53,7 @@ type (
 		ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 		ListNominationsForContests(ctx context.Context, contestIDs []model.ContestID) ([]*model.Nomination, error)
 		DeleteNomination(ctx context.Context, nominationID string) error
+		ReorderNominationsByContest(ctx context.Context, contestID model.ContestID, orderedIDs []string) error
 		CountNominationsByContest(ctx context.Context, contestID model.ContestID) (int64, error)
 		ListJuryCriteriaByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryCriterion, error)
 		ReplaceContestJuryCriteria(ctx context.Context, contestID model.ContestID, items []*model.JuryCriterionInput) error

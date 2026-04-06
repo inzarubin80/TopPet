@@ -6,6 +6,7 @@ import {
   createNomination,
   updateNomination,
   deleteNomination,
+  reorderNominations,
   uploadNominationLogo,
   clearNominationLogo,
 } from '../../api/nominationsApi';
@@ -23,6 +24,7 @@ import {
   juryScaleOrganizerPhrase,
   minPhotosAudienceHint,
   nominationPrimarySecondary,
+  sortNominationsByOrder,
 } from './contestNominationsDisplay';
 import { ContestAssetImageField } from './ContestAssetImageField';
 import { resolvePublicAssetUrl } from '../../utils/seo';
@@ -90,6 +92,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [editNomDesc, setEditNomDesc] = useState('');
   const [editNomMinPhotos, setEditNomMinPhotos] = useState(1);
   const [logoUploadingNomId, setLogoUploadingNomId] = useState<string | null>(null);
+  const [nomOrderBusy, setNomOrderBusy] = useState(false);
 
   const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
@@ -102,7 +105,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         listNominations(contest.id),
         listJuryCriteria(contest.id),
       ]);
-      setNominations(noms);
+      setNominations([...noms].sort(sortNominationsByOrder));
       if (crit.length > 0) {
         setCriteriaDraft(
           crit.map((c) => ({
@@ -206,7 +209,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         description: nomDesc.trim(),
         min_photo_count: clampNominationMinPhotos(nomMinPhotos),
       });
-      setNominations((prev) => [...prev, n].sort((a, b) => a.sort_order - b.sort_order));
+      setNominations((prev) => [...prev, n].sort(sortNominationsByOrder));
       setNomTitle('');
       setNomDesc('');
       setNomMinPhotos(1);
@@ -251,6 +254,27 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     } catch (e) {
       errorHandler.handleError(e, showError, false);
       showError('Не удалось удалить');
+    }
+  };
+
+  const moveNomination = async (fromIndex: number, dir: -1 | 1) => {
+    const toIndex = fromIndex + dir;
+    if (toIndex < 0 || toIndex >= nominations.length) return;
+    setNomOrderBusy(true);
+    try {
+      const next = [...nominations];
+      [next[fromIndex], next[toIndex]] = [next[toIndex], next[fromIndex]];
+      const items = await reorderNominations(
+        contest.id,
+        next.map((x) => x.id)
+      );
+      setNominations([...items].sort(sortNominationsByOrder));
+      showSuccess('Порядок обновлён');
+    } catch (err) {
+      errorHandler.handleError(err, showError, false);
+      showError('Не удалось изменить порядок');
+    } finally {
+      setNomOrderBusy(false);
     }
   };
 
@@ -479,7 +503,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                 : 'contest-organizer-criteria-list'
             }
           >
-            {nominations.map((n) => {
+            {nominations.map((n, index) => {
               const { primary, secondary } = nominationPrimarySecondary(n.title, n.description || '');
               const photoHint = minPhotosAudienceHint(n.min_photo_count);
               return (
@@ -590,6 +614,34 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                       )}
                       {canEdit && (
                         <div className="contest-organizer-criteria-actions">
+                          {nominations.length > 1 ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="small"
+                                onClick={() => void moveNomination(index, -1)}
+                                disabled={fieldsLocked || nomOrderBusy || index === 0}
+                                aria-label="Переместить номинацию выше"
+                              >
+                                Вверх
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="small"
+                                onClick={() => void moveNomination(index, 1)}
+                                disabled={
+                                  fieldsLocked ||
+                                  nomOrderBusy ||
+                                  index >= nominations.length - 1
+                                }
+                                aria-label="Переместить номинацию ниже"
+                              >
+                                Вниз
+                              </Button>
+                            </>
+                          ) : null}
                           <Button
                             type="button"
                             variant="secondary"
@@ -597,7 +649,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                             onClick={() =>
                               startEditNom(n.id, n.title, n.description, n.min_photo_count ?? 1)
                             }
-                            disabled={fieldsLocked}
+                            disabled={fieldsLocked || nomOrderBusy}
                           >
                             Изменить
                           </Button>
@@ -606,7 +658,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                             variant="danger"
                             size="small"
                             onClick={() => handleDeleteNom(n.id)}
-                            disabled={fieldsLocked}
+                            disabled={fieldsLocked || nomOrderBusy}
                           >
                             Удалить
                           </Button>

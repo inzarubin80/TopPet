@@ -30,6 +30,17 @@ export const deleteNomination = async (contestId: ContestID, nominationId: strin
   await axiosClient.delete(`/contests/${contestId}/nominations/${nominationId}`);
 };
 
+export const reorderNominations = async (
+  contestId: ContestID,
+  nominationIds: string[]
+): Promise<Nomination[]> => {
+  const res = await axiosClient.put<{ items: Nomination[] }>(
+    `/contests/${contestId}/nominations/order`,
+    { nomination_ids: nominationIds }
+  );
+  return res.data.items || [];
+};
+
 export const uploadNominationLogo = async (
   contestId: ContestID,
   nominationId: string,

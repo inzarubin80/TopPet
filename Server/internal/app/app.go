@@ -236,6 +236,10 @@ func (a *App) registerRoutes() {
 		appHttp.NewDeleteNominationHandler("/api/contests/{contestId}/nominations/{nominationId}", a.service),
 		a.service,
 	))
+	a.mux.Handle("PUT /api/contests/{contestId}/nominations/order", middleware.NewAuthMiddleware(
+		appHttp.NewPutNominationOrderHandler("/api/contests/{contestId}/nominations/order", a.service),
+		a.service,
+	))
 
 	a.mux.Handle("GET /api/contests/{contestId}/jury-criteria", appHttp.NewJuryCriteriaListHandler("/api/contests/{contestId}/jury-criteria", a.service))
 	a.mux.Handle("PUT /api/contests/{contestId}/jury-criteria", middleware.NewAuthMiddleware(

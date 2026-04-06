@@ -74,6 +74,19 @@ docker exec -it toppet-postgres psql -U postgres -d toppet
 
 Данные хранятся в Docker volume `postgres_data`. Это означает, что данные сохраняются между перезапусками контейнера, но удаляются при `docker-compose down -v`.
 
+## Интеграционный тест конкурса (много участников и жюри)
+
+Создаётся конкурс с 300 участниками, 3 номинациями, 3 критериями жюри и 3 членами жюри (тариф Pro выставляется в тесте). После прогона в логе теста будет строка `contest_id=...` — по этому UUID можно открыть страницу конкурса в клиенте (нужен вход под пользователем-организатором с тем же `user_id`, что в логе).
+
+```bash
+cd docker && docker-compose up -d
+cd ../Server && make migrate
+make integration-test
+# Быстрый прогон: INTEGRATION_SCALE=9 make integration-test
+```
+
+Переменные: `INTEGRATION_DATABASE_URL` или `TEST_DATABASE_URL` (если не заданы, используется `DATABASE_URL` из `make integration-test`); `INTEGRATION_SCALE` по умолчанию `300` (должно делиться на 3).
+
 ## Полезные команды
 
 ```bash

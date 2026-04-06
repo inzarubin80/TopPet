@@ -184,6 +184,45 @@ func (r *Repository) CountNominationsByContest(ctx context.Context, contestID mo
 	return reposqlc.CountNominationsByContest(ctx, cid)
 }
 
+// ReorderNominationsByContest выставляет sort_order = 0..len-1 в порядке orderedIDs. Транзакция.
+func (r *Repository) ReorderNominationsByContest(ctx context.Context, contestID model.ContestID, orderedIDs []string) error {
+	b, ok := r.conn.(pgxBeginner)
+	if !ok {
+		return fmt.Errorf("database connection does not support transactions")
+	}
+	tx, err := b.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	reposqlc := sqlc_repository.New(tx)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return err
+	}
+
+	for i, idStr := range orderedIDs {
+		nid, err := uuid.Parse(strings.TrimSpace(idStr))
+		if err != nil {
+			return fmt.Errorf("%w: invalid nomination id", model.ErrBadRequest)
+		}
+		n, err := reposqlc.UpdateNominationSortOrder(ctx, &sqlc_repository.UpdateNominationSortOrderParams{
+			ID:        pgtype.UUID{Bytes: nid, Valid: true},
+			ContestID: cid,
+			SortOrder: int32(i),
+		})
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return fmt.Errorf("%w: nomination not in this contest", model.ErrorNotFound)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 func nominationFromSQLc(n *sqlc_repository.ContestNomination) *model.Nomination {
 	var idStr, cidStr string
 	if n.ID.Valid {
