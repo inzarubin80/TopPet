@@ -79,10 +79,13 @@ type ContestJuryCriterium struct {
 }
 
 type ContestJuryMember struct {
-	ID        pgtype.UUID
-	ContestID pgtype.UUID
-	UserID    int64
-	CreatedAt pgtype.Timestamptz
+	ID           pgtype.UUID
+	ContestID    pgtype.UUID
+	UserID       int64
+	CreatedAt    pgtype.Timestamptz
+	SortOrder    int32
+	PortfolioUrl string
+	BioShort     string
 }
 
 type ContestJuryScore struct {
@@ -106,6 +109,8 @@ type ContestNomination struct {
 	MinPhotoCount int32
 	// Публичный URL логотипа номинации (object storage), пусто — нет логотипа
 	LogoUrl string
+	// Максимальное число фото в заявке для этой номинации (1–30, не меньше min_photo_count).
+	MaxPhotoCount int32
 }
 
 type ContestParticipantPhoto struct {
@@ -115,13 +120,6 @@ type ContestParticipantPhoto struct {
 	ThumbUrl      *string
 	CreatedAt     pgtype.Timestamptz
 	Position      int32
-}
-
-type ContestParticipantVideo struct {
-	ID            pgtype.UUID
-	ParticipantID pgtype.UUID
-	Url           string
-	CreatedAt     pgtype.Timestamptz
 }
 
 type ContestVote struct {
@@ -141,6 +139,7 @@ type User struct {
 	CreatedAt pgtype.Timestamptz
 	Email     *string
 	Role      string
+	IsBlocked bool
 }
 
 type UserAuthProvider struct {

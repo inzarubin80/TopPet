@@ -11,8 +11,8 @@ import (
 )
 
 type nominationsService interface {
-	CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount int) (*model.Nomination, error)
-	UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount int) (*model.Nomination, error)
+	CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount, maxPhotoCount int) (*model.Nomination, error)
+	UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount, maxPhotoCount int) (*model.Nomination, error)
 	ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 	DeleteNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string) error
 	ReorderNominations(ctx context.Context, contestID model.ContestID, userID model.UserID, orderedIDs []string) ([]*model.Nomination, error)
@@ -43,6 +43,7 @@ func (h *NominationsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Title          string `json:"title"`
 			Description    string `json:"description"`
 			MinPhotoCount *int   `json:"min_photo_count"`
+			MaxPhotoCount *int   `json:"max_photo_count"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
@@ -52,7 +53,11 @@ func (h *NominationsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if body.MinPhotoCount != nil {
 			minPhotos = *body.MinPhotoCount
 		}
-		n, err := h.service.CreateNomination(r.Context(), contestID, userID, body.Title, body.Description, minPhotos)
+		maxPhotos := 30
+		if body.MaxPhotoCount != nil {
+			maxPhotos = *body.MaxPhotoCount
+		}
+		n, err := h.service.CreateNomination(r.Context(), contestID, userID, body.Title, body.Description, minPhotos, maxPhotos)
 		if err != nil {
 			uhttp.HandleError(w, err)
 			return
@@ -84,6 +89,7 @@ func (h *PatchNominationHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		Title           string `json:"title"`
 		Description     string `json:"description"`
 		MinPhotoCount  *int   `json:"min_photo_count"`
+		MaxPhotoCount  *int   `json:"max_photo_count"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
@@ -103,7 +109,21 @@ func (h *PatchNominationHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	}
-	n, err := h.service.UpdateNomination(r.Context(), contestID, userID, nominationID, body.Title, body.Description, minPhotos)
+	maxPhotos := 30
+	if body.MaxPhotoCount != nil {
+		maxPhotos = *body.MaxPhotoCount
+	} else {
+		items, lerr := h.service.ListNominations(r.Context(), contestID)
+		if lerr == nil {
+			for _, it := range items {
+				if it.ID == nominationID {
+					maxPhotos = it.MaxPhotoCount
+					break
+				}
+			}
+		}
+	}
+	n, err := h.service.UpdateNomination(r.Context(), contestID, userID, nominationID, body.Title, body.Description, minPhotos, maxPhotos)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

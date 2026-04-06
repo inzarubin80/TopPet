@@ -146,18 +146,6 @@ export const uploadPhoto = createAsyncThunk(
   }
 );
 
-export const uploadVideo = createAsyncThunk(
-  'participants/uploadVideo',
-  async ({ participantId, file }: { participantId: ParticipantID; file: File }, { rejectWithValue }) => {
-    try {
-      const video = await participantsApi.uploadVideo(participantId, file);
-      return { participantId, video };
-    } catch (error: unknown) {
-      return rejectWithValue(getApiErrorMessage(error));
-    }
-  }
-);
-
 export const updateParticipant = createAsyncThunk(
   'participants/updateParticipant',
   async ({ participantId, data }: { participantId: ParticipantID; data: UpdateParticipantRequest }, { rejectWithValue }) => {
@@ -190,18 +178,6 @@ export const deletePhoto = createAsyncThunk(
       return { participantId, photoId };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to delete photo');
-    }
-  }
-);
-
-export const deleteVideo = createAsyncThunk(
-  'participants/deleteVideo',
-  async ({ participantId }: { participantId: ParticipantID }, { rejectWithValue }) => {
-    try {
-      await participantsApi.deleteVideo(participantId);
-      return { participantId };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete video');
     }
   }
 );
@@ -334,16 +310,6 @@ const participantsSlice = createSlice({
           participant.submission_comment = undefined;
         }
       })
-      // uploadVideo
-      .addCase(uploadVideo.fulfilled, (state, action) => {
-        const { participantId, video } = action.payload;
-        const participant = state.items[participantId];
-        if (participant) {
-          participant.video = video;
-          participant.submission_status = 'pending';
-          participant.submission_comment = undefined;
-        }
-      })
       // updateParticipant
       .addCase(updateParticipant.fulfilled, (state, action) => {
         state.items[action.payload.id] = action.payload;
@@ -376,19 +342,6 @@ const participantsSlice = createSlice({
         }
       })
       .addCase(deletePhoto.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
-      // deleteVideo
-      .addCase(deleteVideo.fulfilled, (state, action) => {
-        const { participantId } = action.payload;
-        const participant = state.items[participantId];
-        if (participant) {
-          participant.video = undefined;
-          participant.submission_status = 'pending';
-          participant.submission_comment = undefined;
-        }
-      })
-      .addCase(deleteVideo.rejected, (state, action) => {
         state.error = action.payload as string;
       })
       // updatePhotoOrder

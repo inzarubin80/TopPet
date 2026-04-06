@@ -12,6 +12,7 @@ type minPhotosRepoStub struct {
 	*mockRepository
 	nomCount int64
 	nomMin   int
+	nomMax   int
 	photoLen int
 }
 
@@ -20,7 +21,11 @@ func (m *minPhotosRepoStub) CountNominationsByContest(ctx context.Context, conte
 }
 
 func (m *minPhotosRepoStub) GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error) {
-	return &model.Nomination{ID: nominationID, ContestID: contestID, MinPhotoCount: m.nomMin}, nil
+	nmax := m.nomMax
+	if nmax == 0 {
+		nmax = 30
+	}
+	return &model.Nomination{ID: nominationID, ContestID: contestID, MinPhotoCount: m.nomMin, MaxPhotoCount: nmax}, nil
 }
 
 func (m *minPhotosRepoStub) GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error) {
@@ -31,7 +36,7 @@ func (m *minPhotosRepoStub) GetPhotosByParticipantID(ctx context.Context, partic
 	return out, nil
 }
 
-func TestEnsureParticipantPhotoCountAtLeastMin(t *testing.T) {
+func TestEnsureParticipantPhotoCountInBounds(t *testing.T) {
 	t.Parallel()
 	nom := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 	p := &model.Participant{
@@ -44,7 +49,7 @@ func TestEnsureParticipantPhotoCountAtLeastMin(t *testing.T) {
 		svc := &TopPetService{
 			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 0, photoLen: 0},
 		}
-		err := svc.ensureParticipantPhotoCountAtLeastMin(context.Background(), p)
+		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
 		if err == nil || !errors.Is(err, model.ErrBadRequest) {
 			t.Fatalf("expected ErrBadRequest, got %v", err)
 		}
@@ -54,16 +59,26 @@ func TestEnsureParticipantPhotoCountAtLeastMin(t *testing.T) {
 		svc := &TopPetService{
 			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 0, photoLen: 1},
 		}
-		if err := svc.ensureParticipantPhotoCountAtLeastMin(context.Background(), p); err != nil {
+		if err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p); err != nil {
 			t.Fatal(err)
+		}
+	})
+
+	t.Run("no nominations 31 photos fails max", func(t *testing.T) {
+		svc := &TopPetService{
+			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 0, photoLen: 31},
+		}
+		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
+		if err == nil || !errors.Is(err, model.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
 		}
 	})
 
 	t.Run("nomination min 3 with 2 photos fails", func(t *testing.T) {
 		svc := &TopPetService{
-			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, photoLen: 2},
+			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, nomMax: 10, photoLen: 2},
 		}
-		err := svc.ensureParticipantPhotoCountAtLeastMin(context.Background(), p)
+		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
 		if err == nil || !errors.Is(err, model.ErrBadRequest) {
 			t.Fatalf("expected ErrBadRequest, got %v", err)
 		}
@@ -71,10 +86,20 @@ func TestEnsureParticipantPhotoCountAtLeastMin(t *testing.T) {
 
 	t.Run("nomination min 3 with 3 photos ok", func(t *testing.T) {
 		svc := &TopPetService{
-			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, photoLen: 3},
+			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, nomMax: 10, photoLen: 3},
 		}
-		if err := svc.ensureParticipantPhotoCountAtLeastMin(context.Background(), p); err != nil {
+		if err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p); err != nil {
 			t.Fatal(err)
+		}
+	})
+
+	t.Run("nomination max 5 with 6 photos fails", func(t *testing.T) {
+		svc := &TopPetService{
+			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 1, nomMax: 5, photoLen: 6},
+		}
+		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
+		if err == nil || !errors.Is(err, model.ErrBadRequest) {
+			t.Fatalf("expected ErrBadRequest, got %v", err)
 		}
 	})
 }

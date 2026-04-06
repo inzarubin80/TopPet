@@ -30,6 +30,8 @@ type (
 		CountUsers(ctx context.Context) (int64, error)
 		CountSystemAdmins(ctx context.Context) (int64, error)
 		UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error)
+		IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error)
+		UpdateUserBlocked(ctx context.Context, userID model.UserID, blocked bool) (*model.User, error)
 		GetUserAuthProvidersByProviderUid(ctx context.Context, providerUID, provider string) (*model.UserAuthProvider, error)
 		AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error)
 		GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error)
@@ -46,9 +48,9 @@ type (
 		DeleteContest(ctx context.Context, contestID model.ContestID) error
 
 		// Nominations & jury criteria (организатор)
-		CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error)
+		CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error)
 		GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error)
-		UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error)
+		UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error)
 		UpdateNominationLogoUrl(ctx context.Context, contestID model.ContestID, nominationID string, logoURL string) (*model.Nomination, error)
 		ListNominationsByContest(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 		ListNominationsForContests(ctx context.Context, contestIDs []model.ContestID) ([]*model.Nomination, error)
@@ -62,7 +64,10 @@ type (
 
 		// Jury members & user search
 		ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error)
+		GetContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
 		AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
+		UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error)
+		ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, orderedUserIDs []model.UserID) error
 		RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error
 		CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error)
 		CountContestJuryCriteria(ctx context.Context, contestID model.ContestID) (int64, error)
@@ -86,14 +91,11 @@ type (
 		SetParticipantSubmissionStatus(ctx context.Context, participantID model.ParticipantID, status string, submissionComment *string) (*model.Participant, error)
 		DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error
 
-		// Photos & Videos
+		// Photos
 		AddParticipantPhoto(ctx context.Context, participantID model.ParticipantID, url string, thumbURL *string) (*model.Photo, error)
 		GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error)
 		DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string) error
 		UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error
-		UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error)
-		GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error)
-		DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error
 
 		// Votes
 		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error)

@@ -22,3 +22,25 @@ export const removeJuryMember = async (
 ): Promise<void> => {
   await axiosClient.delete(`/contests/${contestId}/jury/${userId}`);
 };
+
+export type PatchJuryMemberBody = {
+  portfolio_url?: string;
+  bio_short?: string;
+  sort_order?: number;
+};
+
+export const patchJuryMember = async (
+  contestId: ContestID,
+  userId: UserID,
+  body: PatchJuryMemberBody
+): Promise<JuryMember> => {
+  const response = await axiosClient.patch<JuryMember>(`/contests/${contestId}/jury/${userId}`, body);
+  return response.data;
+};
+
+export const reorderJuryMembers = async (
+  contestId: ContestID,
+  userIds: UserID[]
+): Promise<void> => {
+  await axiosClient.put(`/contests/${contestId}/jury/order`, { user_ids: userIds });
+};

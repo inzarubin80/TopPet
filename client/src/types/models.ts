@@ -16,6 +16,8 @@ export interface User {
   name: string;
   email?: string;
   role?: UserRole;
+  /** Аккаунт заблокирован администратором системы (запись в API запрещена). */
+  is_blocked?: boolean;
   avatar_url?: string;
   created_at: string;
   /** Только ответ GET /api/admin/users — OAuth-провайдеры, привязанные к аккаунту. */
@@ -90,6 +92,8 @@ export interface Nomination {
   sort_order: number;
   /** Сколько фото нужно в заявке (по умолчанию 1). */
   min_photo_count?: number;
+  /** Максимум фото в заявке (по умолчанию 30). */
+  max_photo_count?: number;
   /** Публичный URL логотипа номинации (object storage). */
   logo_url?: string;
   created_at: string;
@@ -171,6 +175,12 @@ export interface JuryMember {
   contest_id: ContestID;
   user_id: UserID;
   user_name?: string;
+  /** Порядок отображения (0 — первый). */
+  sort_order: number;
+  /** Ссылка на портфолио или профиль. */
+  portfolio_url?: string;
+  /** Краткое описание для публичной страницы. */
+  bio_short?: string;
   created_at: string;
 }
 
@@ -192,7 +202,6 @@ export interface Participant {
   pet_description: string;
   registration_answers?: Record<string, string | number | boolean>;
   photos?: Photo[];
-  video?: Video;
   total_votes?: number;
   /** Сумма баллов жюри по всем критериям и всем членам жюри (если API отдал поле). */
   total_jury_score?: number;
@@ -217,14 +226,6 @@ export interface Photo {
   thumb_url?: string;
   position?: number;
   created_at: string;
-}
-
-export interface Video {
-  id: string;
-  participant_id: ParticipantID;
-  url: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Vote {

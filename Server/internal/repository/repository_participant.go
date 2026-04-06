@@ -430,12 +430,6 @@ func (r *Repository) DeleteParticipant(ctx context.Context, participantID model.
 		}
 	}
 
-	// Delete video
-	log.Printf("[Repository] DeleteParticipant: Deleting video for participant %s", participantID)
-	if err := reposqlc.DeleteParticipantVideo(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
-		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete video: %v", err)
-	}
-
 	// Delete comments
 	log.Printf("[Repository] DeleteParticipant: Deleting comments for participant %s", participantID)
 	if err := reposqlc.DeleteCommentsByParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
@@ -548,72 +542,6 @@ func (r *Repository) GetPhotosByParticipantID(ctx context.Context, participantID
 	return result, nil
 }
 
-func (r *Repository) UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error) {
-	reposqlc := sqlc_repository.New(r.conn)
-	videoUUID := uuid.New()
-	participantUUID, err := uuid.Parse(string(participantID))
-	if err != nil {
-		return nil, err
-	}
-
-	video, err := reposqlc.UpsertParticipantVideo(ctx, &sqlc_repository.UpsertParticipantVideoParams{
-		ID:            pgtype.UUID{Bytes: videoUUID, Valid: true},
-		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
-		Url:           url,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var videoIDStr, participantIDStr string
-	if video.ID.Valid {
-		videoIDStr = uuid.UUID(video.ID.Bytes).String()
-	}
-	if video.ParticipantID.Valid {
-		participantIDStr = uuid.UUID(video.ParticipantID.Bytes).String()
-	}
-
-	return &model.Video{
-		ID:            videoIDStr,
-		ParticipantID: model.ParticipantID(participantIDStr),
-		URL:           video.Url,
-		CreatedAt:     video.CreatedAt.Time,
-		UpdatedAt:     video.CreatedAt.Time, // Video table doesn't have updated_at, use CreatedAt
-	}, nil
-}
-
-func (r *Repository) GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error) {
-	reposqlc := sqlc_repository.New(r.conn)
-	participantUUID, err := uuid.Parse(string(participantID))
-	if err != nil {
-		return nil, err
-	}
-
-	video, err := reposqlc.GetVideoByParticipantID(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
-		}
-		return nil, err
-	}
-
-	var videoIDStr, participantIDStr string
-	if video.ID.Valid {
-		videoIDStr = uuid.UUID(video.ID.Bytes).String()
-	}
-	if video.ParticipantID.Valid {
-		participantIDStr = uuid.UUID(video.ParticipantID.Bytes).String()
-	}
-
-	return &model.Video{
-		ID:            videoIDStr,
-		ParticipantID: model.ParticipantID(participantIDStr),
-		URL:           video.Url,
-		CreatedAt:     video.CreatedAt.Time,
-		UpdatedAt:     video.CreatedAt.Time, // Video table doesn't have updated_at, use CreatedAt
-	}, nil
-}
-
 func (r *Repository) DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string) error {
 	reposqlc := sqlc_repository.New(r.conn)
 	photoUUID, err := uuid.Parse(photoID)
@@ -622,21 +550,6 @@ func (r *Repository) DeleteParticipantPhoto(ctx context.Context, participantID m
 	}
 
 	err = reposqlc.DeleteParticipantPhoto(ctx, pgtype.UUID{Bytes: photoUUID, Valid: true})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *Repository) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error {
-	reposqlc := sqlc_repository.New(r.conn)
-	participantUUID, err := uuid.Parse(string(participantID))
-	if err != nil {
-		return err
-	}
-
-	err = reposqlc.DeleteParticipantVideo(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
 	if err != nil {
 		return err
 	}

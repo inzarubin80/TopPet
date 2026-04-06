@@ -143,6 +143,20 @@
   vertical-align: middle;
 }
 
+.edit-contest-asset-field--compact .edit-contest-asset-preview-wrap {
+  max-height: 88px;
+  max-width: 88px;
+}
+
+.edit-contest-asset-field--compact .edit-contest-asset-preview {
+  max-height: 88px;
+}
+
+.edit-contest-asset-field--compact .edit-contest-asset-preview-placeholder {
+  padding: 10px 8px;
+  font-size: 0.8rem;
+}
+
 .edit-contest-asset-preview-placeholder {
   margin: 0;
   padding: 14px 12px;

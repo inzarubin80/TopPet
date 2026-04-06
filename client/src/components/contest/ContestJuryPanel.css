@@ -37,11 +37,46 @@
 
 .contest-jury-item {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.contest-jury-item-head {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #eee;
+}
+
+.contest-jury-order-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.contest-jury-order-btn {
+  min-width: 2rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #374151;
+}
+
+.contest-jury-order-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.contest-jury-order-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .contest-jury-item:last-child {
@@ -54,7 +89,73 @@
 .contest-jury-id {
   font-size: 0.8rem;
   color: #6b7280;
-  margin-right: auto;
+}
+
+.contest-jury-edit-fields {
+  width: 100%;
+  max-width: 32rem;
+  padding-left: 0;
+}
+
+.contest-jury-field {
+  margin-bottom: 0.65rem;
+}
+
+.contest-jury-field:last-of-type {
+  margin-bottom: 0.35rem;
+}
+
+.contest-jury-field-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.3rem;
+}
+
+.contest-jury-field-input,
+.contest-jury-field-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.contest-jury-field-textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.contest-jury-field-input.url-input {
+  max-width: 100%;
+}
+
+.contest-jury-field-actions {
+  margin-top: 0.35rem;
+}
+
+.contest-jury-public {
+  font-size: 0.88rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.contest-jury-public-bio {
+  margin: 0 0 0.4rem;
+  white-space: pre-wrap;
+}
+
+.contest-jury-public-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.contest-jury-public-link:hover {
+  text-decoration: underline;
 }
 
 .contest-jury-add {

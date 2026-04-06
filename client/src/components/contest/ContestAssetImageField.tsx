@@ -11,6 +11,8 @@ export interface ContestAssetImageFieldProps {
   onClear?: () => void;
   uploading?: boolean;
   disabled?: boolean;
+  /** Уменьшенное превью (списки номинаций и т.п.). */
+  compact?: boolean;
 }
 
 export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
@@ -20,6 +22,7 @@ export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
   onClear,
   uploading = false,
   disabled = false,
+  compact = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trimmed = url.trim();
@@ -34,7 +37,11 @@ export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
   };
 
   return (
-    <div className="edit-contest-asset-field">
+    <div
+      className={
+        compact ? 'edit-contest-asset-field edit-contest-asset-field--compact' : 'edit-contest-asset-field'
+      }
+    >
       <span className="edit-contest-asset-legend">{legend}</span>
       {previewSrc ? (
         <div className="edit-contest-asset-preview-wrap">

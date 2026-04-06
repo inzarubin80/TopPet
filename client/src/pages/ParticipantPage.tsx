@@ -312,12 +312,7 @@ const ParticipantPage: React.FC = () => {
           {participant.photos && participant.photos.length > 0 && (
             <PhotoGallery photos={participant.photos} />
           )}
-          {participant.video && (
-            <div className="participant-page-video">
-              <video controls src={participant.video.url} />
-            </div>
-          )}
-          {!participant.photos?.length && !participant.video && !isOwner && (
+          {!participant.photos?.length && !isOwner && (
             <div className="participant-page-media-empty">Нет медиа</div>
           )}
         </div>

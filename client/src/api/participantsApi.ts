@@ -1,12 +1,5 @@
 import { axiosClient } from './axiosClient';
-import {
-  Participant,
-  Photo,
-  Video,
-  ParticipantID,
-  ContestID,
-  ParticipantSubmissionStatus,
-} from '../types/models';
+import { Participant, Photo, ParticipantID, ContestID, ParticipantSubmissionStatus } from '../types/models';
 import { CreateParticipantRequest, UpdateParticipantRequest } from '../types/api';
 import type { VoterInfo } from '../types/api';
 
@@ -128,16 +121,6 @@ export const uploadPhoto = async (participantId: ParticipantID, file: File): Pro
   return response.data;
 };
 
-export const uploadVideo = async (participantId: ParticipantID, file: File): Promise<Video> => {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await axiosClient.post<Video>(`/participants/${participantId}/video`, formData, {
-    timeout: 600000, // 10 минут для загрузки больших видео файлов
-  });
-  return response.data;
-};
-
 export const updateParticipant = async (
   participantId: ParticipantID,
   data: UpdateParticipantRequest
@@ -168,10 +151,6 @@ export const deleteParticipant = async (participantId: ParticipantID): Promise<v
 
 export const deletePhoto = async (participantId: ParticipantID, photoId: string): Promise<void> => {
   await axiosClient.delete(`/participants/${participantId}/photos/${photoId}`);
-};
-
-export const deleteVideo = async (participantId: ParticipantID): Promise<void> => {
-  await axiosClient.delete(`/participants/${participantId}/video`);
 };
 
 export const updatePhotoOrder = async (participantId: ParticipantID, photoIds: string[]): Promise<void> => {

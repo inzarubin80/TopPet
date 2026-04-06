@@ -106,6 +106,11 @@ func HandleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	if errors.Is(err, model.ErrUserBlocked) {
+		SendErrorResponse(w, http.StatusForbidden, err.Error())
+		return
+	}
+
 	if errors.Is(err, model.ErrParticipantEmailDomainNotAllowed) {
 		SendErrorResponse(w, http.StatusForbidden, "email domain not allowed for this contest")
 		return

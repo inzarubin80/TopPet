@@ -47,6 +47,14 @@ func (s *TopPetService) Login(ctx context.Context, providerKey string, authoriza
 		_ = s.repository.SetUserEmailIfEmpty(ctx, userID, userProfileFromProvider.Email)
 	}
 
+	blocked, err := s.repository.IsUserBlocked(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if blocked {
+		return nil, model.ErrUserBlocked
+	}
+
 	// Set avatar if empty and provider returned one
 	if userProfileFromProvider.AvatarURL != "" {
 		_ = s.repository.SetUserAvatarIfEmpty(ctx, userID, &userProfileFromProvider.AvatarURL)
@@ -74,6 +82,14 @@ func (s *TopPetService) RefreshToken(ctx context.Context, refreshToken string) (
 	claims, err := s.refreshTokenService.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, err
+	}
+
+	blocked, err := s.repository.IsUserBlocked(ctx, claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if blocked {
+		return nil, model.ErrUserBlocked
 	}
 
 	newAccessToken, err := s.accessTokenService.GenerateToken(claims.UserID)

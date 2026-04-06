@@ -256,6 +256,14 @@ func (a *App) registerRoutes() {
 		appHttp.NewContestJuryRemoveHandler("/api/contests/{contestId}/jury/{userId}", a.service),
 		a.service,
 	))
+	a.mux.Handle("PATCH /api/contests/{contestId}/jury/{userId}", middleware.NewAuthMiddleware(
+		appHttp.NewContestJuryPatchHandler("/api/contests/{contestId}/jury/{userId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("PUT /api/contests/{contestId}/jury/order", middleware.NewAuthMiddleware(
+		appHttp.NewContestJuryReorderHandler("/api/contests/{contestId}/jury/order", a.service),
+		a.service,
+	))
 
 	a.mux.Handle("GET /api/admin/users", middleware.NewAuthMiddleware(
 		appHttp.NewAdminUsersListHandler("/api/admin/users", a.service),
@@ -337,14 +345,6 @@ func (a *App) registerRoutes() {
 		))
 		a.mux.Handle("POST /api/participants/{participantId}/photos", middleware.NewAuthMiddleware(
 			appHttp.NewUploadPhotoHandler("/api/participants/{participantId}/photos", a.service, a.uploader),
-			a.service,
-		))
-		a.mux.Handle("POST /api/participants/{participantId}/video", middleware.NewAuthMiddleware(
-			appHttp.NewUploadVideoHandler("/api/participants/{participantId}/video", a.service, a.uploader),
-			a.service,
-		))
-		a.mux.Handle("DELETE /api/participants/{participantId}/video", middleware.NewAuthMiddleware(
-			appHttp.NewDeleteVideoHandler("/api/participants/{participantId}/video", a.service),
 			a.service,
 		))
 	}

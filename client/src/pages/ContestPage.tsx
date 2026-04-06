@@ -495,6 +495,7 @@ const ContestPage: React.FC = () => {
             contestId={id}
             audienceWinners={hasAudienceWinners ? currentContest.audience_winners : undefined}
             juryWinners={hasJuryWinners ? currentContest.jury_winners : undefined}
+            nominations={contestNominations}
           />
         ) : null}
 

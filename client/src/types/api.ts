@@ -19,7 +19,6 @@ export interface ChatMessagesListResponse {
 
 export interface ParticipantDetails extends Participant {
   photos: Photo[];
-  video?: Video;
 }
 
 export interface Photo {
@@ -28,14 +27,6 @@ export interface Photo {
   url: string;
   thumb_url?: string;
   created_at: string;
-}
-
-export interface Video {
-  id: string;
-  participant_id: string;
-  url: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface CreateContestRequest {

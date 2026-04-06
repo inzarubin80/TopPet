@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -9,6 +12,47 @@ import (
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
 )
+
+func juryMemberFromJoinRow(
+	id pgtype.UUID,
+	contestID pgtype.UUID,
+	userID int64,
+	createdAt pgtype.Timestamptz,
+	sortOrder int32,
+	portfolioURL, bioShort, userName string,
+) *model.JuryMember {
+	var idStr, cidStr string
+	if id.Valid {
+		idStr = uuid.UUID(id.Bytes).String()
+	}
+	if contestID.Valid {
+		cidStr = uuid.UUID(contestID.Bytes).String()
+	}
+	return &model.JuryMember{
+		ID:             idStr,
+		ContestID:      model.ContestID(cidStr),
+		UserID:         model.UserID(userID),
+		UserName:       userName,
+		SortOrder:      sortOrder,
+		PortfolioURL:   portfolioURL,
+		BioShort:       bioShort,
+		CreatedAt:      createdAt.Time,
+	}
+}
+
+func juryMemberFromListRow(row *sqlc_repository.ListContestJuryMembersWithNamesRow) *model.JuryMember {
+	return juryMemberFromJoinRow(
+		row.ID, row.ContestID, row.UserID, row.CreatedAt,
+		row.SortOrder, row.PortfolioUrl, row.BioShort, row.UserName,
+	)
+}
+
+func juryMemberFromGetRow(row *sqlc_repository.GetContestJuryMemberWithNameRow) *model.JuryMember {
+	return juryMemberFromJoinRow(
+		row.ID, row.ContestID, row.UserID, row.CreatedAt,
+		row.SortOrder, row.PortfolioUrl, row.BioShort, row.UserName,
+	)
+}
 
 func (r *Repository) ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error) {
 	reposqlc := sqlc_repository.New(r.conn)
@@ -27,21 +71,93 @@ func (r *Repository) ListContestJuryMembers(ctx context.Context, contestID model
 	return out, nil
 }
 
-func juryMemberFromListRow(row *sqlc_repository.ListContestJuryMembersWithNamesRow) *model.JuryMember {
-	var idStr, cidStr string
-	if row.ID.Valid {
-		idStr = uuid.UUID(row.ID.Bytes).String()
+func (r *Repository) GetContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return nil, err
 	}
-	if row.ContestID.Valid {
-		cidStr = uuid.UUID(row.ContestID.Bytes).String()
+	row, err := reposqlc.GetContestJuryMemberWithName(ctx, &sqlc_repository.GetContestJuryMemberWithNameParams{
+		ContestID: cid,
+		UserID:    int64(userID),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
 	}
-	return &model.JuryMember{
-		ID:        idStr,
-		ContestID: model.ContestID(cidStr),
-		UserID:    model.UserID(row.UserID),
-		UserName:  row.UserName,
-		CreatedAt: row.CreatedAt.Time,
+	return juryMemberFromGetRow(row), nil
+}
+
+func (r *Repository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return nil, err
 	}
+	_, err = reposqlc.UpdateContestJuryMember(ctx, &sqlc_repository.UpdateContestJuryMemberParams{
+		ContestID:    cid,
+		UserID:       int64(userID),
+		PortfolioUrl: portfolioURL,
+		BioShort:     bioShort,
+		SortOrder:    sortOrder,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
+	}
+	return r.GetContestJuryMember(ctx, contestID, userID)
+}
+
+func (r *Repository) ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, orderedUserIDs []model.UserID) error {
+	b, ok := r.conn.(pgxBeginner)
+	if !ok {
+		return fmt.Errorf("repository does not support transactions")
+	}
+	tx, err := b.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	reposqlc := sqlc_repository.New(tx)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return err
+	}
+	rows, err := reposqlc.ListContestJuryMembersWithNames(ctx, cid)
+	if err != nil {
+		return err
+	}
+	existing := make(map[model.UserID]struct{}, len(rows))
+	for _, row := range rows {
+		existing[model.UserID(row.UserID)] = struct{}{}
+	}
+	if len(orderedUserIDs) != len(existing) {
+		return fmt.Errorf("%w: jury order must list each member exactly once", model.ErrBadRequest)
+	}
+	seen := make(map[model.UserID]struct{})
+	for _, uid := range orderedUserIDs {
+		if _, ok := existing[uid]; !ok {
+			return fmt.Errorf("%w: user is not a jury member", model.ErrBadRequest)
+		}
+		if _, dup := seen[uid]; dup {
+			return fmt.Errorf("%w: duplicate user in jury order", model.ErrBadRequest)
+		}
+		seen[uid] = struct{}{}
+	}
+	for i, uid := range orderedUserIDs {
+		if err := reposqlc.SetContestJuryMemberSortOrder(ctx, &sqlc_repository.SetContestJuryMemberSortOrderParams{
+			ContestID: cid,
+			UserID:    int64(uid),
+			SortOrder: int32(i),
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
@@ -50,33 +166,28 @@ func (r *Repository) AddContestJuryMember(ctx context.Context, contestID model.C
 	if err != nil {
 		return nil, err
 	}
+	next, err := reposqlc.NextContestJurySortOrder(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
 	jid := uuid.New()
-	row, err := reposqlc.InsertContestJuryMember(ctx, &sqlc_repository.InsertContestJuryMemberParams{
+	_, err = reposqlc.InsertContestJuryMember(ctx, &sqlc_repository.InsertContestJuryMemberParams{
 		ID:        pgtype.UUID{Bytes: jid, Valid: true},
+		ContestID: cid,
+		UserID:    int64(userID),
+		SortOrder: next,
+	})
+	if err != nil {
+		return nil, err
+	}
+	row, err := reposqlc.GetContestJuryMemberWithName(ctx, &sqlc_repository.GetContestJuryMemberWithNameParams{
 		ContestID: cid,
 		UserID:    int64(userID),
 	})
 	if err != nil {
 		return nil, err
 	}
-	u, err := reposqlc.GetUserByID(ctx, int64(userID))
-	if err != nil {
-		return nil, err
-	}
-	var idStr, cidStr string
-	if row.ID.Valid {
-		idStr = uuid.UUID(row.ID.Bytes).String()
-	}
-	if row.ContestID.Valid {
-		cidStr = uuid.UUID(row.ContestID.Bytes).String()
-	}
-	return &model.JuryMember{
-		ID:        idStr,
-		ContestID: model.ContestID(cidStr),
-		UserID:    model.UserID(row.UserID),
-		UserName:  u.Name,
-		CreatedAt: row.CreatedAt.Time,
-	}, nil
+	return juryMemberFromGetRow(row), nil
 }
 
 func (r *Repository) RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error {

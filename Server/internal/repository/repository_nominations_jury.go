@@ -28,7 +28,7 @@ func pgUUIDFromContestID(contestID model.ContestID) (pgtype.UUID, error) {
 	return pgtype.UUID{Bytes: cid, Valid: true}, nil
 }
 
-func (r *Repository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error) {
+func (r *Repository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	cid, err := pgUUIDFromContestID(contestID)
 	if err != nil {
@@ -42,6 +42,7 @@ func (r *Repository) CreateNomination(ctx context.Context, contestID model.Conte
 		Description:   description,
 		SortOrder:     int32(sortOrder),
 		MinPhotoCount: minPhotoCount,
+		MaxPhotoCount: maxPhotoCount,
 	})
 	if err != nil {
 		return nil, err
@@ -72,7 +73,7 @@ func (r *Repository) GetNominationByContest(ctx context.Context, contestID model
 	return nominationFromSQLc(row), nil
 }
 
-func (r *Repository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error) {
+func (r *Repository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	cid, err := pgUUIDFromContestID(contestID)
 	if err != nil {
@@ -88,6 +89,7 @@ func (r *Repository) UpdateNomination(ctx context.Context, contestID model.Conte
 		Title:         title,
 		Description:   description,
 		MinPhotoCount: minPhotoCount,
+		MaxPhotoCount: maxPhotoCount,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -238,6 +240,7 @@ func nominationFromSQLc(n *sqlc_repository.ContestNomination) *model.Nomination 
 		Description:   n.Description,
 		SortOrder:     int(n.SortOrder),
 		MinPhotoCount: int(n.MinPhotoCount),
+		MaxPhotoCount: int(n.MaxPhotoCount),
 		LogoUrl:       n.LogoUrl,
 		CreatedAt:     n.CreatedAt.Time,
 	}

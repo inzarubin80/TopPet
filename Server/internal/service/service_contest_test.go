@@ -94,6 +94,12 @@ func (m *mockRepository) CreateUser(ctx context.Context, name string) (*model.Us
 func (m *mockRepository) CreateUserFromProvider(ctx context.Context, userData *model.UserProfileFromProvider) (*model.User, error) { return nil, nil }
 func (m *mockRepository) GetUser(ctx context.Context, userID model.UserID) (*model.User, error) { return nil, nil }
 func (m *mockRepository) UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error) { return nil, nil }
+func (m *mockRepository) IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error) {
+	return false, nil
+}
+func (m *mockRepository) UpdateUserBlocked(ctx context.Context, userID model.UserID, blocked bool) (*model.User, error) {
+	return nil, nil
+}
 func (m *mockRepository) GetUserAuthProvidersByProviderUid(ctx context.Context, providerUID, provider string) (*model.UserAuthProvider, error) { return nil, nil }
 func (m *mockRepository) AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error) { return nil, nil }
 func (m *mockRepository) GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error) { return nil, nil }
@@ -124,9 +130,6 @@ func (m *mockRepository) AddParticipantPhoto(ctx context.Context, participantID 
 func (m *mockRepository) GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error) { return nil, nil }
 func (m *mockRepository) DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string) error { return nil }
 func (m *mockRepository) UpdateParticipantPhotoOrder(ctx context.Context, participantID model.ParticipantID, photoIDs []string) error { return nil }
-func (m *mockRepository) UpsertParticipantVideo(ctx context.Context, participantID model.ParticipantID, url string) (*model.Video, error) { return nil, nil }
-func (m *mockRepository) GetVideoByParticipantID(ctx context.Context, participantID model.ParticipantID) (*model.Video, error) { return nil, nil }
-func (m *mockRepository) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID) error { return nil }
 func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
 	return nil, nil
 }
@@ -165,13 +168,13 @@ func (m *mockRepository) UpdateChatMessage(ctx context.Context, messageID model.
 func (m *mockRepository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error) { return "", nil }
 // CountVotesByContests реализован выше с поддержкой моков
 
-func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32) (*model.Nomination, error) {
+func (m *mockRepository) CreateNomination(ctx context.Context, contestID model.ContestID, title, description string, sortOrder int, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error) {
 	return nil, nil
 }
-func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32) (*model.Nomination, error) {
+func (m *mockRepository) UpdateNomination(ctx context.Context, contestID model.ContestID, nominationID string, title, description string, minPhotoCount int32, maxPhotoCount int32) (*model.Nomination, error) {
 	return nil, nil
 }
 func (m *mockRepository) UpdateNominationLogoUrl(ctx context.Context, contestID model.ContestID, nominationID string, logoURL string) (*model.Nomination, error) {
@@ -211,8 +214,17 @@ func (m *mockRepository) ReplaceContestRegistrationFields(ctx context.Context, c
 func (m *mockRepository) ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error) {
 	return nil, nil
 }
+func (m *mockRepository) GetContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
+	return nil, nil
+}
 func (m *mockRepository) AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
 	return nil, nil
+}
+func (m *mockRepository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error) {
+	return nil, nil
+}
+func (m *mockRepository) ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, orderedUserIDs []model.UserID) error {
+	return nil
 }
 func (m *mockRepository) RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error {
 	return nil

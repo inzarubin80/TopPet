@@ -15,7 +15,7 @@ import (
 type (
 	serviceAdminUsers interface {
 		ListUsersForSystemAdmin(ctx context.Context, actorID model.UserID, limit, offset int) ([]*model.User, int64, error)
-		SetUserRoleBySystemAdmin(ctx context.Context, actorID model.UserID, targetUserID model.UserID, role string) (*model.User, error)
+		PatchUserBySystemAdmin(ctx context.Context, actorID model.UserID, targetUserID model.UserID, role *string, blocked *bool) (*model.User, error)
 	}
 
 	AdminUsersListHandler struct {
@@ -72,8 +72,9 @@ func (h *AdminUsersListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 }
 
-type patchUserRoleBody struct {
-	Role string `json:"role"`
+type patchAdminUserBody struct {
+	Role    *string `json:"role"`
+	Blocked *bool   `json:"blocked"`
 }
 
 func (h *AdminUserPatchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -94,18 +95,24 @@ func (h *AdminUserPatchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 	targetID := model.UserID(uid64)
 
-	var body patchUserRoleBody
+	var body patchAdminUserBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid JSON body", err))
 		return
 	}
-	role := strings.TrimSpace(body.Role)
-	if role == "" {
-		uhttp.HandleError(w, uhttp.NewBadRequestError("role is required", nil))
+	var rolePtr *string
+	if body.Role != nil {
+		t := strings.TrimSpace(*body.Role)
+		if t != "" {
+			rolePtr = &t
+		}
+	}
+	if rolePtr == nil && body.Blocked == nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("role or blocked is required", nil))
 		return
 	}
 
-	user, err := h.service.SetUserRoleBySystemAdmin(r.Context(), actorID, targetID, role)
+	user, err := h.service.PatchUserBySystemAdmin(r.Context(), actorID, targetID, rolePtr, body.Blocked)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

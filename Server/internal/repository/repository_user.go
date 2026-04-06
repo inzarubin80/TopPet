@@ -230,6 +230,7 @@ func (r *Repository) ListUsersForAdmin(ctx context.Context, limit, offset int32)
 			CreatedAt: row.CreatedAt,
 			Email:     row.Email,
 			Role:      row.Role,
+			IsBlocked: row.IsBlocked,
 		}
 		mu := sqlcUserToModel(u)
 		mu.AuthProviders = authProvidersListFromSQL(row.AuthProviders)
@@ -246,6 +247,33 @@ func (r *Repository) CountUsers(ctx context.Context) (int64, error) {
 func (r *Repository) CountSystemAdmins(ctx context.Context) (int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	return reposqlc.CountSystemAdmins(ctx)
+}
+
+func (r *Repository) IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	b, err := reposqlc.IsUserBlocked(ctx, int64(userID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return false, err
+	}
+	return b, nil
+}
+
+func (r *Repository) UpdateUserBlocked(ctx context.Context, userID model.UserID, blocked bool) (*model.User, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	user, err := reposqlc.UpdateUserBlocked(ctx, &sqlc_repository.UpdateUserBlockedParams{
+		UserID:    int64(userID),
+		IsBlocked: blocked,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
+	}
+	return sqlcUserToModel(user), nil
 }
 
 func (r *Repository) UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error) {

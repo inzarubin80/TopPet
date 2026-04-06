@@ -6,7 +6,7 @@ VALUES (
     @name,
     NULLIF(btrim(@email::text), '')
 )
-RETURNING user_id, name, created_at, email, role;
+RETURNING user_id, name, created_at, email, role, is_blocked;
 
 -- name: SetUserEmailIfEmpty :exec
 UPDATE users AS u SET email = $2
@@ -18,8 +18,11 @@ WHERE u.user_id = $1
   );
 
 -- name: GetUserByID :one
-SELECT user_id, name, created_at, email, role FROM users
+SELECT user_id, name, created_at, email, role, is_blocked FROM users
 WHERE user_id = $1;
+
+-- name: IsUserBlocked :one
+SELECT is_blocked FROM users WHERE user_id = $1;
 
 -- name: GetUserRole :one
 SELECT role FROM users WHERE user_id = $1;
@@ -31,6 +34,7 @@ SELECT
   u.email,
   u.created_at,
   u.role,
+  u.is_blocked,
   COALESCE((
     SELECT string_agg(DISTINCT p.provider, ', ' ORDER BY p.provider)
     FROM user_auth_providers p
@@ -50,7 +54,13 @@ SELECT count(*)::bigint AS count FROM users WHERE role = 'system_admin';
 UPDATE users
 SET role = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role;
+RETURNING user_id, name, created_at, email, role, is_blocked;
+
+-- name: UpdateUserBlocked :one
+UPDATE users
+SET is_blocked = $2
+WHERE user_id = $1
+RETURNING user_id, name, created_at, email, role, is_blocked;
 
 -- name: SearchUsersByQuery :many
 SELECT user_id, name, email
@@ -67,7 +77,7 @@ LIMIT $2;
 UPDATE users
 SET name = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role;
+RETURNING user_id, name, created_at, email, role, is_blocked;
 
 -- name: GetUserAuthProvidersByProviderUid :one
 SELECT user_id, provider_uid, provider, name FROM user_auth_providers
@@ -391,23 +401,6 @@ WHERE participant_id = $1 AND id = $2;
 DELETE FROM contest_participant_photos
 WHERE id = $1;
 
--- Contest Participant Videos
-
--- name: UpsertParticipantVideo :one
-INSERT INTO contest_participant_videos (id, participant_id, url)
-VALUES ($1, $2, $3)
-ON CONFLICT (participant_id) DO UPDATE
-SET id = EXCLUDED.id, url = EXCLUDED.url, created_at = NOW()
-RETURNING *;
-
--- name: GetVideoByParticipantID :one
-SELECT * FROM contest_participant_videos
-WHERE participant_id = $1;
-
--- name: DeleteParticipantVideo :exec
-DELETE FROM contest_participant_videos
-WHERE participant_id = $1;
-
 -- Contest Votes
 
 -- name: UpsertContestVote :one
@@ -627,8 +620,8 @@ RETURNING contest_id;
 -- Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
 
 -- name: CreateNomination :one
-INSERT INTO contest_nominations (id, contest_id, title, description, sort_order, min_photo_count)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO contest_nominations (id, contest_id, title, description, sort_order, min_photo_count, max_photo_count)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetNominationByContest :one
@@ -637,7 +630,7 @@ WHERE id = $1 AND contest_id = $2;
 
 -- name: UpdateNomination :one
 UPDATE contest_nominations
-SET title = $3, description = $4, min_photo_count = $5
+SET title = $3, description = $4, min_photo_count = $5, max_photo_count = $6
 WHERE id = $1 AND contest_id = $2
 RETURNING *;
 
@@ -709,16 +702,52 @@ SELECT
     jm.contest_id,
     jm.user_id,
     jm.created_at,
+    jm.sort_order,
+    jm.portfolio_url,
+    jm.bio_short,
     u.name AS user_name
 FROM contest_jury_members jm
 INNER JOIN users u ON u.user_id = jm.user_id
 WHERE jm.contest_id = $1
-ORDER BY jm.created_at ASC;
+ORDER BY jm.sort_order ASC, jm.created_at ASC;
+
+-- name: NextContestJurySortOrder :one
+SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order
+FROM contest_jury_members
+WHERE contest_id = $1;
 
 -- name: InsertContestJuryMember :one
-INSERT INTO contest_jury_members (id, contest_id, user_id)
-VALUES ($1, $2, $3)
-RETURNING id, contest_id, user_id, created_at;
+INSERT INTO contest_jury_members (id, contest_id, user_id, sort_order, portfolio_url, bio_short)
+VALUES ($1, $2, $3, $4, '', '')
+RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short;
+
+-- name: GetContestJuryMemberWithName :one
+SELECT
+    jm.id,
+    jm.contest_id,
+    jm.user_id,
+    jm.created_at,
+    jm.sort_order,
+    jm.portfolio_url,
+    jm.bio_short,
+    u.name AS user_name
+FROM contest_jury_members jm
+INNER JOIN users u ON u.user_id = jm.user_id
+WHERE jm.contest_id = $1 AND jm.user_id = $2;
+
+-- name: UpdateContestJuryMember :one
+UPDATE contest_jury_members
+SET
+    portfolio_url = $3,
+    bio_short = $4,
+    sort_order = $5
+WHERE contest_id = $1 AND user_id = $2
+RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short;
+
+-- name: SetContestJuryMemberSortOrder :exec
+UPDATE contest_jury_members
+SET sort_order = $3
+WHERE contest_id = $1 AND user_id = $2;
 
 -- name: DeleteContestJuryMember :exec
 DELETE FROM contest_jury_members

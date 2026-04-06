@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import type { ContestWinnerBrief } from '../../types/models';
+import type { ContestWinnerBrief, Nomination } from '../../types/models';
 import {
   formatJuryPointsWord,
   formatVotesWord,
+  sortContestWinnersByNominationOrder,
   splitContestWinnerLines,
   winnerInitialsFromName,
 } from '../../utils/contestWinnersDisplay';
@@ -13,6 +14,8 @@ type Props = {
   contestId: string;
   audienceWinners?: ContestWinnerBrief[];
   juryWinners?: ContestWinnerBrief[];
+  /** Порядок номинаций из настроек; без списка порядок как в ответе API. */
+  nominations?: Nomination[];
 };
 
 function AudienceIcon() {
@@ -84,9 +87,22 @@ function WinnerRow({
   );
 }
 
-export function ContestWinnersSection({ contestId, audienceWinners, juryWinners }: Props) {
-  const hasAudience = (audienceWinners?.length ?? 0) > 0;
-  const hasJury = (juryWinners?.length ?? 0) > 0;
+export function ContestWinnersSection({ contestId, audienceWinners, juryWinners, nominations }: Props) {
+  const audienceSorted = useMemo(
+    () =>
+      audienceWinners?.length
+        ? sortContestWinnersByNominationOrder(audienceWinners, nominations)
+        : undefined,
+    [audienceWinners, nominations]
+  );
+  const jurySorted = useMemo(
+    () =>
+      juryWinners?.length ? sortContestWinnersByNominationOrder(juryWinners, nominations) : undefined,
+    [juryWinners, nominations]
+  );
+
+  const hasAudience = (audienceSorted?.length ?? 0) > 0;
+  const hasJury = (jurySorted?.length ?? 0) > 0;
   if (!hasAudience && !hasJury) {
     return null;
   }
@@ -109,7 +125,7 @@ export function ContestWinnersSection({ contestId, audienceWinners, juryWinners 
               </div>
             </div>
             <ul className="contest-winners-cards">
-              {audienceWinners!.map((w) => (
+              {audienceSorted!.map((w) => (
                 <WinnerRow key={`a-${w.participant_id}`} contestId={contestId} w={w} metricKind="audience" />
               ))}
             </ul>
@@ -127,7 +143,7 @@ export function ContestWinnersSection({ contestId, audienceWinners, juryWinners 
               </div>
             </div>
             <ul className="contest-winners-cards">
-              {juryWinners!.map((w) => (
+              {jurySorted!.map((w) => (
                 <WinnerRow key={`j-${w.participant_id}`} contestId={contestId} w={w} metricKind="jury" />
               ))}
             </ul>

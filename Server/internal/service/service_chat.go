@@ -31,6 +31,14 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 		return nil, errors.New("chat is not available for this contest stage")
 	}
 
+	blocked, err := s.repository.IsUserBlocked(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if blocked {
+		return nil, model.ErrorForbidden
+	}
+
 	message, err := s.repository.CreateChatMessage(ctx, contestID, userID, text, false)
 	if err != nil {
 		return nil, err

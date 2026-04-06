@@ -31,6 +31,8 @@ type (
 		Name      string    `json:"name"`
 		Email     string    `json:"email,omitempty"`
 		Role      string    `json:"role"`
+		// IsBlocked — аккаунт заблокирован администратором системы (мутации API запрещены).
+		IsBlocked bool `json:"is_blocked"`
 		AvatarURL string    `json:"avatar_url,omitempty"`
 		CreatedAt time.Time `json:"created_at"`
 		// AuthProviders заполняется только в GET /api/admin/users (OAuth-провайдеры аккаунта).
@@ -121,7 +123,9 @@ type (
 		Description string    `json:"description"`
 		SortOrder   int       `json:"sort_order"`
 		// MinPhotoCount — сколько фото нужно добавить в заявку (1–30), по умолчанию 1.
-		MinPhotoCount int       `json:"min_photo_count"`
+		MinPhotoCount int `json:"min_photo_count"`
+		// MaxPhotoCount — максимум фото в заявке (1–30), не меньше MinPhotoCount.
+		MaxPhotoCount int       `json:"max_photo_count"`
 		LogoUrl       string    `json:"logo_url,omitempty"`
 		CreatedAt     time.Time `json:"created_at"`
 	}
@@ -151,11 +155,21 @@ type (
 
 	// JuryMember — член жюри конкурса.
 	JuryMember struct {
-		ID        string    `json:"id"`
-		ContestID ContestID `json:"contest_id"`
-		UserID    UserID    `json:"user_id"`
-		UserName  string    `json:"user_name,omitempty"`
-		CreatedAt time.Time `json:"created_at"`
+		ID           string    `json:"id"`
+		ContestID    ContestID `json:"contest_id"`
+		UserID       UserID    `json:"user_id"`
+		UserName     string    `json:"user_name,omitempty"`
+		SortOrder    int32     `json:"sort_order"`
+		PortfolioURL string    `json:"portfolio_url,omitempty"`
+		BioShort     string    `json:"bio_short,omitempty"`
+		CreatedAt    time.Time `json:"created_at"`
+	}
+
+	// JuryMemberPatch — частичное обновление карточки члена жюри (организатор).
+	JuryMemberPatch struct {
+		PortfolioURL *string `json:"portfolio_url"`
+		BioShort     *string `json:"bio_short"`
+		SortOrder    *int32  `json:"sort_order"`
 	}
 
 	// JuryScore — оценка члена жюри по одному критерию для заявки.
@@ -239,7 +253,6 @@ type (
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
-		Video               *Video                 `json:"video,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
 		// TotalJuryScore — сумма баллов жюри (отдаётся только создателю конкурса и глобальным админам платформы).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
@@ -279,14 +292,6 @@ type (
 		ThumbURL      *string       `json:"thumb_url,omitempty"`
 		Position      int           `json:"position"`
 		CreatedAt     time.Time     `json:"created_at"`
-	}
-
-	Video struct {
-		ID            string        `json:"id"`
-		ParticipantID ParticipantID `json:"participant_id"`
-		URL           string        `json:"url"`
-		CreatedAt     time.Time     `json:"created_at"`
-		UpdatedAt     time.Time     `json:"updated_at"`
 	}
 
 	Vote struct {

@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { fetchCurrentUser } from '../store/slices/authSlice';
-import { listAdminUsers, updateAdminUserRole } from '../api/adminUsersApi';
+import { listAdminUsers, patchAdminUser, updateAdminUserRole } from '../api/adminUsersApi';
 import { User, UserRole } from '../types/models';
 import { useToast } from '../contexts/ToastContext';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -64,6 +64,23 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
+  const handleBlockedToggle = async (userId: number, blocked: boolean) => {
+    setUpdatingId(userId);
+    try {
+      const updated = await patchAdminUser(userId, { blocked });
+      setItems((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updated } : u)));
+      if (userId === currentUser?.id) {
+        void dispatch(fetchCurrentUser());
+      }
+      showSuccess(blocked ? 'Пользователь заблокирован' : 'Блокировка снята');
+    } catch (e) {
+      showError(getErrorMessage(e));
+      void load();
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
@@ -79,8 +96,10 @@ const AdminUsersPage: React.FC = () => {
         </Link>
         <h1 className="admin-users-title">Пользователи</h1>
         <p className="admin-users-lead">
-          Назначение глобальных ролей. «Администратор конкурса» может управлять любыми конкурсами так же, как создатель.
-          «Администратор системы» имеет доступ к этому списку. Нельзя снять последнего администратора системы.
+          Назначение глобальных ролей и блокировка аккаунтов. «Администратор конкурса» может управлять любыми
+          конкурсами так же, как создатель. «Администратор системы» имеет доступ к этому списку. Нельзя снять
+          последнего администратора системы. Заблокированный пользователь не может выполнять действия, меняющие
+          данные (POST, PUT, PATCH, DELETE).
         </p>
         <p className="admin-users-hint">
           Почта в профиле берётся из OAuth при входе: при повторной авторизации пустое поле заполняется, если провайдер
@@ -106,6 +125,7 @@ const AdminUsersPage: React.FC = () => {
                     <th>Email</th>
                     <th>Вход (OAuth)</th>
                     <th>Роль</th>
+                    <th>Блокировка</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -136,6 +156,24 @@ const AdminUsersPage: React.FC = () => {
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        <label className="admin-users-block-toggle">
+                          <input
+                            type="checkbox"
+                            checked={!!u.is_blocked}
+                            disabled={updatingId === u.id}
+                            onChange={(e) => {
+                              void handleBlockedToggle(u.id, e.target.checked);
+                            }}
+                            aria-label={
+                              u.is_blocked
+                                ? `Снять блокировку с пользователя ${u.id}`
+                                : `Заблокировать пользователя ${u.id}`
+                            }
+                          />
+                          <span>{u.is_blocked ? 'Заблокирован' : 'Активен'}</span>
+                        </label>
                       </td>
                     </tr>
                   ))}

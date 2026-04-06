@@ -159,17 +159,9 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	}
 	log.Printf("[Service] CreateParticipant: Participant created successfully: participantID=%s", participant.ID)
 
-	// Load photos and video
-	log.Printf("[Service] CreateParticipant: Loading photos and video for participant %s", participant.ID)
 	photos, _ := s.repository.GetPhotosByParticipantID(ctx, participant.ID)
 	participant.Photos = photos
-	log.Printf("[Service] CreateParticipant: Loaded %d photos", len(photos))
-
-	video, _ := s.repository.GetVideoByParticipantID(ctx, participant.ID)
-	if video != nil {
-		participant.Video = video
-		log.Printf("[Service] CreateParticipant: Loaded video: videoID=%s", video.ID)
-	}
+	log.Printf("[Service] CreateParticipant: Loaded %d photos for participant %s", len(photos), participant.ID)
 
 	log.Printf("[Service] CreateParticipant: Successfully created participant %s", participant.ID)
 	return participant, nil
@@ -188,14 +180,8 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
-	// Load photos and video
 	photos, _ := s.repository.GetPhotosByParticipantID(ctx, participantID)
 	participant.Photos = photos
-
-	video, _ := s.repository.GetVideoByParticipantID(ctx, participantID)
-	if video != nil {
-		participant.Video = video
-	}
 
 	// Add total votes count
 	totalVotes, err := s.repository.CountVotesByParticipant(ctx, participantID)
@@ -277,15 +263,9 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 		return nil, 0, err
 	}
 
-	// Load photos, videos, and vote counts for each participant
 	for _, p := range participants {
 		photos, _ := s.repository.GetPhotosByParticipantID(ctx, p.ID)
 		p.Photos = photos
-
-		video, _ := s.repository.GetVideoByParticipantID(ctx, p.ID)
-		if video != nil {
-			p.Video = video
-		}
 
 		totalVotes, _ := s.repository.CountVotesByParticipant(ctx, p.ID)
 		p.TotalVotes = totalVotes
@@ -347,7 +327,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, err
 	}
 
-	if err := s.ensureParticipantPhotoCountAtLeastMin(ctx, participant); err != nil {
+	if err := s.ensureParticipantPhotoCountInBounds(ctx, participant); err != nil {
 		return nil, err
 	}
 
@@ -359,17 +339,9 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	}
 	log.Printf("[Service] UpdateParticipant: Participant updated successfully: participantID=%s", updated.ID)
 
-	// Load photos and video
-	log.Printf("[Service] UpdateParticipant: Loading photos and video for participant %s", updated.ID)
 	photos, _ := s.repository.GetPhotosByParticipantID(ctx, updated.ID)
 	updated.Photos = photos
-	log.Printf("[Service] UpdateParticipant: Loaded %d photos", len(photos))
-
-	video, _ := s.repository.GetVideoByParticipantID(ctx, updated.ID)
-	if video != nil {
-		updated.Video = video
-		log.Printf("[Service] UpdateParticipant: Loaded video: videoID=%s", video.ID)
-	}
+	log.Printf("[Service] UpdateParticipant: Loaded %d photos for participant %s", len(photos), updated.ID)
 
 	return updated, nil
 }
@@ -393,39 +365,24 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 		return nil, errors.New("can only add photos during draft or registration")
 	}
 
+	_, maxN, err := s.photoCountBoundsForContestParticipant(ctx, participant.ContestID, participant.NominationID)
+	if err != nil {
+		return nil, err
+	}
+	existingPhotos, err := s.repository.GetPhotosByParticipantID(ctx, participantID)
+	if err != nil {
+		return nil, err
+	}
+	if int32(len(existingPhotos)) >= maxN {
+		return nil, fmt.Errorf("%w: at most %d photos allowed (already have %d)", model.ErrBadRequest, maxN, len(existingPhotos))
+	}
+
 	photo, err := s.repository.AddParticipantPhoto(ctx, participantID, url, thumbURL)
 	if err != nil {
 		return nil, err
 	}
 	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 	return photo, nil
-}
-
-func (s *TopPetService) AddParticipantVideo(ctx context.Context, participantID model.ParticipantID, userID model.UserID, url string) (*model.Video, error) {
-	participant, err := s.repository.GetParticipant(ctx, participantID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Only owner can add video
-	if participant.UserID != userID {
-		return nil, errors.New("only participant owner can add video")
-	}
-
-	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
-	if err != nil {
-		return nil, err
-	}
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
-		return nil, errors.New("can only add videos during draft or registration")
-	}
-
-	video, err := s.repository.UpsertParticipantVideo(ctx, participantID, url)
-	if err != nil {
-		return nil, err
-	}
-	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
-	return video, nil
 }
 
 func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
@@ -507,48 +464,6 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	}
 	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 	log.Printf("[Service] DeleteParticipantPhoto: Photo deleted successfully: photoID=%s", photoID)
-
-	return nil
-}
-
-func (s *TopPetService) DeleteParticipantVideo(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
-	log.Printf("[Service] DeleteParticipantVideo: participantID=%s, userID=%d", participantID, userID)
-	
-	participant, err := s.repository.GetParticipant(ctx, participantID)
-	if err != nil {
-		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to get participant: %v", err)
-		return err
-	}
-	log.Printf("[Service] DeleteParticipantVideo: Participant found: contestID=%s, ownerID=%d", participant.ContestID, participant.UserID)
-
-	// Only owner can delete video
-	if participant.UserID != userID {
-		log.Printf("[Service] DeleteParticipantVideo: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
-		return errors.New("only participant owner can delete video")
-	}
-
-	// Get contest to check status
-	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
-	if err != nil {
-		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to get contest: %v", err)
-		return err
-	}
-	log.Printf("[Service] DeleteParticipantVideo: Contest found: status=%s", contest.Status)
-
-	// Contest must be in draft or registration status
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
-		log.Printf("[Service] DeleteParticipantVideo: ERROR - Contest status does not allow video deletion (status=%s)", contest.Status)
-		return errors.New("can only delete video in draft or registration status")
-	}
-
-	// Delete video from repository
-	err = s.repository.DeleteParticipantVideo(ctx, participantID)
-	if err != nil {
-		log.Printf("[Service] DeleteParticipantVideo: ERROR - Failed to delete video: %v", err)
-		return err
-	}
-	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
-	log.Printf("[Service] DeleteParticipantVideo: Video deleted successfully: participantID=%s", participantID)
 
 	return nil
 }

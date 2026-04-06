@@ -14,6 +14,7 @@ func sqlcUserToModel(u *sqlc_repository.User) *model.User {
 		Name:      u.Name,
 		CreatedAt: u.CreatedAt.Time,
 		Role:      u.Role,
+		IsBlocked: u.IsBlocked,
 	}
 	if u.Role == "" {
 		out.Role = model.UserRoleUser

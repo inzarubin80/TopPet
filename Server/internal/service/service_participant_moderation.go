@@ -35,7 +35,7 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 		return nil, model.ErrorForbidden
 	}
 	if status == model.ParticipantSubmissionAccepted {
-		if err := s.ensureParticipantPhotoCountAtLeastMin(ctx, p); err != nil {
+		if err := s.ensureParticipantPhotoCountInBounds(ctx, p); err != nil {
 			return nil, err
 		}
 	}
@@ -50,10 +50,6 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	}
 	photos, _ := s.repository.GetPhotosByParticipantID(ctx, participantID)
 	updated.Photos = photos
-	vid, _ := s.repository.GetVideoByParticipantID(ctx, participantID)
-	if vid != nil {
-		updated.Video = vid
-	}
 	totalVotes, _ := s.repository.CountVotesByParticipant(ctx, participantID)
 	updated.TotalVotes = totalVotes
 	return updated, nil

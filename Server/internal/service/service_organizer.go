@@ -20,13 +20,13 @@ func contestTierString(c *model.Contest) string {
 	return tier.TierFree
 }
 
-func nominationMinPhotoCountToInt32(v int) (int32, error) {
+func nominationPhotoCountBoundToInt32(v int) (int32, error) {
 	if v < 1 {
 		v = 1
 	}
-	const maxNominationMinPhotos = 30
-	if v > maxNominationMinPhotos {
-		return 0, fmt.Errorf("min_photo_count must be between 1 and %d", maxNominationMinPhotos)
+	const maxNominationPhotos = 30
+	if v > maxNominationPhotos {
+		return 0, fmt.Errorf("photo count must be between 1 and %d", maxNominationPhotos)
 	}
 	return int32(v), nil
 }
@@ -91,13 +91,20 @@ func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestI
 	return s.repository.ListJuryCriteriaByContest(ctx, contestID)
 }
 
-func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount int) (*model.Nomination, error) {
+func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string, minPhotoCount, maxPhotoCount int) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, errors.New("title is required")
 	}
-	mp, err := nominationMinPhotoCountToInt32(minPhotoCount)
+	mp, err := nominationPhotoCountBoundToInt32(minPhotoCount)
 	if err != nil {
 		return nil, err
+	}
+	mx, err := nominationPhotoCountBoundToInt32(maxPhotoCount)
+	if err != nil {
+		return nil, err
+	}
+	if mp > mx {
+		return nil, fmt.Errorf("%w: min_photo_count must be <= max_photo_count", model.ErrBadRequest)
 	}
 	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
@@ -114,20 +121,27 @@ func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.Co
 	if int(n) >= maxN {
 		return nil, fmt.Errorf("maximum nominations for this tier is %d", maxN)
 	}
-	return s.repository.CreateNomination(ctx, contestID, strings.TrimSpace(title), strings.TrimSpace(description), int(n), mp)
+	return s.repository.CreateNomination(ctx, contestID, strings.TrimSpace(title), strings.TrimSpace(description), int(n), mp, mx)
 }
 
 func (s *TopPetService) ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
 	return s.repository.ListNominationsByContest(ctx, contestID)
 }
 
-func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount int) (*model.Nomination, error) {
+func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string, minPhotoCount, maxPhotoCount int) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, errors.New("title is required")
 	}
-	mp, err := nominationMinPhotoCountToInt32(minPhotoCount)
+	mp, err := nominationPhotoCountBoundToInt32(minPhotoCount)
 	if err != nil {
 		return nil, err
+	}
+	mx, err := nominationPhotoCountBoundToInt32(maxPhotoCount)
+	if err != nil {
+		return nil, err
+	}
+	if mp > mx {
+		return nil, fmt.Errorf("%w: min_photo_count must be <= max_photo_count", model.ErrBadRequest)
 	}
 	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
@@ -136,7 +150,7 @@ func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.Co
 	if !s.userCanManageContest(ctx, c, userID) {
 		return nil, errors.New("only contest admin can edit nominations")
 	}
-	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description), mp)
+	return s.repository.UpdateNomination(ctx, contestID, nominationID, strings.TrimSpace(title), strings.TrimSpace(description), mp, mx)
 }
 
 func (s *TopPetService) UpdateNominationLogoURL(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, logoURL string) (*model.Nomination, error) {

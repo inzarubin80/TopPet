@@ -18,6 +18,7 @@ type (
 
 	serviceAuth interface {
 		Authorization(ctx context.Context, accessToken string) (*model.Claims, error)
+		IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error)
 	}
 )
 
@@ -43,9 +44,30 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isMutatingHTTPMethod(r.Method) {
+		blocked, berr := m.service.IsUserBlocked(ctx, claims.UserID)
+		if berr != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if blocked {
+			http.Error(w, "account is blocked", http.StatusForbidden)
+			return
+		}
+	}
+
 	ctx = context.WithValue(ctx, defenitions.UserID, claims.UserID)
 	newRequest := r.WithContext(ctx)
 	m.h.ServeHTTP(w, newRequest)
+}
+
+func isMutatingHTTPMethod(m string) bool {
+	switch m {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *AuthMiddleware) extractTokenFromHeader(r *http.Request) (string, error) {

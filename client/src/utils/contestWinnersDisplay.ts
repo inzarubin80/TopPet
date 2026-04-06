@@ -1,4 +1,34 @@
-import type { ContestWinnerBrief } from '../types/models';
+import type { ContestWinnerBrief, Nomination } from '../types/models';
+
+const tailNoNominationOrder = 1 << 30;
+
+function winnerNominationSortKey(w: ContestWinnerBrief, sortById: Map<string, number>): number {
+  const id = w.nomination_id;
+  if (!id) return tailNoNominationOrder;
+  const o = sortById.get(id);
+  if (o === undefined) return tailNoNominationOrder - 1;
+  return o;
+}
+
+/**
+ * Порядок карточек победителей как у номинаций в настройках (sort_order).
+ * Без номинации — в конце; при пустом списке номинаций массив не меняется.
+ */
+export function sortContestWinnersByNominationOrder(
+  winners: ContestWinnerBrief[],
+  nominations: Nomination[] | undefined
+): ContestWinnerBrief[] {
+  if (!nominations?.length || winners.length <= 1) {
+    return winners;
+  }
+  const sortById = new Map(nominations.map((n) => [n.id, n.sort_order]));
+  return [...winners].sort((a, b) => {
+    const ka = winnerNominationSortKey(a, sortById);
+    const kb = winnerNominationSortKey(b, sortById);
+    if (ka !== kb) return ka - kb;
+    return a.participant_id.localeCompare(b.participant_id);
+  });
+}
 
 /** Склонение для русского: 1, 2–4 (кроме 12–14), 5+. */
 function pluralRu(n: number, one: string, few: string, many: string): string {

@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	appcontext "toppet/server/internal/app/context"
 	"toppet/server/internal/model"
@@ -72,4 +74,41 @@ func (s *TopPetService) SetUserRoleBySystemAdmin(ctx context.Context, actorID mo
 		return nil, err
 	}
 	return u, nil
+}
+
+// SetUserBlockedBySystemAdmin выставляет флаг блокировки (только system_admin).
+func (s *TopPetService) SetUserBlockedBySystemAdmin(ctx context.Context, actorID model.UserID, targetUserID model.UserID, blocked bool) (*model.User, error) {
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+
+	if err := s.requireSystemAdmin(dbCtx, actorID); err != nil {
+		return nil, err
+	}
+	return s.repository.UpdateUserBlocked(dbCtx, targetUserID, blocked)
+}
+
+// PatchUserBySystemAdmin — смена роли и/или блокировки в одном запросе (только system_admin).
+func (s *TopPetService) PatchUserBySystemAdmin(ctx context.Context, actorID model.UserID, targetUserID model.UserID, role *string, blocked *bool) (*model.User, error) {
+	trimmed := ""
+	if role != nil {
+		trimmed = strings.TrimSpace(*role)
+	}
+	if trimmed == "" && blocked == nil {
+		return nil, fmt.Errorf("%w: role or blocked required", model.ErrBadRequest)
+	}
+	var out *model.User
+	var err error
+	if trimmed != "" {
+		out, err = s.SetUserRoleBySystemAdmin(ctx, actorID, targetUserID, trimmed)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if blocked != nil {
+		out, err = s.SetUserBlockedBySystemAdmin(ctx, actorID, targetUserID, *blocked)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }

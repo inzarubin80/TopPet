@@ -35,6 +35,13 @@ func (s *TopPetService) GetUserRole(ctx context.Context, userID model.UserID) (s
 	return s.repository.GetUserRole(dbCtx, userID)
 }
 
+// IsUserBlocked возвращает true, если аккаунт заблокирован администратором системы.
+func (s *TopPetService) IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error) {
+	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
+	defer cancel()
+	return s.repository.IsUserBlocked(dbCtx, userID)
+}
+
 func (s *TopPetService) requireSystemAdmin(ctx context.Context, userID model.UserID) error {
 	role, err := s.repository.GetUserRole(ctx, userID)
 	if err != nil {

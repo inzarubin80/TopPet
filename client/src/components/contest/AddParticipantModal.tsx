@@ -6,9 +6,7 @@ import {
   createParticipant,
   updateParticipant,
   uploadPhoto,
-  uploadVideo,
   deletePhoto,
-  deleteVideo,
   updatePhotoOrder,
   fetchParticipantsByContest,
   fetchMyParticipantsForContest,
@@ -233,9 +231,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       revokeLocalPhotoPicks(selectedPhotosRef.current);
     };
   }, []);
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-  const [existingVideo, setExistingVideo] = useState<string | null>(null);
-  const [videoToDelete, setVideoToDelete] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -258,14 +253,16 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     };
   }, []);
 
-  const minPhotosRequired = useMemo(() => {
+  const { minPhotosRequired, maxPhotosAllowed } = useMemo(() => {
     const nid = participant?.nomination_id ?? nominationIdProp ?? null;
     if (!nid || !nominationsForPhotos?.length) {
-      return 1;
+      return { minPhotosRequired: 1, maxPhotosAllowed: 30 };
     }
     const row = nominationsForPhotos.find((x) => x.id === nid);
-    const n = row?.min_photo_count ?? 1;
-    return Math.min(30, Math.max(1, n));
+    const min = Math.min(30, Math.max(1, row?.min_photo_count ?? 1));
+    const maxRaw = Math.min(30, Math.max(1, row?.max_photo_count ?? 30));
+    const max = Math.max(min, maxRaw);
+    return { minPhotosRequired: min, maxPhotosAllowed: max };
   }, [participant?.nomination_id, nominationIdProp, nominationsForPhotos]);
 
   const currentPhotoTotal = existingPhotos.length + selectedPhotos.length;
@@ -316,10 +313,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         revokeLocalPhotoPicks(prev);
         return [];
       });
-      setSelectedVideo(null);
-      const videoUrl = participant.video?.url || null;
-      setExistingVideo(videoUrl);
-      setVideoToDelete(false);
       setError(null);
     } else if (isOpen && !participant) {
       // Reset for create mode
@@ -329,9 +322,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         revokeLocalPhotoPicks(prev);
         return [];
       });
-      setSelectedVideo(null);
-      setExistingVideo(null);
-      setVideoToDelete(false);
       setError(null);
     }
   }, [isOpen, participant, isEditMode]);
@@ -385,29 +375,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       return;
     }
 
+    if (existingPhotos.length + selectedPhotos.length >= maxPhotosAllowed) {
+      setError(`Можно не более ${maxPhotosAllowed} фото в заявке для этой номинации.`);
+      return;
+    }
+
     setSelectedPhotos((prev) => [...prev, { file, previewUrl: URL.createObjectURL(file) }]);
-    setError(null);
-  };
-
-  const handleVideoSelect = (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith('video/')) {
-      setError('Пожалуйста, выберите видео');
-      return;
-    }
-
-    // Validate file size (max 100MB)
-    const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError('Размер файла не должен превышать 100MB');
-      return;
-    }
-
-    setSelectedVideo(file);
-    // Clear existing video when new video is selected (it will be replaced)
-    if (isEditMode && existingVideo) {
-      setExistingVideo(null);
-    }
     setError(null);
   };
 
@@ -429,14 +402,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       return next;
     });
     setExistingPhotos((prev) => prev.filter((photo) => photo.id !== photoId));
-  };
-
-  const removeVideo = () => {
-    setSelectedVideo(null);
-    if (isEditMode && existingVideo) {
-      setVideoToDelete(true);
-      setExistingVideo(null);
-    }
   };
 
   const handleDragStart = (index: number) => {
@@ -514,6 +479,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       );
       return;
     }
+    if (currentPhotoTotal > maxPhotosAllowed) {
+      setError(
+        `В заявке не более ${maxPhotosAllowed} фото (сейчас выбрано ${currentPhotoTotal}).`
+      );
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -574,19 +545,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           }
         }
 
-        // Delete video if marked for deletion
-        if (videoToDelete) {
-          setUploadingMedia(true);
-          try {
-            const deleteResult = await dispatch(deleteVideo({ participantId }));
-            if (deleteVideo.rejected.match(deleteResult)) {
-              console.error('Failed to delete video:', deleteResult.payload);
-            }
-          } catch (err) {
-            console.error('Error deleting video:', err);
-          }
-        }
-
         const newPhotoIds: string[] = [];
 
         // Upload new photos
@@ -618,25 +576,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           }
         }
 
-        // Upload new video if selected
-        if (selectedVideo) {
-          setUploadingMedia(true);
-          try {
-            const videoResult = await dispatch(uploadVideo({ participantId, file: selectedVideo }));
-            if (uploadVideo.rejected.match(videoResult)) {
-              console.error('Failed to upload video:', videoResult.payload);
-            } else if (uploadVideo.fulfilled.match(videoResult)) {
-              const newVideo = videoResult.payload as any;
-              // Update existingVideo to new video URL and clear selectedVideo
-              if (isEditMode && newVideo?.video?.url) {
-                setExistingVideo(newVideo.video.url);
-                setSelectedVideo(null);
-              }
-            }
-          } catch (err) {
-            console.error('Error uploading video:', err);
-          }
-        }
       } else {
         // Create new participant
         const result = await dispatch(
@@ -675,18 +614,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           }
         }
 
-        // Upload video if selected
-        if (selectedVideo) {
-          setUploadingMedia(true);
-          try {
-            const videoResult = await dispatch(uploadVideo({ participantId, file: selectedVideo }));
-            if (uploadVideo.rejected.match(videoResult)) {
-              console.error('Failed to upload video:', videoResult.payload);
-            }
-          } catch (err) {
-            console.error('Error uploading video:', err);
-          }
-        }
       }
 
       setUploadingMedia(false);
@@ -740,9 +667,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         revokeLocalPhotoPicks(prev);
         return [];
       });
-      setSelectedVideo(null);
-      setExistingVideo(null);
-      setVideoToDelete(false);
       setDraggedIndex(null);
       setRegistrationFields(null);
       setRegistrationAnswersDraft({});
@@ -800,13 +724,13 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             <label className="add-participant-media-label">Фотографии</label>
             <p
               className={
-                currentPhotoTotal < minPhotosRequired
+                currentPhotoTotal < minPhotosRequired || currentPhotoTotal > maxPhotosAllowed
                   ? 'add-participant-photos-count add-participant-photos-count--short'
                   : 'add-participant-photos-count'
               }
             >
-              Минимум фото: <strong>{minPhotosRequired}</strong>, сейчас:{' '}
-              <strong>{currentPhotoTotal}</strong>
+              Минимум: <strong>{minPhotosRequired}</strong>, максимум:{' '}
+              <strong>{maxPhotosAllowed}</strong>, сейчас: <strong>{currentPhotoTotal}</strong>
             </p>
 
             {/* Existing photos (edit mode) */}
@@ -852,7 +776,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             <FileUpload
               accept="image/*"
               onFileSelect={handlePhotoSelect}
-              disabled={loading || uploadingMedia}
+              disabled={loading || uploadingMedia || currentPhotoTotal >= maxPhotosAllowed}
               label={isEditMode ? 'Добавить еще фото' : 'Добавить фото'}
               multiple={true}
             />
@@ -1053,56 +977,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             })}
           </div>
         ) : null}
-
-          <div className="add-participant-video">
-            <label className="add-participant-media-label">Видео</label>
-            
-            {/* Existing video (edit mode) */}
-            {isEditMode && existingVideo && !selectedVideo && (
-              <div className="add-participant-existing-video">
-                <label className="add-participant-existing-video-label">Текущее видео:</label>
-                <div className="add-participant-existing-video-item">
-                  <video
-                    src={existingVideo}
-                    controls
-                    className="add-participant-existing-video-preview"
-                  />
-                  <button
-                    type="button"
-                    className="add-participant-existing-video-remove"
-                    onClick={removeVideo}
-                    disabled={loading || uploadingMedia}
-                    title="Удалить видео"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Upload new video */}
-            {!existingVideo && !selectedVideo ? (
-              <FileUpload
-                accept="video/*"
-                onFileSelect={handleVideoSelect}
-                disabled={loading || uploadingMedia}
-                label={isEditMode ? 'Заменить видео' : 'Добавить видео'}
-              />
-            ) : selectedVideo ? (
-              <div className="add-participant-video-item">
-                <span className="add-participant-video-name">{selectedVideo.name}</span>
-                <button
-                  type="button"
-                  className="add-participant-video-remove"
-                  onClick={removeVideo}
-                  disabled={loading || uploadingMedia}
-                >
-                  ×
-                </button>
-              </div>
-            ) : null}
-            <p className="add-participant-media-hint">Можно загрузить одно видео (макс. 100MB)</p>
-          </div>
         </div>
 
         {error && <ErrorMessage message={error} />}

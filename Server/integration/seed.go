@@ -168,7 +168,7 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 
 	var nomIDs [3]string
 	for i := 0; i < 3; i++ {
-		n, err := svc.CreateNomination(ctx, contestID, orgID, fmt.Sprintf("Номинация %d", i+1), "", 1)
+		n, err := svc.CreateNomination(ctx, contestID, orgID, fmt.Sprintf("Номинация %d", i+1), "", 1, 30)
 		if err != nil {
 			return nil, fmt.Errorf("CreateNomination %d: %w", i, err)
 		}
@@ -326,7 +326,7 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 		return nil, err
 	}
 
-	nom, err := svc.CreateNomination(ctx, contestID, orgID, "Единственная номинация", "", 1)
+	nom, err := svc.CreateNomination(ctx, contestID, orgID, "Единственная номинация", "", 1, 30)
 	if err != nil {
 		return nil, fmt.Errorf("CreateNomination: %w", err)
 	}

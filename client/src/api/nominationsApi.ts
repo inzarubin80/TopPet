@@ -8,7 +8,7 @@ export const listNominations = async (contestId: ContestID): Promise<Nomination[
 
 export const createNomination = async (
   contestId: ContestID,
-  body: { title: string; description?: string; min_photo_count?: number }
+  body: { title: string; description?: string; min_photo_count?: number; max_photo_count?: number }
 ): Promise<Nomination> => {
   const res = await axiosClient.post<Nomination>(`/contests/${contestId}/nominations`, body);
   return res.data;
@@ -17,7 +17,7 @@ export const createNomination = async (
 export const updateNomination = async (
   contestId: ContestID,
   nominationId: string,
-  body: { title: string; description?: string; min_photo_count?: number }
+  body: { title: string; description?: string; min_photo_count?: number; max_photo_count?: number }
 ): Promise<Nomination> => {
   const res = await axiosClient.patch<Nomination>(
     `/contests/${contestId}/nominations/${nominationId}`,

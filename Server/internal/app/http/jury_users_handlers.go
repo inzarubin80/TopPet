@@ -14,6 +14,8 @@ import (
 type juryService interface {
 	ListContestJury(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error)
 	AddContestJuryMember(ctx context.Context, contestID model.ContestID, adminID model.UserID, memberUserID model.UserID) (*model.JuryMember, error)
+	PatchContestJuryMember(ctx context.Context, contestID model.ContestID, adminID model.UserID, memberUserID model.UserID, patch model.JuryMemberPatch) (*model.JuryMember, error)
+	ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, adminID model.UserID, orderedUserIDs []model.UserID) error
 	RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, adminID model.UserID, memberUserID model.UserID) error
 }
 
@@ -98,6 +100,71 @@ func (h *ContestJuryRemoveHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if err := h.service.RemoveContestJuryMember(r.Context(), contestID, adminID, model.UserID(uid)); err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	_ = uhttp.SendSuccess(w, map[string]bool{"ok": true})
+}
+
+type ContestJuryPatchHandler struct {
+	name    string
+	service juryService
+}
+
+func NewContestJuryPatchHandler(name string, service juryService) *ContestJuryPatchHandler {
+	return &ContestJuryPatchHandler{name: name, service: service}
+}
+
+func (h *ContestJuryPatchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("method not allowed", nil))
+		return
+	}
+	adminID := r.Context().Value(defenitions.UserID).(model.UserID)
+	contestID := model.ContestID(r.PathValue("contestId"))
+	uidStr := r.PathValue("userId")
+	uid, err := strconv.ParseInt(uidStr, 10, 64)
+	if err != nil || uid < 1 {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid userId", err))
+		return
+	}
+	var patch model.JuryMemberPatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
+		return
+	}
+	m, err := h.service.PatchContestJuryMember(r.Context(), contestID, adminID, model.UserID(uid), patch)
+	if err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	_ = uhttp.SendSuccess(w, m)
+}
+
+type ContestJuryReorderHandler struct {
+	name    string
+	service juryService
+}
+
+func NewContestJuryReorderHandler(name string, service juryService) *ContestJuryReorderHandler {
+	return &ContestJuryReorderHandler{name: name, service: service}
+}
+
+func (h *ContestJuryReorderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("method not allowed", nil))
+		return
+	}
+	adminID := r.Context().Value(defenitions.UserID).(model.UserID)
+	contestID := model.ContestID(r.PathValue("contestId"))
+	var body struct {
+		UserIDs []model.UserID `json:"user_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
+		return
+	}
+	if err := h.service.ReorderContestJuryMembers(r.Context(), contestID, adminID, body.UserIDs); err != nil {
 		uhttp.HandleError(w, err)
 		return
 	}
