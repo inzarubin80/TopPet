@@ -58,6 +58,8 @@ export interface UpdateContestRequest {
   schedule_timezone?: string;
   /** Домены e-mail участников; [] — сбросить ограничение. */
   participant_allowed_email_domains?: string[];
+  min_photo_count?: number;
+  max_photo_count?: number;
 }
 
 export interface VoterInfo {

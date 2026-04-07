@@ -42,6 +42,16 @@ func validateContestScheduleTimes(pubS, regS, votS, votE *time.Time) error {
 	return nil
 }
 
+func validateContestPhotoCounts(minC, maxC int) error {
+	if minC < 1 || minC > 30 || maxC < 1 || maxC > 30 {
+		return fmt.Errorf("%w: min_photo_count and max_photo_count must be between 1 and 30", model.ErrBadRequest)
+	}
+	if minC > maxC {
+		return fmt.Errorf("%w: min_photo_count must be <= max_photo_count", model.ErrBadRequest)
+	}
+	return nil
+}
+
 func (s *TopPetService) broadcastContestStatus(contestID model.ContestID, status model.ContestStatus) {
 	if s.hub == nil {
 		return
@@ -175,8 +185,15 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 	}
 	u.ScheduleTimezone = tz
 
+	if err := validateContestPhotoCounts(u.MinPhotoCount, u.MaxPhotoCount); err != nil {
+		return nil, err
+	}
+
 	updated, err := s.repository.UpdateContest(ctx, contestID, u)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.repository.SyncNominationPhotoCountsByContest(ctx, contestID, int32(updated.MinPhotoCount), int32(updated.MaxPhotoCount)); err != nil {
 		return nil, err
 	}
 	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
@@ -205,6 +222,8 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 		VotingStartsAt:                 timePtrClone(c.VotingStartsAt),
 		VotingEndsAt:                   timePtrClone(c.VotingEndsAt),
 		ScheduleTimezone:               normalizeContestScheduleTimezone(c.ScheduleTimezone),
+		MinPhotoCount:                  c.MinPhotoCount,
+		MaxPhotoCount:                  c.MaxPhotoCount,
 	}
 }
 

@@ -38,6 +38,13 @@
   line-height: 1.45;
 }
 
+.contest-organizer-criteria-hint--secondary {
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
 .contest-organizer-criteria-muted {
   color: #666;
   font-size: 0.95rem;

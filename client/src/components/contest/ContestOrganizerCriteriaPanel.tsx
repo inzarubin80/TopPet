@@ -16,6 +16,7 @@ import {
   type JuryCriterionInput,
 } from '../../api/juryCriteriaApi';
 import { Button } from '../common/Button';
+import '../common/ReorderIconButtons.css';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import {
@@ -87,13 +88,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [savingCriteria, setSavingCriteria] = useState(false);
   const [nomTitle, setNomTitle] = useState('');
   const [nomDesc, setNomDesc] = useState('');
-  const [nomMinPhotos, setNomMinPhotos] = useState(1);
-  const [nomMaxPhotos, setNomMaxPhotos] = useState(30);
   const [editingNomId, setEditingNomId] = useState<string | null>(null);
   const [editNomTitle, setEditNomTitle] = useState('');
   const [editNomDesc, setEditNomDesc] = useState('');
-  const [editNomMinPhotos, setEditNomMinPhotos] = useState(1);
-  const [editNomMaxPhotos, setEditNomMaxPhotos] = useState(30);
+  /** Правки названия/описания номинации применены локально; на сервер — при общем сохранении (saveJuryCriteria). */
+  const [dirtyNominationIds, setDirtyNominationIds] = useState<Record<string, true>>({});
   const [logoUploadingNomId, setLogoUploadingNomId] = useState<string | null>(null);
   const [nomOrderBusy, setNomOrderBusy] = useState(false);
 
@@ -109,6 +108,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         listJuryCriteria(contest.id),
       ]);
       setNominations([...noms].sort(sortNominationsByOrder));
+      setDirtyNominationIds({});
       if (crit.length > 0) {
         setCriteriaDraft(
           crit.map((c) => ({
@@ -135,10 +135,46 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     load();
   }, [load]);
 
+  const flushPendingNominationEdits = useCallback(
+    async (_opts?: { quietSuccess?: boolean }): Promise<boolean> => {
+      if (!canEdit) {
+        return true;
+      }
+      const ids = Object.keys(dirtyNominationIds);
+      if (ids.length === 0) {
+        return true;
+      }
+      try {
+        for (const id of ids) {
+          const n = nominations.find((x) => x.id === id);
+          if (!n) {
+            continue;
+          }
+          const updated = await updateNomination(contest.id, id, {
+            title: n.title.trim(),
+            description: (n.description || '').trim(),
+          });
+          setNominations((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+        }
+        setDirtyNominationIds({});
+        return true;
+      } catch (e) {
+        errorHandler.handleError(e, showError, false);
+        showError('Не удалось сохранить изменения номинаций');
+        return false;
+      }
+    },
+    [canEdit, contest.id, dirtyNominationIds, nominations, showError]
+  );
+
   const persistJuryCriteria = useCallback(
     async (opts?: { quietSuccess?: boolean }): Promise<boolean> => {
       if (!canEdit) {
         return true;
+      }
+      const nomOk = await flushPendingNominationEdits(opts);
+      if (!nomOk) {
+        return false;
       }
       if (!showJuryCriteriaSection) {
         return true;
@@ -187,7 +223,15 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         setSavingCriteria(false);
       }
     },
-    [canEdit, criteriaDraft, contest.id, showError, showSuccess, showJuryCriteriaSection]
+    [
+      canEdit,
+      criteriaDraft,
+      contest.id,
+      showError,
+      showSuccess,
+      showJuryCriteriaSection,
+      flushPendingNominationEdits,
+    ]
   );
 
   useImperativeHandle(
@@ -198,32 +242,20 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     [persistJuryCriteria]
   );
 
-  const clampNominationPhotoBound = (v: number) => Math.min(30, Math.max(1, Math.round(v) || 1));
-  const pairNominationPhotoBounds = (minRaw: number, maxRaw: number) => {
-    const min = clampNominationPhotoBound(minRaw);
-    const max = Math.max(min, clampNominationPhotoBound(maxRaw));
-    return { min, max };
-  };
-
   const handleAddNomination = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomTitle.trim()) {
       showError('Название номинации обязательно');
       return;
     }
-    const { min, max } = pairNominationPhotoBounds(nomMinPhotos, nomMaxPhotos);
     try {
       const n = await createNomination(contest.id, {
         title: nomTitle.trim(),
         description: nomDesc.trim(),
-        min_photo_count: min,
-        max_photo_count: max,
       });
       setNominations((prev) => [...prev, n].sort(sortNominationsByOrder));
       setNomTitle('');
       setNomDesc('');
-      setNomMinPhotos(1);
-      setNomMaxPhotos(30);
       showSuccess('Номинация добавлена');
     } catch (err) {
       errorHandler.handleError(err, showError, false);
@@ -231,32 +263,26 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     }
   };
 
-  const startEditNom = (id: string, title: string, description: string, minPhotos: number, maxPhotos: number) => {
+  const startEditNom = (id: string, title: string, description: string) => {
     setEditingNomId(id);
     setEditNomTitle(title);
     setEditNomDesc(description || '');
-    const { min, max } = pairNominationPhotoBounds(minPhotos, maxPhotos);
-    setEditNomMinPhotos(min);
-    setEditNomMaxPhotos(max);
   };
 
-  const saveEditNom = async () => {
-    if (!editingNomId || !editNomTitle.trim()) return;
-    const { min, max } = pairNominationPhotoBounds(editNomMinPhotos, editNomMaxPhotos);
-    try {
-      const updated = await updateNomination(contest.id, editingNomId, {
-        title: editNomTitle.trim(),
-        description: editNomDesc.trim(),
-        min_photo_count: min,
-        max_photo_count: max,
-      });
-      setNominations((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
-      setEditingNomId(null);
-      showSuccess('Сохранено');
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось сохранить');
+  const finishEditingNomination = () => {
+    if (!editingNomId || !editNomTitle.trim()) {
+      showError('Название номинации обязательно');
+      return;
     }
+    const id = editingNomId;
+    const title = editNomTitle.trim();
+    const description = editNomDesc.trim();
+    const prev = nominations.find((x) => x.id === id);
+    setNominations((p) => p.map((x) => (x.id === id ? { ...x, title, description } : x)));
+    if (!prev || prev.title !== title || (prev.description || '') !== description) {
+      setDirtyNominationIds((d) => ({ ...d, [id]: true }));
+    }
+    setEditingNomId(null);
   };
 
   const handleDeleteNom = async (nominationId: string) => {
@@ -460,29 +486,29 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             </div>
             {canEdit && criteriaDraft.length > 1 ? (
               <div className="contest-organizer-criteria-actions">
+                <span className="reorder-icon-actions">
+                  <button
+                    type="button"
+                    className="reorder-icon-btn"
+                    onClick={() => moveCriterion(idx, -1)}
+                    disabled={fieldsLocked || idx === 0}
+                    aria-label="Переместить критерий выше"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="reorder-icon-btn"
+                    onClick={() => moveCriterion(idx, 1)}
+                    disabled={fieldsLocked || idx >= criteriaDraft.length - 1}
+                    aria-label="Переместить критерий ниже"
+                  >
+                    ↓
+                  </button>
+                </span>
                 <Button
                   type="button"
-                  variant="secondary"
-                  size="small"
-                  onClick={() => moveCriterion(idx, -1)}
-                  disabled={fieldsLocked || idx === 0}
-                  aria-label="Переместить критерий выше"
-                >
-                  Вверх
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="small"
-                  onClick={() => moveCriterion(idx, 1)}
-                  disabled={fieldsLocked || idx >= criteriaDraft.length - 1}
-                  aria-label="Переместить критерий ниже"
-                >
-                  Вниз
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
+                  variant="danger"
                   size="small"
                   onClick={() => setCriteriaDraft((prev) => prev.filter((_, i) => i !== idx))}
                   disabled={fieldsLocked}
@@ -525,6 +551,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     ) : null;
 
   const sectionTitle = audienceView ? 'Категории участия' : 'Номинации';
+  const contestPhotoHint =
+    nominationPhotoRangeAudienceHint(
+      contest.min_photo_count ?? 1,
+      contest.max_photo_count ?? 30
+    ) ?? minPhotosAudienceHint(contest.min_photo_count ?? 1);
 
   return (
     <section
@@ -536,7 +567,17 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     >
       <h2 className="contest-section-heading contest-organizer-criteria-title">{sectionTitle}</h2>
       {!readOnly ? (
-        <p className="contest-organizer-criteria-hint">Сохраните изменения кнопкой внизу блока.</p>
+        <p className="contest-organizer-criteria-hint">
+          {hideJuryCriteriaSaveButton
+            ? 'Добавление и удаление номинаций, порядок и логотипы в списке сохраняются сразу. Название и описание номинации после правки в списке, а также критерии жюри ниже — кнопкой «Сохранить изменения» вверху или внизу страницы.'
+            : 'Сохраните изменения кнопкой внизу блока.'}
+        </p>
+      ) : null}
+      {!audienceView && canEdit && !readOnly ? (
+        <p className="contest-organizer-criteria-hint contest-organizer-criteria-hint--secondary">
+          Лимит фотографий в заявке: {contest.min_photo_count ?? 1}–{contest.max_photo_count ?? 30} (настраивается в
+          разделе «Фотографии в заявке» на странице редактирования конкурса).
+        </p>
       ) : null}
 
       <div className="contest-organizer-criteria-block">
@@ -555,9 +596,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           >
             {nominations.map((n, index) => {
               const { primary, secondary } = nominationPrimarySecondary(n.title, n.description || '');
-              const photoHint =
-                nominationPhotoRangeAudienceHint(n.min_photo_count, n.max_photo_count) ??
-                minPhotosAudienceHint(n.min_photo_count);
               return (
                 <li key={n.id}>
                   {canEdit && editingNomId === n.id ? (
@@ -575,30 +613,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                         className="contest-organizer-criteria-textarea"
                         disabled={fieldsLocked}
                       />
-                      <label className="contest-organizer-criteria-nom-photos">
-                        Минимум фото в заявке
-                        <input
-                          type="number"
-                          min={1}
-                          max={30}
-                          value={editNomMinPhotos}
-                          onChange={(e) => setEditNomMinPhotos(Number(e.target.value))}
-                          disabled={fieldsLocked}
-                          className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
-                        />
-                      </label>
-                      <label className="contest-organizer-criteria-nom-photos">
-                        Максимум фото в заявке
-                        <input
-                          type="number"
-                          min={1}
-                          max={30}
-                          value={editNomMaxPhotos}
-                          onChange={(e) => setEditNomMaxPhotos(Number(e.target.value))}
-                          disabled={fieldsLocked}
-                          className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
-                        />
-                      </label>
                       <ContestAssetImageField
                         compact
                         legend="Логотип"
@@ -609,8 +623,14 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                         disabled={fieldsLocked}
                       />
                       <div className="contest-organizer-criteria-actions">
-                        <Button type="button" size="small" onClick={saveEditNom} disabled={fieldsLocked}>
-                          Сохранить
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="small"
+                          onClick={finishEditingNomination}
+                          disabled={fieldsLocked}
+                        >
+                          Готово
                         </Button>
                         <Button
                           type="button"
@@ -640,9 +660,9 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                             {secondary ? (
                               <p className="contest-organizer-criteria-nom-card-desc">{secondary}</p>
                             ) : null}
-                            {photoHint ? (
+                            {contestPhotoHint ? (
                               <span className="contest-organizer-criteria-nom-meta contest-organizer-criteria-nom-meta--audience">
-                                {photoHint}
+                                {contestPhotoHint}
                               </span>
                             ) : null}
                           </div>
@@ -675,9 +695,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                               {secondary ? (
                                 <span className="contest-organizer-criteria-desc">{secondary}</span>
                               ) : null}
-                              <span className="contest-organizer-criteria-nom-meta">
-                                Мин. фото: {n.min_photo_count ?? 1} · Макс. фото: {n.max_photo_count ?? 30}
-                              </span>
                             </div>
                           </div>
                         </div>
@@ -685,21 +702,19 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                       {canEdit && (
                         <div className="contest-organizer-criteria-actions">
                           {nominations.length > 1 ? (
-                            <>
-                              <Button
+                            <span className="reorder-icon-actions">
+                              <button
                                 type="button"
-                                variant="secondary"
-                                size="small"
+                                className="reorder-icon-btn"
                                 onClick={() => void moveNomination(index, -1)}
                                 disabled={fieldsLocked || nomOrderBusy || index === 0}
                                 aria-label="Переместить номинацию выше"
                               >
-                                Вверх
-                              </Button>
-                              <Button
+                                ↑
+                              </button>
+                              <button
                                 type="button"
-                                variant="secondary"
-                                size="small"
+                                className="reorder-icon-btn"
                                 onClick={() => void moveNomination(index, 1)}
                                 disabled={
                                   fieldsLocked ||
@@ -708,23 +723,15 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                                 }
                                 aria-label="Переместить номинацию ниже"
                               >
-                                Вниз
-                              </Button>
-                            </>
+                                ↓
+                              </button>
+                            </span>
                           ) : null}
                           <Button
                             type="button"
                             variant="secondary"
                             size="small"
-                            onClick={() =>
-                              startEditNom(
-                                n.id,
-                                n.title,
-                                n.description,
-                                n.min_photo_count ?? 1,
-                                n.max_photo_count ?? 30
-                              )
-                            }
+                            onClick={() => startEditNom(n.id, n.title, n.description)}
                             disabled={fieldsLocked || nomOrderBusy}
                           >
                             Изменить
@@ -764,30 +771,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
               className="contest-organizer-criteria-textarea"
               disabled={fieldsLocked}
             />
-            <label className="contest-organizer-criteria-nom-photos">
-              Минимум фото в заявке
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={nomMinPhotos}
-                onChange={(e) => setNomMinPhotos(Number(e.target.value))}
-                disabled={fieldsLocked}
-                className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
-              />
-            </label>
-            <label className="contest-organizer-criteria-nom-photos">
-              Максимум фото в заявке
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={nomMaxPhotos}
-                onChange={(e) => setNomMaxPhotos(Number(e.target.value))}
-                disabled={fieldsLocked}
-                className="contest-organizer-criteria-input contest-organizer-criteria-input-narrow"
-              />
-            </label>
             <Button type="submit" disabled={fieldsLocked}>
               Добавить номинацию
             </Button>

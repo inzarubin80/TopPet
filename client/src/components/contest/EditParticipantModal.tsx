@@ -6,12 +6,16 @@ interface EditParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   participant: Participant | null;
+  contestMinPhotoCount?: number;
+  contestMaxPhotoCount?: number;
 }
 
 export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
   isOpen,
   onClose,
   participant,
+  contestMinPhotoCount,
+  contestMaxPhotoCount,
 }) => {
   if (!participant) {
     return null;
@@ -25,6 +29,8 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
       onClose={onClose}
       contestId={contestId}
       participant={participant}
+      contestMinPhotoCount={contestMinPhotoCount}
+      contestMaxPhotoCount={contestMaxPhotoCount}
     />
   );
 };

@@ -946,6 +946,8 @@ const ContestPage: React.FC = () => {
             participantsListPaginated ? participantsPage * PARTICIPANTS_PAGE_SIZE : 0
           }
           participantsListSort={participantsSort}
+          contestMinPhotoCount={currentContest?.min_photo_count}
+          contestMaxPhotoCount={currentContest?.max_photo_count}
         />
       )}
 
@@ -958,6 +960,8 @@ const ContestPage: React.FC = () => {
           }}
           // Always use the latest participant data from Redux store
           participant={editingParticipant.id ? participants[editingParticipant.id] || editingParticipant : editingParticipant}
+          contestMinPhotoCount={currentContest?.min_photo_count}
+          contestMaxPhotoCount={currentContest?.max_photo_count}
         />
       )}
 

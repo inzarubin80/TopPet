@@ -103,6 +103,7 @@ type Querier interface {
 	SetUserEmailIfEmpty(ctx context.Context, arg *SetUserEmailIfEmptyParams) error
 	SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	SumJuryScoresByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*SumJuryScoresByParticipantIDsRow, error)
+	SyncNominationPhotoCountsByContest(ctx context.Context, arg *SyncNominationPhotoCountsByContestParams) error
 	UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageParams) (*ContestChatMessage, error)
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)

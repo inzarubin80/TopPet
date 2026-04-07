@@ -11,8 +11,7 @@ import (
 type minPhotosRepoStub struct {
 	*mockRepository
 	nomCount int64
-	nomMin   int
-	nomMax   int
+	contest  *model.Contest
 	photoLen int
 }
 
@@ -20,12 +19,15 @@ func (m *minPhotosRepoStub) CountNominationsByContest(ctx context.Context, conte
 	return m.nomCount, nil
 }
 
-func (m *minPhotosRepoStub) GetNominationByContest(ctx context.Context, contestID model.ContestID, nominationID string) (*model.Nomination, error) {
-	nmax := m.nomMax
-	if nmax == 0 {
-		nmax = 30
+func (m *minPhotosRepoStub) GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+	if m.contest != nil {
+		return m.contest, nil
 	}
-	return &model.Nomination{ID: nominationID, ContestID: contestID, MinPhotoCount: m.nomMin, MaxPhotoCount: nmax}, nil
+	return &model.Contest{
+		ID:            contestID,
+		MinPhotoCount: 1,
+		MaxPhotoCount: 30,
+	}, nil
 }
 
 func (m *minPhotosRepoStub) GetPhotosByParticipantID(ctx context.Context, participantID model.ParticipantID) ([]*model.Photo, error) {
@@ -39,9 +41,10 @@ func (m *minPhotosRepoStub) GetPhotosByParticipantID(ctx context.Context, partic
 func TestEnsureParticipantPhotoCountInBounds(t *testing.T) {
 	t.Parallel()
 	nom := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	cid := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 	p := &model.Participant{
 		ID:            "pppppppp-pppp-pppp-pppp-pppppppppppp",
-		ContestID:     "cccccccc-cccc-cccc-cccc-cccccccccccc",
+		ContestID:     cid,
 		NominationID:  &nom,
 	}
 
@@ -74,9 +77,14 @@ func TestEnsureParticipantPhotoCountInBounds(t *testing.T) {
 		}
 	})
 
-	t.Run("nomination min 3 with 2 photos fails", func(t *testing.T) {
+	t.Run("contest min 3 with 2 photos fails", func(t *testing.T) {
 		svc := &TopPetService{
-			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, nomMax: 10, photoLen: 2},
+			repository: &minPhotosRepoStub{
+				mockRepository: &mockRepository{},
+				nomCount:       1,
+				contest:        &model.Contest{ID: cid, MinPhotoCount: 3, MaxPhotoCount: 10},
+				photoLen:       2,
+			},
 		}
 		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
 		if err == nil || !errors.Is(err, model.ErrBadRequest) {
@@ -84,18 +92,28 @@ func TestEnsureParticipantPhotoCountInBounds(t *testing.T) {
 		}
 	})
 
-	t.Run("nomination min 3 with 3 photos ok", func(t *testing.T) {
+	t.Run("contest min 3 with 3 photos ok", func(t *testing.T) {
 		svc := &TopPetService{
-			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 3, nomMax: 10, photoLen: 3},
+			repository: &minPhotosRepoStub{
+				mockRepository: &mockRepository{},
+				nomCount:       1,
+				contest:        &model.Contest{ID: cid, MinPhotoCount: 3, MaxPhotoCount: 10},
+				photoLen:       3,
+			},
 		}
 		if err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p); err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	t.Run("nomination max 5 with 6 photos fails", func(t *testing.T) {
+	t.Run("contest max 5 with 6 photos fails", func(t *testing.T) {
 		svc := &TopPetService{
-			repository: &minPhotosRepoStub{mockRepository: &mockRepository{}, nomCount: 1, nomMin: 1, nomMax: 5, photoLen: 6},
+			repository: &minPhotosRepoStub{
+				mockRepository: &mockRepository{},
+				nomCount:       1,
+				contest:        &model.Contest{ID: cid, MinPhotoCount: 1, MaxPhotoCount: 5},
+				photoLen:       6,
+			},
 		}
 		err := svc.ensureParticipantPhotoCountInBounds(context.Background(), p)
 		if err == nil || !errors.Is(err, model.ErrBadRequest) {

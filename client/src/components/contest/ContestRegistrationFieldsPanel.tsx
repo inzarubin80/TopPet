@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Contest, RegistrationField, RegistrationFieldInput, RegistrationFieldType } from '../../types/models';
 import { listRegistrationFields, replaceRegistrationFields } from '../../api/registrationFieldsApi';
 import { Button } from '../common/Button';
+import '../common/ReorderIconButtons.css';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import './ContestRegistrationFieldsPanel.css';
@@ -165,6 +166,8 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
                 <Link to={`/contests/${contest.id}/edit`}>странице редактирования конкурса</Link>.
               </>
             ) : null
+          ) : hideSaveButton ? (
+            <> Сохраните изменения кнопкой «Сохранить изменения» вверху или внизу страницы редактирования конкурса.</>
           ) : (
             <> Сохраните изменения кнопкой ниже.</>
           )}
@@ -249,29 +252,29 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
               />
               {canEdit && draft.length > 1 && (
                 <div className="contest-registration-fields-row-actions">
+                  <span className="reorder-icon-actions">
+                    <button
+                      type="button"
+                      className="reorder-icon-btn"
+                      disabled={fieldsLocked || idx === 0}
+                      aria-label="Переместить поле выше"
+                      onClick={() => moveRow(idx, idx - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="reorder-icon-btn"
+                      disabled={fieldsLocked || idx === draft.length - 1}
+                      aria-label="Переместить поле ниже"
+                      onClick={() => moveRow(idx, idx + 1)}
+                    >
+                      ↓
+                    </button>
+                  </span>
                   <Button
                     type="button"
-                    variant="secondary"
-                    size="small"
-                    disabled={fieldsLocked || idx === 0}
-                    aria-label="Переместить поле выше"
-                    onClick={() => moveRow(idx, idx - 1)}
-                  >
-                    Вверх
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    disabled={fieldsLocked || idx === draft.length - 1}
-                    aria-label="Переместить поле ниже"
-                    onClick={() => moveRow(idx, idx + 1)}
-                  >
-                    Вниз
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
+                    variant="danger"
                     size="small"
                     disabled={fieldsLocked}
                     onClick={() => setDraft((prev) => prev.filter((_, i) => i !== idx))}

@@ -63,7 +63,7 @@ export const ContestAssetImageField: React.FC<ContestAssetImageFieldProps> = ({
         {trimmed && onClear ? (
           <Button
             type="button"
-            variant="secondary"
+            variant="danger"
             size="small"
             disabled={disabled || uploading}
             onClick={onClear}

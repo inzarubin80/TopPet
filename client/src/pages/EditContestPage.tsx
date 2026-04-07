@@ -16,7 +16,10 @@ import {
   ContestRegistrationFieldsPanel,
   type ContestRegistrationFieldsPanelHandle,
 } from '../components/contest/ContestRegistrationFieldsPanel';
-import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
+import {
+  ContestJuryPanel,
+  type ContestJuryPanelHandle,
+} from '../components/contest/ContestJuryPanel';
 import { ContestAssetImageField } from '../components/contest/ContestAssetImageField';
 import { useToast } from '../contexts/ToastContext';
 import { userCanManageContest as canManageContest, canCreateContests } from '../utils/contestPermissions';
@@ -34,14 +37,34 @@ import './EditContestPage.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
+const EditContestSaveToolbar: React.FC<{
+  saving: boolean;
+  saveDisabled: boolean;
+  onSave: () => void | Promise<void>;
+  variant?: 'top' | 'bottom';
+}> = ({ saving, saveDisabled, onSave, variant = 'top' }) => (
+  <div
+    className={
+      variant === 'bottom'
+        ? 'edit-contest-page-actions edit-contest-page-actions--bottom'
+        : 'edit-contest-page-actions'
+    }
+  >
+    <Button type="button" onClick={() => void onSave()} disabled={saving || saveDisabled}>
+      {saving ? <LoadingSpinner size="small" /> : 'Сохранить изменения'}
+    </Button>
+  </div>
+);
+
 const EditContestPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const currentContest = useSelector((state: RootState) => state.contests.currentContest);
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const panelRef = useRef<ContestOrganizerCriteriaPanelHandle>(null);
+  const juryPanelRef = useRef<ContestJuryPanelHandle>(null);
   const registrationFieldsRef = useRef<ContestRegistrationFieldsPanelHandle>(null);
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -65,6 +88,8 @@ const EditContestPage: React.FC = () => {
   const [votingEndsLocal, setVotingEndsLocal] = useState('');
   const [scheduleTimezone, setScheduleTimezone] = useState(DEFAULT_SCHEDULE_TIMEZONE);
   const [participantEmailDomainsText, setParticipantEmailDomainsText] = useState('');
+  const [minPhotoCount, setMinPhotoCount] = useState(1);
+  const [maxPhotoCount, setMaxPhotoCount] = useState(30);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetUploading, setAssetUploading] = useState<ContestAssetKind | null>(null);
@@ -73,6 +98,30 @@ const EditContestPage: React.FC = () => {
   const handleJuryCriteriaSlotRef = useCallback((el: HTMLDivElement | null) => {
     setJuryCriteriaPortalHost(el);
   }, []);
+
+  /**
+   * Синхронизирует флаг «голосование жюри» на сервере перед вызовами API жюри (добавление/порядок и т.д.),
+   * если чекбокс включён локально, а на сервере ещё выключено. Остальные поля конкурса при этом не трогаем.
+   */
+  const ensureJuryVotingEnabledOnServer = useCallback(async (): Promise<boolean> => {
+    if (!id || id === 'new' || !currentContest) return false;
+    if (currentContest.jury_voting_enabled) return true;
+    if (!juryVoting) {
+      showError('Включите «Голосование жюри» в блоке «Настройки голосования».');
+      return false;
+    }
+    const result = await dispatch(
+      updateContest({
+        contestId: id,
+        data: { jury_voting_enabled: true },
+      })
+    );
+    if (!updateContest.fulfilled.match(result)) {
+      showError((result.payload as string) || 'Не удалось включить голосование жюри на сервере');
+      return false;
+    }
+    return true;
+  }, [id, currentContest, juryVoting, dispatch, showError]);
 
   useEffect(() => {
     if (!juryVoting) {
@@ -107,6 +156,8 @@ const EditContestPage: React.FC = () => {
       setVotingEndsLocal('');
       setScheduleTimezone(DEFAULT_SCHEDULE_TIMEZONE);
       setParticipantEmailDomainsText('');
+      setMinPhotoCount(1);
+      setMaxPhotoCount(30);
       setLoadState('ready');
       return;
     }
@@ -135,40 +186,39 @@ const EditContestPage: React.FC = () => {
         setVotingStartsLocal(formatUtcIsoInTimeZone(contest.voting_starts_at, tz));
         setVotingEndsLocal(formatUtcIsoInTimeZone(contest.voting_ends_at, tz));
         setParticipantEmailDomainsText((contest.participant_allowed_email_domains ?? []).join('\n'));
+        setMinPhotoCount(contest.min_photo_count ?? 1);
+        setMaxPhotoCount(contest.max_photo_count ?? 30);
         setLoadState('ready');
       })
       .catch(() => setLoadState('error'));
   }, [dispatch, id]);
 
-  useEffect(() => {
-    if (id === 'new' || loadState !== 'ready' || !id || currentContest?.id !== id) {
+  const handleCreateContest = async () => {
+    if (!title.trim()) {
+      setError('Название обязательно');
       return;
     }
-    setTitle(currentContest.title);
-    setDescription(currentContest.description || '');
-    setPublicVoting(currentContest.public_voting_enabled ?? true);
-    setJuryVoting(currentContest.jury_voting_enabled ?? false);
-    setCoverUrl(currentContest.cover_url ?? '');
-    setTagline(currentContest.tagline ?? '');
-    setRulesText(currentContest.rules_text ?? '');
-    setPrizeText(currentContest.prize_text ?? '');
-    setLogoUrl(currentContest.logo_url ?? '');
-    setThemeColor(currentContest.theme_color ?? '');
-    setSponsorName(currentContest.sponsor_name ?? '');
-    setSponsorLogoUrl(currentContest.sponsor_logo_url ?? '');
-    setSponsorUrl(currentContest.sponsor_url ?? '');
-    setCtaLabelOverride(currentContest.cta_label_override ?? '');
-    const tz = currentContest.schedule_timezone?.trim() || DEFAULT_SCHEDULE_TIMEZONE;
-    setScheduleTimezone(tz);
-    setPublicationStartsLocal(formatUtcIsoInTimeZone(currentContest.publication_starts_at, tz));
-    setRegistrationStartsLocal(formatUtcIsoInTimeZone(currentContest.registration_starts_at, tz));
-    setVotingStartsLocal(formatUtcIsoInTimeZone(currentContest.voting_starts_at, tz));
-    setVotingEndsLocal(formatUtcIsoInTimeZone(currentContest.voting_ends_at, tz));
-    setParticipantEmailDomainsText((currentContest.participant_allowed_email_domains ?? []).join('\n'));
-  }, [loadState, id, currentContest]);
+
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await dispatch(createContest({ title: title.trim(), description: '' }));
+      if (!createContest.fulfilled.match(created)) {
+        setError((created.payload as string) || 'Не удалось создать конкурс');
+        return;
+      }
+      showSuccess('Конкурс создан');
+      navigate(`/contests/${created.payload.id}/edit`, { replace: true });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Не удалось создать конкурс';
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSaveAll = async () => {
-    if (!id || !title.trim()) {
+    if (!id || id === 'new' || !title.trim()) {
       setError('Название обязательно');
       return;
     }
@@ -210,25 +260,13 @@ const EditContestPage: React.FC = () => {
           .map((s) => s.trim().toLowerCase())
           .filter(Boolean),
         schedule_timezone: scheduleTimezone,
+        min_photo_count: minPhotoCount,
+        max_photo_count: maxPhotoCount,
       };
-
-      const isNew = id === 'new';
-      let contestId = id;
-
-      if (isNew) {
-        const created = await dispatch(
-          createContest({ title: title.trim(), description: description.trim() })
-        );
-        if (!createContest.fulfilled.match(created)) {
-          setError((created.payload as string) || 'Не удалось создать конкурс');
-          return;
-        }
-        contestId = created.payload.id;
-      }
 
       const result = await dispatch(
         updateContest({
-          contestId,
+          contestId: id,
           data,
         })
       );
@@ -238,28 +276,25 @@ const EditContestPage: React.FC = () => {
         return;
       }
 
-      await dispatch(fetchContest(contestId)).unwrap();
+      await dispatch(fetchContest(id)).unwrap();
 
-      if (!isNew) {
-        const critOk = await panelRef.current?.saveJuryCriteria({ quietSuccess: true });
-        if (critOk === false) {
-          return;
-        }
-
-        const regOk = await registrationFieldsRef.current?.saveRegistrationFields({ quietSuccess: true });
-        if (regOk === false) {
-          return;
-        }
+      const critOk = await panelRef.current?.saveJuryCriteria({ quietSuccess: true });
+      if (critOk === false) {
+        return;
       }
 
-      if (isNew) {
-        showSuccess('Черновик создан. Ниже можно настроить номинации и жюри.');
-        navigate(`/contests/${contestId}/edit`, { replace: true });
+      const juryOk = await juryPanelRef.current?.flushPendingJuryMemberEdits({ quietSuccess: true });
+      if (juryOk === false) {
+        return;
+      }
+
+      const regOk = await registrationFieldsRef.current?.saveRegistrationFields({ quietSuccess: true });
+      if (regOk === false) {
         return;
       }
 
       showSuccess('Изменения сохранены');
-      navigate(`/contests/${contestId}`);
+      navigate(`/contests/${id}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Не удалось сохранить';
       setError(message);
@@ -314,6 +349,59 @@ const EditContestPage: React.FC = () => {
     return <div className="edit-contest-page-error">Конкурс не найден</div>;
   }
 
+  if (id === 'new') {
+    if (!currentUser || !canCreateContests(currentUser)) {
+      return <Navigate to="/" replace />;
+    }
+    return (
+      <div className="edit-contest-page edit-contest-page--create">
+        <div className="edit-contest-page-inner">
+          <header className="edit-contest-page-header">
+            <Link to="/" className="edit-contest-page-back">
+              <span className="edit-contest-page-back-icon" aria-hidden>
+                ‹
+              </span>
+              На главную
+            </Link>
+            <div className="edit-contest-page-heading">
+              <p className="edit-contest-page-eyebrow">Настройки</p>
+              <h1 className="edit-contest-page-title">Новый конкурс</h1>
+              <p className="edit-contest-page-lead">
+                Введите название и нажмите «Добавить» — конкурс будет создан, откроется полная форма
+                редактирования (номинации, жюри, поля заявки и оформление).
+              </p>
+            </div>
+          </header>
+
+          {error && (
+            <div className="edit-contest-page-error-banner" role="alert">
+              <ErrorMessage message={error} />
+            </div>
+          )}
+
+          <section className="edit-contest-page-card edit-contest-page-card--create" aria-label="Создание конкурса">
+            <div className="edit-contest-page-fields">
+              <Input
+                label="Название"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Например, «Весенний фотоконкурс»"
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="edit-contest-page-actions">
+              <Button type="button" onClick={() => void handleCreateContest()} disabled={saving || !title.trim()}>
+                {saving ? <LoadingSpinner size="small" /> : 'Добавить'}
+              </Button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   if (loadState === 'loading') {
     return (
       <div className="edit-contest-page-loading">
@@ -322,49 +410,40 @@ const EditContestPage: React.FC = () => {
     );
   }
 
-  const isNewContest = id === 'new';
-
-  if (isNewContest) {
-    if (!currentUser || !canCreateContests(currentUser)) {
-      return <Navigate to="/" replace />;
-    }
-  } else {
-    if (loadState === 'error' || !currentContest || currentContest.id !== id) {
-      return <div className="edit-contest-page-error">Конкурс не найден</div>;
-    }
-    if (!currentUser || !canManageContest(currentContest, currentUser.id, currentUser)) {
-      return <Navigate to={`/contests/${id}`} replace />;
-    }
+  if (loadState === 'error' || !currentContest || currentContest.id !== id) {
+    return <div className="edit-contest-page-error">Конкурс не найден</div>;
+  }
+  if (!currentUser || !canManageContest(currentContest, currentUser.id, currentUser)) {
+    return <Navigate to={`/contests/${id}`} replace />;
   }
 
   return (
     <div className="edit-contest-page">
       <div className="edit-contest-page-inner">
         <header className="edit-contest-page-header">
-          <Link to={isNewContest ? '/' : `/contests/${id}`} className="edit-contest-page-back">
+          <Link to={`/contests/${id}`} className="edit-contest-page-back">
             <span className="edit-contest-page-back-icon" aria-hidden>
               ‹
             </span>
-            {isNewContest ? 'На главную' : 'К конкурсу'}
+            К конкурсу
           </Link>
           <div className="edit-contest-page-heading">
             <p className="edit-contest-page-eyebrow">Настройки</p>
-            <h1 className="edit-contest-page-title">
-              {isNewContest ? 'Новый конкурс' : 'Редактировать конкурс'}
-            </h1>
+            <h1 className="edit-contest-page-title">Редактировать конкурс</h1>
             <p className="edit-contest-page-lead">
-              {isNewContest
-                ? 'Заполните настройки и нажмите «Создать черновик». Номинации, жюри и поля заявки станут доступны после первого сохранения.'
-                : 'Название, описание, слоган и призы, затем номинации, оформление, голосование, при необходимости — жюри и поля заявки. Сохраняется одной кнопкой вверху страницы.'}
+              Тексты, расписание, лимиты фото и флаги голосования, критерии жюри, поля заявки и правки портфолио членов
+              жюри фиксируются кнопкой «Сохранить изменения» вверху или внизу страницы. Загрузка картинок конкурса,
+              состав номинаций (добавление, порядок, логотипы) и состав жюри (добавление, порядок) сохраняются сразу при
+              действии — так проще проверить лимиты и файлы на сервере.
             </p>
           </div>
         </header>
 
-        <div className="edit-contest-page-actions">
-          <Button type="button" onClick={() => void handleSaveAll()} disabled={saving || !title.trim()}>
-            {saving ? <LoadingSpinner size="small" /> : isNewContest ? 'Создать черновик' : 'Сохранить изменения'}
-          </Button>
-        </div>
+        <EditContestSaveToolbar
+          saving={saving}
+          saveDisabled={!title.trim()}
+          onSave={handleSaveAll}
+        />
 
         {error && (
           <div className="edit-contest-page-error-banner" role="alert">
@@ -432,6 +511,58 @@ const EditContestPage: React.FC = () => {
           </div>
         </section>
 
+        <section className="edit-contest-page-card" aria-labelledby="edit-section-photo-limits">
+          <h2 id="edit-section-photo-limits" className="edit-contest-page-section-label">
+            Фотографии в заявке
+          </h2>
+          <p className="edit-contest-schedule-intro">
+            Сколько фото может быть в одной заявке участника. Одно и то же ограничение действует для всего конкурса,
+            в том числе при нескольких номинациях.
+          </p>
+          <div className="edit-contest-page-fields edit-contest-page-fields--inline">
+            <label className="edit-contest-photo-limit">
+              <span className="edit-contest-field-label">Минимум</span>
+              <select
+                className="edit-contest-control-select"
+                value={minPhotoCount}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMinPhotoCount(v);
+                  if (maxPhotoCount < v) setMaxPhotoCount(v);
+                }}
+                disabled={saving}
+                aria-label="Минимум фотографий в заявке"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="edit-contest-photo-limit">
+              <span className="edit-contest-field-label">Максимум</span>
+              <select
+                className="edit-contest-control-select"
+                value={maxPhotoCount}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMaxPhotoCount(v);
+                  if (minPhotoCount > v) setMinPhotoCount(v);
+                }}
+                disabled={saving}
+                aria-label="Максимум фотографий в заявке"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
         <section className="edit-contest-page-card" aria-labelledby="edit-section-schedule">
           <h2 id="edit-section-schedule" className="edit-contest-page-section-label">
             Расписание фаз
@@ -446,9 +577,9 @@ const EditContestPage: React.FC = () => {
           </p>
           <div className="edit-contest-page-fields">
             <label className="edit-contest-schedule-tz">
-              <span className="edit-contest-schedule-tz-label">Часовой пояс</span>
+              <span className="edit-contest-field-label">Часовой пояс</span>
               <select
-                className="edit-contest-schedule-tz-select"
+                className="edit-contest-control-select"
                 value={scheduleTimezone}
                 onChange={(e) => handleScheduleTimezoneChange(e.target.value)}
                 disabled={saving}
@@ -495,47 +626,32 @@ const EditContestPage: React.FC = () => {
           </div>
         </section>
 
-        {isNewContest ? (
-          <section className="edit-contest-page-card" aria-labelledby="edit-section-deferred">
-            <h2 id="edit-section-deferred" className="edit-contest-page-section-label">
-              Номинации, жюри и заявка
-            </h2>
-            <p className="edit-contest-schedule-intro">
-              Пока конкурс ещё не создан на сервере, здесь нельзя загрузить номинации, критерии жюри и поля заявки —
-              для этого нужен <code>id</code> черновика. Нажмите «Создать черновик» вверху страницы: после сохранения
-              откроется полная форма редактирования (номинации, критерии и состав жюри — вверху и в разделе
-              «Настройки голосования»).
-            </p>
-          </section>
-        ) : (
-          <section
-            className="edit-contest-page-card edit-contest-page-card--organizer"
-            aria-label="Номинации"
-          >
-            <div className="edit-contest-page-organizer">
-              <ContestOrganizerCriteriaPanel
-                ref={panelRef}
-                contest={currentContest!}
-                isAdmin
-                hideJuryCriteriaSaveButton
-                formDisabled={saving}
-                showJuryCriteriaSection={juryVoting}
-                juryCriteriaPortalMode={juryVoting}
-                juryCriteriaPortalHost={juryCriteriaPortalHost}
-              />
-            </div>
-          </section>
-        )}
+        <section
+          className="edit-contest-page-card edit-contest-page-card--organizer"
+          aria-label="Номинации"
+        >
+          <div className="edit-contest-page-organizer">
+            <ContestOrganizerCriteriaPanel
+              ref={panelRef}
+              contest={currentContest}
+              isAdmin
+              hideJuryCriteriaSaveButton
+              formDisabled={saving}
+              showJuryCriteriaSection={juryVoting}
+              juryCriteriaPortalMode={juryVoting}
+              juryCriteriaPortalHost={juryCriteriaPortalHost}
+            />
+          </div>
+        </section>
 
         <section className="edit-contest-page-card" aria-labelledby="edit-section-appearance">
           <h2 id="edit-section-appearance" className="edit-contest-page-section-label">
             Оформление страницы конкурса
           </h2>
           <p className="edit-contest-appearance-intro">
-            Баннер, логотипы и цвет акцента. Изображения выбираются только файлом (нужно включённое хранилище на сервере).
-            {isNewContest
-              ? ' Загрузка файлов будет доступна после создания черновика.'
-              : ' Чтобы убрать картинку, нажмите «Убрать» и сохраните страницу.'}
+            Баннер, логотипы и цвет акцента. Файл при выборе сразу загружается на сервер; остальное оформление (тексты,
+            ссылки, цвет) — по кнопке «Сохранить изменения». Чтобы снять картинку с публикации, нажмите «Убрать» и
+            сохраните страницу.
           </p>
           <div className="edit-contest-page-fields edit-contest-appearance-fields">
             <ContestAssetImageField
@@ -544,7 +660,7 @@ const EditContestPage: React.FC = () => {
               onClear={() => setCoverUrl('')}
               onPickFile={(file) => handleContestAssetFile('cover', file)}
               uploading={assetUploading === 'cover'}
-              disabled={saving || isNewContest}
+              disabled={saving}
             />
             <ContestAssetImageField
               legend="Логотип конкурса"
@@ -552,7 +668,7 @@ const EditContestPage: React.FC = () => {
               onClear={() => setLogoUrl('')}
               onPickFile={(file) => handleContestAssetFile('logo', file)}
               uploading={assetUploading === 'logo'}
-              disabled={saving || isNewContest}
+              disabled={saving}
             />
             <div className="edit-contest-theme-row">
               <Input
@@ -564,7 +680,7 @@ const EditContestPage: React.FC = () => {
                 disabled={saving}
               />
               <label className="edit-contest-theme-picker-wrap">
-                <span className="edit-contest-theme-picker-label">Палитра</span>
+                <span className="edit-contest-field-label">Палитра</span>
                 <input
                   type="color"
                   className="edit-contest-theme-picker"
@@ -597,7 +713,7 @@ const EditContestPage: React.FC = () => {
               onClear={() => setSponsorLogoUrl('')}
               onPickFile={(file) => handleContestAssetFile('sponsor_logo', file)}
               uploading={assetUploading === 'sponsor_logo'}
-              disabled={saving || isNewContest}
+              disabled={saving}
             />
             <Input
               label="Ссылка на сайт спонсора"
@@ -633,9 +749,7 @@ const EditContestPage: React.FC = () => {
               <span className="edit-contest-voting-text">
                 <span className="edit-contest-voting-label">Голосование жюри</span>
                 <p className="edit-contest-voting-hint">
-                  {isNewContest
-                    ? 'Критерии и состав жюри появятся после создания черновика (кнопка вверху страницы), затем — в этом разделе и в блоке номинаций ниже.'
-                    : 'Включите, чтобы задать критерии оценки и состав жюри (ниже в этом разделе).'}
+                  Включите, чтобы открыть ниже отдельные блоки критериев оценки и состава жюри.
                 </p>
               </span>
             </label>
@@ -655,47 +769,69 @@ const EditContestPage: React.FC = () => {
               </span>
             </label>
           </div>
-
-          {juryVoting && isNewContest ? (
-            <div className="edit-contest-voting-deferred" role="status" aria-live="polite">
-              <p className="edit-contest-voting-deferred-title">Жюри станет доступно после черновика</p>
-              <p className="edit-contest-voting-deferred-text">
-                Сейчас у конкурса ещё нет идентификатора на сервере — запросы критериев и состава жюри невозможны.
-                Нажмите «Создать черновик» вверху: страница откроется в режиме редактирования, и здесь появятся панели
-                настройки жюри (и критерии — также в блоке номинаций ниже).
-              </p>
-            </div>
-          ) : null}
-
-          {juryVoting && !isNewContest && currentContest ? (
-            <div className="edit-contest-voting-jury" aria-label="Состав жюри">
-              <div className="edit-contest-page-organizer">
-                <ContestJuryPanel
-                  contest={currentContest}
-                  isAdmin
-                  criteriaSlotRef={handleJuryCriteriaSlotRef}
-                />
-              </div>
-            </div>
-          ) : null}
         </section>
 
-        {!isNewContest && currentContest ? (
+        {juryVoting ? (
           <section
             className="edit-contest-page-card edit-contest-page-card--organizer"
-            aria-label="Поля заявки участника"
+            aria-labelledby="edit-section-jury-criteria"
           >
+            <h2 id="edit-section-jury-criteria" className="edit-contest-page-section-label">
+              Критерии оценки
+            </h2>
+            <p className="edit-contest-schedule-intro">
+              Шкалы и формулировки, по которым жюри выставляет баллы. Сохраняются вместе со страницей конкурса
+              (кнопка «Сохранить изменения»).
+            </p>
             <div className="edit-contest-page-organizer">
-              <ContestRegistrationFieldsPanel
-                ref={registrationFieldsRef}
-                contest={currentContest}
-                isAdmin
-                hideSaveButton
-                formDisabled={saving}
+              <div
+                className="edit-contest-jury-criteria-portal-host"
+                ref={handleJuryCriteriaSlotRef}
               />
             </div>
           </section>
         ) : null}
+
+        {juryVoting ? (
+          <section
+            className="edit-contest-page-card edit-contest-page-card--organizer"
+            aria-labelledby="edit-section-jury-members"
+          >
+            <h2 id="edit-section-jury-members" className="edit-contest-page-section-label">
+              Состав жюри
+            </h2>
+            <div className="edit-contest-page-organizer edit-contest-page-organizer--jury-members">
+              <ContestJuryPanel
+                ref={juryPanelRef}
+                contest={currentContest}
+                isAdmin
+                ensureJuryVotingEnabledOnServer={ensureJuryVotingEnabledOnServer}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        <section
+          className="edit-contest-page-card edit-contest-page-card--organizer"
+          aria-label="Поля заявки участника"
+        >
+          <div className="edit-contest-page-organizer">
+            <ContestRegistrationFieldsPanel
+              ref={registrationFieldsRef}
+              contest={currentContest}
+              isAdmin
+              hideSaveButton
+              formDisabled={saving}
+            />
+          </div>
+        </section>
+
+        <EditContestSaveToolbar
+          saving={saving}
+          saveDisabled={!title.trim()}
+          onSave={handleSaveAll}
+          variant="bottom"
+        />
       </div>
     </div>
   );

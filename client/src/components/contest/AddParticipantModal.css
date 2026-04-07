@@ -373,22 +373,6 @@
   object-fit: contain;
 }
 
-.add-participant-registration-image-remove {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #334155;
-  cursor: pointer;
-}
-
-.add-participant-registration-image-remove:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .add-participant-registration-image-hint {
   margin: 0;
   font-size: 12px;

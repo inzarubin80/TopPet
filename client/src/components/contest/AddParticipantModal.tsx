@@ -18,15 +18,13 @@ import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
 import { Textarea } from '../common/Textarea';
-import { ContestID, Nomination, Participant, Photo, RegistrationField } from '../../types/models';
+import { ContestID, Participant, Photo, RegistrationField } from '../../types/models';
 import type {
   ParticipantsListNominationFilter,
   ParticipantsListSort,
   ParticipantsListSubmissionFilter,
 } from '../../api/participantsApi';
 import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
-import { listNominations } from '../../api/nominationsApi';
-import { sortNominationsByOrder } from './contestNominationsDisplay';
 import { buildLoginUrl } from '../../utils/navigation';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import './AddParticipantModal.css';
@@ -198,6 +196,9 @@ interface AddParticipantModalProps {
   participantsListLimit?: number;
   participantsListOffset?: number;
   participantsListSort?: ParticipantsListSort;
+  /** Лимиты фото с конкурса (если не переданы — 1 и 30). */
+  contestMinPhotoCount?: number;
+  contestMaxPhotoCount?: number;
 }
 
 export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
@@ -214,6 +215,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   participantsListLimit = 10000,
   participantsListOffset = 0,
   participantsListSort,
+  contestMinPhotoCount,
+  contestMaxPhotoCount,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -240,8 +243,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [registrationImagePicks, setRegistrationImagePicks] = useState<
     Record<string, RegistrationImagePick>
   >({});
-  const [nominationsForPhotos, setNominationsForPhotos] = useState<Nomination[] | null>(null);
-
   const registrationImagePicksRef = useRef<Record<string, RegistrationImagePick>>({});
   registrationImagePicksRef.current = registrationImagePicks;
 
@@ -254,40 +255,13 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   }, []);
 
   const { minPhotosRequired, maxPhotosAllowed } = useMemo(() => {
-    const nid = participant?.nomination_id ?? nominationIdProp ?? null;
-    if (!nid || !nominationsForPhotos?.length) {
-      return { minPhotosRequired: 1, maxPhotosAllowed: 30 };
-    }
-    const row = nominationsForPhotos.find((x) => x.id === nid);
-    const min = Math.min(30, Math.max(1, row?.min_photo_count ?? 1));
-    const maxRaw = Math.min(30, Math.max(1, row?.max_photo_count ?? 30));
+    const min = Math.min(30, Math.max(1, contestMinPhotoCount ?? 1));
+    const maxRaw = Math.min(30, Math.max(1, contestMaxPhotoCount ?? 30));
     const max = Math.max(min, maxRaw);
     return { minPhotosRequired: min, maxPhotosAllowed: max };
-  }, [participant?.nomination_id, nominationIdProp, nominationsForPhotos]);
+  }, [contestMinPhotoCount, contestMaxPhotoCount]);
 
   const currentPhotoTotal = existingPhotos.length + selectedPhotos.length;
-
-  useEffect(() => {
-    if (!isOpen) {
-      setNominationsForPhotos(null);
-      return;
-    }
-    let cancelled = false;
-    listNominations(contestId)
-      .then((rows) => {
-        if (!cancelled) {
-          setNominationsForPhotos([...rows].sort(sortNominationsByOrder));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setNominationsForPhotos([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, contestId]);
 
   // Redirect to login only when modal opens without auth
   useEffect(() => {
@@ -949,14 +923,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                           alt=""
                           className="add-participant-registration-image-preview"
                         />
-                        <button
+                        <Button
                           type="button"
-                          className="add-participant-registration-image-remove"
+                          variant="danger"
+                          size="small"
                           disabled={loading || uploadingMedia}
                           onClick={() => handleRegistrationImageFile(field.id, null)}
                         >
                           Убрать файл
-                        </button>
+                        </Button>
                       </div>
                     ) : (registrationAnswersDraft[field.id] ?? '').trim() ? (
                       <div className="add-participant-registration-image-preview-wrap">

@@ -76,6 +76,10 @@ export interface Contest {
   voting_ends_at?: string;
   /** IANA; в каком поясе на форме задаются даты расписания (в API моменты в UTC). */
   schedule_timezone?: string;
+  /** Минимум фото в одной заявке (на уровне конкурса). */
+  min_photo_count?: number;
+  /** Максимум фото в одной заявке (на уровне конкурса). */
+  max_photo_count?: number;
   created_at: string;
   updated_at: string;
   /** Заполняется для завершённых конкурсов (GET /api/contests, GET один). */
@@ -90,9 +94,9 @@ export interface Nomination {
   title: string;
   description: string;
   sort_order: number;
-  /** Сколько фото нужно в заявке (по умолчанию 1). */
+  /** Дублирует лимиты конкурса (ответ API). */
   min_photo_count?: number;
-  /** Максимум фото в заявке (по умолчанию 30). */
+  /** Дублирует лимиты конкурса (ответ API). */
   max_photo_count?: number;
   /** Публичный URL логотипа номинации (object storage). */
   logo_url?: string;

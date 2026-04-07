@@ -178,6 +178,9 @@ func (r *Repository) AddContestJuryMember(ctx context.Context, contestID model.C
 		SortOrder: next,
 	})
 	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, fmt.Errorf("%w: this user is already in the jury", model.ErrBadRequest)
+		}
 		return nil, err
 	}
 	row, err := reposqlc.GetContestJuryMemberWithName(ctx, &sqlc_repository.GetContestJuryMemberWithNameParams{

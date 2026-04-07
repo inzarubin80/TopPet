@@ -135,9 +135,16 @@ SET
   voting_ends_at = $19,
   participant_allowed_email_domains = $20,
   schedule_timezone = $21,
+  min_photo_count = $22,
+  max_photo_count = $23,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: SyncNominationPhotoCountsByContest :exec
+UPDATE contest_nominations
+SET min_photo_count = $2, max_photo_count = $3
+WHERE contest_id = $1;
 
 -- name: ListContestsForStatusAutomation :many
 SELECT * FROM contests

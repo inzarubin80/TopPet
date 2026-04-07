@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -26,10 +25,10 @@ func (s *TopPetService) AddContestJuryMember(ctx context.Context, contestID mode
 		return nil, err
 	}
 	if !s.userCanManageContest(ctx, c, adminID) {
-		return nil, errors.New("only contest admin can manage jury")
+		return nil, fmt.Errorf("%w: only contest admin can manage jury", model.ErrForbidden)
 	}
 	if !c.JuryVotingEnabled {
-		return nil, errors.New("jury voting is disabled for this contest")
+		return nil, fmt.Errorf("%w: jury voting is disabled for this contest", model.ErrBadRequest)
 	}
 	n, err := s.repository.CountContestJuryMembers(ctx, contestID)
 	if err != nil {
@@ -37,7 +36,7 @@ func (s *TopPetService) AddContestJuryMember(ctx context.Context, contestID mode
 	}
 	maxM := tier.MaxJuryMembersForTier(contestTierString(c))
 	if int(n) >= maxM {
-		return nil, fmt.Errorf("maximum jury members for this tier is %d", maxM)
+		return nil, fmt.Errorf("%w: maximum jury members for this tier is %d (upgrade to pro for a larger jury)", model.ErrBadRequest, maxM)
 	}
 	return s.repository.AddContestJuryMember(ctx, contestID, memberUserID)
 }
@@ -52,7 +51,7 @@ func (s *TopPetService) PatchContestJuryMember(ctx context.Context, contestID mo
 		return nil, model.ErrorForbidden
 	}
 	if !c.JuryVotingEnabled {
-		return nil, errors.New("jury voting is disabled for this contest")
+		return nil, fmt.Errorf("%w: jury voting is disabled for this contest", model.ErrBadRequest)
 	}
 	if patch.PortfolioURL == nil && patch.BioShort == nil && patch.SortOrder == nil {
 		return nil, fmt.Errorf("%w: at least one of portfolio_url, bio_short, sort_order is required", model.ErrBadRequest)
@@ -95,7 +94,7 @@ func (s *TopPetService) ReorderContestJuryMembers(ctx context.Context, contestID
 		return model.ErrorForbidden
 	}
 	if !c.JuryVotingEnabled {
-		return errors.New("jury voting is disabled for this contest")
+		return fmt.Errorf("%w: jury voting is disabled for this contest", model.ErrBadRequest)
 	}
 	if len(orderedUserIDs) == 0 {
 		return fmt.Errorf("%w: user_ids is required", model.ErrBadRequest)
@@ -109,10 +108,10 @@ func (s *TopPetService) RemoveContestJuryMember(ctx context.Context, contestID m
 		return err
 	}
 	if !s.userCanManageContest(ctx, c, adminID) {
-		return errors.New("only contest admin can manage jury")
+		return fmt.Errorf("%w: only contest admin can manage jury", model.ErrForbidden)
 	}
 	if !c.JuryVotingEnabled {
-		return errors.New("jury voting is disabled for this contest")
+		return fmt.Errorf("%w: jury voting is disabled for this contest", model.ErrBadRequest)
 	}
 	return s.repository.RemoveContestJuryMember(ctx, contestID, memberUserID)
 }

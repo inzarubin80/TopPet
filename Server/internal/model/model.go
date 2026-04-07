@@ -75,8 +75,12 @@ type (
 		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
 		// IANA (например Europe/Moscow) — в каком поясе организатор задаёт даты на клиенте.
 		ScheduleTimezone string    `json:"schedule_timezone,omitempty"`
-		CreatedAt        time.Time `json:"created_at"`
-		UpdatedAt        time.Time `json:"updated_at"`
+		// MinPhotoCount — минимум фото в заявке для всего конкурса (1–30).
+		MinPhotoCount int `json:"min_photo_count"`
+		// MaxPhotoCount — максимум фото в заявке (1–30), не меньше MinPhotoCount.
+		MaxPhotoCount int       `json:"max_photo_count"`
+		CreatedAt     time.Time `json:"created_at"`
+		UpdatedAt     time.Time `json:"updated_at"`
 		// Победители после завершения конкурса (заполняются в GET списка/одного конкурса).
 		AudienceWinners []ContestWinnerBrief `json:"audience_winners,omitempty"`
 		JuryWinners     []ContestWinnerBrief `json:"jury_winners,omitempty"`
@@ -113,6 +117,8 @@ type (
 		VotingStartsAt                 *time.Time
 		VotingEndsAt                   *time.Time
 		ScheduleTimezone               string
+		MinPhotoCount                  int
+		MaxPhotoCount                  int
 	}
 
 	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).
@@ -122,9 +128,9 @@ type (
 		Title       string    `json:"title"`
 		Description string    `json:"description"`
 		SortOrder   int       `json:"sort_order"`
-		// MinPhotoCount — сколько фото нужно добавить в заявку (1–30), по умолчанию 1.
+		// MinPhotoCount / MaxPhotoCount — дублируют лимиты конкурса (для совместимости API).
 		MinPhotoCount int `json:"min_photo_count"`
-		// MaxPhotoCount — максимум фото в заявке (1–30), не меньше MinPhotoCount.
+		// MaxPhotoCount — см. MinPhotoCount.
 		MaxPhotoCount int       `json:"max_photo_count"`
 		LogoUrl       string    `json:"logo_url,omitempty"`
 		CreatedAt     time.Time `json:"created_at"`
@@ -254,7 +260,7 @@ type (
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
-		// TotalJuryScore — сумма баллов жюри (отдаётся только создателю конкурса и глобальным админам платформы).
+		// TotalJuryScore — сумма баллов жюри (организаторам — всегда; остальным — после завершения конкурса).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
 		// JuryMemberCount — число членов жюри конкурса (для подписи прогресса оценивания).
 		JuryMemberCount *int64 `json:"jury_member_count,omitempty"`

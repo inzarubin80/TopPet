@@ -43,6 +43,7 @@ type (
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
 		ListContests(ctx context.Context, status *model.ContestStatus, limit, offset int) ([]*model.Contest, int64, error)
 		UpdateContest(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error)
+		SyncNominationPhotoCountsByContest(ctx context.Context, contestID model.ContestID, minPhotoCount, maxPhotoCount int32) error
 		UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
 		ListContestsForStatusAutomation(ctx context.Context) ([]*model.Contest, error)
 		DeleteContest(ctx context.Context, contestID model.ContestID) error

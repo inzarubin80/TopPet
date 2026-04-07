@@ -555,6 +555,8 @@ const ParticipantPage: React.FC = () => {
             isOpen={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
             participant={participant}
+            contestMinPhotoCount={currentContest?.min_photo_count}
+            contestMaxPhotoCount={currentContest?.max_photo_count}
           />
           <DeleteParticipantModal
             isOpen={isDeleteModalOpen}

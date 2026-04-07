@@ -59,6 +59,8 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		VotingStartsAt:                 pgTimestamptzToTimePtr(c.VotingStartsAt),
 		VotingEndsAt:                   pgTimestamptzToTimePtr(c.VotingEndsAt),
 		ScheduleTimezone:               c.ScheduleTimezone,
+		MinPhotoCount:                  int(c.MinPhotoCount),
+		MaxPhotoCount:                  int(c.MaxPhotoCount),
 		CreatedAt:                      c.CreatedAt.Time,
 		UpdatedAt:                      c.UpdatedAt.Time,
 	}
@@ -159,12 +161,27 @@ func (r *Repository) UpdateContest(ctx context.Context, contestID model.ContestI
 		VotingEndsAt:                   timePtrToPgTimestamptz(u.VotingEndsAt),
 		ParticipantAllowedEmailDomains: u.ParticipantAllowedEmailDomains,
 		ScheduleTimezone:               u.ScheduleTimezone,
+		MinPhotoCount:                  int32(u.MinPhotoCount),
+		MaxPhotoCount:                  int32(u.MaxPhotoCount),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return contestFromSQLc(contest), nil
+}
+
+func (r *Repository) SyncNominationPhotoCountsByContest(ctx context.Context, contestID model.ContestID, minPhotoCount, maxPhotoCount int32) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.SyncNominationPhotoCountsByContest(ctx, &sqlc_repository.SyncNominationPhotoCountsByContestParams{
+		ContestID:     pgtype.UUID{Bytes: contestUUID, Valid: true},
+		MinPhotoCount: minPhotoCount,
+		MaxPhotoCount: maxPhotoCount,
+	})
 }
 
 func (r *Repository) UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error) {

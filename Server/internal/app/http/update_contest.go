@@ -76,6 +76,12 @@ func validateContestUpdate(u model.ContestUpdate) string {
 	if len([]rune(u.ScheduleTimezone)) > 120 {
 		return "schedule_timezone is too long"
 	}
+	if u.MinPhotoCount < 1 || u.MinPhotoCount > 30 || u.MaxPhotoCount < 1 || u.MaxPhotoCount > 30 {
+		return "min_photo_count and max_photo_count must be between 1 and 30"
+	}
+	if u.MinPhotoCount > u.MaxPhotoCount {
+		return "min_photo_count must be <= max_photo_count"
+	}
 	if err := model.ValidateParticipantEmailDomainsDBString(u.ParticipantAllowedEmailDomains); err != nil {
 		return err.Error()
 	}
@@ -138,6 +144,8 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ScheduleTimezone *string `json:"schedule_timezone"`
 		// Список доменов e-mail; null — не менять, [] — сбросить ограничение.
 		ParticipantAllowedEmailDomains *[]string `json:"participant_allowed_email_domains"`
+		MinPhotoCount *int `json:"min_photo_count"`
+		MaxPhotoCount *int `json:"max_photo_count"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -151,6 +159,17 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	minPhotos := contest.MinPhotoCount
+	if minPhotos < 1 {
+		minPhotos = 1
+	}
+	maxPhotos := contest.MaxPhotoCount
+	if maxPhotos < 1 {
+		maxPhotos = 30
+	}
+	if maxPhotos < minPhotos {
+		maxPhotos = minPhotos
+	}
 	u := model.ContestUpdate{
 		Title:                          contest.Title,
 		Description:                    contest.Description,
@@ -172,6 +191,8 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		VotingStartsAt:                 contestScheduleTimePtrClone(contest.VotingStartsAt),
 		VotingEndsAt:                   contestScheduleTimePtrClone(contest.VotingEndsAt),
 		ScheduleTimezone:               contest.ScheduleTimezone,
+		MinPhotoCount:                  minPhotos,
+		MaxPhotoCount:                  maxPhotos,
 	}
 
 	if req.Title != nil {
@@ -245,6 +266,13 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		u.ParticipantAllowedEmailDomains = model.JoinParticipantEmailDomainsDB(norm)
+	}
+
+	if req.MinPhotoCount != nil {
+		u.MinPhotoCount = *req.MinPhotoCount
+	}
+	if req.MaxPhotoCount != nil {
+		u.MaxPhotoCount = *req.MaxPhotoCount
 	}
 
 	if msg := validateContestUpdate(u); msg != "" {

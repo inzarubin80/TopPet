@@ -12,6 +12,24 @@
   font-weight: 600;
 }
 
+/* Блок критериев оценки (портал) — отдельно от состава жюри */
+.contest-jury-panel-criteria-region {
+  margin: 0 0 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.contest-jury-panel-members-region {
+  min-width: 0;
+}
+
+.contest-jury-panel-members-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
 .contest-jury-hint {
   margin: 0 0 1rem;
   font-size: 0.875rem;
@@ -20,7 +38,8 @@
 }
 
 .contest-jury-criteria-slot {
-  margin-bottom: 1.25rem;
+  margin: 0;
+  min-height: 0;
 }
 
 .contest-jury-muted {
@@ -49,34 +68,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
-}
-
-.contest-jury-order-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: auto;
-}
-
-.contest-jury-order-btn {
-  min-width: 2rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 0.9rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #374151;
-}
-
-.contest-jury-order-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-
-.contest-jury-order-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .contest-jury-item:last-child {
@@ -131,10 +122,6 @@
 
 .contest-jury-field-input.url-input {
   max-width: 100%;
-}
-
-.contest-jury-field-actions {
-  margin-top: 0.35rem;
 }
 
 .contest-jury-public {

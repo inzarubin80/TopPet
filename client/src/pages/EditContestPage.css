@@ -8,8 +8,74 @@
   --edit-page-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
   --edit-page-accent: #1d4ed8;
 
+  --edit-control-radius: 8px;
+  --edit-control-border: 1px solid rgba(0, 0, 0, 0.12);
+  --edit-control-bg: #fff;
+  --edit-control-padding-y: 10px;
+  --edit-control-padding-x: 12px;
+  --edit-control-font-size: var(--font-size-base-md);
+  --edit-control-color: #0f172a;
+  --edit-control-focus-ring: 0 0 0 3px rgba(29, 78, 216, 0.15);
+  --edit-control-label-size: 14px;
+  --edit-control-label-weight: var(--font-weight-medium);
+  --edit-control-label-color: #334155;
+
   min-height: 100%;
   padding: 16px 18px 32px;
+}
+
+/* Единый вид Input/Textarea на этой странице (глобальные компоненты без правок) */
+.edit-contest-page .input-wrapper,
+.edit-contest-page .textarea-wrapper {
+  gap: 6px;
+}
+
+.edit-contest-page .input-label,
+.edit-contest-page .textarea-label {
+  font-size: var(--edit-control-label-size);
+  font-weight: var(--edit-control-label-weight);
+  color: var(--edit-control-label-color);
+}
+
+.edit-contest-page .input-hint,
+.edit-contest-page .textarea-hint {
+  font-size: var(--font-size-sm);
+}
+
+.edit-contest-page .input,
+.edit-contest-page .textarea {
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
+  line-height: 1.35;
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edit-contest-page .input:focus,
+.edit-contest-page .textarea:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-page .input:disabled,
+.edit-contest-page .textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-contest-page .input-error,
+.edit-contest-page .textarea-error {
+  border-color: #dc3545;
+}
+
+.edit-contest-page .input-error:focus,
+.edit-contest-page .textarea-error:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
 }
 
 .edit-contest-page-inner {
@@ -244,13 +310,129 @@
   max-width: none;
 }
 
-/* Кнопка сохранения вверху (под шапкой) */
+/* Поля ввода во вложенных панелях — тот же язык, что и у основной формы */
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-input,
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-textarea {
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-input:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-textarea:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-input:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-scale-row input[type='number'] {
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-scale-row input[type='number']:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-organizer-criteria-scale-row label {
+  font-size: var(--edit-control-label-size);
+  font-weight: var(--edit-control-label-weight);
+  color: var(--edit-control-label-color);
+  gap: 6px;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-input,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-select,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-textarea,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-help {
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-input:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-select:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-textarea:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-help:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-input:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-select:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-textarea:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-registration-fields-help:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-input,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-textarea,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-input {
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-input:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-textarea:focus,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-input:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-input:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-textarea:disabled,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-contest-page .edit-contest-page-organizer .contest-jury-field-label,
+.edit-contest-page .edit-contest-page-organizer .contest-jury-label {
+  font-size: var(--edit-control-label-size);
+  font-weight: var(--edit-control-label-weight);
+  color: var(--edit-control-label-color);
+}
+
+/* Кнопки сохранения (вверху и внизу) */
 .edit-contest-page-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.edit-contest-page-actions--bottom {
+  margin-top: 20px;
+  margin-bottom: 0;
 }
 
 /* Состояния загрузки и ошибки */
@@ -337,10 +519,18 @@
   color: #334155;
 }
 
-.edit-contest-voting-jury {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+/* Карточка страницы уже даёт заголовок — скрываем дубль из портала критериев */
+.edit-contest-jury-criteria-portal-host .contest-organizer-criteria-jury-subtitle.contest-section-heading {
+  display: none;
+}
+
+/* Карточка «Состав жюри» дублирует заголовок панели */
+.edit-contest-page-organizer--jury-members .contest-jury-panel-members-title {
+  display: none;
+}
+
+.edit-contest-page-organizer--jury-members .contest-jury-panel {
+  margin-top: 0;
 }
 
 .edit-contest-appearance-intro {
@@ -368,34 +558,44 @@
   margin-bottom: 2px;
 }
 
-.edit-contest-schedule-tz-label {
-  font-size: var(--font-size-base-sm);
-  font-weight: var(--font-weight-medium);
-  color: #334155;
+/* Подписи к select / color такие же, как у Input на этой странице */
+.edit-contest-field-label {
+  font-size: var(--edit-control-label-size);
+  font-weight: var(--edit-control-label-weight);
+  color: var(--edit-control-label-color);
 }
 
-.edit-contest-schedule-tz-select {
-  width: 100%;
-  max-width: 100%;
+/* Общий стиль нативных select на странице */
+.edit-contest-control-select {
   box-sizing: border-box;
-  padding: 10px 12px;
-  font-size: var(--font-size-base-md);
+  padding: var(--edit-control-padding-y) var(--edit-control-padding-x);
+  font-size: var(--edit-control-font-size);
   line-height: 1.35;
-  color: #0f172a;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
+  color: var(--edit-control-color);
+  background: var(--edit-control-bg);
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.edit-contest-schedule-tz-select:focus {
+.edit-contest-control-select:focus {
   outline: none;
   border-color: var(--edit-page-accent);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+  box-shadow: var(--edit-control-focus-ring);
 }
 
-.edit-contest-schedule-tz-select:disabled {
+.edit-contest-control-select:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.edit-contest-schedule-tz .edit-contest-control-select {
+  width: 100%;
+  max-width: 100%;
+}
+
+.edit-contest-photo-limit .edit-contest-control-select {
+  min-width: 5rem;
 }
 
 .edit-contest-appearance-fields {
@@ -427,21 +627,51 @@
   gap: 6px;
 }
 
-.edit-contest-theme-picker-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: #475569;
-}
-
 .edit-contest-theme-picker {
   width: 48px;
   height: 40px;
   padding: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
+  border: var(--edit-control-border);
+  border-radius: var(--edit-control-radius);
   cursor: pointer;
-  background: #fff;
+  background: var(--edit-control-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+
+.edit-contest-theme-picker:focus {
+  outline: none;
+  border-color: var(--edit-page-accent);
+  box-shadow: var(--edit-control-focus-ring);
+}
+
+.edit-contest-theme-picker:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-contest-page-fields--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+}
+
+.edit-contest-photo-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.edit-contest-page--create .edit-contest-page-inner {
+  max-width: var(--edit-page-max);
+  margin: 0 auto;
+}
+
+.edit-contest-page-card--create .edit-contest-page-actions {
+  margin-top: 1rem;
+}
+
 
 @media (max-width: 480px) {
   .edit-contest-page {
@@ -457,6 +687,10 @@
   }
 
   .edit-contest-page-actions .btn {
+    width: 100%;
+  }
+
+  .edit-contest-page-actions--bottom .btn {
     width: 100%;
   }
 }

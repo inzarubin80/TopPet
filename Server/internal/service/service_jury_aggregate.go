@@ -7,13 +7,16 @@ import (
 )
 
 // shouldExposeJuryScoreTotal — когда отдавать клиенту сумму баллов жюри по заявке (total_jury_score и связанные поля).
-// Обычные пользователи и члены жюри не получают эти поля; видят только создатель конкурса и глобальные роли
-// contest_admin / system_admin (см. userCanManageContest), на любой фазе конкурса.
+// Создатель конкурса и глобальные роли contest_admin / system_admin (см. userCanManageContest) видят суммы на любой фазе.
+// Остальные пользователи (включая неавторизованных) получают эти поля только при status=finished.
 func (s *TopPetService) shouldExposeJuryScoreTotal(ctx context.Context, contest *model.Contest, viewer *model.UserID) bool {
-	if contest == nil || !contest.JuryVotingEnabled || viewer == nil {
+	if contest == nil || !contest.JuryVotingEnabled {
 		return false
 	}
-	return s.userCanManageContest(ctx, contest, *viewer)
+	if viewer != nil && s.userCanManageContest(ctx, contest, *viewer) {
+		return true
+	}
+	return contest.Status == model.ContestStatusFinished
 }
 
 func (s *TopPetService) attachParticipantJuryScoreTotals(ctx context.Context, contest *model.Contest, viewer *model.UserID, participants []*model.Participant) {

@@ -51,6 +51,17 @@ func ContestUpdateFromModel(c *model.Contest) model.ContestUpdate {
 	if tz == "" {
 		tz = "Europe/Moscow"
 	}
+	minP := c.MinPhotoCount
+	if minP < 1 {
+		minP = 1
+	}
+	maxP := c.MaxPhotoCount
+	if maxP < 1 {
+		maxP = 30
+	}
+	if maxP < minP {
+		maxP = minP
+	}
 	return model.ContestUpdate{
 		Title:                          c.Title,
 		Description:                    c.Description,
@@ -72,6 +83,8 @@ func ContestUpdateFromModel(c *model.Contest) model.ContestUpdate {
 		VotingStartsAt:                 timePtrClone(c.VotingStartsAt),
 		VotingEndsAt:                   timePtrClone(c.VotingEndsAt),
 		ScheduleTimezone:               tz,
+		MinPhotoCount:                  minP,
+		MaxPhotoCount:                  maxP,
 	}
 }
 
@@ -168,7 +181,7 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 
 	var nomIDs [3]string
 	for i := 0; i < 3; i++ {
-		n, err := svc.CreateNomination(ctx, contestID, orgID, fmt.Sprintf("Номинация %d", i+1), "", 1, 30)
+		n, err := svc.CreateNomination(ctx, contestID, orgID, fmt.Sprintf("Номинация %d", i+1), "")
 		if err != nil {
 			return nil, fmt.Errorf("CreateNomination %d: %w", i, err)
 		}
@@ -326,7 +339,7 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 		return nil, err
 	}
 
-	nom, err := svc.CreateNomination(ctx, contestID, orgID, "Единственная номинация", "", 1, 30)
+	nom, err := svc.CreateNomination(ctx, contestID, orgID, "Единственная номинация", "")
 	if err != nil {
 		return nil, fmt.Errorf("CreateNomination: %w", err)
 	}

@@ -50,6 +50,10 @@ func (m *mockRepository) UpdateContest(ctx context.Context, contestID model.Cont
 	return nil, nil
 }
 
+func (m *mockRepository) SyncNominationPhotoCountsByContest(ctx context.Context, contestID model.ContestID, minPhotoCount, maxPhotoCount int32) error {
+	return nil
+}
+
 func (m *mockRepository) UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error) {
 	if m.updateContestStatusFunc != nil {
 		return m.updateContestStatusFunc(ctx, contestID, status)
@@ -475,6 +479,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 				Description:         "Updated Description",
 				PublicVotingEnabled: true,
 				JuryVotingEnabled:   false,
+				MinPhotoCount:       1,
+				MaxPhotoCount:       30,
 			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
@@ -490,6 +496,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 					Description:     u.Description,
 					CreatedByUserID: 1,
 					Status:          model.ContestStatusDraft,
+					MinPhotoCount:   u.MinPhotoCount,
+					MaxPhotoCount:   u.MaxPhotoCount,
 				}, nil
 			},
 			wantErr: false,
@@ -499,8 +507,10 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			contestID: "owned-by-admin",
 			userID:    5,
 			update: model.ContestUpdate{
-				Title:       "T",
-				Description: "D",
+				Title:         "T",
+				Description:   "D",
+				MinPhotoCount: 1,
+				MaxPhotoCount: 30,
 			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
@@ -516,6 +526,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 					Description:     u.Description,
 					CreatedByUserID: 5,
 					Status:          model.ContestStatusDraft,
+					MinPhotoCount:   u.MinPhotoCount,
+					MaxPhotoCount:   u.MaxPhotoCount,
 				}, nil
 			},
 			getUserRoleFunc: func(ctx context.Context, userID model.UserID) (string, error) {
@@ -528,8 +540,10 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			contestID: "other-authors-contest",
 			userID:    7,
 			update: model.ContestUpdate{
-				Title:       "T2",
-				Description: "D2",
+				Title:         "T2",
+				Description:   "D2",
+				MinPhotoCount: 1,
+				MaxPhotoCount: 30,
 			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
@@ -545,6 +559,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 					Description:     u.Description,
 					CreatedByUserID: 1,
 					Status:          model.ContestStatusDraft,
+					MinPhotoCount:   u.MinPhotoCount,
+					MaxPhotoCount:   u.MaxPhotoCount,
 				}, nil
 			},
 			getUserRoleFunc: func(ctx context.Context, userID model.UserID) (string, error) {
@@ -560,8 +576,10 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			contestID: "test-id",
 			userID:    2,
 			update: model.ContestUpdate{
-				Title:       "Updated Title",
-				Description: "Updated Description",
+				Title:         "Updated Title",
+				Description:   "Updated Description",
+				MinPhotoCount: 1,
+				MaxPhotoCount: 30,
 			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
@@ -578,8 +596,10 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 			contestID: "test-id",
 			userID:    1,
 			update: model.ContestUpdate{
-				Title:       "Updated Title",
-				Description: "Updated Description",
+				Title:         "Updated Title",
+				Description:   "Updated Description",
+				MinPhotoCount: 1,
+				MaxPhotoCount: 30,
 			},
 			getContestFunc: func(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
 				return &model.Contest{
@@ -595,6 +615,8 @@ func TestTopPetService_UpdateContest(t *testing.T) {
 					Description:     u.Description,
 					CreatedByUserID: 1,
 					Status:          model.ContestStatusVoting,
+					MinPhotoCount:   u.MinPhotoCount,
+					MaxPhotoCount:   u.MaxPhotoCount,
 				}, nil
 			},
 			wantErr: false,

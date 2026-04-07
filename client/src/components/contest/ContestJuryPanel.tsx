@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react';
 import { Contest, ContestTier, JuryMember, UserSearchHit } from '../../types/models';
 import {
   getContestJury,
@@ -9,6 +9,7 @@ import {
 } from '../../api/juryApi';
 import { searchUsers } from '../../api/usersApi';
 import { Button } from '../common/Button';
+import '../common/ReorderIconButtons.css';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import './ContestJuryPanel.css';
@@ -16,298 +17,395 @@ import './ContestJuryPanel.css';
 const maxJuryHint = (tier: ContestTier | undefined) =>
   tier === 'pro' ? 'На тарифе Pro — до 50 человек.' : 'На бесплатном тарифе — до 2 человек.';
 
+export type ContestJuryPanelHandle = {
+  /** Отправить на сервер несохранённые правки портфолио и описания членов жюри (общее сохранение страницы). */
+  flushPendingJuryMemberEdits: (opts?: { quietSuccess?: boolean }) => Promise<boolean>;
+};
+
 interface ContestJuryPanelProps {
   contest: Contest;
   isAdmin: boolean;
   /** Слот для переноса блока критериев жюри (например, с порталом со страницы редактирования). */
   criteriaSlotRef?: React.RefCallback<HTMLDivElement | null>;
+  /**
+   * Перед запросами к API жюри: включить голосование жюри на сервере, если включён только локальный чекбокс
+   * (страница ещё не сохранена). Редактирование конкурса: передаётся с EditContestPage.
+   */
+  ensureJuryVotingEnabledOnServer?: () => Promise<boolean>;
 }
 
-export const ContestJuryPanel: React.FC<ContestJuryPanelProps> = ({ contest, isAdmin, criteriaSlotRef }) => {
-  const { showError, showSuccess } = useToast();
-  const [items, setItems] = useState<JuryMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [nameQuery, setNameQuery] = useState('');
-  const [searchHits, setSearchHits] = useState<UserSearchHit[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchWrapRef = useRef<HTMLDivElement | null>(null);
+export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPanelProps>(
+  function ContestJuryPanel({ contest, isAdmin, criteriaSlotRef, ensureJuryVotingEnabledOnServer }, ref) {
+    const { showError, showSuccess } = useToast();
+    const [items, setItems] = useState<JuryMember[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [nameQuery, setNameQuery] = useState('');
+    const [searchHits, setSearchHits] = useState<UserSearchHit[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    /** Локальные правки полей; на сервер — через flushPendingJuryMemberEdits. */
+    const [memberFieldEdits, setMemberFieldEdits] = useState<
+      Record<number, { portfolio: string; bio: string }>
+    >({});
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const list = await getContestJury(contest.id);
-      setItems(list);
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось загрузить состав жюри');
-    } finally {
-      setLoading(false);
-    }
-  }, [contest.id, showError]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const canEdit = isAdmin;
-  const tier = contest.tier || 'free';
-
-  const juryUserIds = new Set(items.map((j) => j.user_id));
-
-  useEffect(() => {
-    if (!canEdit) {
-      return;
-    }
-    const q = nameQuery.trim();
-    if (q.length < 2) {
-      setSearchHits([]);
-      setPickerOpen(false);
-      return;
-    }
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(async () => {
-      setSearchLoading(true);
+    const load = useCallback(async () => {
+      setLoading(true);
       try {
-        const list = await searchUsers(q, 20);
-        setSearchHits(list);
-        setPickerOpen(true);
+        const list = await getContestJury(contest.id);
+        setItems(list);
+        setMemberFieldEdits({});
       } catch (e) {
         errorHandler.handleError(e, showError, false);
-        setSearchHits([]);
+        showError('Не удалось загрузить состав жюри');
       } finally {
-        setSearchLoading(false);
+        setLoading(false);
       }
-    }, 350);
-    return () => {
+    }, [contest.id, showError]);
+
+    useEffect(() => {
+      load();
+    }, [load]);
+
+    const canEdit = isAdmin;
+    const tier = contest.tier || 'free';
+
+    const juryUserIds = new Set(items.map((j) => j.user_id));
+
+    useEffect(() => {
+      if (!canEdit) {
+        return;
+      }
+      const q = nameQuery.trim();
+      if (q.length < 2) {
+        setSearchHits([]);
+        setPickerOpen(false);
+        return;
+      }
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-    };
-  }, [nameQuery, canEdit, showError]);
+      debounceRef.current = setTimeout(async () => {
+        setSearchLoading(true);
+        try {
+          const list = await searchUsers(q, 20);
+          setSearchHits(list);
+          setPickerOpen(true);
+        } catch (e) {
+          errorHandler.handleError(e, showError, false);
+          setSearchHits([]);
+        } finally {
+          setSearchLoading(false);
+        }
+      }, 350);
+      return () => {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+      };
+    }, [nameQuery, canEdit, showError]);
 
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!pickerOpen || !searchWrapRef.current) return;
-      if (!searchWrapRef.current.contains(e.target as Node)) {
+    useEffect(() => {
+      const onDoc = (e: MouseEvent) => {
+        if (!pickerOpen || !searchWrapRef.current) return;
+        if (!searchWrapRef.current.contains(e.target as Node)) {
+          setPickerOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', onDoc);
+      return () => document.removeEventListener('mousedown', onDoc);
+    }, [pickerOpen]);
+
+    const handlePickSearchHit = async (hit: UserSearchHit) => {
+      if (juryUserIds.has(hit.id)) {
+        showError('Этот пользователь уже в жюри');
         setPickerOpen(false);
+        return;
+      }
+      if (ensureJuryVotingEnabledOnServer) {
+        const synced = await ensureJuryVotingEnabledOnServer();
+        if (!synced) return;
+      }
+      setSubmitting(true);
+      try {
+        const m = await addJuryMember(contest.id, hit.id);
+        setItems((prev) => [...prev, m]);
+        setNameQuery('');
+        setSearchHits([]);
+        setPickerOpen(false);
+        showSuccess('Член жюри добавлен');
+      } catch (e) {
+        errorHandler.handleError(e, showError, false);
+        showError('Не удалось добавить (проверьте лимит тарифа)');
+      } finally {
+        setSubmitting(false);
       }
     };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [pickerOpen]);
 
-  const handlePickSearchHit = async (hit: UserSearchHit) => {
-    if (juryUserIds.has(hit.id)) {
-      showError('Этот пользователь уже в жюри');
-      setPickerOpen(false);
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const m = await addJuryMember(contest.id, hit.id);
-      setItems((prev) => [...prev, m]);
-      setNameQuery('');
-      setSearchHits([]);
-      setPickerOpen(false);
-      showSuccess('Член жюри добавлен');
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось добавить (проверьте лимит тарифа)');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const handleRemove = async (userId: number) => {
+      if (ensureJuryVotingEnabledOnServer) {
+        const synced = await ensureJuryVotingEnabledOnServer();
+        if (!synced) return;
+      }
+      setSubmitting(true);
+      try {
+        await removeJuryMember(contest.id, userId);
+        setItems((prev) => prev.filter((j) => j.user_id !== userId));
+        setMemberFieldEdits((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+        showSuccess('Удалено из жюри');
+      } catch (e) {
+        errorHandler.handleError(e, showError, false);
+        showError('Не удалось удалить');
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
-  const handleRemove = async (userId: number) => {
-    setSubmitting(true);
-    try {
-      await removeJuryMember(contest.id, userId);
-      setItems((prev) => prev.filter((j) => j.user_id !== userId));
-      showSuccess('Удалено из жюри');
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось удалить');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const moveMember = async (index: number, delta: -1 | 1) => {
+      const j = index + delta;
+      if (j < 0 || j >= items.length) return;
+      if (ensureJuryVotingEnabledOnServer) {
+        const synced = await ensureJuryVotingEnabledOnServer();
+        if (!synced) return;
+      }
+      const next = [...items];
+      [next[index], next[j]] = [next[j], next[index]];
+      setSubmitting(true);
+      try {
+        await reorderJuryMembers(
+          contest.id,
+          next.map((x) => x.user_id)
+        );
+        setItems(next);
+        showSuccess('Порядок обновлён');
+      } catch (e) {
+        errorHandler.handleError(e, showError, false);
+        showError('Не удалось изменить порядок');
+        void load();
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
-  const moveMember = async (index: number, delta: -1 | 1) => {
-    const j = index + delta;
-    if (j < 0 || j >= items.length) return;
-    const next = [...items];
-    [next[index], next[j]] = [next[j], next[index]];
-    setSubmitting(true);
-    try {
-      await reorderJuryMembers(
-        contest.id,
-        next.map((x) => x.user_id)
-      );
-      setItems(next);
-      showSuccess('Порядок обновлён');
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось изменить порядок');
-      void load();
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const getPortfolio = (m: JuryMember) => memberFieldEdits[m.user_id]?.portfolio ?? m.portfolio_url ?? '';
+    const getBio = (m: JuryMember) => memberFieldEdits[m.user_id]?.bio ?? m.bio_short ?? '';
 
-  const saveMemberDetails = async (j: JuryMember, portfolio: string, bio: string) => {
-    setSubmitting(true);
-    try {
-      const updated = await patchJuryMember(contest.id, j.user_id, {
-        portfolio_url: portfolio,
-        bio_short: bio,
-      });
-      setItems((prev) => prev.map((x) => (x.user_id === j.user_id ? updated : x)));
-      showSuccess('Сохранено');
-    } catch (e) {
-      errorHandler.handleError(e, showError, false);
-      showError('Не удалось сохранить');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const setPortfolio = (m: JuryMember, v: string) => {
+      setMemberFieldEdits((prev) => ({
+        ...prev,
+        [m.user_id]: { portfolio: v, bio: prev[m.user_id]?.bio ?? (m.bio_short ?? '') },
+      }));
+    };
 
-  return (
-    <section className="contest-jury-panel" aria-labelledby="contest-jury-heading">
-      <h3 id="contest-jury-heading">Состав жюри</h3>
-      <p className="contest-jury-hint">
-        {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса.
-        {canEdit
-          ? ' Для каждого члена можно задать порядок отображения, ссылку на портфолио и краткое описание.'
-          : null}
-      </p>
-      {criteriaSlotRef ? <div className="contest-jury-criteria-slot" ref={criteriaSlotRef} /> : null}
-      {loading ? (
-        <p className="contest-jury-muted">Загрузка…</p>
-      ) : items.length === 0 ? (
-        <p className="contest-jury-muted">Состав жюри пока не назначен.</p>
-      ) : (
-        <ul className="contest-jury-list">
-          {items.map((j, idx) => (
-            <li key={j.id} className="contest-jury-item">
-              <div className="contest-jury-item-head">
-                <span className="contest-jury-name">{j.user_name || `Пользователь ${j.user_id}`}</span>
-                <span className="contest-jury-id">id: {j.user_id}</span>
-                {canEdit && (
-                  <div className="contest-jury-order-actions">
-                    <button
-                      type="button"
-                      className="contest-jury-order-btn"
-                      disabled={submitting || idx === 0}
-                      onClick={() => moveMember(idx, -1)}
-                      aria-label="Выше в списке"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="contest-jury-order-btn"
-                      disabled={submitting || idx === items.length - 1}
-                      onClick={() => moveMember(idx, 1)}
-                      aria-label="Ниже в списке"
-                    >
-                      ↓
-                    </button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="small"
-                      disabled={submitting}
-                      onClick={() => handleRemove(j.user_id)}
-                    >
-                      Убрать
-                    </Button>
+    const setBio = (m: JuryMember, v: string) => {
+      setMemberFieldEdits((prev) => ({
+        ...prev,
+        [m.user_id]: { portfolio: prev[m.user_id]?.portfolio ?? (m.portfolio_url ?? ''), bio: v },
+      }));
+    };
+
+    const flushPendingJuryMemberEdits = useCallback(
+      async (_opts?: { quietSuccess?: boolean }): Promise<boolean> => {
+        if (!canEdit) {
+          return true;
+        }
+        const pending = items.filter((m) => {
+          const e = memberFieldEdits[m.user_id];
+          if (!e) {
+            return false;
+          }
+          return (
+            e.portfolio !== (m.portfolio_url ?? '') || e.bio !== (m.bio_short ?? '')
+          );
+        });
+        if (pending.length === 0) {
+          return true;
+        }
+        if (ensureJuryVotingEnabledOnServer) {
+          const synced = await ensureJuryVotingEnabledOnServer();
+          if (!synced) return false;
+        }
+        setSubmitting(true);
+        try {
+          for (const m of pending) {
+            const e = memberFieldEdits[m.user_id]!;
+            const updated = await patchJuryMember(contest.id, m.user_id, {
+              portfolio_url: e.portfolio,
+              bio_short: e.bio,
+            });
+            setItems((prev) => prev.map((x) => (x.user_id === m.user_id ? updated : x)));
+          }
+          setMemberFieldEdits({});
+          return true;
+        } catch (e) {
+          errorHandler.handleError(e, showError, false);
+          showError('Не удалось сохранить данные членов жюри');
+          return false;
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      [canEdit, contest.id, items, memberFieldEdits, showError, ensureJuryVotingEnabledOnServer]
+    );
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        flushPendingJuryMemberEdits,
+      }),
+      [flushPendingJuryMemberEdits]
+    );
+
+    return (
+      <section className="contest-jury-panel" aria-label="Жюри конкурса">
+        {criteriaSlotRef ? (
+          <div className="contest-jury-panel-criteria-region">
+            <div className="contest-jury-criteria-slot" ref={criteriaSlotRef} />
+          </div>
+        ) : null}
+
+        <div className="contest-jury-panel-members-region">
+          <h3 id="contest-jury-heading" className="contest-jury-panel-members-title">
+            Состав жюри
+          </h3>
+          <p className="contest-jury-hint">
+            {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса.
+            {canEdit ? (
+              <>
+                {' '}
+                Добавление и удаление членов жюри и порядок в списке применяются сразу. Портфолио и краткое описание —
+                вместе со страницей конкурса (кнопка «Сохранить изменения»).
+              </>
+            ) : null}
+          </p>
+          {loading ? (
+            <p className="contest-jury-muted">Загрузка…</p>
+          ) : items.length === 0 ? (
+            <p className="contest-jury-muted">Состав жюри пока не назначен.</p>
+          ) : (
+            <ul className="contest-jury-list">
+              {items.map((j, idx) => (
+                <li key={j.id} className="contest-jury-item">
+                  <div className="contest-jury-item-head">
+                    <span className="contest-jury-name">{j.user_name || `Пользователь ${j.user_id}`}</span>
+                    <span className="contest-jury-id">id: {j.user_id}</span>
+                    {canEdit && (
+                      <div className="reorder-icon-actions reorder-icon-actions--end">
+                        <button
+                          type="button"
+                          className="reorder-icon-btn"
+                          disabled={submitting || idx === 0}
+                          onClick={() => moveMember(idx, -1)}
+                          aria-label="Выше в списке"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="reorder-icon-btn"
+                          disabled={submitting || idx === items.length - 1}
+                          onClick={() => moveMember(idx, 1)}
+                          aria-label="Ниже в списке"
+                        >
+                          ↓
+                        </button>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="small"
+                          disabled={submitting}
+                          onClick={() => handleRemove(j.user_id)}
+                        >
+                          Убрать
+                        </Button>
+                      </div>
+                    )}
                   </div>
+                  {canEdit ? (
+                    <JuryMemberEditFields
+                      member={j}
+                      portfolio={getPortfolio(j)}
+                      bio={getBio(j)}
+                      disabled={submitting}
+                      onPortfolioChange={(v) => setPortfolio(j, v)}
+                      onBioChange={(v) => setBio(j, v)}
+                    />
+                  ) : (
+                    <JuryMemberPublicView member={j} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && (
+            <div className="contest-jury-add contest-jury-section">
+              <label htmlFor="jury-search-name" className="contest-jury-label">
+                Добавить в жюри — поиск по email или имени
+              </label>
+              <p className="contest-jury-search-explainer">
+                Введите часть почты или имени (от 2 символов). В списке — имя, email и id.
+              </p>
+              <div className="contest-jury-search-wrap" ref={searchWrapRef}>
+                <input
+                  id="jury-search-name"
+                  type="text"
+                  className="contest-jury-input contest-jury-input-wide"
+                  value={nameQuery}
+                  onChange={(e) => setNameQuery(e.target.value)}
+                  onFocus={() => setPickerOpen(nameQuery.trim().length >= 2 && searchHits.length > 0)}
+                  placeholder="Email или имя (от 2 символов)"
+                  disabled={submitting}
+                  autoComplete="off"
+                />
+                {searchLoading && <span className="contest-jury-search-status">…</span>}
+                {pickerOpen && searchHits.length > 0 && (
+                  <ul className="contest-jury-search-dropdown">
+                    {searchHits.map((h) => (
+                      <li key={h.id}>
+                        <button
+                          type="button"
+                          className="contest-jury-search-option"
+                          onClick={() => handlePickSearchHit(h)}
+                        >
+                          <span className="contest-jury-search-option-main">
+                            <span className="contest-jury-search-option-name">{h.name}</span>
+                            {h.email ? (
+                              <span className="contest-jury-search-option-email">{h.email}</span>
+                            ) : (
+                              <span className="contest-jury-search-option-email contest-jury-search-option-email-missing">
+                                почта не указана
+                              </span>
+                            )}
+                          </span>
+                          <span className="contest-jury-search-option-id">id {h.id}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
-              {canEdit ? (
-                <JuryMemberEditFields
-                  member={j}
-                  disabled={submitting}
-                  onSave={(portfolio, bio) => saveMemberDetails(j, portfolio, bio)}
-                />
-              ) : (
-                <JuryMemberPublicView member={j} />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {canEdit && (
-        <div className="contest-jury-add contest-jury-section">
-          <label htmlFor="jury-search-name" className="contest-jury-label">
-            Добавить в жюри — поиск по email или имени
-          </label>
-          <p className="contest-jury-search-explainer">
-            Введите часть почты или имени (от 2 символов). В списке — имя, email и id.
-          </p>
-          <div className="contest-jury-search-wrap" ref={searchWrapRef}>
-            <input
-              id="jury-search-name"
-              type="text"
-              className="contest-jury-input contest-jury-input-wide"
-              value={nameQuery}
-              onChange={(e) => setNameQuery(e.target.value)}
-              onFocus={() => setPickerOpen(nameQuery.trim().length >= 2 && searchHits.length > 0)}
-              placeholder="Email или имя (от 2 символов)"
-              disabled={submitting}
-              autoComplete="off"
-            />
-            {searchLoading && <span className="contest-jury-search-status">…</span>}
-            {pickerOpen && searchHits.length > 0 && (
-              <ul className="contest-jury-search-dropdown">
-                {searchHits.map((h) => (
-                  <li key={h.id}>
-                    <button
-                      type="button"
-                      className="contest-jury-search-option"
-                      onClick={() => handlePickSearchHit(h)}
-                    >
-                      <span className="contest-jury-search-option-main">
-                        <span className="contest-jury-search-option-name">{h.name}</span>
-                        {h.email ? (
-                          <span className="contest-jury-search-option-email">{h.email}</span>
-                        ) : (
-                          <span className="contest-jury-search-option-email contest-jury-search-option-email-missing">
-                            почта не указана
-                          </span>
-                        )}
-                      </span>
-                      <span className="contest-jury-search-option-id">id {h.id}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      )}
-    </section>
-  );
-};
+      </section>
+    );
+  }
+);
 
 const JuryMemberEditFields: React.FC<{
   member: JuryMember;
+  portfolio: string;
+  bio: string;
   disabled: boolean;
-  onSave: (portfolio: string, bio: string) => void | Promise<void>;
-}> = ({ member, disabled, onSave }) => {
-  const [portfolio, setPortfolio] = useState(member.portfolio_url ?? '');
-  const [bio, setBio] = useState(member.bio_short ?? '');
-
-  useEffect(() => {
-    setPortfolio(member.portfolio_url ?? '');
-    setBio(member.bio_short ?? '');
-  }, [member.user_id, member.portfolio_url, member.bio_short]);
-
+  onPortfolioChange: (v: string) => void;
+  onBioChange: (v: string) => void;
+}> = ({ member, portfolio, bio, disabled, onPortfolioChange, onBioChange }) => {
   return (
     <div className="contest-jury-edit-fields">
       <div className="contest-jury-field">
@@ -319,7 +417,7 @@ const JuryMemberEditFields: React.FC<{
           type="url"
           className="contest-jury-field-input url-input"
           value={portfolio}
-          onChange={(e) => setPortfolio(e.target.value)}
+          onChange={(e) => onPortfolioChange(e.target.value)}
           placeholder="https://…"
           disabled={disabled}
           autoComplete="off"
@@ -333,22 +431,11 @@ const JuryMemberEditFields: React.FC<{
           id={`jury-bio-${member.user_id}`}
           className="contest-jury-field-textarea"
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          onChange={(e) => onBioChange(e.target.value)}
           rows={3}
           placeholder="Например, экспертиза по породам, опыт в выставках…"
           disabled={disabled}
         />
-      </div>
-      <div className="contest-jury-field-actions">
-        <Button
-          type="button"
-          variant="secondary"
-          size="small"
-          disabled={disabled}
-          onClick={() => void onSave(portfolio.trim(), bio.trim())}
-        >
-          Сохранить
-        </Button>
       </div>
     </div>
   );
