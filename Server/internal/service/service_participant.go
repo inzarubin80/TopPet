@@ -81,9 +81,9 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	}
 	log.Printf("[Service] CreateParticipant: Contest found: status=%s", contest.Status)
 
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
-		log.Printf("[Service] CreateParticipant: ERROR - Contest status does not allow adding participants")
-		return nil, errors.New("can only add participants in draft or registration status")
+	if contest.Status != model.ContestStatusRegistration {
+		log.Printf("[Service] CreateParticipant: ERROR - Contest status does not allow adding participants (status=%s)", contest.Status)
+		return nil, fmt.Errorf("%w: can only submit participation during registration", model.ErrBadRequest)
 	}
 
 	ans := registrationAnswers
@@ -290,7 +290,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	// Only owner can update
 	if participant.UserID != userID {
 		log.Printf("[Service] UpdateParticipant: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
-		return nil, errors.New("only participant owner can update")
+		return nil, fmt.Errorf("%w: only participant owner can update", model.ErrForbidden)
 	}
 
 	resolvedName, err := s.resolveParticipantPetName(ctx, userID, petName)
@@ -307,10 +307,9 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	}
 	log.Printf("[Service] UpdateParticipant: Contest found: status=%s", contest.Status)
 
-	// Contest must be in draft or registration status
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
+	if contest.Status != model.ContestStatusRegistration {
 		log.Printf("[Service] UpdateParticipant: ERROR - Contest status does not allow updates (status=%s)", contest.Status)
-		return nil, errors.New("can only update participant in draft or registration status")
+		return nil, fmt.Errorf("%w: can only update participation during registration", model.ErrBadRequest)
 	}
 
 	merged := cloneAnswersMap(participant.RegistrationAnswers)
@@ -354,15 +353,15 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 
 	// Only owner can add photos
 	if participant.UserID != userID {
-		return nil, errors.New("only participant owner can add photos")
+		return nil, fmt.Errorf("%w: only participant owner can add photos", model.ErrForbidden)
 	}
 
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
 	}
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
-		return nil, errors.New("can only add photos during draft or registration")
+	if contest.Status != model.ContestStatusRegistration {
+		return nil, fmt.Errorf("%w: can only add photos during registration", model.ErrBadRequest)
 	}
 
 	_, maxN, err := s.photoCountBoundsForContestParticipant(ctx, participant.ContestID, participant.NominationID)
@@ -398,7 +397,7 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 	// Only owner can delete
 	if participant.UserID != userID {
 		log.Printf("[Service] DeleteParticipant: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
-		return errors.New("only participant owner can delete")
+		return fmt.Errorf("%w: only participant owner can delete", model.ErrForbidden)
 	}
 
 	// Get contest to check status
@@ -409,10 +408,9 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 	}
 	log.Printf("[Service] DeleteParticipant: Contest found: status=%s", contest.Status)
 
-	// Contest must be in draft or registration status
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
+	if contest.Status != model.ContestStatusRegistration {
 		log.Printf("[Service] DeleteParticipant: ERROR - Contest status does not allow deletion (status=%s)", contest.Status)
-		return errors.New("can only delete participant in draft or registration status")
+		return fmt.Errorf("%w: can only withdraw participation during registration", model.ErrBadRequest)
 	}
 
 	log.Printf("[Service] DeleteParticipant: Deleting participant in repository")
@@ -439,7 +437,7 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	// Only owner can delete photos
 	if participant.UserID != userID {
 		log.Printf("[Service] DeleteParticipantPhoto: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
-		return errors.New("only participant owner can delete photos")
+		return fmt.Errorf("%w: only participant owner can delete photos", model.ErrForbidden)
 	}
 
 	// Get contest to check status
@@ -450,10 +448,9 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	}
 	log.Printf("[Service] DeleteParticipantPhoto: Contest found: status=%s", contest.Status)
 
-	// Contest must be in draft or registration status
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
+	if contest.Status != model.ContestStatusRegistration {
 		log.Printf("[Service] DeleteParticipantPhoto: ERROR - Contest status does not allow photo deletion (status=%s)", contest.Status)
-		return errors.New("can only delete photos in draft or registration status")
+		return fmt.Errorf("%w: can only delete photos during registration", model.ErrBadRequest)
 	}
 
 	log.Printf("[Service] DeleteParticipantPhoto: Deleting photo in repository")
@@ -480,7 +477,7 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 	// Only owner can reorder photos
 	if participant.UserID != userID {
 		log.Printf("[Service] UpdateParticipantPhotoOrder: ERROR - User %d is not the owner (owner is %d)", userID, participant.UserID)
-		return errors.New("only participant owner can reorder photos")
+		return fmt.Errorf("%w: only participant owner can reorder photos", model.ErrForbidden)
 	}
 
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
@@ -489,9 +486,9 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 		return err
 	}
 
-	if contest.Status != model.ContestStatusDraft && contest.Status != model.ContestStatusRegistration {
+	if contest.Status != model.ContestStatusRegistration {
 		log.Printf("[Service] UpdateParticipantPhotoOrder: ERROR - Contest status does not allow reordering (status=%s)", contest.Status)
-		return errors.New("can only reorder photos in draft or registration status")
+		return fmt.Errorf("%w: can only reorder photos during registration", model.ErrBadRequest)
 	}
 
 	photos, err := s.repository.GetPhotosByParticipantID(ctx, participantID)

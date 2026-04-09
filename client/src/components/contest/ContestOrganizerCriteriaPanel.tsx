@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Contest } from '../../types/models';
+import { Contest, Nomination } from '../../types/models';
 import {
   listNominations,
   createNomination,
@@ -56,6 +56,8 @@ interface Props {
    * По умолчанию: readOnly && !isAdmin.
    */
   audienceMode?: boolean;
+  /** Страница конкурса: кнопка «Участвовать» и т.п. у номинации (только при readOnly). */
+  renderNominationAction?: (nomination: Nomination) => React.ReactNode;
 }
 
 const emptyCriterion = (): JuryCriterionInput => ({
@@ -78,6 +80,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       juryCriteriaPortalMode = false,
       juryCriteriaPortalHost = null,
       audienceMode: audienceModeProp,
+      renderNominationAction,
     },
     ref
   ) {
@@ -666,6 +669,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                               </span>
                             ) : null}
                           </div>
+                          {readOnly && renderNominationAction ? (
+                            <div className="contest-organizer-criteria-nom-card-action">
+                              {renderNominationAction(n)}
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         <div className="contest-organizer-criteria-nom-block">
@@ -696,6 +704,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                                 <span className="contest-organizer-criteria-desc">{secondary}</span>
                               ) : null}
                             </div>
+                            {readOnly && renderNominationAction ? (
+                              <div className="contest-organizer-criteria-nom-head-action">
+                                {renderNominationAction(n)}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       )}

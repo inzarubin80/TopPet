@@ -23,7 +23,6 @@ import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { buildLoginUrl } from '../utils/navigation';
 import { getVotes } from '../api/votesApi';
 import { useToast } from '../contexts/ToastContext';
 import { errorHandler } from '../utils/errorHandler';
@@ -334,6 +333,54 @@ const ContestPage: React.FC = () => {
     isAdmin
   );
 
+  const canAddParticipant =
+    isAuthenticated &&
+    (currentContest.status === 'registration' || currentContest.status === 'draft');
+  const showWorksParticipationChrome = canAddParticipant || canManageParticipants;
+  const showDomainParticipationNote =
+    participantEmailDomainsActive &&
+    (currentContest.status === 'registration' || currentContest.status === 'draft');
+  const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
+  const hasContestNominations = contestNominations.length > 0;
+  const nominationsOpenToUser = hasContestNominations
+    ? contestNominations.filter(
+        (n) => !userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id)
+      )
+    : [];
+  const alreadyInContestWithoutNominations =
+    !hasContestNominations &&
+    userHasParticipantForNomination(myContestParticipants, currentUser?.id, null);
+
+  const domainNoteEl = showDomainParticipationNote ? (
+    <p className="contest-page-participants-domain-note" role="note">
+      Участие только для адресов e-mail на доменах:{' '}
+      <strong>{participantEmailDomains.join(', ')}</strong>.
+      {!isAuthenticated
+        ? ' Войдите с аккаунтом, у которого в профиле указана подходящая почта.'
+        : blockedByEmailDomain
+          ? ' Ваш e-mail в профиле не подходит под это ограничение.'
+          : null}
+    </p>
+  ) : null;
+
+  const participatePlusIcon = (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ marginRight: '8px', verticalAlign: 'middle' }}
+      aria-hidden
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+
   const statusLabels: Record<ContestStatus, string> = {
     draft: 'Черновик',
     publication: 'Публикация',
@@ -576,6 +623,26 @@ const ContestPage: React.FC = () => {
           readOnly
           audienceMode={!isAdmin}
           showJuryCriteriaSection={currentContest.jury_voting_enabled ?? false}
+          renderNominationAction={(n) => {
+            if (!showWorksParticipationChrome) return null;
+            if (userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id)) {
+              return null;
+            }
+            return (
+              <Button
+                type="button"
+                size="small"
+                variant="primary"
+                disabled={blockedByEmailDomain}
+                onClick={() => {
+                  setAddParticipantNomination({ id: n.id, title: n.title });
+                  setIsAddParticipantModalOpen(true);
+                }}
+              >
+                Участвовать
+              </Button>
+            );
+          }}
         />
 
         </div>
@@ -614,30 +681,6 @@ const ContestPage: React.FC = () => {
                 ) : null}
               </div>
               <div className="contest-page-participants-filters">
-                {contestNominations.length > 0 ? (
-                  <div className="contest-page-participants-filter">
-                    <label htmlFor="participants-nomination-filter">Номинация</label>
-                    <select
-                      id="participants-nomination-filter"
-                      className="contest-page-participants-filter-select"
-                      value={participantsNominationFilter}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === 'all') setParticipantsNominationFilter('all');
-                        else if (v === 'none') setParticipantsNominationFilter('none');
-                        else setParticipantsNominationFilter(v);
-                      }}
-                    >
-                      <option value="all">Все номинации</option>
-                      <option value="none">Без номинации</option>
-                      {contestNominations.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {n.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : null}
                 <div className="contest-page-participants-filter">
                   <label htmlFor="participants-sort">Порядок</label>
                   <select
@@ -690,142 +733,101 @@ const ContestPage: React.FC = () => {
                     <span>Только за кого я проголосовал</span>
                   </label>
                 ) : null}
+                {showWorksParticipationChrome &&
+                !hasContestNominations &&
+                !alreadyInContestWithoutNominations ? (
+                  <div className="contest-page-participants-filter">
+                    <Button
+                      type="button"
+                      size="large"
+                      disabled={blockedByEmailDomain}
+                      className="contest-page-add-participant-button"
+                      onClick={() => {
+                        setAddParticipantNomination(null);
+                        setIsAddParticipantModalOpen(true);
+                      }}
+                    >
+                      {participatePlusIcon}
+                      Добавить участника
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </div>
-            {/* Allow any authenticated user to add participants during registration phase */}
-            {(() => {
-              const canAddParticipant =
-                isAuthenticated &&
-                (currentContest?.status === 'registration' || currentContest?.status === 'draft');
-              if (!canAddParticipant && !canManageParticipants) {
-                return null;
-              }
-              const showDomainParticipationNote =
-                participantEmailDomainsActive &&
-                (currentContest?.status === 'registration' || currentContest?.status === 'draft');
-              const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
-              const returnUrl = `/contests/${id}`;
-              const participateIcon = (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ marginRight: '8px', verticalAlign: 'middle' }}
-                  aria-hidden
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              );
-              const hasNominations = contestNominations.length > 0;
-              const nominationsOpenToUser = hasNominations
-                ? contestNominations.filter(
-                    (n) => !userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id)
-                  )
-                : [];
-              const alreadyInContestWithoutNominations =
-                !hasNominations &&
-                userHasParticipantForNomination(myContestParticipants, currentUser?.id, null);
-              const domainNote = showDomainParticipationNote ? (
-                <p className="contest-page-participants-domain-note" role="note">
-                  Участие только для адресов e-mail на доменах:{' '}
-                  <strong>{participantEmailDomains.join(', ')}</strong>.
-                  {!isAuthenticated
-                    ? ' Войдите с аккаунтом, у которого в профиле указана подходящая почта.'
-                    : blockedByEmailDomain
-                      ? ' Ваш e-mail в профиле не подходит под это ограничение.'
-                      : null}
-                </p>
-              ) : null;
-              if (!isAuthenticated) {
-                return (
-                  <>
-                    {domainNote}
-                    <div className="contest-page-participants-actions">
-                      {hasNominations ? (
-                        contestNominations.map((n) => (
-                          <Button
-                            key={n.id}
-                            variant="primary"
-                            size="large"
-                            className="contest-page-add-participant-button"
-                            onClick={() => navigate(buildLoginUrl(returnUrl))}
-                          >
-                            {participateIcon}
-                            Участвовать — {n.title}
-                          </Button>
-                        ))
-                      ) : (
-                        <Button
-                          variant="primary"
-                          size="large"
-                          className="contest-page-add-participant-button"
-                          onClick={() => navigate(buildLoginUrl(returnUrl))}
-                        >
-                          Войти для участия
-                        </Button>
-                      )}
-                    </div>
-                  </>
-                );
-              }
-              return (
-                <>
-                  {domainNote}
-                  <div className="contest-page-participants-actions">
-                    {hasNominations ? (
-                      nominationsOpenToUser.map((n) => (
-                        <Button
-                          key={n.id}
-                          size="large"
-                          disabled={blockedByEmailDomain}
-                          className="contest-page-add-participant-button"
-                          onClick={() => {
-                            setAddParticipantNomination({ id: n.id, title: n.title });
-                            setIsAddParticipantModalOpen(true);
-                          }}
-                        >
-                          {participateIcon}
-                          Участвовать — {n.title}
-                        </Button>
-                      ))
-                    ) : !alreadyInContestWithoutNominations ? (
-                      <Button
-                        size="large"
-                        disabled={blockedByEmailDomain}
-                        className="contest-page-add-participant-button"
-                        onClick={() => {
-                          setAddParticipantNomination(null);
-                          setIsAddParticipantModalOpen(true);
-                        }}
-                      >
-                        {participateIcon}
-                        Добавить участника
-                      </Button>
-                    ) : null}
-                  </div>
-                  {isAuthenticated &&
-                  !blockedByEmailDomain &&
-                  hasNominations &&
-                  nominationsOpenToUser.length === 0 &&
-                  contestNominations.length > 0 ? (
-                    <p className="contest-page-participants-all-nominations-taken" role="status">
-                      Вы уже подали заявки во всех номинациях этого конкурса.
-                    </p>
-                  ) : null}
-                  {isAuthenticated && !blockedByEmailDomain && !hasNominations && alreadyInContestWithoutNominations ? (
-                    <p className="contest-page-participants-all-nominations-taken" role="status">
-                      Вы уже подали заявку в этом конкурсе.
-                    </p>
-                  ) : null}
-                </>
-              );
-            })()}
+            {hasContestNominations ? (
+              <div
+                className="contest-page-nomination-tabs-bar"
+                role="tablist"
+                aria-label="Фильтр по номинации"
+              >
+                <div className="contest-page-nomination-tab-row">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={participantsNominationFilter === 'all'}
+                    className={
+                      participantsNominationFilter === 'all'
+                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
+                        : 'contest-page-nomination-tab'
+                    }
+                    onClick={() => setParticipantsNominationFilter('all')}
+                  >
+                    Все номинации
+                  </button>
+                  {contestNominations.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={participantsNominationFilter === n.id}
+                      className={
+                        participantsNominationFilter === n.id
+                          ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
+                          : 'contest-page-nomination-tab'
+                      }
+                      onClick={() => setParticipantsNominationFilter(n.id)}
+                    >
+                      {n.title}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={participantsNominationFilter === 'none'}
+                    className={
+                      participantsNominationFilter === 'none'
+                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
+                        : 'contest-page-nomination-tab'
+                    }
+                    onClick={() => setParticipantsNominationFilter('none')}
+                  >
+                    Без номинации
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {showWorksParticipationChrome ? (
+              <>
+                {domainNoteEl}
+                {isAuthenticated &&
+                !blockedByEmailDomain &&
+                hasContestNominations &&
+                nominationsOpenToUser.length === 0 &&
+                contestNominations.length > 0 ? (
+                  <p className="contest-page-participants-all-nominations-taken" role="status">
+                    Вы уже подали заявки во всех номинациях этого конкурса.
+                  </p>
+                ) : null}
+                {isAuthenticated &&
+                !blockedByEmailDomain &&
+                !hasContestNominations &&
+                alreadyInContestWithoutNominations ? (
+                  <p className="contest-page-participants-all-nominations-taken" role="status">
+                    Вы уже подали заявку в этом конкурсе.
+                  </p>
+                ) : null}
+              </>
+            ) : null}
           </div>
           {participantsLoading ? (
             <div className="contest-page-participants-loading">

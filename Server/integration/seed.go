@@ -216,6 +216,10 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		}
 	}
 
+	if _, err := svc.UpdateContestStatus(ctx, contestID, orgID, model.ContestStatusRegistration); err != nil {
+		return nil, fmt.Errorf("UpdateContestStatus registration: %w", err)
+	}
+
 	participantIDs := make([]model.ParticipantID, scale)
 	for i := 0; i < scale; i++ {
 		owner, err := repo.CreateUser(ctx, fmt.Sprintf("seed-participant-user-%d", i))
@@ -371,6 +375,10 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 		if _, err := svc.AddContestJuryMember(ctx, contestID, orgID, j.ID); err != nil {
 			return nil, fmt.Errorf("AddContestJuryMember %d: %w", i, err)
 		}
+	}
+
+	if _, err := svc.UpdateContestStatus(ctx, contestID, orgID, model.ContestStatusRegistration); err != nil {
+		return nil, fmt.Errorf("UpdateContestStatus registration: %w", err)
 	}
 
 	participantIDs := make([]model.ParticipantID, 3)

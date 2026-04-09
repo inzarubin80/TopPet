@@ -245,6 +245,12 @@
   min-width: 0;
 }
 
+.contest-organizer-criteria-nom-head-action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+}
+
 .contest-organizer-criteria-nom-title {
   display: block;
   font-size: 1.02rem;
@@ -343,8 +349,14 @@
 .contest-organizer-criteria-nom-card--row {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.85rem;
+}
+
+.contest-organizer-criteria-nom-card-action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
 }
 
 .contest-organizer-criteria-nom-card-thumb {
@@ -438,6 +450,27 @@
 
   .contest-organizer-criteria-nom-card--row {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contest-organizer-criteria-nom-card-action {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .contest-organizer-criteria-nom-card-action .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .contest-organizer-criteria-nom-head-action {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .contest-organizer-criteria-nom-head-action .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .contest-organizer-criteria-nom-card-thumb {
