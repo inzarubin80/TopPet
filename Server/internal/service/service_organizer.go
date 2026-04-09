@@ -82,22 +82,18 @@ func (s *TopPetService) ReplaceContestJuryCriteria(ctx context.Context, contestI
 
 func (s *TopPetService) CreateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, title, description string) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, errors.New("title is required")
+		return nil, fmt.Errorf("%w: title is required", model.ErrBadRequest)
 	}
 	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
-		return nil, errors.New("only contest admin can add nominations")
+		return nil, fmt.Errorf("%w: only contest admin can add nominations", model.ErrForbidden)
 	}
 	n, err := s.repository.CountNominationsByContest(ctx, contestID)
 	if err != nil {
 		return nil, err
-	}
-	maxN := tier.MaxNominationsForTier(contestTierString(c))
-	if int(n) >= maxN {
-		return nil, fmt.Errorf("maximum nominations for this tier is %d", maxN)
 	}
 	mp := int32(c.MinPhotoCount)
 	mx := int32(c.MaxPhotoCount)
@@ -119,14 +115,14 @@ func (s *TopPetService) ListNominations(ctx context.Context, contestID model.Con
 
 func (s *TopPetService) UpdateNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID string, title, description string) (*model.Nomination, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, errors.New("title is required")
+		return nil, fmt.Errorf("%w: title is required", model.ErrBadRequest)
 	}
 	c, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
-		return nil, errors.New("only contest admin can edit nominations")
+		return nil, fmt.Errorf("%w: only contest admin can edit nominations", model.ErrForbidden)
 	}
 	mp := int32(c.MinPhotoCount)
 	mx := int32(c.MaxPhotoCount)
@@ -148,7 +144,7 @@ func (s *TopPetService) UpdateNominationLogoURL(ctx context.Context, contestID m
 		return nil, err
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
-		return nil, errors.New("only contest admin can upload nomination logo")
+		return nil, fmt.Errorf("%w: only contest admin can upload nomination logo", model.ErrForbidden)
 	}
 	if _, err := s.repository.GetNominationByContest(ctx, contestID, nominationID); err != nil {
 		return nil, err
@@ -162,7 +158,7 @@ func (s *TopPetService) DeleteNomination(ctx context.Context, contestID model.Co
 		return err
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
-		return errors.New("only contest admin can delete nominations")
+		return fmt.Errorf("%w: only contest admin can delete nominations", model.ErrForbidden)
 	}
 	return s.repository.DeleteNomination(ctx, nominationID)
 }
@@ -173,7 +169,7 @@ func (s *TopPetService) ReorderNominations(ctx context.Context, contestID model.
 		return nil, err
 	}
 	if !s.userCanManageContest(ctx, c, userID) {
-		return nil, errors.New("only contest admin can reorder nominations")
+		return nil, fmt.Errorf("%w: only contest admin can reorder nominations", model.ErrForbidden)
 	}
 	current, err := s.repository.ListNominationsByContest(ctx, contestID)
 	if err != nil {
