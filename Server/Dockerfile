@@ -16,7 +16,7 @@ RUN ls -l /app/server
 # -------- Runtime --------
 FROM alpine:latest
 WORKDIR /app
-RUN apk add --no-cache libc6-compat ca-certificates
+RUN apk add --no-cache libc6-compat ca-certificates tzdata
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrations /app/migrations/
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
