@@ -44,12 +44,6 @@
   margin-bottom: 0.35rem;
 }
 
-.contest-page-hero--in-overview {
-  margin: 0 0 0;
-  border-radius: 0;
-  padding: 28px 22px 32px;
-}
-
 /* Блок работ: визуально отдельная секция */
 .contest-page-works {
   scroll-margin-top: 88px;
@@ -100,6 +94,12 @@
   background-size: cover;
   background-position: center;
   color: #fff;
+}
+
+.contest-page-hero.contest-page-hero--in-overview {
+  margin: 0;
+  border-radius: 0;
+  padding: 28px 32px 32px;
 }
 
 .contest-page-hero-inner {

@@ -444,7 +444,7 @@ const ContestPage: React.FC = () => {
           <div
             className="contest-page-hero contest-page-hero--in-overview"
             style={{
-              backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.5) 0%, rgba(15, 23, 42, 0.75) 100%), url(${resolvePublicAssetUrl(coverRaw)})`,
+              backgroundImage: `url(${resolvePublicAssetUrl(coverRaw)})`,
             }}
           >
             <div className="contest-page-hero-inner">
