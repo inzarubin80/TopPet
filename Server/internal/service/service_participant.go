@@ -49,9 +49,9 @@ func (s *TopPetService) participantVisible(ctx context.Context, p *model.Partici
 	return false
 }
 
-// resolveParticipantPetName возвращает непустое имя для заявки: из запроса или из профиля пользователя.
-func (s *TopPetService) resolveParticipantPetName(ctx context.Context, userID model.UserID, petName string) (string, error) {
-	if t := strings.TrimSpace(petName); t != "" {
+// resolveParticipantEntryTitle возвращает непустой заголовок заявки: из запроса или из профиля пользователя.
+func (s *TopPetService) resolveParticipantEntryTitle(ctx context.Context, userID model.UserID, entryTitle string) (string, error) {
+	if t := strings.TrimSpace(entryTitle); t != "" {
 		return t, nil
 	}
 	u, err := s.repository.GetUser(ctx, userID)
@@ -69,8 +69,8 @@ func (s *TopPetService) resolveParticipantPetName(ctx context.Context, userID mo
 	return "Участник", nil
 }
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
-	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	// Check contest exists and is not finished
 	log.Printf("[Service] CreateParticipant: Checking contest %s", contestID)
@@ -143,16 +143,16 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		}
 	}
 
-	resolvedName, err := s.resolveParticipantPetName(ctx, userID, petName)
+	resolvedName, err := s.resolveParticipantEntryTitle(ctx, userID, entryTitle)
 	if err != nil {
 		return nil, err
 	}
-	petName = resolvedName
-	petDescription = strings.TrimSpace(petDescription)
+	entryTitle = resolvedName
+	entryDescription = strings.TrimSpace(entryDescription)
 
 	// Create participant
 	log.Printf("[Service] CreateParticipant: Creating participant in repository")
-	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, petName, petDescription, ans, effectiveNom)
+	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, entryTitle, entryDescription, ans, effectiveNom)
 	if err != nil {
 		log.Printf("[Service] CreateParticipant: ERROR - Failed to create participant in repository: %v", err)
 		return nil, err
@@ -277,7 +277,7 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	return participants, total, nil
 }
 
-func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, petName, petDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
+func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
 	log.Printf("[Service] UpdateParticipant: participantID=%s, userID=%d", participantID, userID)
 
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -293,11 +293,11 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, fmt.Errorf("%w: only participant owner can update", model.ErrForbidden)
 	}
 
-	resolvedName, err := s.resolveParticipantPetName(ctx, userID, petName)
+	resolvedName, err := s.resolveParticipantEntryTitle(ctx, userID, entryTitle)
 	if err != nil {
 		return nil, err
 	}
-	petName = resolvedName
+	entryTitle = resolvedName
 
 	// Get contest to check status
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
@@ -331,7 +331,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	}
 
 	log.Printf("[Service] UpdateParticipant: Updating participant in repository")
-	updated, err := s.repository.UpdateParticipant(ctx, participantID, petName, petDescription, merged)
+	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, merged)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to update participant: %v", err)
 		return nil, err
@@ -386,7 +386,7 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 
 func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
 	log.Printf("[Service] DeleteParticipant: participantID=%s, userID=%d", participantID, userID)
-	
+
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		log.Printf("[Service] DeleteParticipant: ERROR - Failed to get participant: %v", err)
@@ -426,7 +426,7 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 
 func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantID model.ParticipantID, photoID string, userID model.UserID) error {
 	log.Printf("[Service] DeleteParticipantPhoto: participantID=%s, photoID=%s, userID=%d", participantID, photoID, userID)
-	
+
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		log.Printf("[Service] DeleteParticipantPhoto: ERROR - Failed to get participant: %v", err)

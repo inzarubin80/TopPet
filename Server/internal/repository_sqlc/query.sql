@@ -164,9 +164,9 @@ WHERE id = $1;
 -- Contest Participants
 
 -- name: CreateParticipant :one
-INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, registration_answers, nomination_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
+INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, registration_answers, nomination_id)
+VALUES ($1, $2, $3, $4, $5, $4, $5, $6, $7)
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
 
 -- name: GetParticipantByID :one
 SELECT
@@ -176,6 +176,8 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.entry_title,
+    cp.entry_description,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -194,6 +196,8 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.entry_title,
+    cp.entry_description,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -274,6 +278,8 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cp.user_id::text) AS user_name,
     cp.pet_name,
     cp.pet_description,
+    cp.entry_title,
+    cp.entry_description,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -357,9 +363,9 @@ LIMIT @list_limit::int OFFSET @list_offset::int;
 
 -- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, registration_answers = $4, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
 WHERE id = $1
-RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
 
 -- name: MarkParticipantSubmissionPending :exec
 UPDATE contest_participants
@@ -376,7 +382,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, contest_id, user_id, pet_name, pet_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
 
 -- name: DeleteParticipant :exec
 DELETE FROM contest_participants

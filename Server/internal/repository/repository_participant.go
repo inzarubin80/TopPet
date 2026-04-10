@@ -38,6 +38,24 @@ func nominationPgFromOptional(nominationID *string) (pgtype.UUID, error) {
 	return pgtype.UUID{Bytes: u, Valid: true}, nil
 }
 
+func normalizeParticipantLegacyFields(p *model.Participant) {
+	if p == nil {
+		return
+	}
+	if strings.TrimSpace(p.EntryTitle) == "" {
+		p.EntryTitle = p.PetName
+	}
+	if strings.TrimSpace(p.EntryDescription) == "" {
+		p.EntryDescription = p.PetDescription
+	}
+	if strings.TrimSpace(p.PetName) == "" {
+		p.PetName = p.EntryTitle
+	}
+	if strings.TrimSpace(p.PetDescription) == "" {
+		p.PetDescription = p.EntryDescription
+	}
+}
+
 func listParticipantsNominationFilterParams(filter *model.ParticipantListNominationFilter) (mode string, filterID pgtype.UUID, err error) {
 	if filter == nil {
 		return "all", pgtype.UUID{}, nil
@@ -56,13 +74,13 @@ func listParticipantsNominationFilterParams(filter *model.ParticipantListNominat
 	return "id", pgtype.UUID{Bytes: u, Valid: true}, nil
 }
 
-func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
-	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, petName=%s", contestID, userID, petName)
-	
+func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
+
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID := uuid.New()
 	log.Printf("[Repository] CreateParticipant: Generated participantUUID=%s", participantUUID.String())
-	
+
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		log.Printf("[Repository] CreateParticipant: ERROR - Failed to parse contestID: %v", err)
@@ -83,8 +101,8 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
 		ContestID:           pgtype.UUID{Bytes: contestUUID, Valid: true},
 		UserID:              int64(userID),
-		PetName:             petName,
-		PetDescription:      petDescription,
+		PetName:             entryTitle,
+		PetDescription:      entryDescription,
 		RegistrationAnswers: ansBytes,
 		NominationID:        nomPg,
 	})
@@ -114,10 +132,13 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
+		EntryTitle:          participant.EntryTitle,
+		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
 	}
+	normalizeParticipantLegacyFields(result)
 
 	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
 	if err == nil && user != nil {
@@ -151,7 +172,7 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		contestIDStr = uuid.UUID(participant.ContestID.Bytes).String()
 	}
 
-	return &model.Participant{
+	out := &model.Participant{
 		ID:                  model.ParticipantID(participantIDStr),
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
@@ -161,10 +182,14 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
+		EntryTitle:          participant.EntryTitle,
+		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
-	}, nil
+	}
+	normalizeParticipantLegacyFields(out)
+	return out, nil
 }
 
 func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
@@ -198,7 +223,7 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 		contestIDStr = uuid.UUID(participant.ContestID.Bytes).String()
 	}
 
-	return &model.Participant{
+	out := &model.Participant{
 		ID:                  model.ParticipantID(participantIDStr),
 		ContestID:           model.ContestID(contestIDStr),
 		UserID:              model.UserID(participant.UserID),
@@ -208,10 +233,14 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
+		EntryTitle:          participant.EntryTitle,
+		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
-	}, nil
+	}
+	normalizeParticipantLegacyFields(out)
+	return out, nil
 }
 
 func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error) {
@@ -287,16 +316,19 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 			SubmissionComment:   p.SubmissionComment,
 			PetName:             p.PetName,
 			PetDescription:      p.PetDescription,
+			EntryTitle:          p.EntryTitle,
+			EntryDescription:    p.EntryDescription,
 			RegistrationAnswers: parseRegistrationAnswers(p.RegistrationAnswers),
 			CreatedAt:           p.CreatedAt.Time,
 			UpdatedAt:           p.UpdatedAt.Time,
 		}
+		normalizeParticipantLegacyFields(result[i])
 	}
 
 	return result, total, nil
 }
 
-func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, petName, petDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {
@@ -309,8 +341,8 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 	}
 	participant, err := reposqlc.UpdateParticipant(ctx, &sqlc_repository.UpdateParticipantParams{
 		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
-		PetName:             petName,
-		PetDescription:      petDescription,
+		PetName:             entryTitle,
+		PetDescription:      entryDescription,
 		RegistrationAnswers: ansBytes,
 	})
 	if err != nil {
@@ -334,10 +366,13 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
+		EntryTitle:          participant.EntryTitle,
+		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
 	}
+	normalizeParticipantLegacyFields(result)
 
 	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
 	if err == nil && user != nil {
@@ -395,10 +430,13 @@ func (r *Repository) SetParticipantSubmissionStatus(ctx context.Context, partici
 		SubmissionComment:   participant.SubmissionComment,
 		PetName:             participant.PetName,
 		PetDescription:      participant.PetDescription,
+		EntryTitle:          participant.EntryTitle,
+		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
 	}
+	normalizeParticipantLegacyFields(result)
 	user, err := r.GetUser(ctx, model.UserID(participant.UserID))
 	if err == nil && user != nil {
 		result.UserName = user.Name
@@ -408,7 +446,7 @@ func (r *Repository) SetParticipantSubmissionStatus(ctx context.Context, partici
 
 func (r *Repository) DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error {
 	log.Printf("[Repository] DeleteParticipant: participantID=%s", participantID)
-	
+
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {

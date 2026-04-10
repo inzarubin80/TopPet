@@ -27,12 +27,12 @@ type (
 	}
 
 	User struct {
-		ID        UserID    `json:"id"`
-		Name      string    `json:"name"`
-		Email     string    `json:"email,omitempty"`
-		Role      string    `json:"role"`
+		ID    UserID `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email,omitempty"`
+		Role  string `json:"role"`
 		// IsBlocked — аккаунт заблокирован администратором системы (мутации API запрещены).
-		IsBlocked bool `json:"is_blocked"`
+		IsBlocked bool      `json:"is_blocked"`
 		AvatarURL string    `json:"avatar_url,omitempty"`
 		CreatedAt time.Time `json:"created_at"`
 		// AuthProviders заполняется только в GET /api/admin/users (OAuth-провайдеры аккаунта).
@@ -74,7 +74,7 @@ type (
 		VotingStartsAt       *time.Time `json:"voting_starts_at,omitempty"`
 		VotingEndsAt         *time.Time `json:"voting_ends_at,omitempty"`
 		// IANA (например Europe/Moscow) — в каком поясе организатор задаёт даты на клиенте.
-		ScheduleTimezone string    `json:"schedule_timezone,omitempty"`
+		ScheduleTimezone string `json:"schedule_timezone,omitempty"`
 		// MinPhotoCount — минимум фото в заявке для всего конкурса (1–30).
 		MinPhotoCount int `json:"min_photo_count"`
 		// MaxPhotoCount — максимум фото в заявке (1–30), не меньше MinPhotoCount.
@@ -90,6 +90,7 @@ type (
 	ContestWinnerBrief struct {
 		ParticipantID   ParticipantID `json:"participant_id"`
 		PetName         string        `json:"pet_name"`
+		EntryTitle      string        `json:"entry_title,omitempty"`
 		NominationID    *string       `json:"nomination_id,omitempty"`
 		NominationTitle string        `json:"nomination_title,omitempty"`
 		Score           int64         `json:"score"`
@@ -197,21 +198,22 @@ type (
 
 	// JuryScoreReportItem — строка отчёта «кто какой балл по какому критерию» (для организаторов).
 	JuryScoreReportItem struct {
-		JurorUserID          UserID    `json:"juror_user_id"`
-		JurorName            string    `json:"juror_name"`
-		CriterionID          string    `json:"criterion_id"`
-		CriterionTitle       string    `json:"criterion_title"`
-		CriterionSortOrder   int32     `json:"criterion_sort_order"`
-		ScaleMin             int32     `json:"scale_min"`
-		ScaleMax             int32     `json:"scale_max"`
-		Score                int32     `json:"score"`
-		ScoreUpdatedAt       time.Time `json:"score_updated_at"`
+		JurorUserID        UserID    `json:"juror_user_id"`
+		JurorName          string    `json:"juror_name"`
+		CriterionID        string    `json:"criterion_id"`
+		CriterionTitle     string    `json:"criterion_title"`
+		CriterionSortOrder int32     `json:"criterion_sort_order"`
+		ScaleMin           int32     `json:"scale_min"`
+		ScaleMax           int32     `json:"scale_max"`
+		Score              int32     `json:"score"`
+		ScoreUpdatedAt     time.Time `json:"score_updated_at"`
 	}
 
 	// JuryVotingProgressRow — сколько критериев выставил член жюри по конкретной работе (сводка по конкурсу).
 	JuryVotingProgressRow struct {
 		ParticipantID    ParticipantID `json:"participant_id"`
 		PetName          string        `json:"pet_name"`
+		EntryTitle       string        `json:"entry_title,omitempty"`
 		SubmissionStatus string        `json:"submission_status"`
 		JurorUserID      UserID        `json:"juror_user_id"`
 		JurorName        string        `json:"juror_name"`
@@ -257,6 +259,8 @@ type (
 		SubmissionComment   *string                `json:"submission_comment,omitempty"`
 		PetName             string                 `json:"pet_name"`
 		PetDescription      string                 `json:"pet_description"`
+		EntryTitle          string                 `json:"entry_title,omitempty"`
+		EntryDescription    string                 `json:"entry_description,omitempty"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
@@ -280,6 +284,7 @@ type (
 		ContestID     ContestID // для батч-запроса; в одиночном запросе пусто.
 		ParticipantID ParticipantID
 		PetName       string
+		EntryTitle    string
 		NominationID  *string
 		VoteCount     int64
 		JurySum       int64
@@ -332,6 +337,7 @@ type (
 		ContestID            ContestID     `json:"contest_id"`
 		ContestTitle         string        `json:"contest_title"`
 		PetName              string        `json:"pet_name"`
+		EntryTitle           string        `json:"entry_title,omitempty"`
 		UnreadCount          int64         `json:"unread_count"`
 		LatestCommentAt      time.Time     `json:"latest_comment_at"`
 		LatestCommentPreview string        `json:"latest_comment_preview,omitempty"`

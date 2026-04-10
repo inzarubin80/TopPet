@@ -13,7 +13,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, petName, petDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -33,6 +33,8 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	logger.Info("Creating participant", "handler", "CreateParticipantHandler", "contestID", contestID, "userID", userID)
 
 	var req struct {
+		EntryTitle          string                 `json:"entry_title"`
+		EntryDescription    string                 `json:"entry_description"`
 		PetName             string                 `json:"pet_name"`
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
@@ -45,9 +47,17 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	logger.Debug("Request data", "handler", "CreateParticipantHandler", "pet_name", req.PetName, "pet_description", req.PetDescription)
+	entryTitle := req.EntryTitle
+	if entryTitle == "" {
+		entryTitle = req.PetName
+	}
+	entryDescription := req.EntryDescription
+	if entryDescription == "" {
+		entryDescription = req.PetDescription
+	}
+	logger.Debug("Request data", "handler", "CreateParticipantHandler", "entry_title", entryTitle, "entry_description", entryDescription)
 
-	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, req.PetName, req.PetDescription, req.RegistrationAnswers, req.NominationID)
+	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, entryTitle, entryDescription, req.RegistrationAnswers, req.NominationID)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)
 		uhttp.HandleError(w, err)

@@ -14,9 +14,9 @@ import (
 )
 
 type mockMetaHTMLService struct {
-	contest     *model.Contest
+	contest      *model.Contest
 	participants []*model.Participant
-	participant *model.Participant
+	participant  *model.Participant
 }
 
 func (m *mockMetaHTMLService) GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
@@ -44,7 +44,7 @@ func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
 		t.Fatalf("write index: %v", err)
 	}
 	svc := &mockMetaHTMLService{}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -56,23 +56,23 @@ func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
 	html := rec.Body.String()
 
 	checkMetaPresent(t, html, "home", map[string]bool{
-		"og:title":       true,
-		"og:description": true,
-		"og:url":         true,
-		"og:image":       true,
-		"og:type":        true,
-		"og:site_name":   true,
-		"og:locale":      true,
-		"og:image:alt":   true,
-		"twitter:card":   true,
-		"twitter:title":  true,
+		"og:title":            true,
+		"og:description":      true,
+		"og:url":              true,
+		"og:image":            true,
+		"og:type":             true,
+		"og:site_name":        true,
+		"og:locale":           true,
+		"og:image:alt":        true,
+		"twitter:card":        true,
+		"twitter:title":       true,
 		"twitter:description": true,
-		"twitter:image": true,
+		"twitter:image":       true,
 	})
 	if !strings.Contains(html, `rel="canonical"`) {
 		t.Error("home HTML: missing rel=canonical")
 	}
-	if !strings.Contains(html, `href="https://top-pet.ru/"`) {
+	if !strings.Contains(html, `href="https://shotcontest.ru/"`) {
 		t.Error("home HTML: canonical href should be base URL /")
 	}
 	if !strings.Contains(html, `id="og-preview"`) {
@@ -89,7 +89,7 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 
 	contest := &model.Contest{
 		ID:          "contest-1",
-		Title:       "Конкурс красоты котиков",
+		Title:       "Весенний творческий конкурс",
 		Description: "Описание конкурса для теста.",
 	}
 	participants := []*model.Participant{
@@ -100,7 +100,7 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 		},
 	}
 	svc := &mockMetaHTMLService{contest: contest, participants: participants}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1", nil)
 	req.SetPathValue("contestId", "contest-1")
@@ -114,19 +114,19 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 
 	// SEO: required OG and Twitter meta (including og:locale, og:image:alt per task 1.2)
 	checkMetaPresent(t, html, "contest", map[string]bool{
-		"og:title":       true,
-		"og:description": true,
-		"og:url":         true,
-		"og:image":       true,
-		"og:type":        true,
-		"og:site_name":   true,
-		"og:locale":      true,
-		"og:image:alt":   true,
-		"twitter:card":   true,
-		"twitter:title":  true,
+		"og:title":            true,
+		"og:description":      true,
+		"og:url":              true,
+		"og:image":            true,
+		"og:type":             true,
+		"og:site_name":        true,
+		"og:locale":           true,
+		"og:image:alt":        true,
+		"twitter:card":        true,
+		"twitter:title":       true,
 		"twitter:description": true,
-		"twitter:image": true,
-		"twitter:image:alt": true,
+		"twitter:image":       true,
+		"twitter:image:alt":   true,
 	})
 
 	// Contest: title and description must be within limits (task 1.1)
@@ -160,7 +160,7 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	if !strings.Contains(html, `rel="canonical"`) {
 		t.Error("contest HTML: missing rel=canonical")
 	}
-	if !strings.Contains(html, `href="https://top-pet.ru/contests/contest-1"`) {
+	if !strings.Contains(html, `href="https://shotcontest.ru/contests/contest-1"`) {
 		t.Error("contest HTML: canonical href should match contest URL")
 	}
 
@@ -190,7 +190,7 @@ func TestMetaHTML_ServeContest_CoverURLWinsOverParticipantPhoto(t *testing.T) {
 		},
 	}
 	svc := &mockMetaHTMLService{contest: contest, participants: participants}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1", nil)
 	req.SetPathValue("contestId", "contest-1")
 	rec := httptest.NewRecorder()
@@ -213,7 +213,7 @@ func TestMetaHTML_ServeContest_DefaultImageNotSVG(t *testing.T) {
 	}
 	contest := &model.Contest{ID: "c1", Title: "T", Description: "D"}
 	svc := &mockMetaHTMLService{contest: contest, participants: nil}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 	req := httptest.NewRequest(http.MethodGet, "/contests/c1", nil)
 	req.SetPathValue("contestId", "c1")
 	rec := httptest.NewRecorder()
@@ -252,7 +252,7 @@ func TestMetaHTML_ServeContest_Truncation(t *testing.T) {
 		Description: longDesc,
 	}
 	svc := &mockMetaHTMLService{contest: contest, participants: nil}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 	req := httptest.NewRequest(http.MethodGet, "/contests/c1", nil)
 	req.SetPathValue("contestId", "c1")
 	rec := httptest.NewRecorder()
@@ -278,7 +278,7 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 		t.Fatalf("write index: %v", err)
 	}
 
-	contest := &model.Contest{ID: "contest-1", Title: "Конкурс котиков"}
+	contest := &model.Contest{ID: "contest-1", Title: "Конкурс работ"}
 	participant := &model.Participant{
 		ID:             "part-1",
 		ContestID:      "contest-1",
@@ -290,7 +290,7 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 		contest:     contest,
 		participant: participant,
 	}
-	h := NewMetaHTMLHandler("https://top-pet.ru", indexPath, svc)
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1/participants/part-1", nil)
 	req.SetPathValue("contestId", "contest-1")
@@ -305,41 +305,41 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 
 	// SEO: required OG and Twitter meta
 	checkMetaPresent(t, html, "participant", map[string]bool{
-		"og:title":       true,
-		"og:description": true,
-		"og:url":         true,
-		"og:image":       true,
-		"og:type":        true,
-		"og:site_name":   true,
-		"og:locale":      true,
-		"og:image:alt":   true,
-		"twitter:card":   true,
-		"twitter:title":  true,
+		"og:title":            true,
+		"og:description":      true,
+		"og:url":              true,
+		"og:image":            true,
+		"og:type":             true,
+		"og:site_name":        true,
+		"og:locale":           true,
+		"og:image:alt":        true,
+		"twitter:card":        true,
+		"twitter:title":       true,
 		"twitter:description": true,
-		"twitter:image": true,
-		"twitter:image:alt": true,
+		"twitter:image":       true,
+		"twitter:image:alt":   true,
 	})
 
-	// Participant: title = only pet name (no contest name), ≤50; description ≤160, CTA suffix, no contest name in preview
+	// Participant: title = submission title, ≤50; description ≤160, CTA suffix, no contest name in preview
 	ogTitle := extractMetaContent(html, `property="og:title"`)
 	if n := utf8.RuneCountInString(ogTitle); n > 50 {
 		t.Errorf("participant og:title length %d > 50", n)
 	}
-	if strings.Contains(ogTitle, "Конкурс котиков") {
+	if strings.Contains(ogTitle, "Конкурс работ") {
 		t.Errorf("participant og:title must not contain contest name, got %q", ogTitle)
 	}
 	if ogTitle != "Мурзик" {
-		t.Errorf("participant og:title expected only pet name %q, got %q", "Мурзик", ogTitle)
+		t.Errorf("participant og:title expected submission title %q, got %q", "Мурзик", ogTitle)
 	}
 	ogDesc := extractMetaContent(html, `property="og:description"`)
 	if n := utf8.RuneCountInString(ogDesc); n > 160 {
 		t.Errorf("participant og:description length %d > 160", n)
 	}
-	const ctaSuffix = " Голосуйте на ShotContest!"
+	const ctaSuffix = " Участвуйте в конкурсе на ShotContest!"
 	if !strings.HasSuffix(ogDesc, ctaSuffix) {
 		t.Errorf("participant og:description must end with CTA %q, got %q", ctaSuffix, ogDesc)
 	}
-	if strings.Contains(ogDesc, "Конкурс котиков") {
+	if strings.Contains(ogDesc, "Конкурс работ") {
 		t.Errorf("participant og:description must not contain contest name, got %q", ogDesc)
 	}
 
@@ -361,8 +361,43 @@ func TestMetaHTML_ServeParticipant_HTMLAndMeta(t *testing.T) {
 	if !strings.Contains(html, `rel="canonical"`) {
 		t.Error("participant HTML: missing rel=canonical")
 	}
-	if !strings.Contains(html, `href="https://top-pet.ru/contests/contest-1/participants/part-1"`) {
+	if !strings.Contains(html, `href="https://shotcontest.ru/contests/contest-1/participants/part-1"`) {
 		t.Error("participant HTML: canonical href should match participant URL")
+	}
+}
+
+func TestMetaHTML_ServeParticipant_EmptyTitleFallback(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	participant := &model.Participant{
+		ID:        "part-1",
+		ContestID: "contest-1",
+		Photos:    []*model.Photo{{URL: "https://example.com/photo.jpg", Position: 0}},
+	}
+	svc := &mockMetaHTMLService{participant: participant}
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1/participants/part-1", nil)
+	req.SetPathValue("contestId", "contest-1")
+	req.SetPathValue("participantId", "part-1")
+	rec := httptest.NewRecorder()
+	h.ServeParticipant(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rec.Code)
+	}
+	html := rec.Body.String()
+
+	ogTitle := extractMetaContent(html, `property="og:title"`)
+	if ogTitle != "Заявка участника" {
+		t.Fatalf("expected fallback participant title, got %q", ogTitle)
+	}
+	ogDesc := extractMetaContent(html, `property="og:description"`)
+	if !strings.Contains(ogDesc, "Заявка «Заявка участника» на ShotContest.") {
+		t.Fatalf("expected fallback participant description, got %q", ogDesc)
 	}
 }
 
