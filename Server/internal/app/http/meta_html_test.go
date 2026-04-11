@@ -92,6 +92,9 @@ func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
 	if !strings.Contains(html, truncateRunes(homeMetaDescription, ogDescriptionMaxRunes)) {
 		t.Error("home HTML: missing visible description in preview card")
 	}
+	if !strings.Contains(html, "Перейти на ShotContest") {
+		t.Error("home HTML: expected CTA label in preview card")
+	}
 }
 
 func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
@@ -176,6 +179,15 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	if !strings.Contains(html, "Номинации") || !strings.Contains(html, "Портрет") || !strings.Contains(html, "Пейзаж") {
 		t.Error("contest HTML: expected nominations list in preview card")
 	}
+	if !strings.Contains(html, "Полное описание") {
+		t.Error("contest HTML: expected full-description hint in preview card")
+	}
+	if !strings.Contains(html, "Открыть конкурс на ShotContest") {
+		t.Error("contest HTML: expected CTA button label in preview card")
+	}
+	if !strings.Contains(html, `href="https://shotcontest.ru/contests/contest-1"`) {
+		t.Error("contest HTML: expected CTA href to contest page")
+	}
 
 	// Task 3.1: canonical URL
 	if !strings.Contains(html, `rel="canonical"`) {
@@ -188,6 +200,36 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	ogImage := extractMetaContent(html, `property="og:image"`)
 	if ogImage != "https://example.com/photo.jpg" {
 		t.Errorf("contest og:image should use first participant photo when cover empty, got %q", ogImage)
+	}
+}
+
+func TestMetaHTML_ServeContest_NominationChipsOverflow(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	contest := &model.Contest{
+		ID:          "contest-1",
+		Title:       "Конкурс",
+		Description: "Описание",
+		Status:      model.ContestStatusRegistration,
+	}
+	nominations := []*model.Nomination{
+		{Title: "A"}, {Title: "B"}, {Title: "C"}, {Title: "D"}, {Title: "E"},
+	}
+	svc := &mockMetaHTMLService{contest: contest, nominations: nominations, participants: nil}
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
+	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1", nil)
+	req.SetPathValue("contestId", "contest-1")
+	rec := httptest.NewRecorder()
+	h.ServeContest(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rec.Code)
+	}
+	html := rec.Body.String()
+	if !strings.Contains(html, "ещё 1") {
+		t.Error("contest HTML: expected overflow hint when nominations > 4")
 	}
 }
 

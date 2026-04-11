@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Contest } from '../../types/models';
 import { resolvePublicAssetUrl } from '../../utils/seo';
+import { getContestScheduleDisplayLines } from '../../utils/scheduleTimezone';
 import { ContestRulesViewer } from './ContestRulesViewer';
 import './ContestCard.css';
 
@@ -26,6 +27,20 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
         : undefined,
     [hasThemedAccent, accentHex]
   );
+
+  const scheduleSummary = useMemo(() => {
+    const lines = getContestScheduleDisplayLines(contest);
+    if (lines.length === 0) return null;
+    return lines.slice(0, 2).join(' · ');
+  }, [contest]);
+
+  const prizeRaw = (contest.prize_text || '').trim();
+  const sponsorName = (contest.sponsor_name || '').trim();
+  const sponsorLogoRaw = (contest.sponsor_logo_url || '').trim();
+  const sponsorUrl = (contest.sponsor_url || '').trim();
+  const ctaMoreLabel = (contest.cta_label_override || '').trim() || 'Подробнее';
+
+  const goToContest = () => navigate(`/contests/${contest.id}`);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -52,13 +67,13 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
     <div
       className={`contest-card${hasThemedAccent ? ' contest-card--themed' : ''}${coverRaw ? ' contest-card--has-cover' : ''}`}
       style={cardStyle}
-      onClick={() => navigate(`/contests/${contest.id}`)}
+      onClick={goToContest}
       role="link"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          navigate(`/contests/${contest.id}`);
+          goToContest();
         }
       }}
     >
@@ -92,6 +107,36 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
           </span>
         </div>
         <p className="contest-card-description">{contest.description || 'Нет описания'}</p>
+        {scheduleSummary ? (
+          <p className="contest-card-schedule" title={scheduleSummary}>
+            {scheduleSummary}
+          </p>
+        ) : null}
+        {prizeRaw ? <p className="contest-card-prize">{prizeRaw}</p> : null}
+        {sponsorName || sponsorLogoRaw ? (
+          <div className="contest-card-sponsor">
+            {sponsorLogoRaw ? (
+              <img
+                className="contest-card-sponsor-logo"
+                src={resolvePublicAssetUrl(sponsorLogoRaw)}
+                alt=""
+              />
+            ) : null}
+            {sponsorUrl ? (
+              <a
+                className="contest-card-sponsor-link"
+                href={sponsorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {sponsorName || 'Спонсор'}
+              </a>
+            ) : (
+              <span className="contest-card-sponsor-name">{sponsorName}</span>
+            )}
+          </div>
+        ) : null}
         <div className="contest-card-footer">
           {(contest.rules_text ?? '').trim() ? (
             <div className="contest-card-footer-left">
@@ -104,9 +149,17 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
             </div>
           ) : null}
           <div className="contest-card-footer-right">
-            <span className="contest-card-votes">
-              Голосов: {contest.total_votes || 0}
-            </span>
+            <button
+              type="button"
+              className="contest-card-more-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToContest();
+              }}
+            >
+              {ctaMoreLabel}
+            </button>
+            <span className="contest-card-votes">Голосов: {contest.total_votes || 0}</span>
             <span className="contest-card-date">
               Создан {new Date(contest.created_at).toLocaleDateString('ru-RU')}
             </span>

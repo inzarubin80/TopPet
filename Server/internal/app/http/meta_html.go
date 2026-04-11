@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"toppet/server/internal/app/logger"
@@ -119,7 +120,112 @@ const (
 	ogParticipantTitleMaxRunes  = 50  // participant card title often shown in one line
 	participantCTASuffix        = " Участвуйте в конкурсе на ShotContest!"
 	contestDescSuffix           = " Участвуйте и следите за результатами"
+	nominationsPreviewMaxChips  = 4
+	metaPrizeLineMaxRunes       = 120
 )
+
+func isValidContestThemeColor(s string) bool {
+	if len(s) != 7 || s[0] != '#' {
+		return false
+	}
+	for i := 1; i < 7; i++ {
+		c := s[i]
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func contestStatusLabelRU(s model.ContestStatus) string {
+	switch s {
+	case model.ContestStatusDraft:
+		return "Черновик"
+	case model.ContestStatusPublication:
+		return "Публикация"
+	case model.ContestStatusRegistration:
+		return "Регистрация"
+	case model.ContestStatusVoting:
+		return "Голосование"
+	case model.ContestStatusFinished:
+		return "Завершён"
+	default:
+		return string(s)
+	}
+}
+
+func contestStatusBadgeColors(s model.ContestStatus) (bg, fg string) {
+	switch s {
+	case model.ContestStatusDraft:
+		return "#f3f4f6", "#6b7280"
+	case model.ContestStatusPublication:
+		return "#e0e7ff", "#3730a3"
+	case model.ContestStatusRegistration:
+		return "#fef3c7", "#92400e"
+	case model.ContestStatusVoting:
+		return "#dcfce7", "#166534"
+	case model.ContestStatusFinished:
+		return "#fee2e2", "#b91c1c"
+	default:
+		return "#f3f4f6", "#374151"
+	}
+}
+
+func formatContestLocalTime(t time.Time, tzName string) string {
+	tzName = strings.TrimSpace(tzName)
+	if tzName != "" {
+		if loc, err := time.LoadLocation(tzName); err == nil {
+			return t.In(loc).Format("02.01.2006 15:04")
+		}
+	}
+	return t.UTC().Format("02.01.2006 15:04") + " UTC"
+}
+
+// metaContestScheduleLine returns one human-readable schedule line for the preview card (empty if no dates).
+func metaContestScheduleLine(c *model.Contest) string {
+	if c == nil {
+		return ""
+	}
+	fmtT := func(t *time.Time) string {
+		if t == nil {
+			return ""
+		}
+		return formatContestLocalTime(*t, c.ScheduleTimezone)
+	}
+	if c.VotingStartsAt != nil && c.VotingEndsAt != nil {
+		return "Голосование: " + fmtT(c.VotingStartsAt) + " — " + fmtT(c.VotingEndsAt)
+	}
+	if c.VotingEndsAt != nil {
+		return "Голосование до " + fmtT(c.VotingEndsAt)
+	}
+	if c.VotingStartsAt != nil {
+		return "Голосование с " + fmtT(c.VotingStartsAt)
+	}
+	if c.RegistrationStartsAt != nil {
+		return "Регистрация с " + fmtT(c.RegistrationStartsAt)
+	}
+	if c.PublicationStartsAt != nil {
+		return "Публикация с " + fmtT(c.PublicationStartsAt)
+	}
+	return ""
+}
+
+// contestPreviewCardData drives the visible HTML card for contest and home meta pages.
+type contestPreviewCardData struct {
+	ImageURL         string
+	Title            string
+	BodyText         string // plain text; escaped when rendered
+	NominationTitles []string
+	CanonicalURL     string
+	ThemeColor       string               // optional #rrggbb
+	StatusBadge      *model.ContestStatus // nil = no badge
+	ScheduleLine     string
+	PrizeLine        string
+	TotalVotes       int64
+	ShowFullDescHint bool
+	CTALabel         string
+}
 
 func (h *metaHTMLHandler) buildMetaTags(title, description, url, imageURL, imageAlt, locale string, imageWidth, imageHeight int, imageSecureURL string) string {
 	if imageURL == "" {
@@ -250,8 +356,8 @@ func (h *metaHTMLHandler) injectPreviewImage(htmlBytes []byte, imageURL, title s
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
-// nominationsPreviewHTML renders an optional list of nomination titles for the contest preview card.
-func nominationsPreviewHTML(titles []string) string {
+// nominationsChipsHTML renders nomination titles as chips (max nominationsPreviewMaxChips + «ещё N»).
+func nominationsChipsHTML(titles []string) string {
 	var nonempty []string
 	for _, t := range titles {
 		t = strings.TrimSpace(t)
@@ -263,28 +369,133 @@ func nominationsPreviewHTML(titles []string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<p style="margin:16px 0 4px;font-size:0.8125rem;font-weight:600;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.02em;">Номинации</p><ul style="margin:0;padding-left:1.25rem;text-align:left;font-size:0.9375rem;line-height:1.55;color:#444;">`)
-	for _, t := range nonempty {
-		b.WriteString(`<li style="margin:2px 0;">`)
-		b.WriteString(html.EscapeString(t))
-		b.WriteString(`</li>`)
+	b.WriteString(`<p style="margin:12px 0 6px;font-size:0.8125rem;font-weight:600;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.02em;">Номинации</p><div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;">`)
+	show := nonempty
+	extra := 0
+	if len(show) > nominationsPreviewMaxChips {
+		extra = len(show) - nominationsPreviewMaxChips
+		show = show[:nominationsPreviewMaxChips]
 	}
-	b.WriteString(`</ul>`)
+	for _, t := range show {
+		b.WriteString(`<span style="display:inline-block;padding:5px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:0.875rem;line-height:1.3;">`)
+		b.WriteString(html.EscapeString(t))
+		b.WriteString(`</span>`)
+	}
+	b.WriteString(`</div>`)
+	if extra > 0 {
+		b.WriteString(`<p style="margin:8px 0 0;font-size:0.8125rem;color:#6b7280;">ещё `)
+		b.WriteString(strconv.Itoa(extra))
+		b.WriteString(`</p>`)
+	}
 	return b.String()
 }
 
-// injectContestPreviewCard inserts a card (image + title + description) after <body> for contest pages.
-func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, imageURL, title, description string, nominationTitles []string) []byte {
+// injectContestPreviewCard inserts a card (image + title + description + optional CTA) after <body>.
+func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, d contestPreviewCardData) []byte {
+	imageURL := strings.TrimSpace(d.ImageURL)
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
 	}
 	imageURL = html.EscapeString(imageURL)
-	title = html.EscapeString(title)
-	description = html.EscapeString(description)
-	nomBlock := nominationsPreviewHTML(nominationTitles)
-	block := `<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">` + title + `</h1><p style="margin:0;font-size:1rem;line-height:1.5;color:#444;">` + description + `</p>` + nomBlock + `</div>`
+	title := html.EscapeString(d.Title)
+	body := html.EscapeString(d.BodyText)
+	canonical := html.EscapeString(strings.TrimSpace(d.CanonicalURL))
+	ctaLabel := strings.TrimSpace(d.CTALabel)
+	if ctaLabel == "" {
+		ctaLabel = "Открыть на ShotContest"
+	}
+	ctaLabelEsc := html.EscapeString(ctaLabel)
+
+	accent := strings.TrimSpace(d.ThemeColor)
+	if !isValidContestThemeColor(accent) {
+		accent = ""
+	}
+	cardBorder := ""
+	if accent != "" {
+		cardBorder = `border-left:4px solid ` + html.EscapeString(accent) + `;`
+	}
+
+	var inner strings.Builder
+	inner.WriteString(`<div style="text-align:left;max-width:520px;margin:0 auto;">`)
+	inner.WriteString(`<img src="`)
+	inner.WriteString(imageURL)
+	inner.WriteString(`" alt="`)
+	inner.WriteString(title)
+	inner.WriteString(`" style="width:100%;max-height:220px;object-fit:cover;display:block;margin:0 0 16px;border-radius:8px;" />`)
+	inner.WriteString(`<h1 style="margin:0 0 10px;font-size:1.5rem;font-weight:600;color:#1a1a1a;text-align:center;">`)
+	inner.WriteString(title)
+	inner.WriteString(`</h1>`)
+
+	if d.StatusBadge != nil {
+		lbl := contestStatusLabelRU(*d.StatusBadge)
+		if lbl != "" {
+			bg, fg := contestStatusBadgeColors(*d.StatusBadge)
+			inner.WriteString(`<p style="margin:0 0 8px;text-align:center;"><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;background:`)
+			inner.WriteString(bg)
+			inner.WriteString(`;color:`)
+			inner.WriteString(fg)
+			inner.WriteString(`;">`)
+			inner.WriteString(html.EscapeString(lbl))
+			inner.WriteString(`</span></p>`)
+		}
+	}
+
+	if sched := strings.TrimSpace(d.ScheduleLine); sched != "" {
+		inner.WriteString(`<p style="margin:0 0 8px;font-size:0.875rem;line-height:1.45;color:#374151;text-align:center;">`)
+		inner.WriteString(html.EscapeString(sched))
+		inner.WriteString(`</p>`)
+	}
+
+	if d.TotalVotes > 0 {
+		inner.WriteString(`<p style="margin:0 0 8px;font-size:0.875rem;color:#6b7280;text-align:center;">Голосов: `)
+		inner.WriteString(strconv.FormatInt(d.TotalVotes, 10))
+		inner.WriteString(`</p>`)
+	}
+
+	if prize := strings.TrimSpace(d.PrizeLine); prize != "" {
+		inner.WriteString(`<p style="margin:0 0 10px;font-size:0.875rem;line-height:1.45;color:#1f2937;font-weight:500;text-align:center;">`)
+		inner.WriteString(html.EscapeString(prize))
+		inner.WriteString(`</p>`)
+	}
+
+	inner.WriteString(`<p style="margin:0 0 10px;font-size:1rem;line-height:1.5;color:#444;">`)
+	inner.WriteString(body)
+	inner.WriteString(`</p>`)
+
+	if d.ShowFullDescHint {
+		inner.WriteString(`<p style="margin:0 0 14px;font-size:0.8125rem;line-height:1.4;color:#9ca3af;">Полное описание — на странице конкурса.</p>`)
+	}
+
+	inner.WriteString(nominationsChipsHTML(d.NominationTitles))
+
+	ctaBg := "#2563eb"
+	ctaFg := "#ffffff"
+	if accent != "" {
+		ctaBg = accent
+	}
+	if canonical != "" {
+		inner.WriteString(`<p style="margin:18px 0 0;text-align:center;"><a href="`)
+		inner.WriteString(canonical)
+		inner.WriteString(`" style="display:inline-block;padding:10px 20px;border-radius:8px;background:`)
+		inner.WriteString(ctaBg)
+		inner.WriteString(`;color:`)
+		inner.WriteString(ctaFg)
+		inner.WriteString(`;font-size:0.9375rem;font-weight:600;text-decoration:none;">`)
+		inner.WriteString(ctaLabelEsc)
+		inner.WriteString(`</a></p>`)
+	}
+
+	inner.WriteString(`</div>`)
+
+	var block strings.Builder
+	block.WriteString(`<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:linear-gradient(180deg,#fafafa 0%,#f3f4f6 100%);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);`)
+	block.WriteString(cardBorder)
+	block.WriteString(`">`)
+	block.WriteString(inner.String())
+	block.WriteString(`</div>`)
+
 	oldBody := "<body>"
-	newBody := "<body>\n  " + block
+	newBody := "<body>\n  " + block.String()
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
@@ -333,7 +544,14 @@ func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
 	// Карточка с заголовком и текстом — иначе при мелком og-default.png страница выглядит пустой
-	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description, nil)
+	out = h.injectContestPreviewCard(out, contestPreviewCardData{
+		ImageURL:         imageURL,
+		Title:            pageTitle,
+		BodyText:         description,
+		CanonicalURL:     url,
+		ShowFullDescHint: false,
+		CTALabel:         "Перейти на ShotContest",
+	})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
@@ -409,7 +627,34 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
-	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description, nominationTitles)
+
+	eff := *contest
+	model.ApplyEffectiveContestStatus(&eff, time.Now().UTC())
+	st := eff.Status
+
+	cta := strings.TrimSpace(contest.CtaLabelOverride)
+	if cta == "" {
+		cta = "Открыть конкурс на ShotContest"
+	}
+	prize := strings.TrimSpace(contest.PrizeText)
+	if utf8.RuneCountInString(prize) > metaPrizeLineMaxRunes {
+		prize = truncateRunes(prize, metaPrizeLineMaxRunes)
+	}
+
+	out = h.injectContestPreviewCard(out, contestPreviewCardData{
+		ImageURL:         imageURL,
+		Title:            pageTitle,
+		BodyText:         description,
+		NominationTitles: nominationTitles,
+		CanonicalURL:     url,
+		ThemeColor:       strings.TrimSpace(contest.ThemeColor),
+		StatusBadge:      &st,
+		ScheduleLine:     metaContestScheduleLine(contest),
+		PrizeLine:        prize,
+		TotalVotes:       contest.TotalVotes,
+		ShowFullDescHint: true,
+		CTALabel:         cta,
+	})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
