@@ -374,6 +374,9 @@ func TestMetaHTML_ServeContest_CoverURLWinsOverParticipantPhoto(t *testing.T) {
 	if ogImage != "https://cdn.example.com/banner.jpg" {
 		t.Errorf("og:image should prefer contest cover_url, got %q", ogImage)
 	}
+	if strings.Contains(html, `property="og:image:width"`) {
+		t.Error("external cover: must not emit fake og:image:width/height (breaks Telegram-style previews)")
+	}
 }
 
 func TestMetaHTML_ServeContest_DefaultImageNotSVG(t *testing.T) {

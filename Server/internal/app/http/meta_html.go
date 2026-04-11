@@ -634,9 +634,11 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		imageAlt = "Конкурс ShotContest"
 	}
 	imageAlt = truncateRunes(imageAlt, 100)
-	imageWidth, imageHeight := 1200, 630
+	// og:image:width/height только для известного og-default.png; иначе ложные 1200×630 ломают превью (Telegram и др.).
+	imageWidth, imageHeight := 0, 0
 	imageSecureURL := ""
 	if imageURL == h.defaultImageURL() {
+		imageWidth, imageHeight = 1200, 630
 		if strings.HasPrefix(h.baseURL, "https://") {
 			imageSecureURL = imageURL
 		}
@@ -724,9 +726,10 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 	}
 	url := h.baseURL + "/contests/" + string(contestID) + "/participants/" + string(participantID)
 	imageAlt := "Изображение заявки: " + entryTitle
-	imageWidth, imageHeight := 1200, 630
+	imageWidth, imageHeight := 0, 0
 	imageSecureURL := ""
 	if imageURL == h.defaultImageURL() {
+		imageWidth, imageHeight = 1200, 630
 		if strings.HasPrefix(h.baseURL, "https://") {
 			imageSecureURL = imageURL
 		}
