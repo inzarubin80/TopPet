@@ -23,10 +23,44 @@ import { ParticipantJuryScoresPanel } from '../components/contest/ParticipantJur
 import { markStaffCommentsRead } from '../api/commentsApi';
 import { listRegistrationFields } from '../api/registrationFieldsApi';
 import { RegistrationField } from '../types/models';
-import { registrationAnswersToDisplayRows } from '../utils/registrationAnswersDisplay';
-import { resolvePublicAssetUrl } from '../utils/seo';
+import {
+  registrationAnswersToDisplaySections,
+  type RegistrationAnswerDisplayRow,
+} from '../utils/registrationAnswersDisplay';
+import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../utils/seo';
 import { juryCriteriaWordRu } from '../utils/juryLabels';
 import './ParticipantPage.css';
+
+type ParticipantDescriptionBlocks =
+  | { kind: 'single'; title: string; text: string }
+  | { kind: 'pair'; workText: string; petText: string };
+
+function RegistrationAnswersDl({ rows }: { rows: RegistrationAnswerDisplayRow[] }) {
+  return (
+    <dl className="participant-page-registration-list participant-page-registration-dl">
+      {rows.map((row) => (
+        <div key={row.id} className="participant-page-registration-row">
+          <dt className="participant-page-registration-label" title={row.labelTitle}>
+            {row.label}
+          </dt>
+          <dd className="participant-page-registration-value">
+            {row.fieldType === 'image' && row.value ? (
+              <img
+                className="participant-page-registration-img"
+                src={resolvePublicAssetUrl(row.value)}
+                alt=""
+              />
+            ) : row.fieldType === 'textarea' ? (
+              <span className="participant-page-registration-textarea">{row.value}</span>
+            ) : (
+              row.value
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 const ParticipantPage: React.FC = () => {
   const { id: contestId, participantId } = useParams<{ id: string; participantId: string }>();
@@ -91,15 +125,38 @@ const ParticipantPage: React.FC = () => {
     };
   }, [contestId]);
 
-  const registrationRows = useMemo(() => {
+  const { registrationSchemaRows, registrationOrphanRows } = useMemo(() => {
     if (!participant) {
-      return [];
+      return { registrationSchemaRows: [] as RegistrationAnswerDisplayRow[], registrationOrphanRows: [] as RegistrationAnswerDisplayRow[] };
     }
-    return registrationAnswersToDisplayRows(
+    const { schemaRows, orphanRows } = registrationAnswersToDisplaySections(
       registrationFields,
-      participant.registration_answers as Record<string, string | number | boolean> | undefined
+      participant.registration_answers
     );
+    return { registrationSchemaRows: schemaRows, registrationOrphanRows: orphanRows };
   }, [registrationFields, participant]);
+
+  const displayTitle = participant ? getParticipantDisplayTitle(participant) : '';
+  const petNameSubtitle = participant ? getParticipantPetNameSubtitle(participant) : undefined;
+
+  const descriptionBlocks: ParticipantDescriptionBlocks | null = useMemo(() => {
+    if (!participant) {
+      return null;
+    }
+    const work = participant.entry_description?.trim() || '';
+    const pet = participant.pet_description?.trim() || '';
+    if (!work && !pet) {
+      return null;
+    }
+    if (work && pet && work === pet) {
+      return { kind: 'single', title: 'Описание', text: work };
+    }
+    if (work && pet && work !== pet) {
+      return { kind: 'pair', workText: work, petText: pet };
+    }
+    const only = work || pet;
+    return { kind: 'single', title: 'Описание', text: only };
+  }, [participant]);
 
   useEffect(() => {
     if (!contestId || !participantId) {
@@ -256,7 +313,10 @@ const ParticipantPage: React.FC = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1>{participant.pet_name}</h1>
+        <div className="participant-page-title-block">
+          <h1>{displayTitle}</h1>
+          {petNameSubtitle ? <p className="participant-page-title-sub">{petNameSubtitle}</p> : null}
+        </div>
         {(isContestOwner || canEdit) && (
           <div className="participant-page-icon-actions">
             {isContestOwner && (
@@ -334,37 +394,60 @@ const ParticipantPage: React.FC = () => {
             </div>
           )}
 
-          {registrationRows.length > 0 ? (
-            <section className="participant-page-registration" aria-labelledby="participant-registration-heading">
-              <h2 id="participant-registration-heading">Поля заявки</h2>
-              <dl className="participant-page-registration-list">
-                {registrationRows.map((row) => (
-                  <div key={row.id} className="participant-page-registration-row">
-                    <dt className="participant-page-registration-label">{row.label}</dt>
-                    <dd className="participant-page-registration-value">
-                      {row.fieldType === 'image' && row.value ? (
-                        <img
-                          className="participant-page-registration-img"
-                          src={resolvePublicAssetUrl(row.value)}
-                          alt=""
-                        />
-                      ) : row.fieldType === 'textarea' ? (
-                        <span className="participant-page-registration-textarea">{row.value}</span>
-                      ) : (
-                        row.value
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+          {(registrationSchemaRows.length > 0 || registrationOrphanRows.length > 0) && (
+            <section
+              className="participant-page-registration"
+              aria-labelledby={
+                registrationSchemaRows.length > 0
+                  ? 'participant-registration-heading'
+                  : 'participant-registration-extra-heading'
+              }
+            >
+              <div className="participant-page-registration-card">
+                {registrationSchemaRows.length > 0 ? (
+                  <>
+                    <h2 id="participant-registration-heading">Поля заявки</h2>
+                    <RegistrationAnswersDl rows={registrationSchemaRows} />
+                  </>
+                ) : null}
+                {registrationOrphanRows.length > 0 ? (
+                  <>
+                    {registrationSchemaRows.length > 0 ? (
+                      <h3
+                        id="participant-registration-extra-heading"
+                        className="participant-page-registration-orphan-heading"
+                      >
+                        Дополнительные данные заявки
+                      </h3>
+                    ) : (
+                      <h2 id="participant-registration-extra-heading">
+                        Дополнительные данные заявки
+                      </h2>
+                    )}
+                    <RegistrationAnswersDl rows={registrationOrphanRows} />
+                  </>
+                ) : null}
+              </div>
             </section>
-          ) : null}
+          )}
 
-          {participant.pet_description?.trim() ? (
+          {descriptionBlocks?.kind === 'single' ? (
             <div className="participant-page-description">
-              <h2>Описание</h2>
-              <p>{descriptionWithBreaks(participant.pet_description.trim())}</p>
+              <h2>{descriptionBlocks.title}</h2>
+              <p>{descriptionWithBreaks(descriptionBlocks.text)}</p>
             </div>
+          ) : null}
+          {descriptionBlocks?.kind === 'pair' ? (
+            <>
+              <div className="participant-page-description">
+                <h2>О работе</h2>
+                <p>{descriptionWithBreaks(descriptionBlocks.workText)}</p>
+              </div>
+              <div className="participant-page-description participant-page-description-pet">
+                <h2>О питомце</h2>
+                <p>{descriptionWithBreaks(descriptionBlocks.petText)}</p>
+              </div>
+            </>
           ) : null}
 
           {currentContest && (

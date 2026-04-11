@@ -204,7 +204,11 @@ export interface Participant {
   submission_comment?: string;
   pet_name: string;
   pet_description: string;
-  registration_answers?: Record<string, string | number | boolean>;
+  /** Название работы для карточки и OG; при пустом совпадает с pet_name на сервере. */
+  entry_title?: string;
+  /** Описание работы; при пустом на сервере подставляется pet_description. */
+  entry_description?: string;
+  registration_answers?: Record<string, unknown>;
   photos?: Photo[];
   total_votes?: number;
   /** Сумма баллов жюри по всем критериям и всем членам жюри (если API отдал поле). */

@@ -1,5 +1,8 @@
 import { Contest, Participant, Photo } from '../types/models';
-import { SITE_URL } from '../config/brand';
+import { BRAND_NAME, SITE_URL } from '../config/brand';
+
+/** Совпадает с суффиксом og:description на сервере ([`meta_html.go`](Server/internal/app/http/meta_html.go)). */
+const PARTICIPANT_META_CTA = ` Участвуйте в конкурсе на ${BRAND_NAME}!`;
 
 /**
  * Получает базовый URL для production или development
@@ -87,10 +90,38 @@ export const getContestDescription = (contest: Contest): string => {
   return `${baseDescription} Добавляйте своих питомцев`;
 };
 
+function trimText(s?: string): string {
+  return (s ?? '').trim();
+}
+
+/** Заголовок работы для страницы и meta: как `ServeParticipant` на сервере. */
+export function getParticipantDisplayTitle(participant: Participant): string {
+  let t = trimText(participant.entry_title);
+  if (!t) t = trimText(participant.pet_name);
+  if (!t) return 'Заявка участника';
+  return t;
+}
+
 /**
- * Формирует описание для участника
+ * Краткая подпись с именем питомца, если оно отличается от заголовка работы.
+ */
+export function getParticipantPetNameSubtitle(participant: Participant): string | undefined {
+  const title = getParticipantDisplayTitle(participant);
+  const pet = trimText(participant.pet_name);
+  if (!pet || pet === title) return undefined;
+  return pet;
+}
+
+/**
+ * Описание для meta (og:description / twitter), в духе серверного `participantDescription`.
  */
 export const getParticipantDescription = (participant: Participant): string => {
-  const baseDescription = participant.pet_description || participant.pet_name;
-  return `${baseDescription} Голосуйте за моего питомца`;
+  const entryTitle = getParticipantDisplayTitle(participant);
+  let body = trimText(participant.entry_description);
+  if (!body) body = trimText(participant.pet_description);
+  if (!body) {
+    return `Заявка «${entryTitle}» на ${BRAND_NAME}.`;
+  }
+  const oneLine = body.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return oneLine + PARTICIPANT_META_CTA;
 };

@@ -14,10 +14,11 @@ import (
 )
 
 type mockMetaHTMLService struct {
-	contest      *model.Contest
-	nominations  []*model.Nomination
-	participants []*model.Participant
-	participant  *model.Participant
+	contest            *model.Contest
+	nominations        []*model.Nomination
+	participants       []*model.Participant
+	participant        *model.Participant
+	registrationFields []*model.RegistrationField
 }
 
 func (m *mockMetaHTMLService) ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
@@ -41,6 +42,13 @@ func (m *mockMetaHTMLService) ListParticipantsByContest(ctx context.Context, con
 func (m *mockMetaHTMLService) GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error) {
 	if m.participant != nil && m.participant.ID == participantID {
 		return m.participant, nil
+	}
+	return nil, nil
+}
+
+func (m *mockMetaHTMLService) ListContestRegistrationFields(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error) {
+	if m.participant != nil && m.participant.ContestID == contestID && len(m.registrationFields) > 0 {
+		return m.registrationFields, nil
 	}
 	return nil, nil
 }
@@ -461,6 +469,59 @@ func TestMetaHTML_ServeParticipant_EmptyTitleFallback(t *testing.T) {
 	ogDesc := extractMetaContent(html, `property="og:description"`)
 	if !strings.Contains(ogDesc, "Заявка «Заявка участника» на ShotContest.") {
 		t.Fatalf("expected fallback participant description, got %q", ogDesc)
+	}
+}
+
+func TestMetaHTML_ServeParticipant_RegistrationFieldsInPreview(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	fieldID := "f1111111-1111-1111-1111-111111111111"
+	participant := &model.Participant{
+		ID:        "part-1",
+		ContestID: "contest-1",
+		PetName:   "Мурзик",
+		RegistrationAnswers: map[string]interface{}{
+			fieldID:                                "Москва",
+			"deadbeef-dead-dead-dead-deadbeef0002": "осиротевшее",
+		},
+		Photos: []*model.Photo{{URL: "https://example.com/photo.jpg", Position: 0}},
+	}
+	svc := &mockMetaHTMLService{
+		participant: participant,
+		registrationFields: []*model.RegistrationField{
+			{ID: fieldID, ContestID: "contest-1", SortOrder: 0, Label: "Город", FieldType: "string", Required: false},
+		},
+	}
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1/participants/part-1", nil)
+	req.SetPathValue("contestId", "contest-1")
+	req.SetPathValue("participantId", "part-1")
+	rec := httptest.NewRecorder()
+	h.ServeParticipant(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rec.Code)
+	}
+	html := rec.Body.String()
+
+	if !strings.Contains(html, "Поля заявки") {
+		t.Error("participant HTML: expected registration section title")
+	}
+	if !strings.Contains(html, "Город") {
+		t.Error("participant HTML: expected field label from schema")
+	}
+	if !strings.Contains(html, "Москва") {
+		t.Error("participant HTML: expected field value from schema")
+	}
+	if !strings.Contains(html, "Дополнительные данные заявки") {
+		t.Error("participant HTML: expected orphan subsection title")
+	}
+	if !strings.Contains(html, "осиротевшее") {
+		t.Error("participant HTML: expected orphan field value")
 	}
 }
 

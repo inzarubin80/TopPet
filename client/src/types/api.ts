@@ -77,13 +77,13 @@ export interface CreateParticipantRequest {
   pet_name?: string;
   pet_description?: string;
   nomination_id?: string;
-  registration_answers?: Record<string, string | number | boolean>;
+  registration_answers?: Record<string, unknown>;
 }
 
 export interface UpdateParticipantRequest {
   pet_name?: string;
   pet_description?: string;
-  registration_answers?: Record<string, string | number | boolean>;
+  registration_answers?: Record<string, unknown>;
 }
 
 export interface CreateCommentRequest {

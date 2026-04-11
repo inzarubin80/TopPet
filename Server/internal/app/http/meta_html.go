@@ -21,6 +21,7 @@ type (
 		ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
+		ListContestRegistrationFields(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error)
 	}
 
 	metaHTMLHandler struct {
@@ -499,17 +500,30 @@ func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, d contestPr
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
-// injectParticipantPreviewCard inserts a card (image + title + description) after <body> for participant pages.
-func (h *metaHTMLHandler) injectParticipantPreviewCard(htmlBytes []byte, imageURL, title, description string) []byte {
+// injectParticipantPreviewCard inserts a card (image + title + description + optional registration fields block) after <body> for participant pages.
+func (h *metaHTMLHandler) injectParticipantPreviewCard(htmlBytes []byte, imageURL, title, description, registrationHTML string) []byte {
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
 	}
 	imageURL = html.EscapeString(imageURL)
 	title = html.EscapeString(title)
 	description = html.EscapeString(description)
-	block := `<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">` + title + `</h1><p style="margin:0;font-size:1rem;line-height:1.5;color:#444;">` + description + `</p></div>`
+	var block strings.Builder
+	block.WriteString(`<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="`)
+	block.WriteString(imageURL)
+	block.WriteString(`" alt="`)
+	block.WriteString(title)
+	block.WriteString(`" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">`)
+	block.WriteString(title)
+	block.WriteString(`</h1><p style="margin:0 0 16px;font-size:1rem;line-height:1.5;color:#444;">`)
+	block.WriteString(description)
+	block.WriteString(`</p>`)
+	if registrationHTML != "" {
+		block.WriteString(registrationHTML)
+	}
+	block.WriteString(`</div>`)
 	oldBody := "<body>"
-	newBody := "<body>\n  " + block
+	newBody := "<body>\n  " + block.String()
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
@@ -717,8 +731,20 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	var regHTML string
+	fields, err := h.service.ListContestRegistrationFields(r.Context(), contestID)
+	if err != nil {
+		logger.Warn("meta HTML ServeParticipant: ListContestRegistrationFields failed", "error", err)
+	} else {
+		ans := participant.RegistrationAnswers
+		if ans == nil {
+			ans = map[string]interface{}{}
+		}
+		regHTML = participantRegistrationPreviewHTML(h.baseURL, fields, ans)
+	}
+
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
-	out = h.injectParticipantPreviewCard(out, imageURL, pageTitle, description)
+	out = h.injectParticipantPreviewCard(out, imageURL, pageTitle, description, regHTML)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
