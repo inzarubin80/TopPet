@@ -139,19 +139,25 @@
   overflow: hidden;
 }
 
-.contest-card-schedule {
+.contest-card-prize-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #374151;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+
+.contest-card-prize-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: #ca8a04;
 }
 
 .contest-card-prize {
-  margin: 0 0 8px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   line-height: 1.35;
   color: #1f2937;
@@ -162,44 +168,9 @@
   overflow: hidden;
 }
 
-.contest-card-sponsor {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.contest-card-sponsor-logo {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  flex-shrink: 0;
-  border-radius: 4px;
-  background: #f9fafb;
-}
-
-.contest-card-sponsor-link,
-.contest-card-sponsor-name {
-  min-width: 0;
-  word-break: break-word;
-}
-
-.contest-card-sponsor-link {
-  color: var(--contest-card-accent, #2563eb);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.contest-card-sponsor-link:hover {
-  text-decoration: underline;
-}
-
 .contest-card-footer {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   align-items: center;
   gap: 8px 12px;
   margin-top: 12px;
@@ -207,17 +178,11 @@
   color: #999;
 }
 
-.contest-card-footer-left {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.contest-card-footer-right {
+.contest-card-footer-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  justify-content: flex-end;
   margin-left: auto;
 }
 
@@ -241,20 +206,6 @@
 .contest-card-more-btn:focus-visible {
   outline: 2px solid var(--contest-card-accent, #2563eb);
   outline-offset: 2px;
-}
-
-.contest-card-rules-btn {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--contest-card-accent, #2563eb);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-align: left;
 }
 
 .contest-card-votes {

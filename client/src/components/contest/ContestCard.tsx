@@ -2,8 +2,6 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Contest } from '../../types/models';
 import { resolvePublicAssetUrl } from '../../utils/seo';
-import { getContestScheduleDisplayLines } from '../../utils/scheduleTimezone';
-import { ContestRulesViewer } from './ContestRulesViewer';
 import './ContestCard.css';
 
 interface ContestCardProps {
@@ -28,16 +26,7 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
     [hasThemedAccent, accentHex]
   );
 
-  const scheduleSummary = useMemo(() => {
-    const lines = getContestScheduleDisplayLines(contest);
-    if (lines.length === 0) return null;
-    return lines.slice(0, 2).join(' · ');
-  }, [contest]);
-
   const prizeRaw = (contest.prize_text || '').trim();
-  const sponsorName = (contest.sponsor_name || '').trim();
-  const sponsorLogoRaw = (contest.sponsor_logo_url || '').trim();
-  const sponsorUrl = (contest.sponsor_url || '').trim();
   const ctaMoreLabel = (contest.cta_label_override || '').trim() || 'Подробнее';
 
   const goToContest = () => navigate(`/contests/${contest.id}`);
@@ -107,58 +96,46 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
           </span>
         </div>
         <p className="contest-card-description">{contest.description || 'Нет описания'}</p>
-        {scheduleSummary ? (
-          <p className="contest-card-schedule" title={scheduleSummary}>
-            {scheduleSummary}
-          </p>
-        ) : null}
-        {prizeRaw ? <p className="contest-card-prize">{prizeRaw}</p> : null}
-        {sponsorName || sponsorLogoRaw ? (
-          <div className="contest-card-sponsor">
-            {sponsorLogoRaw ? (
-              <img
-                className="contest-card-sponsor-logo"
-                src={resolvePublicAssetUrl(sponsorLogoRaw)}
-                alt=""
+        {prizeRaw ? (
+          <div className="contest-card-prize-row">
+            <svg
+              className="contest-card-prize-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <path
+                d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="currentColor"
               />
-            ) : null}
-            {sponsorUrl ? (
-              <a
-                className="contest-card-sponsor-link"
-                href={sponsorUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {sponsorName || 'Спонсор'}
-              </a>
-            ) : (
-              <span className="contest-card-sponsor-name">{sponsorName}</span>
-            )}
+              <path
+                d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <p className="contest-card-prize">{prizeRaw}</p>
           </div>
         ) : null}
         <div className="contest-card-footer">
-          {(contest.rules_text ?? '').trim() ? (
-            <div className="contest-card-footer-left">
-              <ContestRulesViewer
-                rulesText={contest.rules_text}
-                contestTitle={contest.title}
-                stopPropagation
-                triggerClassName="contest-card-rules-btn"
-              />
-            </div>
-          ) : null}
-          <div className="contest-card-footer-right">
-            <button
-              type="button"
-              className="contest-card-more-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                goToContest();
-              }}
-            >
-              {ctaMoreLabel}
-            </button>
+          <button
+            type="button"
+            className="contest-card-more-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToContest();
+            }}
+          >
+            {ctaMoreLabel}
+          </button>
+          <div className="contest-card-footer-meta">
             <span className="contest-card-votes">Голосов: {contest.total_votes || 0}</span>
             <span className="contest-card-date">
               Создан {new Date(contest.created_at).toLocaleDateString('ru-RU')}
