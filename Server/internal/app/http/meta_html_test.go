@@ -53,6 +53,28 @@ func (m *mockMetaHTMLService) ListContestRegistrationFields(ctx context.Context,
 	return nil, nil
 }
 
+func TestMetaHTML_Mux_routesTrailingSlashForContest(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	contest := &model.Contest{ID: "c1", Title: "T", Description: "D"}
+	svc := &mockMetaHTMLService{contest: contest}
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /contests/{contestId}", http.HandlerFunc(h.ServeContest))
+	mux.Handle("GET /contests/{contestId}/", http.HandlerFunc(h.ServeContest))
+
+	req := httptest.NewRequest(http.MethodGet, "/contests/c1/", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /contests/c1/ via mux: want 200, got %d", rec.Code)
+	}
+}
+
 func TestMetaHTML_HEAD_matchesGETHeadersAndEmptyBody(t *testing.T) {
 	dir := t.TempDir()
 	indexPath := dir + "/index.html"
