@@ -109,7 +109,7 @@ func firstPhotoURLForOG(p *model.Participant) string {
 }
 
 func (h *metaHTMLHandler) defaultImageURL() string {
-	return h.baseURL + "/favicon.swg"
+	return h.baseURL + "/favicon.svg"
 }
 
 // absoluteImageURL returns imageURL as-is if it's already absolute (http/https), otherwise baseURL + path.
