@@ -17,6 +17,7 @@ import (
 type (
 	serviceMetaHTML interface {
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
+		ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
 		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 	}
@@ -249,15 +250,39 @@ func (h *metaHTMLHandler) injectPreviewImage(htmlBytes []byte, imageURL, title s
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
 }
 
+// nominationsPreviewHTML renders an optional list of nomination titles for the contest preview card.
+func nominationsPreviewHTML(titles []string) string {
+	var nonempty []string
+	for _, t := range titles {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			nonempty = append(nonempty, t)
+		}
+	}
+	if len(nonempty) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<p style="margin:16px 0 4px;font-size:0.8125rem;font-weight:600;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.02em;">Номинации</p><ul style="margin:0;padding-left:1.25rem;text-align:left;font-size:0.9375rem;line-height:1.55;color:#444;">`)
+	for _, t := range nonempty {
+		b.WriteString(`<li style="margin:2px 0;">`)
+		b.WriteString(html.EscapeString(t))
+		b.WriteString(`</li>`)
+	}
+	b.WriteString(`</ul>`)
+	return b.String()
+}
+
 // injectContestPreviewCard inserts a card (image + title + description) after <body> for contest pages.
-func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, imageURL, title, description string) []byte {
+func (h *metaHTMLHandler) injectContestPreviewCard(htmlBytes []byte, imageURL, title, description string, nominationTitles []string) []byte {
 	if imageURL == "" {
 		imageURL = h.defaultImageURL()
 	}
 	imageURL = html.EscapeString(imageURL)
 	title = html.EscapeString(title)
 	description = html.EscapeString(description)
-	block := `<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">` + title + `</h1><p style="margin:0;font-size:1rem;line-height:1.5;color:#444;">` + description + `</p></div>`
+	nomBlock := nominationsPreviewHTML(nominationTitles)
+	block := `<div id="og-preview" style="text-align:center;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;font-family:system-ui,-apple-system,sans-serif;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><img src="` + imageURL + `" alt="` + title + `" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" /><h1 style="margin:0 0 12px;font-size:1.5rem;font-weight:600;color:#1a1a1a;">` + title + `</h1><p style="margin:0;font-size:1rem;line-height:1.5;color:#444;">` + description + `</p>` + nomBlock + `</div>`
 	oldBody := "<body>"
 	newBody := "<body>\n  " + block
 	return []byte(strings.Replace(string(htmlBytes), oldBody, newBody, 1))
@@ -307,7 +332,8 @@ func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
-	out = h.injectPreviewImage(out, imageURL, pageTitle)
+	// Карточка с заголовком и текстом — иначе при мелком og-default.png страница выглядит пустой
+	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description, nil)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }
@@ -327,6 +353,18 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.NotFound(w, r)
 		return
+	}
+
+	var nominationTitles []string
+	if noms, err := h.service.ListNominations(r.Context(), contestID); err != nil {
+		logger.Error("meta HTML ServeContest: ListNominations", "contestId", contestID, "error", err)
+	} else {
+		for _, n := range noms {
+			if n == nil {
+				continue
+			}
+			nominationTitles = append(nominationTitles, n.Title)
+		}
 	}
 
 	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, 8, 0, "")
@@ -371,7 +409,7 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
-	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description)
+	out = h.injectContestPreviewCard(out, imageURL, pageTitle, description, nominationTitles)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(out)
 }

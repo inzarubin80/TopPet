@@ -15,8 +15,16 @@ import (
 
 type mockMetaHTMLService struct {
 	contest      *model.Contest
+	nominations  []*model.Nomination
 	participants []*model.Participant
 	participant  *model.Participant
+}
+
+func (m *mockMetaHTMLService) ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error) {
+	if m.contest != nil && m.contest.ID == contestID {
+		return m.nominations, nil
+	}
+	return nil, nil
 }
 
 func (m *mockMetaHTMLService) GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
@@ -78,6 +86,12 @@ func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
 	if !strings.Contains(html, `id="og-preview"`) {
 		t.Error("home HTML: missing #og-preview")
 	}
+	if !strings.Contains(html, homeMetaTitle) {
+		t.Error("home HTML: missing visible title in preview card")
+	}
+	if !strings.Contains(html, truncateRunes(homeMetaDescription, ogDescriptionMaxRunes)) {
+		t.Error("home HTML: missing visible description in preview card")
+	}
 }
 
 func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
@@ -99,7 +113,11 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 			Photos:  []*model.Photo{{URL: "https://example.com/photo.jpg", Position: 0}},
 		},
 	}
-	svc := &mockMetaHTMLService{contest: contest, participants: participants}
+	nominations := []*model.Nomination{
+		{Title: "Портрет"},
+		{Title: "Пейзаж"},
+	}
+	svc := &mockMetaHTMLService{contest: contest, nominations: nominations, participants: participants}
 	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/contests/contest-1", nil)
@@ -154,6 +172,9 @@ func TestMetaHTML_ServeContest_HTMLAndMeta(t *testing.T) {
 	}
 	if !strings.Contains(html, `<p style=`) {
 		t.Error("contest HTML: missing p in preview card")
+	}
+	if !strings.Contains(html, "Номинации") || !strings.Contains(html, "Портрет") || !strings.Contains(html, "Пейзаж") {
+		t.Error("contest HTML: expected nominations list in preview card")
 	}
 
 	// Task 3.1: canonical URL
