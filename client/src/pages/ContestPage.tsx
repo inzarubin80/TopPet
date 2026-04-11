@@ -12,7 +12,7 @@ import {
   fetchMyParticipantsForContest,
   ParticipantsListNominationFilter,
 } from '../store/slices/participantsSlice';
-import { Participant, ContestStatus, Nomination } from '../types/models';
+import { Participant, Nomination } from '../types/models';
 import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
@@ -381,14 +381,6 @@ const ContestPage: React.FC = () => {
     </svg>
   );
 
-  const statusLabels: Record<ContestStatus, string> = {
-    draft: 'Черновик',
-    publication: 'Публикация',
-    registration: 'Регистрация',
-    voting: 'Голосование',
-    finished: 'Завершен',
-  };
-
   const accentHex = (currentContest.theme_color || '').trim();
   const hasThemedAccent = /^#[0-9A-Fa-f]{6}$/.test(accentHex);
   const coverRaw = (currentContest.cover_url || '').trim();
@@ -453,11 +445,6 @@ const ContestPage: React.FC = () => {
               ) : null}
               <div className="contest-page-hero-title-row">
                 <h1 className="contest-page-hero-title">{currentContest.title}</h1>
-                <span
-                  className={`contest-page-status contest-page-status-${currentContest.status} contest-page-status--on-hero`}
-                >
-                  {statusLabels[currentContest.status]}
-                </span>
                 {isAdmin && (
                   <>
                     <button
@@ -495,9 +482,6 @@ const ContestPage: React.FC = () => {
                 <img className="contest-page-logo" src={resolvePublicAssetUrl(logoRaw)} alt="" />
               ) : null}
               <h1>{currentContest.title}</h1>
-              <span className={`contest-page-status contest-page-status-${currentContest.status}`}>
-                {statusLabels[currentContest.status]}
-              </span>
               {isAdmin && (
                 <>
                   <button
