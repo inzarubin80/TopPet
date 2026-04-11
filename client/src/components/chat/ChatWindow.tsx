@@ -24,7 +24,10 @@ interface ChatWindowProps {
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus }) => {
   const isChatAvailable =
-    contestStatus === 'registration' || contestStatus === 'voting' || contestStatus === 'finished';
+    contestStatus === 'publication' ||
+    contestStatus === 'registration' ||
+    contestStatus === 'voting' ||
+    contestStatus === 'finished';
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +102,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
             <LoadingSpinner size="medium" />
           </div>
         ) : !isChatAvailable ? (
-          <div className="chat-loading">Чат доступен на этапах регистрации, голосования и финала</div>
+          <div className="chat-loading">
+            Чат доступен на этапах публикации, регистрации, голосования и финала
+          </div>
         ) : (
           <MessageList
             messages={messages}

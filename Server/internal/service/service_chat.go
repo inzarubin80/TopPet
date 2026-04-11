@@ -10,7 +10,10 @@ import (
 )
 
 func chatAllowed(status model.ContestStatus) bool {
-	return status == model.ContestStatusRegistration || status == model.ContestStatusVoting || status == model.ContestStatusFinished
+	return status == model.ContestStatusPublication ||
+		status == model.ContestStatusRegistration ||
+		status == model.ContestStatusVoting ||
+		status == model.ContestStatusFinished
 }
 
 func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string) (*model.ChatMessage, error) {
