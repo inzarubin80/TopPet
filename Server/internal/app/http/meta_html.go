@@ -44,6 +44,18 @@ func (h *metaHTMLHandler) readIndexHTML() ([]byte, error) {
 	return os.ReadFile(h.spaIndexPath)
 }
 
+// writeHTMLResponse sends the same headers as GET; for HEAD the body is omitted (RFC 7231).
+func writeHTMLResponse(w http.ResponseWriter, r *http.Request, out []byte) {
+	h := w.Header()
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Content-Length", strconv.Itoa(len(out)))
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Write(out)
+}
+
 // truncateRunes truncates s to at most max runes, appending "…" if truncated.
 func truncateRunes(s string, max int) string {
 	if max <= 0 {
@@ -534,7 +546,7 @@ const (
 )
 
 func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || r.URL.Path != "/" || !h.canServe() {
+	if (r.Method != http.MethodGet && r.Method != http.MethodHead) || r.URL.Path != "/" || !h.canServe() {
 		http.NotFound(w, r)
 		return
 	}
@@ -566,12 +578,11 @@ func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 		ShowFullDescHint: false,
 		CTALabel:         "Перейти на ShotContest",
 	})
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(out)
+	writeHTMLResponse(w, r, out)
 }
 
 func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || !h.canServe() {
+	if (r.Method != http.MethodGet && r.Method != http.MethodHead) || !h.canServe() {
 		http.NotFound(w, r)
 		return
 	}
@@ -669,12 +680,11 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		ShowFullDescHint: true,
 		CTALabel:         cta,
 	})
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(out)
+	writeHTMLResponse(w, r, out)
 }
 
 func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || !h.canServe() {
+	if (r.Method != http.MethodGet && r.Method != http.MethodHead) || !h.canServe() {
 		http.NotFound(w, r)
 		return
 	}
@@ -745,6 +755,5 @@ func (h *metaHTMLHandler) ServeParticipant(w http.ResponseWriter, r *http.Reques
 
 	out := h.injectMetaIntoHTML(htmlBytes, pageTitle, metaTags, url)
 	out = h.injectParticipantPreviewCard(out, imageURL, pageTitle, description, regHTML)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(out)
+	writeHTMLResponse(w, r, out)
 }

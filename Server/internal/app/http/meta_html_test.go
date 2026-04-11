@@ -53,6 +53,84 @@ func (m *mockMetaHTMLService) ListContestRegistrationFields(ctx context.Context,
 	return nil, nil
 }
 
+func TestMetaHTML_HEAD_matchesGETHeadersAndEmptyBody(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := dir + "/index.html"
+	if err := writeMinimalIndex(indexPath); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	contest := &model.Contest{
+		ID:          "contest-1",
+		Title:       "Конкурс",
+		Description: "Описание",
+	}
+	participant := &model.Participant{
+		ID:        "part-1",
+		ContestID: "contest-1",
+		PetName:   "Мурзик",
+		Photos:    []*model.Photo{{URL: "https://example.com/photo.jpg", Position: 0}},
+	}
+	svc := &mockMetaHTMLService{contest: contest, participant: participant}
+	h := NewMetaHTMLHandler("https://shotcontest.ru", indexPath, svc)
+
+	cases := []struct {
+		name string
+		fn   func(http.ResponseWriter, *http.Request)
+		req  *http.Request
+	}{
+		{
+			name: "home",
+			fn:   h.ServeHome,
+			req:  httptest.NewRequest(http.MethodHead, "/", nil),
+		},
+		{
+			name: "contest",
+			fn:   h.ServeContest,
+			req:  func() *http.Request {
+				req := httptest.NewRequest(http.MethodHead, "/contests/contest-1", nil)
+				req.SetPathValue("contestId", "contest-1")
+				return req
+			}(),
+		},
+		{
+			name: "participant",
+			fn:   h.ServeParticipant,
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodHead, "/contests/contest-1/participants/part-1", nil)
+				req.SetPathValue("contestId", "contest-1")
+				req.SetPathValue("participantId", "part-1")
+				return req
+			}(),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			getReq := tc.req.Clone(context.Background())
+			getReq.Method = http.MethodGet
+			headReq := tc.req
+
+			recG := httptest.NewRecorder()
+			tc.fn(recG, getReq)
+			recH := httptest.NewRecorder()
+			tc.fn(recH, headReq)
+
+			if recG.Code != http.StatusOK || recH.Code != http.StatusOK {
+				t.Fatalf("GET %d, HEAD %d", recG.Code, recH.Code)
+			}
+			if recH.Body.Len() != 0 {
+				t.Fatalf("HEAD body: got %d bytes", recH.Body.Len())
+			}
+			if got, want := recH.Header().Get("Content-Length"), recG.Header().Get("Content-Length"); got != want || got == "" {
+				t.Fatalf("Content-Length HEAD %q vs GET %q", got, want)
+			}
+			if recH.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+				t.Fatalf("Content-Type: %q", recH.Header().Get("Content-Type"))
+			}
+		})
+	}
+}
+
 func TestMetaHTML_ServeHome_HTMLAndMeta(t *testing.T) {
 	dir := t.TempDir()
 	indexPath := dir + "/index.html"
