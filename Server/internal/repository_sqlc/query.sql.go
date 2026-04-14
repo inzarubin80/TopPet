@@ -438,7 +438,7 @@ const createContest = `-- name: CreateContest :one
 
 INSERT INTO contests (id, created_by_user_id, title, description, status)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
 `
 
 type CreateContestParams struct {
@@ -490,6 +490,8 @@ func (q *Queries) CreateContest(ctx context.Context, arg *CreateContestParams) (
 		&i.MinPhotoCount,
 		&i.MaxPhotoCount,
 		&i.EntryTitleHint,
+		&i.JuryPrizePlaces,
+		&i.AudiencePrizePlaces,
 	)
 	return &i, err
 }
@@ -804,7 +806,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 }
 
 const getContestByID = `-- name: GetContestByID :one
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint FROM contests WHERE id = $1
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests WHERE id = $1
 `
 
 func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error) {
@@ -841,6 +843,8 @@ func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest,
 		&i.MinPhotoCount,
 		&i.MaxPhotoCount,
 		&i.EntryTitleHint,
+		&i.JuryPrizePlaces,
+		&i.AudiencePrizePlaces,
 	)
 	return &i, err
 }
@@ -1278,6 +1282,39 @@ func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriter
 		&i.CreatedAt,
 	)
 	return &i, err
+}
+
+const insertParticipantConsentAudit = `-- name: InsertParticipantConsentAudit :exec
+INSERT INTO participant_consent_audits (
+    participant_id,
+    user_id,
+    consent_type,
+    policy_version,
+    ip_address,
+    user_agent
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertParticipantConsentAuditParams struct {
+	ParticipantID pgtype.UUID
+	UserID        int64
+	ConsentType   string
+	PolicyVersion string
+	IpAddress     string
+	UserAgent     string
+}
+
+func (q *Queries) InsertParticipantConsentAudit(ctx context.Context, arg *InsertParticipantConsentAuditParams) error {
+	_, err := q.db.Exec(ctx, insertParticipantConsentAudit,
+		arg.ParticipantID,
+		arg.UserID,
+		arg.ConsentType,
+		arg.PolicyVersion,
+		arg.IpAddress,
+		arg.UserAgent,
+	)
+	return err
 }
 
 const insertRegistrationField = `-- name: InsertRegistrationField :one
@@ -1860,7 +1897,7 @@ func (q *Queries) ListContestVotesByUser(ctx context.Context, arg *ListContestVo
 }
 
 const listContests = `-- name: ListContests :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests
 WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -1912,6 +1949,8 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 			&i.MinPhotoCount,
 			&i.MaxPhotoCount,
 			&i.EntryTitleHint,
+			&i.JuryPrizePlaces,
+			&i.AudiencePrizePlaces,
 		); err != nil {
 			return nil, err
 		}
@@ -1924,7 +1963,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 }
 
 const listContestsForStatusAutomation = `-- name: ListContestsForStatusAutomation :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests
 WHERE status IN ('draft', 'publication', 'registration', 'voting', 'finished')
 ORDER BY id
 `
@@ -1969,6 +2008,8 @@ func (q *Queries) ListContestsForStatusAutomation(ctx context.Context) ([]*Conte
 			&i.MinPhotoCount,
 			&i.MaxPhotoCount,
 			&i.EntryTitleHint,
+			&i.JuryPrizePlaces,
+			&i.AudiencePrizePlaces,
 		); err != nil {
 			return nil, err
 		}
@@ -2780,24 +2821,26 @@ SET
   tagline = $7,
   rules_text = $8,
   prize_text = $9,
-  logo_url = $10,
-  theme_color = $11,
-  sponsor_name = $12,
-  sponsor_logo_url = $13,
-  sponsor_url = $14,
-  cta_label_override = $15,
-  publication_starts_at = $16,
-  registration_starts_at = $17,
-  voting_starts_at = $18,
-  voting_ends_at = $19,
-  participant_allowed_email_domains = $20,
-  schedule_timezone = $21,
-  min_photo_count = $22,
-  max_photo_count = $23,
-  entry_title_hint = $24,
+  jury_prize_places = $10,
+  audience_prize_places = $11,
+  logo_url = $12,
+  theme_color = $13,
+  sponsor_name = $14,
+  sponsor_logo_url = $15,
+  sponsor_url = $16,
+  cta_label_override = $17,
+  publication_starts_at = $18,
+  registration_starts_at = $19,
+  voting_starts_at = $20,
+  voting_ends_at = $21,
+  participant_allowed_email_domains = $22,
+  schedule_timezone = $23,
+  min_photo_count = $24,
+  max_photo_count = $25,
+  entry_title_hint = $26,
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
 `
 
 type UpdateContestParams struct {
@@ -2810,6 +2853,8 @@ type UpdateContestParams struct {
 	Tagline                        string
 	RulesText                      string
 	PrizeText                      string
+	JuryPrizePlaces                []byte
+	AudiencePrizePlaces            []byte
 	LogoUrl                        string
 	ThemeColor                     string
 	SponsorName                    string
@@ -2838,6 +2883,8 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		arg.Tagline,
 		arg.RulesText,
 		arg.PrizeText,
+		arg.JuryPrizePlaces,
+		arg.AudiencePrizePlaces,
 		arg.LogoUrl,
 		arg.ThemeColor,
 		arg.SponsorName,
@@ -2886,6 +2933,8 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		&i.MinPhotoCount,
 		&i.MaxPhotoCount,
 		&i.EntryTitleHint,
+		&i.JuryPrizePlaces,
+		&i.AudiencePrizePlaces,
 	)
 	return &i, err
 }
@@ -2933,7 +2982,7 @@ const updateContestStatus = `-- name: UpdateContestStatus :one
 UPDATE contests
 SET status = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
 `
 
 type UpdateContestStatusParams struct {
@@ -2975,6 +3024,8 @@ func (q *Queries) UpdateContestStatus(ctx context.Context, arg *UpdateContestSta
 		&i.MinPhotoCount,
 		&i.MaxPhotoCount,
 		&i.EntryTitleHint,
+		&i.JuryPrizePlaces,
+		&i.AudiencePrizePlaces,
 	)
 	return &i, err
 }

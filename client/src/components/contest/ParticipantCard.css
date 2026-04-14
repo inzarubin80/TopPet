@@ -224,22 +224,31 @@
 
 .participant-card-nomination {
   display: inline-block;
-  padding: 2px 8px;
-  font-size: 12px;
+  align-self: flex-start;
+  padding: 3px 8px;
+  font-size: 11px;
   font-weight: 600;
-  color: #4b5563;
-  background: #f3f4f6;
+  color: #475569;
+  background: #f1f5f9;
   border-radius: 6px;
 }
 
 .participant-card-name-wrapper {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  width: 100%;
+}
+
+.participant-card-title-row {
+  display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   gap: 8px;
-  margin: 0 0 10px 0;
   flex-wrap: wrap;
-  width: 100%;
 }
 
 .participant-card-name {
@@ -252,31 +261,38 @@
 }
 
 .participant-card-winner-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 3px 8px;
+  background: #fef3c7;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+  font-size: 11px;
   font-weight: 600;
   color: #92400e;
+  line-height: 1.2;
 }
 
 .participant-card-winner-icon {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  color: #fbbf24;
+  color: #d97706;
 }
 
 .participant-card-winner-text {
   line-height: 1.2;
-  white-space: nowrap;
+}
+
+.participant-card-winner-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #92400e;
 }
 
 .participant-card-description {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: #64748b;
   font-size: 14px;
   line-height: 1.45;
@@ -306,17 +322,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 8px 10px;
   font-size: 12px;
-  color: #9ca3af;
-}
-
-.participant-card-author {
   color: #6b7280;
 }
 
+.participant-card-author {
+  color: #64748b;
+}
+
 .participant-card-votes {
-  font-weight: 500;
+  font-weight: 600;
+  color: #475569;
 }
 
 .participant-card-jury {
@@ -328,8 +345,8 @@
 }
 
 .participant-card-jury-total {
-  font-weight: 500;
-  color: #7c3aed;
+  font-weight: 600;
+  color: #475569;
 }
 
 .participant-card-vote-badge {
@@ -339,6 +356,30 @@
   color: #2f6df6;
   font-size: 11px;
   font-weight: 600;
+}
+
+.participant-card-winner-meta {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-card-winner-meta-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .participant-card-icon-actions {
@@ -425,6 +466,12 @@
     height: min(220px, 52vw);
     max-height: 240px;
     align-self: center;
+  }
+
+  .participant-card-winner-meta {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 }
 

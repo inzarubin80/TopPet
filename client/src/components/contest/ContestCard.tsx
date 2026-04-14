@@ -26,7 +26,6 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
     [hasThemedAccent, accentHex]
   );
 
-  const prizeRaw = (contest.prize_text || '').trim();
   const ctaMoreLabel = (contest.cta_label_override || '').trim() || 'Подробнее';
 
   const goToContest = () => navigate(`/contests/${contest.id}`);
@@ -96,34 +95,6 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
           </span>
         </div>
         <p className="contest-card-description">{contest.description || 'Нет описания'}</p>
-        {prizeRaw ? (
-          <div className="contest-card-prize-row">
-            <svg
-              className="contest-card-prize-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden
-            >
-              <path
-                d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="currentColor"
-              />
-              <path
-                d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <p className="contest-card-prize">{prizeRaw}</p>
-          </div>
-        ) : null}
         <div className="contest-card-footer">
           <button
             type="button"

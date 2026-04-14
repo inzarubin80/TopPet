@@ -69,7 +69,7 @@ func (s *TopPetService) resolveParticipantEntryTitle(ctx context.Context, userID
 	return "Участник", nil
 }
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	// Check contest exists and is not finished
@@ -147,12 +147,29 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	if err != nil {
 		return nil, err
 	}
+	policyVersion = strings.TrimSpace(policyVersion)
+	if policyVersion == "" {
+		return nil, fmt.Errorf("%w: policy_version is required", model.ErrBadRequest)
+	}
 	entryTitle = resolvedName
 	entryDescription = strings.TrimSpace(entryDescription)
+	consentIP = strings.TrimSpace(consentIP)
+	consentUserAgent = strings.TrimSpace(consentUserAgent)
 
 	// Create participant
 	log.Printf("[Service] CreateParticipant: Creating participant in repository")
-	participant, err := s.repository.CreateParticipant(ctx, contestID, userID, entryTitle, entryDescription, ans, effectiveNom)
+	participant, err := s.repository.CreateParticipant(
+		ctx,
+		contestID,
+		userID,
+		entryTitle,
+		entryDescription,
+		ans,
+		effectiveNom,
+		policyVersion,
+		consentIP,
+		consentUserAgent,
+	)
 	if err != nil {
 		log.Printf("[Service] CreateParticipant: ERROR - Failed to create participant in repository: %v", err)
 		return nil, err

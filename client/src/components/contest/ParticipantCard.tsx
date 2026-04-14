@@ -76,6 +76,24 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const showSubmissionBadge =
     submissionStatus === 'pending' || submissionStatus === 'rejected';
   const canModerateSubmission = isContestAdmin && submissionStatus === 'pending';
+  const isWinner =
+    contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner);
+  const winnerScopeLabel = participant.is_audience_winner && participant.is_jury_winner
+    ? 'Зрители и жюри'
+    : participant.is_audience_winner
+      ? 'Зрители'
+      : 'Жюри';
+  const winnerMetaItems: string[] = [];
+  if (publicVotingEnabled && participant.audience_winner_place != null) {
+    winnerMetaItems.push(
+      `Зрители: ${participant.audience_winner_place} место${participant.audience_winner_prize ? ` (${participant.audience_winner_prize})` : ''}`
+    );
+  }
+  if (juryVotingEnabled && participant.jury_winner_place != null) {
+    winnerMetaItems.push(
+      `Жюри: ${participant.jury_winner_place} место${participant.jury_winner_prize ? ` (${participant.jury_winner_prize})` : ''}`
+    );
+  }
 
   const openRejectModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -214,9 +232,23 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         </div>
         <div className="participant-card-content">
           <div className="participant-card-name-wrapper">
-            <h4 className="participant-card-name">{participant.pet_name}</h4>
+            <div className="participant-card-title-row">
+              <h4 className="participant-card-name">{participant.pet_name}</h4>
+              {isWinner ? (
+                <div className="participant-card-winner-badge" aria-label={`Победитель: ${winnerScopeLabel}`}>
+                  <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
+                    <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="participant-card-winner-text">Победитель</span>
+                </div>
+              ) : null}
+            </div>
             {nominationTitle ? (
               <span className="participant-card-nomination">{nominationTitle}</span>
+            ) : null}
+            {isWinner ? (
+              <span className="participant-card-winner-subtitle">{winnerScopeLabel}</span>
             ) : null}
             {showSubmissionBadge ? (
               <span
@@ -229,21 +261,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                 {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
               </span>
             ) : null}
-            {contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner) && (
-              <div className="participant-card-winner-badge">
-                <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
-                  <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="participant-card-winner-text">
-                  {participant.is_audience_winner && participant.is_jury_winner
-                    ? 'Победитель зрителей и жюри'
-                    : participant.is_audience_winner
-                      ? 'Победитель зрителей'
-                      : 'Победитель жюри'}
-                </span>
-              </div>
-            )}
           </div>
           {participant.pet_description?.trim() ? (
             <p className="participant-card-description">
@@ -274,6 +291,15 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           ) : null}
           <span className="participant-card-author">Автор: {authorLabel}</span>
           {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
+          {winnerMetaItems.length > 0 ? (
+            <div className="participant-card-winner-meta-wrap">
+              {winnerMetaItems.map((item) => (
+                <span key={item} className="participant-card-winner-meta">
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         {canVote && isAuthenticated && (
           <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>

@@ -27,6 +27,7 @@ import { uploadContestAsset, type ContestAssetKind } from '../api/contestsApi';
 import { getErrorMessage } from '../utils/errorHandler';
 import { AxiosError } from 'axios';
 import type { UpdateContestRequest } from '../types/api';
+import type { ContestPrizePlace } from '../types/models';
 import {
   DEFAULT_SCHEDULE_TIMEZONE,
   SCHEDULE_TIMEZONE_OPTIONS,
@@ -36,6 +37,15 @@ import {
 import './EditContestPage.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
+type PrizePlacesKind = 'jury' | 'audience';
+
+const emptyPrizePlace = (): ContestPrizePlace => ({ place: 1, prize: '' });
+
+const normalizePrizePlaces = (items: ContestPrizePlace[]): ContestPrizePlace[] =>
+  items
+    .map((it) => ({ place: Number(it.place) || 0, prize: (it.prize || '').trim() }))
+    .filter((it) => it.place > 0 || it.prize !== '')
+    .sort((a, b) => a.place - b.place);
 
 const EditContestSaveToolbar: React.FC<{
   saving: boolean;
@@ -75,7 +85,8 @@ const EditContestPage: React.FC = () => {
   const [coverUrl, setCoverUrl] = useState('');
   const [tagline, setTagline] = useState('');
   const [rulesText, setRulesText] = useState('');
-  const [prizeText, setPrizeText] = useState('');
+  const [juryPrizePlaces, setJuryPrizePlaces] = useState<ContestPrizePlace[]>([]);
+  const [audiencePrizePlaces, setAudiencePrizePlaces] = useState<ContestPrizePlace[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const [themeColor, setThemeColor] = useState('');
   const [sponsorName, setSponsorName] = useState('');
@@ -144,7 +155,8 @@ const EditContestPage: React.FC = () => {
       setCoverUrl('');
       setTagline('');
       setRulesText('');
-      setPrizeText('');
+      setJuryPrizePlaces([]);
+      setAudiencePrizePlaces([]);
       setLogoUrl('');
       setThemeColor('');
       setSponsorName('');
@@ -174,7 +186,8 @@ const EditContestPage: React.FC = () => {
         setCoverUrl(contest.cover_url ?? '');
         setTagline(contest.tagline ?? '');
         setRulesText(contest.rules_text ?? '');
-        setPrizeText(contest.prize_text ?? '');
+        setJuryPrizePlaces(contest.jury_prize_places ?? []);
+        setAudiencePrizePlaces(contest.audience_prize_places ?? []);
         setLogoUrl(contest.logo_url ?? '');
         setThemeColor(contest.theme_color ?? '');
         setSponsorName(contest.sponsor_name ?? '');
@@ -247,7 +260,8 @@ const EditContestPage: React.FC = () => {
         cover_url: coverUrl.trim(),
         tagline: tagline.trim(),
         rules_text: rulesText,
-        prize_text: prizeText.trim(),
+        jury_prize_places: normalizePrizePlaces(juryPrizePlaces),
+        audience_prize_places: normalizePrizePlaces(audiencePrizePlaces),
         logo_url: logoUrl.trim(),
         theme_color: themeColor.trim(),
         sponsor_name: sponsorName.trim(),
@@ -305,6 +319,23 @@ const EditContestPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const updatePrizePlace = (kind: PrizePlacesKind, index: number, patch: Partial<ContestPrizePlace>) => {
+    const setter = kind === 'jury' ? setJuryPrizePlaces : setAudiencePrizePlaces;
+    setter((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item))
+    );
+  };
+
+  const addPrizePlace = (kind: PrizePlacesKind) => {
+    const setter = kind === 'jury' ? setJuryPrizePlaces : setAudiencePrizePlaces;
+    setter((prev) => [...prev, emptyPrizePlace()]);
+  };
+
+  const removePrizePlace = (kind: PrizePlacesKind, index: number) => {
+    const setter = kind === 'jury' ? setJuryPrizePlaces : setAudiencePrizePlaces;
+    setter((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleContestAssetFile = async (kind: ContestAssetKind, file: File) => {
@@ -482,13 +513,6 @@ const EditContestPage: React.FC = () => {
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               placeholder="Короткая строка под названием на странице конкурса"
-              disabled={saving}
-            />
-            <Textarea
-              label="Призы (текст)"
-              value={prizeText}
-              onChange={(e) => setPrizeText(e.target.value)}
-              placeholder="Что выигрывают участники"
               disabled={saving}
             />
           </div>
@@ -772,6 +796,66 @@ const EditContestPage: React.FC = () => {
                 </p>
               </span>
             </label>
+          </div>
+          <div className="edit-contest-prize-places-wrap">
+            <div className="edit-contest-prize-places">
+              <p className="edit-contest-field-label">Места жюри и призы</p>
+              <div className="edit-contest-prize-places-list">
+                {juryPrizePlaces.map((item, index) => (
+                  <div key={`jury-${index}`} className="edit-contest-prize-place-row">
+                    <Input
+                      label="Место"
+                      type="number"
+                      value={String(item.place)}
+                      onChange={(e) => updatePrizePlace('jury', index, { place: Number(e.target.value) || 0 })}
+                      disabled={saving}
+                    />
+                    <Input
+                      label="Приз"
+                      type="text"
+                      value={item.prize}
+                      onChange={(e) => updatePrizePlace('jury', index, { prize: e.target.value })}
+                      disabled={saving}
+                    />
+                    <Button type="button" variant="secondary" onClick={() => removePrizePlace('jury', index)} disabled={saving}>
+                      Удалить
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="secondary" onClick={() => addPrizePlace('jury')} disabled={saving}>
+                Добавить место жюри
+              </Button>
+            </div>
+            <div className="edit-contest-prize-places">
+              <p className="edit-contest-field-label">Места зрительских симпатий и призы</p>
+              <div className="edit-contest-prize-places-list">
+                {audiencePrizePlaces.map((item, index) => (
+                  <div key={`audience-${index}`} className="edit-contest-prize-place-row">
+                    <Input
+                      label="Место"
+                      type="number"
+                      value={String(item.place)}
+                      onChange={(e) => updatePrizePlace('audience', index, { place: Number(e.target.value) || 0 })}
+                      disabled={saving}
+                    />
+                    <Input
+                      label="Приз"
+                      type="text"
+                      value={item.prize}
+                      onChange={(e) => updatePrizePlace('audience', index, { prize: e.target.value })}
+                      disabled={saving}
+                    />
+                    <Button type="button" variant="secondary" onClick={() => removePrizePlace('audience', index)} disabled={saving}>
+                      Удалить
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="secondary" onClick={() => addPrizePlace('audience')} disabled={saving}>
+                Добавить место зрителей
+              </Button>
+            </div>
           </div>
         </section>
 

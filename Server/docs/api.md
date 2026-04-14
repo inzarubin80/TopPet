@@ -155,6 +155,12 @@ OAuth callback endpoint (используется провайдером).
 #### PATCH /api/contests/{contestId}
 Обновить конкурс. Требует аутентификации. Только создатель может обновить.
 
+Дополнительно поддерживаются поля:
+- `jury_prize_places`: массив мест жюри в формате `[{ "place": 1, "prize": "1000 рублей" }]`
+- `audience_prize_places`: массив мест зрительских симпатий в том же формате
+
+Правила валидации: `place >= 1`, места уникальны в рамках массива, `prize` не пустой.
+
 #### PATCH /api/contests/{contestId}/status
 Обновить статус конкурса. Требует аутентификации. Только создатель может обновить.
 
@@ -178,16 +184,26 @@ Query `sort` (опционально): `votes` — по числу голосо�
 #### GET /api/contests/{contestId}/participants/{participantId}
 Получить информацию об участнике.
 
+Для завершённых конкурсов у призёров дополнительно заполняются:
+- `audience_winner_place`, `audience_winner_prize`
+- `jury_winner_place`, `jury_winner_prize`
+
 #### POST /api/contests/{contestId}/participants
 Создать участника. Требует аутентификации.
 
 **Request:**
 ```json
 {
-  "pet_name": "string",
-  "pet_description": "string"
+  "entry_title": "string",
+  "entry_description": "string",
+  "nomination_id": "uuid",
+  "registration_answers": {},
+  "privacy_consent": true,
+  "policy_version": "2026-04-14"
 }
 ```
+
+`privacy_consent` должен быть `true`, `policy_version` — непустая строка версии документа.
 
 #### PATCH /api/participants/{participantId}
 Обновить участника. Требует аутентификации.

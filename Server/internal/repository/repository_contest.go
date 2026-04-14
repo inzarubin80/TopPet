@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"toppet/server/internal/model"
@@ -47,6 +49,8 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		Tagline:                        c.Tagline,
 		RulesText:                      c.RulesText,
 		PrizeText:                      c.PrizeText,
+		JuryPrizePlaces:                parseContestPrizePlaces(c.JuryPrizePlaces),
+		AudiencePrizePlaces:            parseContestPrizePlaces(c.AudiencePrizePlaces),
 		LogoUrl:                        c.LogoUrl,
 		ThemeColor:                     c.ThemeColor,
 		SponsorName:                    c.SponsorName,
@@ -65,6 +69,25 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		CreatedAt:                      c.CreatedAt.Time,
 		UpdatedAt:                      c.UpdatedAt.Time,
 	}
+}
+
+func parseContestPrizePlaces(raw []byte) []model.ContestPrizePlace {
+	if len(raw) == 0 {
+		return []model.ContestPrizePlace{}
+	}
+	var places []model.ContestPrizePlace
+	if err := json.Unmarshal(raw, &places); err != nil {
+		return []model.ContestPrizePlace{}
+	}
+	sort.Slice(places, func(i, j int) bool { return places[i].Place < places[j].Place })
+	return places
+}
+
+func contestPrizePlacesBytes(places []model.ContestPrizePlace) ([]byte, error) {
+	if len(places) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal(places)
 }
 
 func (r *Repository) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
@@ -139,6 +162,14 @@ func (r *Repository) UpdateContest(ctx context.Context, contestID model.ContestI
 	if err != nil {
 		return nil, err
 	}
+	juryPrizePlacesJSON, err := contestPrizePlacesBytes(u.JuryPrizePlaces)
+	if err != nil {
+		return nil, err
+	}
+	audiencePrizePlacesJSON, err := contestPrizePlacesBytes(u.AudiencePrizePlaces)
+	if err != nil {
+		return nil, err
+	}
 
 	contest, err := reposqlc.UpdateContest(ctx, &sqlc_repository.UpdateContestParams{
 		ID:                             pgtype.UUID{Bytes: contestUUID, Valid: true},
@@ -150,6 +181,8 @@ func (r *Repository) UpdateContest(ctx context.Context, contestID model.ContestI
 		Tagline:                        u.Tagline,
 		RulesText:                      u.RulesText,
 		PrizeText:                      u.PrizeText,
+		JuryPrizePlaces:                juryPrizePlacesJSON,
+		AudiencePrizePlaces:            audiencePrizePlacesJSON,
 		LogoUrl:                        u.LogoUrl,
 		ThemeColor:                     u.ThemeColor,
 		SponsorName:                    u.SponsorName,

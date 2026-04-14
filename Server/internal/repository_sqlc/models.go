@@ -50,6 +50,10 @@ type Contest struct {
 	// Максимальное число фото в заявке для конкурса (1–30, не меньше min_photo_count).
 	MaxPhotoCount  int32
 	EntryTitleHint string
+	// Список призовых мест жюри в формате JSON: [{"place":1,"prize":"..."}]
+	JuryPrizePlaces []byte
+	// Список мест зрительских симпатий в формате JSON: [{"place":1,"prize":"..."}]
+	AudiencePrizePlaces []byte
 }
 
 type ContestChatMessage struct {

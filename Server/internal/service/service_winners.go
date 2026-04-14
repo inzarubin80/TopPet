@@ -12,9 +12,16 @@ type contestWinnerSets struct {
 	jury     map[model.ParticipantID]struct{}
 }
 
+type winnerMeta struct {
+	place int
+	prize string
+}
+
 type contestWinnerOutcome struct {
 	audienceSet map[model.ParticipantID]struct{}
 	jurySet     map[model.ParticipantID]struct{}
+	audienceMeta map[model.ParticipantID]winnerMeta
+	juryMeta map[model.ParticipantID]winnerMeta
 	audience    []model.ContestWinnerBrief
 	jury        []model.ContestWinnerBrief
 }
@@ -56,11 +63,74 @@ func nominationKeyOrder(k string, m map[string]int, tailEmpty int) int {
 	return tailEmpty - 1
 }
 
-// computeContestWinnerOutcome — общая логика: ведра по номинации, максимум голосов/жюри, ничья = все лидеры.
+// computeTopPlaceWinners — призовые места по «плотному» рангу по уникальным значениям счёта:
+// 1-е место — лучший балл, 2-е — следующий уровень (все ничьи на уровне делят место), 3-е — третий уровень и т.д.
+// Так «3-е место» не пропадает из-за ничьей на 2-м (в отличие от спортивного ранга 1,2,2,4…).
+func computeTopPlaceWinners(
+	group []model.ParticipantScoreForWinners,
+	places []model.ContestPrizePlace,
+	scoreOf func(model.ParticipantScoreForWinners) int64,
+) []model.ContestWinnerBrief {
+	if len(group) == 0 || len(places) == 0 {
+		return nil
+	}
+	sorted := make([]model.ParticipantScoreForWinners, len(group))
+	copy(sorted, group)
+	sort.Slice(sorted, func(i, j int) bool {
+		si := scoreOf(sorted[i])
+		sj := scoreOf(sorted[j])
+		if si != sj {
+			return si > sj
+		}
+		return sorted[i].ParticipantID < sorted[j].ParticipantID
+	})
+	byPlace := make(map[int]model.ContestPrizePlace, len(places))
+	for _, p := range places {
+		if p.Place < 1 {
+			continue
+		}
+		byPlace[p.Place] = p
+	}
+	var out []model.ContestWinnerBrief
+	rank := 0
+	lastScore := int64(-1)
+	for _, row := range sorted {
+		score := scoreOf(row)
+		if score <= 0 {
+			break
+		}
+		if score != lastScore {
+			rank++
+			lastScore = score
+		}
+		placeCfg, ok := byPlace[rank]
+		if !ok {
+			continue
+		}
+		var nomCopy *string
+		if row.NominationID != nil {
+			s := *row.NominationID
+			nomCopy = &s
+		}
+		out = append(out, model.ContestWinnerBrief{
+			ParticipantID: row.ParticipantID,
+			PetName: row.PetName,
+			NominationID: nomCopy,
+			Score: score,
+			Place: placeCfg.Place,
+			Prize: placeCfg.Prize,
+		})
+	}
+	return out
+}
+
+// computeContestWinnerOutcome — ведра по номинации; места по плотному рангу счёта (ничьи делят ступень).
 func computeContestWinnerOutcome(contest *model.Contest, rows []model.ParticipantScoreForWinners, nominationTitle func(*string) string, nominationSortOrder map[string]int) contestWinnerOutcome {
 	empty := contestWinnerOutcome{
 		audienceSet: make(map[model.ParticipantID]struct{}),
 		jurySet:     make(map[model.ParticipantID]struct{}),
+		audienceMeta: make(map[model.ParticipantID]winnerMeta),
+		juryMeta: make(map[model.ParticipantID]winnerMeta),
 	}
 	if nominationTitle == nil {
 		nominationTitle = func(*string) string { return "" }
@@ -83,57 +153,32 @@ func computeContestWinnerOutcome(contest *model.Contest, rows []model.Participan
 	out := contestWinnerOutcome{
 		audienceSet: make(map[model.ParticipantID]struct{}),
 		jurySet:     make(map[model.ParticipantID]struct{}),
+		audienceMeta: make(map[model.ParticipantID]winnerMeta),
+		juryMeta: make(map[model.ParticipantID]winnerMeta),
 	}
 
 	for _, k := range keys {
 		g := buckets[k]
-		var maxVotes, maxJury int64
-		for _, r := range g {
-			if r.VoteCount > maxVotes {
-				maxVotes = r.VoteCount
-			}
-			if r.JurySum > maxJury {
-				maxJury = r.JurySum
-			}
-		}
-		if contest.PublicVotingEnabled && maxVotes > 0 {
-			for _, r := range g {
-				if r.VoteCount != maxVotes {
-					continue
-				}
-				out.audienceSet[r.ParticipantID] = struct{}{}
-				var nomCopy *string
-				if r.NominationID != nil {
-					s := *r.NominationID
-					nomCopy = &s
-				}
-				out.audience = append(out.audience, model.ContestWinnerBrief{
-					ParticipantID:   r.ParticipantID,
-					PetName:           r.PetName,
-					NominationID:      nomCopy,
-					NominationTitle:   nominationTitle(r.NominationID),
-					Score:             r.VoteCount,
-				})
+		if contest.PublicVotingEnabled {
+			audienceWinners := computeTopPlaceWinners(g, contest.AudiencePrizePlaces, func(r model.ParticipantScoreForWinners) int64 {
+				return r.VoteCount
+			})
+			for _, w := range audienceWinners {
+				w.NominationTitle = nominationTitle(w.NominationID)
+				out.audienceSet[w.ParticipantID] = struct{}{}
+				out.audienceMeta[w.ParticipantID] = winnerMeta{place: w.Place, prize: w.Prize}
+				out.audience = append(out.audience, w)
 			}
 		}
-		if contest.JuryVotingEnabled && maxJury > 0 {
-			for _, r := range g {
-				if r.JurySum != maxJury {
-					continue
-				}
-				out.jurySet[r.ParticipantID] = struct{}{}
-				var nomCopy *string
-				if r.NominationID != nil {
-					s := *r.NominationID
-					nomCopy = &s
-				}
-				out.jury = append(out.jury, model.ContestWinnerBrief{
-					ParticipantID:   r.ParticipantID,
-					PetName:           r.PetName,
-					NominationID:      nomCopy,
-					NominationTitle:   nominationTitle(r.NominationID),
-					Score:             r.JurySum,
-				})
+		if contest.JuryVotingEnabled {
+			juryWinners := computeTopPlaceWinners(g, contest.JuryPrizePlaces, func(r model.ParticipantScoreForWinners) int64 {
+				return r.JurySum
+			})
+			for _, w := range juryWinners {
+				w.NominationTitle = nominationTitle(w.NominationID)
+				out.jurySet[w.ParticipantID] = struct{}{}
+				out.juryMeta[w.ParticipantID] = winnerMeta{place: w.Place, prize: w.Prize}
+				out.jury = append(out.jury, w)
 			}
 		}
 	}
@@ -163,13 +208,25 @@ func (s *TopPetService) attachParticipantWinnerFlags(ctx context.Context, contes
 	if contest.Status != model.ContestStatusFinished {
 		return
 	}
-	sets := s.computeContestWinnerSets(ctx, contest)
+	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+	if err != nil || len(rows) == 0 {
+		return
+	}
+	o := computeContestWinnerOutcome(contest, rows, nil, nil)
 	for _, p := range participants {
-		if _, ok := sets.audience[p.ID]; ok {
+		if _, ok := o.audienceSet[p.ID]; ok {
 			p.IsAudienceWinner = true
+			if meta, has := o.audienceMeta[p.ID]; has {
+				p.AudienceWinnerPlace = &meta.place
+				p.AudienceWinnerPrize = meta.prize
+			}
 		}
-		if _, ok := sets.jury[p.ID]; ok {
+		if _, ok := o.jurySet[p.ID]; ok {
 			p.IsJuryWinner = true
+			if meta, has := o.juryMeta[p.ID]; has {
+				p.JuryWinnerPlace = &meta.place
+				p.JuryWinnerPrize = meta.prize
+			}
 		}
 	}
 }
@@ -178,7 +235,28 @@ func (s *TopPetService) attachOneParticipantWinnerFlags(ctx context.Context, con
 	if participant == nil {
 		return
 	}
-	s.attachParticipantWinnerFlags(ctx, contest, []*model.Participant{participant})
+	if contest == nil || contest.Status != model.ContestStatusFinished {
+		return
+	}
+	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+	if err != nil || len(rows) == 0 {
+		return
+	}
+	o := computeContestWinnerOutcome(contest, rows, nil, nil)
+	if _, ok := o.audienceSet[participant.ID]; ok {
+		participant.IsAudienceWinner = true
+		if meta, has := o.audienceMeta[participant.ID]; has {
+			participant.AudienceWinnerPlace = &meta.place
+			participant.AudienceWinnerPrize = meta.prize
+		}
+	}
+	if _, ok := o.jurySet[participant.ID]; ok {
+		participant.IsJuryWinner = true
+		if meta, has := o.juryMeta[participant.ID]; has {
+			participant.JuryWinnerPlace = &meta.place
+			participant.JuryWinnerPrize = meta.prize
+		}
+	}
 }
 
 func (s *TopPetService) enrichContestWithWinners(ctx context.Context, contest *model.Contest) {

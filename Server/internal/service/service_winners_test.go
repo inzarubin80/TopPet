@@ -9,7 +9,11 @@ import (
 func strPtr(s string) *string { return &s }
 
 func TestComputeContestWinnerOutcome_notFinished(t *testing.T) {
-	c := &model.Contest{Status: model.ContestStatusVoting, PublicVotingEnabled: true, JuryVotingEnabled: true}
+	c := &model.Contest{
+		Status: model.ContestStatusVoting, PublicVotingEnabled: true, JuryVotingEnabled: true,
+		AudiencePrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "A"}},
+		JuryPrizePlaces:     []model.ContestPrizePlace{{Place: 1, Prize: "J"}},
+	}
 	rows := []model.ParticipantScoreForWinners{{ParticipantID: "p1", VoteCount: 5, JurySum: 10}}
 	o := computeContestWinnerOutcome(c, rows, nil, nil)
 	if len(o.audience) != 0 || len(o.jury) != 0 {
@@ -18,7 +22,10 @@ func TestComputeContestWinnerOutcome_notFinished(t *testing.T) {
 }
 
 func TestComputeContestWinnerOutcome_singleBucket_audienceTie(t *testing.T) {
-	c := &model.Contest{Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: false}
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: false,
+		AudiencePrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "1000"}},
+	}
 	rows := []model.ParticipantScoreForWinners{
 		{ParticipantID: "a", PetName: "A", VoteCount: 3, JurySum: 0},
 		{ParticipantID: "b", PetName: "B", VoteCount: 3, JurySum: 0},
@@ -41,7 +48,11 @@ func TestComputeContestWinnerOutcome_singleBucket_audienceTie(t *testing.T) {
 func TestComputeContestWinnerOutcome_nominationBuckets(t *testing.T) {
 	n1 := "11111111-1111-1111-1111-111111111111"
 	n2 := "22222222-2222-2222-2222-222222222222"
-	c := &model.Contest{Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: true}
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: true,
+		AudiencePrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "A"}},
+		JuryPrizePlaces:     []model.ContestPrizePlace{{Place: 1, Prize: "J"}},
+	}
 	rows := []model.ParticipantScoreForWinners{
 		{ParticipantID: "p1", PetName: "One", NominationID: strPtr(n1), VoteCount: 5, JurySum: 10},
 		{ParticipantID: "p2", PetName: "Two", NominationID: strPtr(n1), VoteCount: 2, JurySum: 20},
@@ -76,7 +87,10 @@ func TestComputeContestWinnerOutcome_nominationBuckets(t *testing.T) {
 }
 
 func TestComputeContestWinnerOutcome_publicDisabled_noAudience(t *testing.T) {
-	c := &model.Contest{Status: model.ContestStatusFinished, PublicVotingEnabled: false, JuryVotingEnabled: true}
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: false, JuryVotingEnabled: true,
+		JuryPrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "J"}},
+	}
 	rows := []model.ParticipantScoreForWinners{
 		{ParticipantID: "a", PetName: "A", VoteCount: 9, JurySum: 3},
 	}
@@ -89,8 +103,47 @@ func TestComputeContestWinnerOutcome_publicDisabled_noAudience(t *testing.T) {
 	}
 }
 
+func TestComputeContestWinnerOutcome_juryDenseRank_tieThenThirdPlace(t *testing.T) {
+	// После ничьей на 2-м уровне баллов третья ступень (81) получает именно 3-е место, а не «4-е» как при спортивном ранге.
+	n1 := "11111111-1111-1111-1111-111111111111"
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: false, JuryVotingEnabled: true,
+		JuryPrizePlaces: []model.ContestPrizePlace{
+			{Place: 1, Prize: "P1"},
+			{Place: 2, Prize: "P2"},
+			{Place: 3, Prize: "P3"},
+		},
+	}
+	rows := []model.ParticipantScoreForWinners{
+		{ParticipantID: "top", PetName: "Top", NominationID: strPtr(n1), JurySum: 105},
+		{ParticipantID: "a", PetName: "A", NominationID: strPtr(n1), JurySum: 90},
+		{ParticipantID: "b", PetName: "B", NominationID: strPtr(n1), JurySum: 90},
+		{ParticipantID: "c", PetName: "C", NominationID: strPtr(n1), JurySum: 81},
+	}
+	o := computeContestWinnerOutcome(c, rows, func(nid *string) string {
+		if nid != nil && *nid == n1 {
+			return "Nom1"
+		}
+		return ""
+	}, nil)
+	if len(o.jury) != 4 {
+		t.Fatalf("want 4 jury winners (1 + 2 tie + 1 third tier), got %d: %+v", len(o.jury), o.jury)
+	}
+	placeByID := map[model.ParticipantID]int{}
+	for _, w := range o.jury {
+		placeByID[w.ParticipantID] = w.Place
+	}
+	if placeByID["top"] != 1 || placeByID["a"] != 2 || placeByID["b"] != 2 || placeByID["c"] != 3 {
+		t.Fatalf("dense places: %+v", placeByID)
+	}
+}
+
 func TestComputeContestWinnerOutcome_zeroMax_noWinners(t *testing.T) {
-	c := &model.Contest{Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: true}
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: true,
+		AudiencePrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "A"}},
+		JuryPrizePlaces:     []model.ContestPrizePlace{{Place: 1, Prize: "J"}},
+	}
 	rows := []model.ParticipantScoreForWinners{
 		{ParticipantID: "a", PetName: "A", VoteCount: 0, JurySum: 0},
 	}
@@ -103,7 +156,10 @@ func TestComputeContestWinnerOutcome_zeroMax_noWinners(t *testing.T) {
 func TestComputeContestWinnerOutcome_nominationBucketOrderBySortOrder(t *testing.T) {
 	n1 := "11111111-1111-1111-1111-111111111111"
 	n2 := "22222222-2222-2222-2222-222222222222"
-	c := &model.Contest{Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: false}
+	c := &model.Contest{
+		Status: model.ContestStatusFinished, PublicVotingEnabled: true, JuryVotingEnabled: false,
+		AudiencePrizePlaces: []model.ContestPrizePlace{{Place: 1, Prize: "A"}},
+	}
 	rows := []model.ParticipantScoreForWinners{
 		{ParticipantID: "p1", PetName: "One", NominationID: strPtr(n1), VoteCount: 5, JurySum: 0},
 		{ParticipantID: "p3", PetName: "Three", NominationID: strPtr(n2), VoteCount: 7, JurySum: 0},

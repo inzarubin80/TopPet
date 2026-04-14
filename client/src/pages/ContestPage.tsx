@@ -39,7 +39,6 @@ import { sortNominationsByOrder } from '../components/contest/contestNominations
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
-import { ContestWinnersSection } from '../components/contest/ContestWinnersSection';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -298,6 +297,10 @@ const ContestPage: React.FC = () => {
     }
     return getContestScheduleDisplayLines(currentContest);
   }, [currentContest]);
+  const juryPrizePlaces = [...(currentContest?.jury_prize_places ?? [])].sort((a, b) => a.place - b.place);
+  const audiencePrizePlaces = [...(currentContest?.audience_prize_places ?? [])].sort(
+    (a, b) => a.place - b.place
+  );
 
   if (loading) {
     return (
@@ -387,22 +390,11 @@ const ContestPage: React.FC = () => {
   const hasHeroCover = Boolean(coverRaw);
   const logoRaw = (currentContest.logo_url || '').trim();
   const taglineRaw = (currentContest.tagline || '').trim();
-  const prizeRaw = (currentContest.prize_text || '').trim();
   const sponsorNameRaw = (currentContest.sponsor_name || '').trim();
   const sponsorLogoRaw = (currentContest.sponsor_logo_url || '').trim();
   const sponsorUrlRaw = (currentContest.sponsor_url || '').trim();
   const hasSponsorBlock = Boolean(sponsorUrlRaw || sponsorNameRaw || sponsorLogoRaw);
   const voteCtaLabel = (currentContest.cta_label_override || '').trim() || undefined;
-
-  const hasAudienceWinners =
-    currentContest.status === 'finished' &&
-    (currentContest.audience_winners?.length ?? 0) > 0 &&
-    currentContest.public_voting_enabled;
-  const hasJuryWinners =
-    currentContest.status === 'finished' &&
-    (currentContest.jury_winners?.length ?? 0) > 0 &&
-    currentContest.jury_voting_enabled;
-  const showContestWinnersSection = hasAudienceWinners || hasJuryWinners;
 
   const contestPageStyle =
     hasThemedAccent
@@ -514,22 +506,6 @@ const ContestPage: React.FC = () => {
         )}
 
         <div className="contest-page-overview-body">
-        {prizeRaw ? (
-          <div className="contest-page-prizes">
-            <h2 className="contest-section-heading contest-page-prizes-heading">Призы</h2>
-            <p className="contest-page-prizes-text">{prizeRaw}</p>
-          </div>
-        ) : null}
-
-        {showContestWinnersSection && id ? (
-          <ContestWinnersSection
-            contestId={id}
-            audienceWinners={hasAudienceWinners ? currentContest.audience_winners : undefined}
-            juryWinners={hasJuryWinners ? currentContest.jury_winners : undefined}
-            nominations={contestNominations}
-          />
-        ) : null}
-
         {(currentContest.rules_text ?? '').trim() ? (
           <div className="contest-page-rules-wrap">
             <ContestRulesViewer
@@ -582,6 +558,31 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-description">
           <p>{currentContest.description || 'Нет описания'}</p>
         </div>
+
+        {juryPrizePlaces.length > 0 || audiencePrizePlaces.length > 0 ? (
+          <section className="contest-page-prize-places" aria-label="Призовые места конкурса">
+            {juryPrizePlaces.length > 0 ? (
+              <div className="contest-page-prize-places-group">
+                <h2 className="contest-page-prize-places-title">Призы по итогам голосования жюри</h2>
+                {juryPrizePlaces.map((item) => (
+                  <p key={`jury-${item.place}`} className="contest-page-prize-place-item">
+                    {item.place} место - {item.prize}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            {audiencePrizePlaces.length > 0 ? (
+              <div className="contest-page-prize-places-group">
+                <h2 className="contest-page-prize-places-title">Призы по итогам пользовательского голосования</h2>
+                {audiencePrizePlaces.map((item) => (
+                  <p key={`audience-${item.place}`} className="contest-page-prize-place-item">
+                    {item.place} место - {item.prize}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {contestScheduleLines.length > 0 ? (
           <section

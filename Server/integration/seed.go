@@ -21,19 +21,19 @@ type SeedConfig struct {
 	// OrganizerUserID — если задан, конкурс создаётся от этого пользователя (нужен вход в UI через OAuth).
 	// Иначе создаётся новый пользователь-организатор (войти в клиент будет нельзя без ручной привязки OAuth).
 	OrganizerUserID *model.UserID
-	Title       string
-	Description string
+	Title           string
+	Description     string
 	// LeaveVoting если true — после выставления оценок остаётся фаза голосования (удобно смотреть отчёт жюри). Иначе конкурс завершается с победителями.
 	LeaveVoting bool
 }
 
 // SeedResult — идентификаторы после наката.
 type SeedResult struct {
-	ContestID    model.ContestID
-	OrganizerID  model.UserID
-	Scale        int
-	Finished     bool
-	JuryWinnerN  int
+	ContestID   model.ContestID
+	OrganizerID model.UserID
+	Scale       int
+	Finished    bool
+	JuryWinnerN int
 }
 
 // timePtrClone копирует указатель на время.
@@ -118,10 +118,12 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 	if scale <= 0 {
 		scale = 300
 	}
-	if scale%3 != 0 {
-		return nil, fmt.Errorf("Scale must be divisible by 3 (got %d)", scale)
+	perNomBase := scale / 3
+	perNomRemainder := scale % 3
+	perNomCounts := [3]int{perNomBase, perNomBase, perNomBase}
+	for i := 0; i < perNomRemainder; i++ {
+		perNomCounts[i]++
 	}
-	perNom := scale / 3
 	title := strings.TrimSpace(cfg.Title)
 	if title == "" {
 		title = "Демо: большой конкурс (seed)"
@@ -172,7 +174,17 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 	}
 	u := ContestUpdateFromModel(c0)
 	u.JuryVotingEnabled = true
-	u.PublicVotingEnabled = false
+	u.PublicVotingEnabled = true
+	u.JuryPrizePlaces = []model.ContestPrizePlace{
+		{Place: 1, Prize: "Приз за 1 место"},
+		{Place: 2, Prize: "Приз за 2 место"},
+		{Place: 3, Prize: "Приз за 3 место"},
+	}
+	u.AudiencePrizePlaces = []model.ContestPrizePlace{
+		{Place: 1, Prize: "Приз за 1 место"},
+		{Place: 2, Prize: "Приз за 2 место"},
+		{Place: 3, Prize: "Приз за 3 место"},
+	}
 	if _, err := svc.UpdateContest(ctx, contestID, orgID, u); err != nil {
 		return nil, fmt.Errorf("UpdateContest flags: %w", err)
 	}
@@ -222,22 +234,36 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 	}
 
 	participantIDs := make([]model.ParticipantID, scale)
+	participantNomIdx := make([]int, scale)
+	participantPosInNom := make([]int, scale)
+	nomCurrentCounts := [3]int{}
+	participantIDsByNom := [3][]model.ParticipantID{}
 	for i := 0; i < scale; i++ {
 		owner, err := repo.CreateUser(ctx, fmt.Sprintf("seed-participant-user-%d", i))
 		if err != nil {
 			return nil, fmt.Errorf("CreateUser participant owner %d: %w", i, err)
 		}
-		nomIdx := i / perNom
-		if nomIdx > 2 {
+		nomIdx := 0
+		switch {
+		case nomCurrentCounts[0] < perNomCounts[0]:
+			nomIdx = 0
+		case nomCurrentCounts[1] < perNomCounts[1]:
+			nomIdx = 1
+		default:
 			nomIdx = 2
 		}
+		posInNom := nomCurrentCounts[nomIdx]
+		nomCurrentCounts[nomIdx]++
 		nid := nomIDs[nomIdx]
 		petName := fmt.Sprintf("Питомец %d", i)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", nil, &nid)
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", nil, &nid, "seed-v1", "127.0.0.1", "integration-seed")
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}
 		participantIDs[i] = p.ID
+		participantNomIdx[i] = nomIdx
+		participantPosInNom[i] = posInNom
+		participantIDsByNom[nomIdx] = append(participantIDsByNom[nomIdx], p.ID)
 		dummyURL := fmt.Sprintf("https://example.invalid/photo-%d.jpg", i)
 		if _, err := svc.AddParticipantPhoto(ctx, p.ID, owner.ID, dummyURL, nil); err != nil {
 			return nil, fmt.Errorf("AddParticipantPhoto %d: %w", i, err)
@@ -251,12 +277,29 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		return nil, fmt.Errorf("UpdateContestStatus voting: %w", err)
 	}
 
+	votersByNom := [3][]model.UserID{}
+	for n := 0; n < 3; n++ {
+		for v := 0; v < 24; v++ {
+			voter, err := repo.CreateUser(ctx, fmt.Sprintf("seed-audience-voter-n%d-%d", n+1, v+1))
+			if err != nil {
+				return nil, fmt.Errorf("CreateUser audience voter n=%d i=%d: %w", n, v, err)
+			}
+			votersByNom[n] = append(votersByNom[n], voter.ID)
+		}
+	}
+
 	for i := 0; i < scale; i++ {
-		posInNom := i % perNom
-		high := posInNom == 0
-		var score int32 = 5
-		if high {
+		posInNom := participantPosInNom[i]
+		var score int32 = 1
+		switch {
+		case posInNom <= 2:
 			score = 10
+		case posInNom <= 4:
+			score = 9
+		case posInNom <= 6:
+			score = 8
+		default:
+			score = 2
 		}
 		items := []model.JuryScorePutItem{
 			{CriterionID: crList[0].ID, Score: score},
@@ -270,11 +313,42 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		}
 	}
 
+	for nomIdx := 0; nomIdx < 3; nomIdx++ {
+		nomParticipants := participantIDsByNom[nomIdx]
+		if len(nomParticipants) < 6 {
+			continue
+		}
+		votePlan := []struct {
+			participant model.ParticipantID
+			votes       int
+		}{
+			{participant: nomParticipants[0], votes: 6},
+			{participant: nomParticipants[1], votes: 6},
+			{participant: nomParticipants[2], votes: 5},
+			{participant: nomParticipants[3], votes: 5},
+			{participant: nomParticipants[4], votes: 4},
+			{participant: nomParticipants[5], votes: 4},
+		}
+		voters := votersByNom[nomIdx]
+		vIdx := 0
+		for _, vp := range votePlan {
+			for c := 0; c < vp.votes; c++ {
+				if vIdx >= len(voters) {
+					break
+				}
+				if _, err := svc.Vote(ctx, contestID, vp.participant, voters[vIdx]); err != nil {
+					return nil, fmt.Errorf("Vote nom=%d participant=%s voterIdx=%d: %w", nomIdx, vp.participant, vIdx, err)
+				}
+				vIdx++
+			}
+		}
+	}
+
 	res := &SeedResult{
-		ContestID: contestID,
+		ContestID:   contestID,
 		OrganizerID: orgID,
-		Scale:      scale,
-		Finished:   !cfg.LeaveVoting,
+		Scale:       scale,
+		Finished:    !cfg.LeaveVoting,
 	}
 
 	if cfg.LeaveVoting {
@@ -389,7 +463,7 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 			return nil, fmt.Errorf("CreateUser participant owner %d: %w", i, err)
 		}
 		petName := fmt.Sprintf("Участник %d", i+1)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", nil, &nomID)
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", nil, &nomID, "seed-v1", "127.0.0.1", "integration-seed")
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}

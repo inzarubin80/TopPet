@@ -3,7 +3,9 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
 
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/logger"
@@ -13,7 +15,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, ipAddress, userAgent string) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -24,6 +26,25 @@ type (
 
 func NewCreateParticipantHandler(name string, service serviceCreateParticipant) *CreateParticipantHandler {
 	return &CreateParticipantHandler{name: name, service: service}
+}
+
+func requestClientIP(r *http.Request) string {
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			if ip := strings.TrimSpace(parts[0]); ip != "" {
+				return ip
+			}
+		}
+	}
+	if xrip := strings.TrimSpace(r.Header.Get("X-Real-IP")); xrip != "" {
+		return xrip
+	}
+	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	if err == nil && host != "" {
+		return host
+	}
+	return strings.TrimSpace(r.RemoteAddr)
 }
 
 func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +60,8 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
 		NominationID        *string                `json:"nomination_id"`
+		PrivacyConsent      bool                   `json:"privacy_consent"`
+		PolicyVersion       string                 `json:"policy_version"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -55,9 +78,31 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	if entryDescription == "" {
 		entryDescription = req.PetDescription
 	}
+	if !req.PrivacyConsent {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("privacy_consent must be true", nil))
+		return
+	}
+	policyVersion := strings.TrimSpace(req.PolicyVersion)
+	if policyVersion == "" {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("policy_version is required", nil))
+		return
+	}
+	clientIP := requestClientIP(r)
+	userAgent := strings.TrimSpace(r.Header.Get("User-Agent"))
 	logger.Debug("Request data", "handler", "CreateParticipantHandler", "entry_title", entryTitle, "entry_description", entryDescription)
 
-	participant, err := h.service.CreateParticipant(r.Context(), contestID, userID, entryTitle, entryDescription, req.RegistrationAnswers, req.NominationID)
+	participant, err := h.service.CreateParticipant(
+		r.Context(),
+		contestID,
+		userID,
+		entryTitle,
+		entryDescription,
+		req.RegistrationAnswers,
+		req.NominationID,
+		policyVersion,
+		clientIP,
+		userAgent,
+	)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)
 		uhttp.HandleError(w, err)

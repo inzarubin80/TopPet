@@ -10,6 +10,7 @@ import EditContestPage from './pages/EditContestPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import PrivacyPage from './pages/PrivacyPage';
 import { AppHeader } from './components/common/AppHeader';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useToast } from './contexts/ToastContext';
@@ -61,6 +62,7 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/contests/:id/edit"

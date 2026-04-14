@@ -379,3 +379,16 @@
   color: #64748b;
   line-height: 1.4;
 }
+
+.add-participant-privacy-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.add-participant-privacy-consent input {
+  margin-top: 2px;
+}

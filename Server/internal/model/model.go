@@ -60,6 +60,8 @@ type (
 		Tagline             string        `json:"tagline,omitempty"`
 		RulesText           string        `json:"rules_text,omitempty"`
 		PrizeText           string        `json:"prize_text,omitempty"`
+		JuryPrizePlaces     []ContestPrizePlace `json:"jury_prize_places,omitempty"`
+		AudiencePrizePlaces []ContestPrizePlace `json:"audience_prize_places,omitempty"`
 		LogoUrl             string        `json:"logo_url,omitempty"`
 		ThemeColor          string        `json:"theme_color,omitempty"`
 		SponsorName         string        `json:"sponsor_name,omitempty"`
@@ -88,6 +90,11 @@ type (
 		JuryWinners     []ContestWinnerBrief `json:"jury_winners,omitempty"`
 	}
 
+	ContestPrizePlace struct {
+		Place int    `json:"place"`
+		Prize string `json:"prize"`
+	}
+
 	// ContestWinnerBrief — строка для карточки/списка конкурсов (зрители или жюри).
 	ContestWinnerBrief struct {
 		ParticipantID   ParticipantID `json:"participant_id"`
@@ -96,6 +103,8 @@ type (
 		NominationID    *string       `json:"nomination_id,omitempty"`
 		NominationTitle string        `json:"nomination_title,omitempty"`
 		Score           int64         `json:"score"`
+		Place           int           `json:"place,omitempty"`
+		Prize           string        `json:"prize,omitempty"`
 	}
 
 	// ContestUpdate — поля для PATCH конкурса в черновике (после слияния с текущим состоянием).
@@ -108,6 +117,8 @@ type (
 		Tagline                        string
 		RulesText                      string
 		PrizeText                      string
+		JuryPrizePlaces                []ContestPrizePlace
+		AudiencePrizePlaces            []ContestPrizePlace
 		LogoUrl                        string
 		ThemeColor                     string
 		SponsorName                    string
@@ -278,6 +289,10 @@ type (
 		// Победители (только для status=finished; внутри номинации — по голосам зрителей / сумме жюри).
 		IsAudienceWinner bool      `json:"is_audience_winner,omitempty"`
 		IsJuryWinner     bool      `json:"is_jury_winner,omitempty"`
+		AudienceWinnerPlace *int   `json:"audience_winner_place,omitempty"`
+		AudienceWinnerPrize string `json:"audience_winner_prize,omitempty"`
+		JuryWinnerPlace     *int   `json:"jury_winner_place,omitempty"`
+		JuryWinnerPrize     string `json:"jury_winner_prize,omitempty"`
 		CreatedAt        time.Time `json:"created_at"`
 		UpdatedAt        time.Time `json:"updated_at"`
 	}

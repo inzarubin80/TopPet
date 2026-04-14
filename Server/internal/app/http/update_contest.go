@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -89,7 +90,43 @@ func validateContestUpdate(u model.ContestUpdate) string {
 	if utf8.RuneCountInString(u.EntryTitleHint) > entryTitleHintMaxRunes {
 		return "entry_title_hint is too long"
 	}
+	if msg := validateContestPrizePlaces(u.JuryPrizePlaces, "jury_prize_places"); msg != "" {
+		return msg
+	}
+	if msg := validateContestPrizePlaces(u.AudiencePrizePlaces, "audience_prize_places"); msg != "" {
+		return msg
+	}
 	return ""
+}
+
+func validateContestPrizePlaces(places []model.ContestPrizePlace, field string) string {
+	seen := make(map[int]struct{}, len(places))
+	for _, p := range places {
+		if p.Place < 1 {
+			return field + " place must be >= 1"
+		}
+		if strings.TrimSpace(p.Prize) == "" {
+			return field + " prize must not be empty"
+		}
+		if _, ok := seen[p.Place]; ok {
+			return field + " place values must be unique"
+		}
+		seen[p.Place] = struct{}{}
+	}
+	return ""
+}
+
+func cloneAndSortPrizePlaces(places []model.ContestPrizePlace) []model.ContestPrizePlace {
+	if len(places) == 0 {
+		return []model.ContestPrizePlace{}
+	}
+	cloned := make([]model.ContestPrizePlace, len(places))
+	copy(cloned, places)
+	for i := range cloned {
+		cloned[i].Prize = strings.TrimSpace(cloned[i].Prize)
+	}
+	sort.Slice(cloned, func(i, j int) bool { return cloned[i].Place < cloned[j].Place })
+	return cloned
 }
 
 func contestScheduleTimePtrClone(t *time.Time) *time.Time {
@@ -134,6 +171,8 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Tagline              *string `json:"tagline"`
 		RulesText            *string `json:"rules_text"`
 		PrizeText            *string `json:"prize_text"`
+		JuryPrizePlaces      *[]model.ContestPrizePlace `json:"jury_prize_places"`
+		AudiencePrizePlaces  *[]model.ContestPrizePlace `json:"audience_prize_places"`
 		LogoUrl              *string `json:"logo_url"`
 		ThemeColor           *string `json:"theme_color"`
 		SponsorName          *string `json:"sponsor_name"`
@@ -184,6 +223,8 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Tagline:                        contest.Tagline,
 		RulesText:                      contest.RulesText,
 		PrizeText:                      contest.PrizeText,
+		JuryPrizePlaces:                cloneAndSortPrizePlaces(contest.JuryPrizePlaces),
+		AudiencePrizePlaces:            cloneAndSortPrizePlaces(contest.AudiencePrizePlaces),
 		LogoUrl:                        contest.LogoUrl,
 		ThemeColor:                     contest.ThemeColor,
 		SponsorName:                    contest.SponsorName,
@@ -224,6 +265,12 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	if req.PrizeText != nil {
 		u.PrizeText = strings.TrimSpace(*req.PrizeText)
+	}
+	if req.JuryPrizePlaces != nil {
+		u.JuryPrizePlaces = cloneAndSortPrizePlaces(*req.JuryPrizePlaces)
+	}
+	if req.AudiencePrizePlaces != nil {
+		u.AudiencePrizePlaces = cloneAndSortPrizePlaces(*req.AudiencePrizePlaces)
 	}
 	if req.LogoUrl != nil {
 		u.LogoUrl = strings.TrimSpace(*req.LogoUrl)

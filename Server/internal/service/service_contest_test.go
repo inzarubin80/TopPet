@@ -129,7 +129,7 @@ func (m *mockRepository) SetUserEmailIfEmpty(ctx context.Context, userID model.U
 }
 
 // ListContests, UpdateContest, UpdateContestStatus, DeleteContest реализованы ниже с поддержкой моков
-func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {

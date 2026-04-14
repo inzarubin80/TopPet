@@ -139,35 +139,6 @@
   overflow: hidden;
 }
 
-.contest-card-prize-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0 0 8px;
-}
-
-.contest-card-prize-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin-top: 1px;
-  color: #ca8a04;
-}
-
-.contest-card-prize {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  line-height: 1.35;
-  color: #1f2937;
-  font-weight: 500;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .contest-card-footer {
   display: flex;
   flex-wrap: wrap;

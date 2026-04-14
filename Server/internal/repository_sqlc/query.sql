@@ -123,21 +123,23 @@ SET
   tagline = $7,
   rules_text = $8,
   prize_text = $9,
-  logo_url = $10,
-  theme_color = $11,
-  sponsor_name = $12,
-  sponsor_logo_url = $13,
-  sponsor_url = $14,
-  cta_label_override = $15,
-  publication_starts_at = $16,
-  registration_starts_at = $17,
-  voting_starts_at = $18,
-  voting_ends_at = $19,
-  participant_allowed_email_domains = $20,
-  schedule_timezone = $21,
-  min_photo_count = $22,
-  max_photo_count = $23,
-  entry_title_hint = $24,
+  jury_prize_places = $10,
+  audience_prize_places = $11,
+  logo_url = $12,
+  theme_color = $13,
+  sponsor_name = $14,
+  sponsor_logo_url = $15,
+  sponsor_url = $16,
+  cta_label_override = $17,
+  publication_starts_at = $18,
+  registration_starts_at = $19,
+  voting_starts_at = $20,
+  voting_ends_at = $21,
+  participant_allowed_email_domains = $22,
+  schedule_timezone = $23,
+  min_photo_count = $24,
+  max_photo_count = $25,
+  entry_title_hint = $26,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -168,6 +170,17 @@ WHERE id = $1;
 INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, registration_answers, nomination_id)
 VALUES ($1, $2, $3, $4, $5, $4, $5, $6, $7)
 RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
+
+-- name: InsertParticipantConsentAudit :exec
+INSERT INTO participant_consent_audits (
+    participant_id,
+    user_id,
+    consent_type,
+    policy_version,
+    ip_address,
+    user_agent
+)
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: GetParticipantByID :one
 SELECT

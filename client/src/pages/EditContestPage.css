@@ -667,6 +667,36 @@
   min-width: 0;
 }
 
+.edit-contest-prize-places {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.edit-contest-prize-places-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-contest-prize-places-wrap {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-contest-prize-place-row {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
 .edit-contest-page--create .edit-contest-page-inner {
   max-width: var(--edit-page-max);
   margin: 0 auto;

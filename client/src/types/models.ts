@@ -39,6 +39,13 @@ export interface ContestWinnerBrief {
   nomination_id?: string;
   nomination_title?: string;
   score: number;
+  place?: number;
+  prize?: string;
+}
+
+export interface ContestPrizePlace {
+  place: number;
+  prize: string;
 }
 
 export interface Contest {
@@ -58,6 +65,8 @@ export interface Contest {
   /** Многострочный текст правил; пусто — кнопка не показывается. */
   rules_text?: string;
   prize_text?: string;
+  jury_prize_places?: ContestPrizePlace[];
+  audience_prize_places?: ContestPrizePlace[];
   logo_url?: string;
   theme_color?: string;
   sponsor_name?: string;
@@ -225,6 +234,10 @@ export interface Participant {
   is_audience_winner?: boolean;
   /** Завершённый конкурс: максимальная сумма оценок жюри в своей номинации. */
   is_jury_winner?: boolean;
+  audience_winner_place?: number;
+  audience_winner_prize?: string;
+  jury_winner_place?: number;
+  jury_winner_prize?: string;
   created_at: string;
   updated_at: string;
 }

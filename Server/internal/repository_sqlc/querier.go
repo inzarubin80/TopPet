@@ -68,6 +68,7 @@ type Querier interface {
 	GetUserRole(ctx context.Context, userID int64) (string, error)
 	InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*ContestJuryMember, error)
 	InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error)
+	InsertParticipantConsentAudit(ctx context.Context, arg *InsertParticipantConsentAuditParams) error
 	InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*InsertRegistrationFieldRow, error)
 	IsContestJuryMember(ctx context.Context, arg *IsContestJuryMemberParams) (bool, error)
 	IsUserBlocked(ctx context.Context, userID int64) (bool, error)

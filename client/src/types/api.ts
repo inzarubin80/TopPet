@@ -1,6 +1,7 @@
 // API types and utilities
 
 import { Contest, Participant, Comment, ChatMessage, ContestStatus } from './models';
+import type { ContestPrizePlace } from './models';
 
 export interface ContestsListResponse {
   items: Contest[];
@@ -43,6 +44,8 @@ export interface UpdateContestRequest {
   tagline?: string;
   rules_text?: string;
   prize_text?: string;
+  jury_prize_places?: ContestPrizePlace[];
+  audience_prize_places?: ContestPrizePlace[];
   logo_url?: string;
   theme_color?: string;
   sponsor_name?: string;
@@ -83,6 +86,8 @@ export interface CreateParticipantRequest {
   entry_description?: string;
   nomination_id?: string;
   registration_answers?: Record<string, unknown>;
+  privacy_consent?: boolean;
+  policy_version?: string;
 }
 
 export interface UpdateParticipantRequest {

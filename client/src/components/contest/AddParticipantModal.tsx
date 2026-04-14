@@ -45,6 +45,7 @@ function revokeRegistrationImagePicks(picks: Record<string, RegistrationImagePic
 }
 
 const REGISTRATION_TEXTAREA_MAX_RUNES = 10000;
+const PRIVACY_POLICY_VERSION = '2026-04-14';
 
 /** Текст пояснения для участника или undefined, если строка пустая. */
 function registrationFieldHelpText(raw: string | undefined): string | undefined {
@@ -240,6 +241,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [entryTitle, setEntryTitle] = useState('');
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
@@ -316,6 +318,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     } else {
       setEntryTitle('');
     }
+    setPrivacyConsent(!!participant);
   }, [isOpen, participant]);
 
   useEffect(() => {
@@ -469,6 +472,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError('Укажите наименование заявки');
       return;
     }
+    if (!isEditMode && !privacyConsent) {
+      setError('Для отправки заявки необходимо согласие на обработку персональных данных');
+      return;
+    }
 
     const fields = registrationFields ?? [];
     if (currentPhotoTotal < minPhotosRequired) {
@@ -585,6 +592,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               pet_description: '',
               ...(nominationIdProp ? { nomination_id: nominationIdProp } : {}),
               ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
+              privacy_consent: true,
+              policy_version: PRIVACY_POLICY_VERSION,
             },
           })
         );
@@ -674,6 +683,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         return {};
       });
       setEntryTitle('');
+      setPrivacyConsent(false);
       setError(null);
       onClose();
     }
@@ -988,6 +998,24 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           </div>
         ) : null}
         </div>
+
+        {!isEditMode ? (
+          <label className="add-participant-privacy-consent">
+            <input
+              type="checkbox"
+              checked={privacyConsent}
+              onChange={(e) => setPrivacyConsent(e.target.checked)}
+              disabled={loading || uploadingMedia}
+            />
+            <span>
+              Я согласен(а) на обработку персональных данных и ознакомлен(а) с{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                Политикой обработки персональных данных
+              </a>
+              .
+            </span>
+          </label>
+        ) : null}
 
         {error && <ErrorMessage message={error} />}
       </form>

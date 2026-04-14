@@ -74,7 +74,7 @@ func listParticipantsNominationFilterParams(filter *model.ParticipantListNominat
 	return "id", pgtype.UUID{Bytes: u, Valid: true}, nil
 }
 
-func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	reposqlc := sqlc_repository.New(r.conn)
@@ -111,6 +111,17 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 			return nil, model.ErrAlreadyParticipatingInNomination
 		}
 		log.Printf("[Repository] CreateParticipant: ERROR - SQL insert failed: %v", err)
+		return nil, err
+	}
+	if err := reposqlc.InsertParticipantConsentAudit(ctx, &sqlc_repository.InsertParticipantConsentAuditParams{
+		ParticipantID: participant.ID,
+		UserID:        int64(userID),
+		ConsentType:   "privacy_processing",
+		PolicyVersion: strings.TrimSpace(policyVersion),
+		IpAddress:     strings.TrimSpace(consentIP),
+		UserAgent:     strings.TrimSpace(consentUserAgent),
+	}); err != nil {
+		log.Printf("[Repository] CreateParticipant: ERROR - Failed to save consent audit: %v", err)
 		return nil, err
 	}
 	log.Printf("[Repository] CreateParticipant: SQL insert successful, participantID=%s", participant.ID.String())
