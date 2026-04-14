@@ -90,6 +90,7 @@ const EditContestPage: React.FC = () => {
   const [participantEmailDomainsText, setParticipantEmailDomainsText] = useState('');
   const [minPhotoCount, setMinPhotoCount] = useState(1);
   const [maxPhotoCount, setMaxPhotoCount] = useState(30);
+  const [entryTitleHint, setEntryTitleHint] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetUploading, setAssetUploading] = useState<ContestAssetKind | null>(null);
@@ -158,6 +159,7 @@ const EditContestPage: React.FC = () => {
       setParticipantEmailDomainsText('');
       setMinPhotoCount(1);
       setMaxPhotoCount(30);
+      setEntryTitleHint('');
       setLoadState('ready');
       return;
     }
@@ -188,6 +190,7 @@ const EditContestPage: React.FC = () => {
         setParticipantEmailDomainsText((contest.participant_allowed_email_domains ?? []).join('\n'));
         setMinPhotoCount(contest.min_photo_count ?? 1);
         setMaxPhotoCount(contest.max_photo_count ?? 30);
+        setEntryTitleHint(contest.entry_title_hint ?? '');
         setLoadState('ready');
       })
       .catch(() => setLoadState('error'));
@@ -262,6 +265,7 @@ const EditContestPage: React.FC = () => {
         schedule_timezone: scheduleTimezone,
         min_photo_count: minPhotoCount,
         max_photo_count: maxPhotoCount,
+        entry_title_hint: entryTitleHint,
       };
 
       const result = await dispatch(
@@ -816,6 +820,15 @@ const EditContestPage: React.FC = () => {
           aria-label="Поля заявки участника"
         >
           <div className="edit-contest-page-organizer">
+            <Textarea
+              label="Подсказка к полю «Наименование» в заявке"
+              value={entryTitleHint}
+              onChange={(e) => setEntryTitleHint(e.target.value)}
+              placeholder="Например: укажите краткое название работы так, как оно должно отображаться в списке участников."
+              rows={4}
+              disabled={saving}
+              className="edit-contest-entry-title-hint"
+            />
             <ContestRegistrationFieldsPanel
               ref={registrationFieldsRef}
               contest={currentContest}

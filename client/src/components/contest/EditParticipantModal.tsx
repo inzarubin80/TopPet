@@ -8,6 +8,7 @@ interface EditParticipantModalProps {
   participant: Participant | null;
   contestMinPhotoCount?: number;
   contestMaxPhotoCount?: number;
+  entryTitleHint?: string;
 }
 
 export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
@@ -16,6 +17,7 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
   participant,
   contestMinPhotoCount,
   contestMaxPhotoCount,
+  entryTitleHint,
 }) => {
   if (!participant) {
     return null;
@@ -31,6 +33,7 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
       participant={participant}
       contestMinPhotoCount={contestMinPhotoCount}
       contestMaxPhotoCount={contestMaxPhotoCount}
+      entryTitleHint={entryTitleHint}
     />
   );
 };

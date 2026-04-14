@@ -224,6 +224,7 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 		ScheduleTimezone:               normalizeContestScheduleTimezone(c.ScheduleTimezone),
 		MinPhotoCount:                  c.MinPhotoCount,
 		MaxPhotoCount:                  c.MaxPhotoCount,
+		EntryTitleHint:                 c.EntryTitleHint,
 	}
 }
 

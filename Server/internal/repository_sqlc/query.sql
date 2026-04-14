@@ -137,6 +137,7 @@ SET
   schedule_timezone = $21,
   min_photo_count = $22,
   max_photo_count = $23,
+  entry_title_hint = $24,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;

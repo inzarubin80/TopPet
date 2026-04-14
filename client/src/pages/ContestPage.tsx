@@ -934,6 +934,7 @@ const ContestPage: React.FC = () => {
           participantsListSort={participantsSort}
           contestMinPhotoCount={currentContest?.min_photo_count}
           contestMaxPhotoCount={currentContest?.max_photo_count}
+          entryTitleHint={currentContest?.entry_title_hint}
         />
       )}
 
@@ -948,6 +949,7 @@ const ContestPage: React.FC = () => {
           participant={editingParticipant.id ? participants[editingParticipant.id] || editingParticipant : editingParticipant}
           contestMinPhotoCount={currentContest?.min_photo_count}
           contestMaxPhotoCount={currentContest?.max_photo_count}
+          entryTitleHint={currentContest?.entry_title_hint}
         />
       )}
 

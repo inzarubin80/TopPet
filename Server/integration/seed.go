@@ -85,6 +85,7 @@ func ContestUpdateFromModel(c *model.Contest) model.ContestUpdate {
 		ScheduleTimezone:               tz,
 		MinPhotoCount:                  minP,
 		MaxPhotoCount:                  maxP,
+		EntryTitleHint:                 c.EntryTitleHint,
 	}
 }
 

@@ -199,6 +199,8 @@ interface AddParticipantModalProps {
   /** Лимиты фото с конкурса (если не переданы — 1 и 30). */
   contestMinPhotoCount?: number;
   contestMaxPhotoCount?: number;
+  /** Подсказка организатора к полю «Наименование». */
+  entryTitleHint?: string;
 }
 
 export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
@@ -217,6 +219,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   participantsListSort,
   contestMinPhotoCount,
   contestMaxPhotoCount,
+  entryTitleHint,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -238,6 +241,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [entryTitle, setEntryTitle] = useState('');
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
   const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
   const [registrationImagePicks, setRegistrationImagePicks] = useState<
@@ -262,6 +266,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   }, [contestMinPhotoCount, contestMaxPhotoCount]);
 
   const currentPhotoTotal = existingPhotos.length + selectedPhotos.length;
+
+  const entryNameHint = registrationFieldHelpText(entryTitleHint);
 
   // Redirect to login only when modal opens without auth
   useEffect(() => {
@@ -299,6 +305,18 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError(null);
     }
   }, [isOpen, participant, isEditMode]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    if (participant) {
+      const t = (participant.entry_title ?? '').trim();
+      setEntryTitle(t || participant.pet_name || '');
+    } else {
+      setEntryTitle('');
+    }
+  }, [isOpen, participant]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -446,6 +464,12 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     }
     e.preventDefault();
 
+    const trimmedTitle = entryTitle.trim();
+    if (!trimmedTitle) {
+      setError('Укажите наименование заявки');
+      return;
+    }
+
     const fields = registrationFields ?? [];
     if (currentPhotoTotal < minPhotosRequired) {
       setError(
@@ -490,6 +514,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           updateParticipant({
             participantId: participant.id,
             data: {
+              entry_title: trimmedTitle,
               registration_answers: built.answers,
             },
           })
@@ -556,7 +581,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           createParticipant({
             contestId,
             data: {
-              pet_name: '',
+              entry_title: trimmedTitle,
               pet_description: '',
               ...(nominationIdProp ? { nomination_id: nominationIdProp } : {}),
               ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
@@ -648,6 +673,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         revokeRegistrationImagePicks(prev);
         return {};
       });
+      setEntryTitle('');
       setError(null);
       onClose();
     }
@@ -694,6 +720,15 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         ) : null}
 
         <div className="add-participant-form-stack">
+          <Input
+            label="Наименование"
+            hint={entryNameHint}
+            type="text"
+            value={entryTitle}
+            onChange={(e) => setEntryTitle(e.target.value)}
+            disabled={loading || uploadingMedia || registrationFields === null}
+            autoComplete="off"
+          />
           <div className="add-participant-photos">
             <label className="add-participant-media-label">Фотографии</label>
             <p

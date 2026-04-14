@@ -48,7 +48,8 @@ type Contest struct {
 	// Минимальное число фото в заявке для конкурса (1–30).
 	MinPhotoCount int32
 	// Максимальное число фото в заявке для конкурса (1–30, не меньше min_photo_count).
-	MaxPhotoCount int32
+	MaxPhotoCount  int32
+	EntryTitleHint string
 }
 
 type ContestChatMessage struct {

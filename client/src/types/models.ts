@@ -80,6 +80,8 @@ export interface Contest {
   min_photo_count?: number;
   /** Максимум фото в одной заявке (на уровне конкурса). */
   max_photo_count?: number;
+  /** Подсказка организатора для поля «Наименование» в заявке участника. */
+  entry_title_hint?: string;
   created_at: string;
   updated_at: string;
   /** Заполняется для завершённых конкурсов (GET /api/contests, GET один). */

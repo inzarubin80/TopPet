@@ -61,6 +61,7 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		ScheduleTimezone:               c.ScheduleTimezone,
 		MinPhotoCount:                  int(c.MinPhotoCount),
 		MaxPhotoCount:                  int(c.MaxPhotoCount),
+		EntryTitleHint:                 c.EntryTitleHint,
 		CreatedAt:                      c.CreatedAt.Time,
 		UpdatedAt:                      c.UpdatedAt.Time,
 	}
@@ -163,6 +164,7 @@ func (r *Repository) UpdateContest(ctx context.Context, contestID model.ContestI
 		ScheduleTimezone:               u.ScheduleTimezone,
 		MinPhotoCount:                  int32(u.MinPhotoCount),
 		MaxPhotoCount:                  int32(u.MaxPhotoCount),
+		EntryTitleHint:                 u.EntryTitleHint,
 	})
 	if err != nil {
 		return nil, err

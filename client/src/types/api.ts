@@ -60,6 +60,8 @@ export interface UpdateContestRequest {
   participant_allowed_email_domains?: string[];
   min_photo_count?: number;
   max_photo_count?: number;
+  /** Подсказка для поля наименования заявки (участникам). */
+  entry_title_hint?: string;
 }
 
 export interface VoterInfo {
@@ -76,6 +78,9 @@ export interface CreateParticipantRequest {
   /** Пустая строка — сервер подставит имя из профиля пользователя. */
   pet_name?: string;
   pet_description?: string;
+  /** Наименование заявки (предпочтительно явно задать в форме). */
+  entry_title?: string;
+  entry_description?: string;
   nomination_id?: string;
   registration_answers?: Record<string, unknown>;
 }
@@ -83,6 +88,8 @@ export interface CreateParticipantRequest {
 export interface UpdateParticipantRequest {
   pet_name?: string;
   pet_description?: string;
+  entry_title?: string;
+  entry_description?: string;
   registration_answers?: Record<string, unknown>;
 }
 

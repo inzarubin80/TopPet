@@ -78,8 +78,10 @@ type (
 		// MinPhotoCount — минимум фото в заявке для всего конкурса (1–30).
 		MinPhotoCount int `json:"min_photo_count"`
 		// MaxPhotoCount — максимум фото в заявке (1–30), не меньше MinPhotoCount.
-		MaxPhotoCount int       `json:"max_photo_count"`
-		CreatedAt     time.Time `json:"created_at"`
+		MaxPhotoCount int `json:"max_photo_count"`
+		// Подсказка организатора для поля «Наименование» в заявке участника.
+		EntryTitleHint string    `json:"entry_title_hint,omitempty"`
+		CreatedAt      time.Time `json:"created_at"`
 		UpdatedAt     time.Time `json:"updated_at"`
 		// Победители после завершения конкурса (заполняются в GET списка/одного конкурса).
 		AudienceWinners []ContestWinnerBrief `json:"audience_winners,omitempty"`
@@ -120,6 +122,7 @@ type (
 		ScheduleTimezone               string
 		MinPhotoCount                  int
 		MaxPhotoCount                  int
+		EntryTitleHint                 string
 	}
 
 	// Nomination — категория трека конкурса (без шкал; шкалы задаются критериями жюри на уровне конкурса).

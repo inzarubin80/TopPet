@@ -30,7 +30,8 @@ type (
 var (
 	themeColorPattern = regexp.MustCompile(`^(|#[0-9A-Fa-f]{6})$`)
 	ctaLabelMaxRunes        = 64
-	contestRulesTextMaxRunes = 80000
+	contestRulesTextMaxRunes   = 80000
+	entryTitleHintMaxRunes     = 1024
 )
 
 func NewUpdateContestHandler(name string, service serviceUpdateContest) *UpdateContestHandler {
@@ -84,6 +85,9 @@ func validateContestUpdate(u model.ContestUpdate) string {
 	}
 	if err := model.ValidateParticipantEmailDomainsDBString(u.ParticipantAllowedEmailDomains); err != nil {
 		return err.Error()
+	}
+	if utf8.RuneCountInString(u.EntryTitleHint) > entryTitleHintMaxRunes {
+		return "entry_title_hint is too long"
 	}
 	return ""
 }
@@ -146,6 +150,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ParticipantAllowedEmailDomains *[]string `json:"participant_allowed_email_domains"`
 		MinPhotoCount *int `json:"min_photo_count"`
 		MaxPhotoCount *int `json:"max_photo_count"`
+		EntryTitleHint *string `json:"entry_title_hint"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -193,6 +198,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ScheduleTimezone:               contest.ScheduleTimezone,
 		MinPhotoCount:                  minPhotos,
 		MaxPhotoCount:                  maxPhotos,
+		EntryTitleHint:                 contest.EntryTitleHint,
 	}
 
 	if req.Title != nil {
@@ -273,6 +279,9 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	if req.MaxPhotoCount != nil {
 		u.MaxPhotoCount = *req.MaxPhotoCount
+	}
+	if req.EntryTitleHint != nil {
+		u.EntryTitleHint = strings.TrimSpace(*req.EntryTitleHint)
 	}
 
 	if msg := validateContestUpdate(u); msg != "" {

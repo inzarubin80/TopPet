@@ -156,6 +156,10 @@
   padding: 16px 16px 18px;
 }
 
+.edit-contest-page-organizer .edit-contest-entry-title-hint {
+  margin-bottom: 14px;
+}
+
 .edit-contest-page-section-label {
   margin: 0 0 14px;
   padding-bottom: 10px;
