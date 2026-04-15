@@ -1,4 +1,7 @@
 .contest-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 0;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -36,6 +39,9 @@
 }
 
 .contest-card-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 16px;
 }
 
@@ -131,6 +137,7 @@
 
 .contest-card-description {
   margin: 8px 0;
+  flex: 1;
   color: #666;
   font-size: 14px;
   display: -webkit-box;
@@ -142,7 +149,7 @@
 .contest-card-footer {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px 12px;
   margin-top: 12px;
   font-size: 12px;
@@ -152,7 +159,7 @@
 .contest-card-footer-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px 12px;
   margin-left: auto;
 }

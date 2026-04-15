@@ -31,6 +31,7 @@ import { useContestPermissions } from '../hooks/useContestPermissions';
 import { nominationVoteKey } from '../utils/voteKeys';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
+import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
 import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
@@ -629,6 +630,12 @@ const ContestPage: React.FC = () => {
             );
           }}
         />
+
+        {currentContest.jury_voting_enabled ? (
+          <section className="contest-page-jury-block" aria-label="Состав жюри конкурса">
+            <ContestJuryPanel contest={currentContest} isAdmin={false} />
+          </section>
+        ) : null}
 
         </div>
         </section>

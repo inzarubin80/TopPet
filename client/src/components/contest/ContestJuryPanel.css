@@ -25,8 +25,6 @@
 
 .contest-jury-panel-members-title {
   margin: 0 0 0.5rem;
-  font-size: 1.05rem;
-  font-weight: 600;
   color: #0f172a;
 }
 
@@ -130,6 +128,19 @@
   line-height: 1.45;
 }
 
+.contest-jury-public-section + .contest-jury-public-section {
+  margin-top: 0.5rem;
+}
+
+.contest-jury-public-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
 .contest-jury-public-bio {
   margin: 0 0 0.4rem;
   white-space: pre-wrap;
@@ -143,6 +154,75 @@
 
 .contest-jury-public-link:hover {
   text-decoration: underline;
+}
+
+.contest-jury-panel--public {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.contest-jury-panel--public .contest-jury-panel-members-title {
+  margin-bottom: 0.5rem;
+}
+
+.contest-jury-panel--public .contest-jury-hint {
+  margin-bottom: 1rem;
+  color: #64748b;
+}
+
+.contest-jury-panel--public .contest-jury-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.contest-jury-panel--public .contest-jury-item {
+  gap: 0.55rem;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.contest-jury-panel--public .contest-jury-item-head {
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+}
+
+.contest-jury-panel--public .contest-jury-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.contest-jury-panel--public .contest-jury-id {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.contest-jury-panel--public .contest-jury-public {
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.contest-jury-panel--public .contest-jury-public-bio {
+  margin-bottom: 0.55rem;
+}
+
+.contest-jury-panel--public .contest-jury-public-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.contest-jury-panel--public .contest-jury-public-link::before {
+  content: "↗";
+  font-size: 0.78rem;
 }
 
 .contest-jury-add {

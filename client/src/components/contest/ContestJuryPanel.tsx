@@ -263,7 +263,10 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
     );
 
     return (
-      <section className="contest-jury-panel" aria-label="Жюри конкурса">
+      <section
+        className={`contest-jury-panel${canEdit ? '' : ' contest-jury-panel--public'}`}
+        aria-label="Жюри конкурса"
+      >
         {criteriaSlotRef ? (
           <div className="contest-jury-panel-criteria-region">
             <div className="contest-jury-criteria-slot" ref={criteriaSlotRef} />
@@ -271,19 +274,19 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
         ) : null}
 
         <div className="contest-jury-panel-members-region">
-          <h3 id="contest-jury-heading" className="contest-jury-panel-members-title">
+          <h2
+            id="contest-jury-heading"
+            className={`contest-jury-panel-members-title${canEdit ? '' : ' contest-section-heading'}`}
+          >
             Состав жюри
-          </h3>
-          <p className="contest-jury-hint">
-            {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса.
-            {canEdit ? (
-              <>
-                {' '}
-                Добавление и удаление членов жюри и порядок в списке применяются сразу. Портфолио и краткое описание —
-                вместе со страницей конкурса (кнопка «Сохранить изменения»).
-              </>
-            ) : null}
-          </p>
+          </h2>
+          {canEdit ? (
+            <p className="contest-jury-hint">
+              {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса. Добавление и удаление
+              членов жюри и порядок в списке применяются сразу. Портфолио и краткое описание — вместе со страницей
+              конкурса (кнопка «Сохранить изменения»).
+            </p>
+          ) : null}
           {loading ? (
             <p className="contest-jury-muted">Загрузка…</p>
           ) : items.length === 0 ? (
@@ -294,7 +297,7 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
                 <li key={j.id} className="contest-jury-item">
                   <div className="contest-jury-item-head">
                     <span className="contest-jury-name">{j.user_name || `Пользователь ${j.user_id}`}</span>
-                    <span className="contest-jury-id">id: {j.user_id}</span>
+                    {canEdit ? <span className="contest-jury-id">id: {j.user_id}</span> : null}
                     {canEdit && (
                       <div className="reorder-icon-actions reorder-icon-actions--end">
                         <button
@@ -449,16 +452,22 @@ const JuryMemberPublicView: React.FC<{ member: JuryMember }> = ({ member }) => {
   }
   return (
     <div className="contest-jury-public">
-      {bio ? <p className="contest-jury-public-bio">{bio}</p> : null}
+      {bio ? (
+        <div className="contest-jury-public-section">
+          <p className="contest-jury-public-bio">{bio}</p>
+        </div>
+      ) : null}
       {url ? (
-        <a
-          className="contest-jury-public-link"
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Портфолио / профиль
-        </a>
+        <div className="contest-jury-public-section">
+          <a
+            className="contest-jury-public-link"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Открыть профиль
+          </a>
+        </div>
       ) : null}
     </div>
   );
