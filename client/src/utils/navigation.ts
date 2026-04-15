@@ -2,6 +2,7 @@
 
 const RETURN_URL_STORAGE_KEY = 'oauth_return_url';
 const PROFILE_REFERRER_STORAGE_KEY = 'profile_referrer';
+const PROFILE_LOGIN_REFERRER_STORAGE_KEY = 'profile_login_referrer';
 
 /**
  * Get return URL from query parameters
@@ -88,4 +89,36 @@ export const getProfileReferrer = (): string | null => {
  */
 export const clearProfileReferrer = (): void => {
   sessionStorage.removeItem(PROFILE_REFERRER_STORAGE_KEY);
+};
+
+/**
+ * Save the page where unauthenticated user clicked profile before login
+ */
+export const saveProfileLoginReferrer = (url: string): void => {
+  sessionStorage.setItem(PROFILE_LOGIN_REFERRER_STORAGE_KEY, url);
+};
+
+/**
+ * Get profile login referrer URL from sessionStorage
+ */
+export const getProfileLoginReferrer = (): string | null => {
+  return sessionStorage.getItem(PROFILE_LOGIN_REFERRER_STORAGE_KEY);
+};
+
+/**
+ * Clear profile login referrer URL from sessionStorage
+ */
+export const clearProfileLoginReferrer = (): void => {
+  sessionStorage.removeItem(PROFILE_LOGIN_REFERRER_STORAGE_KEY);
+};
+
+/**
+ * Get profile login referrer and clear it from sessionStorage
+ */
+export const getAndClearProfileLoginReferrer = (): string | null => {
+  const referrer = getProfileLoginReferrer();
+  if (referrer) {
+    clearProfileLoginReferrer();
+  }
+  return referrer;
 };

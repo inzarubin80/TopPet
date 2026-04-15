@@ -23,7 +23,7 @@ import {
 import { ContestAssetImageField } from '../components/contest/ContestAssetImageField';
 import { useToast } from '../contexts/ToastContext';
 import { userCanManageContest as canManageContest, canCreateContests } from '../utils/contestPermissions';
-import { uploadContestAsset, type ContestAssetKind } from '../api/contestsApi';
+import { recalculateContestVotingResults, uploadContestAsset, type ContestAssetKind } from '../api/contestsApi';
 import { getErrorMessage } from '../utils/errorHandler';
 import { AxiosError } from 'axios';
 import type { UpdateContestRequest } from '../types/api';
@@ -105,6 +105,7 @@ const EditContestPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetUploading, setAssetUploading] = useState<ContestAssetKind | null>(null);
+  const [recalculatingResults, setRecalculatingResults] = useState(false);
   const [juryCriteriaPortalHost, setJuryCriteriaPortalHost] = useState<HTMLDivElement | null>(null);
 
   const handleJuryCriteriaSlotRef = useCallback((el: HTMLDivElement | null) => {
@@ -134,6 +135,20 @@ const EditContestPage: React.FC = () => {
     }
     return true;
   }, [id, currentContest, juryVoting, dispatch, showError]);
+
+  const handleRecalculateVotingResults = useCallback(async () => {
+    if (!id || id === 'new') return;
+    setRecalculatingResults(true);
+    try {
+      await recalculateContestVotingResults(id);
+      await dispatch(fetchContest(id)).unwrap();
+      showSuccess('Результаты голосования пересчитаны и сохранены');
+    } catch (err: unknown) {
+      showError(getErrorMessage(err));
+    } finally {
+      setRecalculatingResults(false);
+    }
+  }, [id, dispatch, showSuccess, showError]);
 
   useEffect(() => {
     if (!juryVoting) {
@@ -858,6 +873,34 @@ const EditContestPage: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {currentContest.status === 'finished' ? (
+          <section className="edit-contest-page-card" aria-labelledby="edit-section-voting-results-snapshot">
+            <h2 id="edit-section-voting-results-snapshot" className="edit-contest-page-section-label">
+              Результаты голосования
+            </h2>
+            <p className="edit-contest-schedule-intro">
+              Снимок призовых мест фиксируется при завершении конкурса. Если изменились голоса или настройки мест,
+              нажмите «Пересчитать», чтобы обновить сохранённые победители (например, после исправления данных).
+            </p>
+            {currentContest.voting_results_computed_at ? (
+              <p className="edit-contest-schedule-intro">
+                Последнее сохранение снимка:{' '}
+                <strong>{new Date(currentContest.voting_results_computed_at).toLocaleString()}</strong>
+              </p>
+            ) : null}
+            <div className="edit-contest-page-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleRecalculateVotingResults()}
+                disabled={recalculatingResults || saving}
+              >
+                {recalculatingResults ? <LoadingSpinner size="small" /> : 'Пересчитать результаты голосования'}
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         {juryVoting ? (
           <section

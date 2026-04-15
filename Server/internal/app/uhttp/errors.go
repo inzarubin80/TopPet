@@ -97,6 +97,11 @@ func HandleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	if errors.Is(err, model.ErrProfileFieldConflict) {
+		SendErrorResponse(w, http.StatusConflict, err.Error())
+		return
+	}
+
 	if errors.Is(err, model.ErrInvalidUserRole) {
 		SendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return

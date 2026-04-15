@@ -438,7 +438,7 @@ const createContest = `-- name: CreateContest :one
 
 INSERT INTO contests (id, created_by_user_id, title, description, status)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
 `
 
 type CreateContestParams struct {
@@ -492,6 +492,9 @@ func (q *Queries) CreateContest(ctx context.Context, arg *CreateContestParams) (
 		&i.EntryTitleHint,
 		&i.JuryPrizePlaces,
 		&i.AudiencePrizePlaces,
+		&i.AudienceWinnersSnapshot,
+		&i.JuryWinnersSnapshot,
+		&i.VotingResultsComputedAt,
 	)
 	return &i, err
 }
@@ -609,7 +612,7 @@ VALUES (
     $1,
     NULLIF(btrim($2::text), '')
 )
-RETURNING user_id, name, created_at, email, role, is_blocked
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url
 `
 
 type CreateUserParams struct {
@@ -617,10 +620,22 @@ type CreateUserParams struct {
 	Email string
 }
 
+type CreateUserRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
 // Users
-func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.Email)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Name,
@@ -628,6 +643,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User,
 		&i.Email,
 		&i.Role,
 		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
 	)
 	return &i, err
 }
@@ -648,6 +666,15 @@ func (q *Queries) DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageP
 	var contest_id pgtype.UUID
 	err := row.Scan(&contest_id)
 	return contest_id, err
+}
+
+const deleteChatMessagesByUserID = `-- name: DeleteChatMessagesByUserID :exec
+DELETE FROM contest_chat_messages WHERE user_id = $1
+`
+
+func (q *Queries) DeleteChatMessagesByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteChatMessagesByUserID, userID)
+	return err
 }
 
 const deleteComment = `-- name: DeleteComment :exec
@@ -680,6 +707,15 @@ func (q *Queries) DeleteContest(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteContestCommentsByUserID = `-- name: DeleteContestCommentsByUserID :exec
+DELETE FROM contest_comments WHERE user_id = $1
+`
+
+func (q *Queries) DeleteContestCommentsByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteContestCommentsByUserID, userID)
+	return err
+}
+
 const deleteContestJuryMember = `-- name: DeleteContestJuryMember :exec
 DELETE FROM contest_jury_members
 WHERE contest_id = $1 AND user_id = $2
@@ -692,6 +728,15 @@ type DeleteContestJuryMemberParams struct {
 
 func (q *Queries) DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error {
 	_, err := q.db.Exec(ctx, deleteContestJuryMember, arg.ContestID, arg.UserID)
+	return err
+}
+
+const deleteContestJuryMembersByUserID = `-- name: DeleteContestJuryMembersByUserID :exec
+DELETE FROM contest_jury_members WHERE user_id = $1
+`
+
+func (q *Queries) DeleteContestJuryMembersByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteContestJuryMembersByUserID, userID)
 	return err
 }
 
@@ -713,6 +758,15 @@ func (q *Queries) DeleteContestVoteByUserAndNomination(ctx context.Context, arg 
 	var participant_id pgtype.UUID
 	err := row.Scan(&participant_id)
 	return participant_id, err
+}
+
+const deleteContestVotesByUserID = `-- name: DeleteContestVotesByUserID :exec
+DELETE FROM contest_votes WHERE user_id = $1
+`
+
+func (q *Queries) DeleteContestVotesByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteContestVotesByUserID, userID)
+	return err
 }
 
 const deleteJuryCriteriaByContest = `-- name: DeleteJuryCriteriaByContest :exec
@@ -758,6 +812,17 @@ func (q *Queries) DeleteParticipant(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteParticipantConsentAuditsForUser = `-- name: DeleteParticipantConsentAuditsForUser :exec
+DELETE FROM participant_consent_audits AS pca
+WHERE pca.user_id = $1
+   OR pca.participant_id IN (SELECT cp.id FROM contest_participants cp WHERE cp.user_id = $1)
+`
+
+func (q *Queries) DeleteParticipantConsentAuditsForUser(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteParticipantConsentAuditsForUser, userID)
+	return err
+}
+
 const deleteParticipantPhoto = `-- name: DeleteParticipantPhoto :exec
 DELETE FROM contest_participant_photos
 WHERE id = $1
@@ -768,12 +833,39 @@ func (q *Queries) DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) er
 	return err
 }
 
+const deletePaymentsByUserID = `-- name: DeletePaymentsByUserID :exec
+DELETE FROM payments WHERE user_id = $1
+`
+
+func (q *Queries) DeletePaymentsByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deletePaymentsByUserID, userID)
+	return err
+}
+
 const deleteRegistrationFieldsByContest = `-- name: DeleteRegistrationFieldsByContest :exec
 DELETE FROM contest_registration_fields WHERE contest_id = $1
 `
 
 func (q *Queries) DeleteRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRegistrationFieldsByContest, contestID)
+	return err
+}
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUser, userID)
+	return err
+}
+
+const deleteUserAuthProvidersByUserID = `-- name: DeleteUserAuthProvidersByUserID :exec
+DELETE FROM user_auth_providers WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserAuthProvidersByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserAuthProvidersByUserID, userID)
 	return err
 }
 
@@ -806,7 +898,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 }
 
 const getContestByID = `-- name: GetContestByID :one
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests WHERE id = $1
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests WHERE id = $1
 `
 
 func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error) {
@@ -845,6 +937,9 @@ func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest,
 		&i.EntryTitleHint,
 		&i.JuryPrizePlaces,
 		&i.AudiencePrizePlaces,
+		&i.AudienceWinnersSnapshot,
+		&i.JuryWinnersSnapshot,
+		&i.VotingResultsComputedAt,
 	)
 	return &i, err
 }
@@ -1177,13 +1272,25 @@ func (q *Queries) GetUserAuthProvidersByUserID(ctx context.Context, userID int64
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT user_id, name, created_at, email, role, is_blocked FROM users
+SELECT user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url FROM users
 WHERE user_id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, userID int64) (*User, error) {
+type GetUserByIDRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, userID int64) (*GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, userID)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Name,
@@ -1191,6 +1298,9 @@ func (q *Queries) GetUserByID(ctx context.Context, userID int64) (*User, error) 
 		&i.Email,
 		&i.Role,
 		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
 	)
 	return &i, err
 }
@@ -1897,7 +2007,7 @@ func (q *Queries) ListContestVotesByUser(ctx context.Context, arg *ListContestVo
 }
 
 const listContests = `-- name: ListContests :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests
 WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -1951,6 +2061,9 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 			&i.EntryTitleHint,
 			&i.JuryPrizePlaces,
 			&i.AudiencePrizePlaces,
+			&i.AudienceWinnersSnapshot,
+			&i.JuryWinnersSnapshot,
+			&i.VotingResultsComputedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1963,7 +2076,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 }
 
 const listContestsForStatusAutomation = `-- name: ListContestsForStatusAutomation :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests
 WHERE status IN ('draft', 'publication', 'registration', 'voting', 'finished')
 ORDER BY id
 `
@@ -2010,6 +2123,9 @@ func (q *Queries) ListContestsForStatusAutomation(ctx context.Context) ([]*Conte
 			&i.EntryTitleHint,
 			&i.JuryPrizePlaces,
 			&i.AudiencePrizePlaces,
+			&i.AudienceWinnersSnapshot,
+			&i.JuryWinnersSnapshot,
+			&i.VotingResultsComputedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2124,6 +2240,30 @@ func (q *Queries) ListNominationsForContests(ctx context.Context, dollar_1 []pgt
 			return nil, err
 		}
 		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listParticipantIDsByUserID = `-- name: ListParticipantIDsByUserID :many
+SELECT id FROM contest_participants WHERE user_id = $1
+`
+
+func (q *Queries) ListParticipantIDsByUserID(ctx context.Context, userID int64) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listParticipantIDsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -2438,6 +2578,9 @@ SELECT
   u.created_at,
   u.role,
   u.is_blocked,
+  u.date_of_birth,
+  u.phone,
+  u.avatar_url,
   COALESCE((
     SELECT string_agg(DISTINCT p.provider, ', ' ORDER BY p.provider)
     FROM user_auth_providers p
@@ -2460,6 +2603,9 @@ type ListUsersForAdminRow struct {
 	CreatedAt     pgtype.Timestamptz
 	Role          string
 	IsBlocked     bool
+	DateOfBirth   pgtype.Date
+	Phone         *string
+	AvatarUrl     *string
 	AuthProviders interface{}
 }
 
@@ -2479,6 +2625,9 @@ func (q *Queries) ListUsersForAdmin(ctx context.Context, arg *ListUsersForAdminP
 			&i.CreatedAt,
 			&i.Role,
 			&i.IsBlocked,
+			&i.DateOfBirth,
+			&i.Phone,
+			&i.AvatarUrl,
 			&i.AuthProviders,
 		); err != nil {
 			return nil, err
@@ -2563,7 +2712,8 @@ FROM users
 WHERE (
     $1::text = '' OR
     name ILIKE '%' || $1 || '%' OR
-    COALESCE(email, '') ILIKE '%' || $1 || '%'
+    COALESCE(email, '') ILIKE '%' || $1 || '%' OR
+    COALESCE(phone, '') ILIKE '%' || $1 || '%'
 )
 ORDER BY user_id ASC
 LIMIT $2
@@ -2671,6 +2821,22 @@ func (q *Queries) SetParticipantSubmissionStatus(ctx context.Context, arg *SetPa
 		&i.SubmissionComment,
 	)
 	return &i, err
+}
+
+const setUserAvatarIfEmpty = `-- name: SetUserAvatarIfEmpty :exec
+UPDATE users SET avatar_url = $2
+WHERE user_id = $1
+  AND (avatar_url IS NULL OR btrim(COALESCE(avatar_url, '')) = '')
+`
+
+type SetUserAvatarIfEmptyParams struct {
+	UserID    int64
+	AvatarUrl *string
+}
+
+func (q *Queries) SetUserAvatarIfEmpty(ctx context.Context, arg *SetUserAvatarIfEmptyParams) error {
+	_, err := q.db.Exec(ctx, setUserAvatarIfEmpty, arg.UserID, arg.AvatarUrl)
+	return err
 }
 
 const setUserEmailIfEmpty = `-- name: SetUserEmailIfEmpty :exec
@@ -2840,7 +3006,7 @@ SET
   entry_title_hint = $26,
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
 `
 
 type UpdateContestParams struct {
@@ -2935,6 +3101,9 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		&i.EntryTitleHint,
 		&i.JuryPrizePlaces,
 		&i.AudiencePrizePlaces,
+		&i.AudienceWinnersSnapshot,
+		&i.JuryWinnersSnapshot,
+		&i.VotingResultsComputedAt,
 	)
 	return &i, err
 }
@@ -2982,7 +3151,7 @@ const updateContestStatus = `-- name: UpdateContestStatus :one
 UPDATE contests
 SET status = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
 `
 
 type UpdateContestStatusParams struct {
@@ -3026,6 +3195,69 @@ func (q *Queries) UpdateContestStatus(ctx context.Context, arg *UpdateContestSta
 		&i.EntryTitleHint,
 		&i.JuryPrizePlaces,
 		&i.AudiencePrizePlaces,
+		&i.AudienceWinnersSnapshot,
+		&i.JuryWinnersSnapshot,
+		&i.VotingResultsComputedAt,
+	)
+	return &i, err
+}
+
+const updateContestVotingResults = `-- name: UpdateContestVotingResults :one
+UPDATE contests
+SET
+  audience_winners_snapshot = $2,
+  jury_winners_snapshot = $3,
+  voting_results_computed_at = NOW(),
+  updated_at = NOW()
+WHERE id = $1
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
+`
+
+type UpdateContestVotingResultsParams struct {
+	ID                      pgtype.UUID
+	AudienceWinnersSnapshot []byte
+	JuryWinnersSnapshot     []byte
+}
+
+func (q *Queries) UpdateContestVotingResults(ctx context.Context, arg *UpdateContestVotingResultsParams) (*Contest, error) {
+	row := q.db.QueryRow(ctx, updateContestVotingResults, arg.ID, arg.AudienceWinnersSnapshot, arg.JuryWinnersSnapshot)
+	var i Contest
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedByUserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Tier,
+		&i.CoverUrl,
+		&i.RegistrationStartsAt,
+		&i.VotingStartsAt,
+		&i.VotingEndsAt,
+		&i.RequireAcceptance,
+		&i.PublicVotingEnabled,
+		&i.JuryVotingEnabled,
+		&i.Tagline,
+		&i.RulesText,
+		&i.PrizeText,
+		&i.LogoUrl,
+		&i.ThemeColor,
+		&i.SponsorName,
+		&i.SponsorLogoUrl,
+		&i.SponsorUrl,
+		&i.CtaLabelOverride,
+		&i.ParticipantAllowedEmailDomains,
+		&i.ScheduleTimezone,
+		&i.PublicationStartsAt,
+		&i.MinPhotoCount,
+		&i.MaxPhotoCount,
+		&i.EntryTitleHint,
+		&i.JuryPrizePlaces,
+		&i.AudiencePrizePlaces,
+		&i.AudienceWinnersSnapshot,
+		&i.JuryWinnersSnapshot,
+		&i.VotingResultsComputedAt,
 	)
 	return &i, err
 }
@@ -3263,7 +3495,7 @@ const updateUserBlocked = `-- name: UpdateUserBlocked :one
 UPDATE users
 SET is_blocked = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url
 `
 
 type UpdateUserBlockedParams struct {
@@ -3271,9 +3503,21 @@ type UpdateUserBlockedParams struct {
 	IsBlocked bool
 }
 
-func (q *Queries) UpdateUserBlocked(ctx context.Context, arg *UpdateUserBlockedParams) (*User, error) {
+type UpdateUserBlockedRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
+func (q *Queries) UpdateUserBlocked(ctx context.Context, arg *UpdateUserBlockedParams) (*UpdateUserBlockedRow, error) {
 	row := q.db.QueryRow(ctx, updateUserBlocked, arg.UserID, arg.IsBlocked)
-	var i User
+	var i UpdateUserBlockedRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Name,
@@ -3281,6 +3525,9 @@ func (q *Queries) UpdateUserBlocked(ctx context.Context, arg *UpdateUserBlockedP
 		&i.Email,
 		&i.Role,
 		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
 	)
 	return &i, err
 }
@@ -3289,7 +3536,7 @@ const updateUserName = `-- name: UpdateUserName :one
 UPDATE users
 SET name = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url
 `
 
 type UpdateUserNameParams struct {
@@ -3297,9 +3544,21 @@ type UpdateUserNameParams struct {
 	Name   string
 }
 
-func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*User, error) {
+type UpdateUserNameRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
+func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*UpdateUserNameRow, error) {
 	row := q.db.QueryRow(ctx, updateUserName, arg.UserID, arg.Name)
-	var i User
+	var i UpdateUserNameRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Name,
@@ -3307,6 +3566,65 @@ func (q *Queries) UpdateUserName(ctx context.Context, arg *UpdateUserNameParams)
 		&i.Email,
 		&i.Role,
 		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
+	)
+	return &i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users SET
+  name = $1,
+  email = NULLIF(btrim($2::text), ''),
+  phone = NULLIF(btrim($3::text), ''),
+  date_of_birth = $4,
+  avatar_url = NULLIF(btrim($5::text), '')
+WHERE user_id = $6
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url
+`
+
+type UpdateUserProfileParams struct {
+	Name        string
+	Email       string
+	Phone       string
+	DateOfBirth pgtype.Date
+	AvatarUrl   string
+	UserID      int64
+}
+
+type UpdateUserProfileRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg *UpdateUserProfileParams) (*UpdateUserProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.DateOfBirth,
+		arg.AvatarUrl,
+		arg.UserID,
+	)
+	var i UpdateUserProfileRow
+	err := row.Scan(
+		&i.UserID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Email,
+		&i.Role,
+		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
 	)
 	return &i, err
 }
@@ -3315,7 +3633,7 @@ const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users
 SET role = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url
 `
 
 type UpdateUserRoleParams struct {
@@ -3323,9 +3641,21 @@ type UpdateUserRoleParams struct {
 	Role   string
 }
 
-func (q *Queries) UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams) (*User, error) {
+type UpdateUserRoleRow struct {
+	UserID      int64
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+	Email       *string
+	Role        string
+	IsBlocked   bool
+	DateOfBirth pgtype.Date
+	Phone       *string
+	AvatarUrl   *string
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams) (*UpdateUserRoleRow, error) {
 	row := q.db.QueryRow(ctx, updateUserRole, arg.UserID, arg.Role)
-	var i User
+	var i UpdateUserRoleRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Name,
@@ -3333,6 +3663,9 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams)
 		&i.Email,
 		&i.Role,
 		&i.IsBlocked,
+		&i.DateOfBirth,
+		&i.Phone,
+		&i.AvatarUrl,
 	)
 	return &i, err
 }

@@ -310,6 +310,11 @@ func (s *TopPetService) FinishContest(ctx context.Context, contestID model.Conte
 	if err != nil {
 		return nil, err
 	}
+	persisted, err := s.persistVotingResultsAfterFinished(ctx, contestID)
+	if err != nil {
+		return nil, fmt.Errorf("persist voting results: %w", err)
+	}
+	updated = persisted
 	s.broadcastContestStatus(contestID, model.ContestStatusFinished)
 	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
@@ -340,10 +345,36 @@ func (s *TopPetService) UpdateContestStatus(ctx context.Context, contestID model
 		return nil, err
 	}
 
+	if status == model.ContestStatusFinished {
+		persisted, perr := s.persistVotingResultsAfterFinished(ctx, contestID)
+		if perr != nil {
+			return nil, fmt.Errorf("persist voting results: %w", perr)
+		}
+		updated = persisted
+	}
+
 	s.broadcastContestStatus(contestID, status)
 
 	model.ApplyEffectiveContestStatus(updated, time.Now().UTC())
 	return updated, nil
+}
+
+// RecalculateContestVotingResults пересчитывает и сохраняет снимок победителей (только для finished).
+func (s *TopPetService) RecalculateContestVotingResults(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.Contest, error) {
+	contest, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.userCanManageContest(ctx, contest, userID) {
+		return nil, fmt.Errorf("%w: only contest admin can recalculate results", model.ErrForbidden)
+	}
+	if contest.Status != model.ContestStatusFinished {
+		return nil, fmt.Errorf("%w: contest must be finished to recalculate voting results", model.ErrBadRequest)
+	}
+	if _, err := s.persistVotingResultsAfterFinished(ctx, contestID); err != nil {
+		return nil, fmt.Errorf("persist voting results: %w", err)
+	}
+	return s.GetContest(ctx, contestID)
 }
 
 func (s *TopPetService) DeleteContest(ctx context.Context, contestID model.ContestID, userID model.UserID) error {

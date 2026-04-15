@@ -26,12 +26,14 @@ type (
 		GetUser(ctx context.Context, userID model.UserID) (*model.User, error)
 		GetUserRole(ctx context.Context, userID model.UserID) (string, error)
 		UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error)
+		UpdateUserProfile(ctx context.Context, userID model.UserID, u *model.User) (*model.User, error)
 		ListUsersForAdmin(ctx context.Context, limit, offset int32) ([]*model.User, error)
 		CountUsers(ctx context.Context) (int64, error)
 		CountSystemAdmins(ctx context.Context) (int64, error)
 		UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error)
 		IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error)
 		UpdateUserBlocked(ctx context.Context, userID model.UserID, blocked bool) (*model.User, error)
+		DeleteUserAccount(ctx context.Context, userID model.UserID) error
 		GetUserAuthProvidersByProviderUid(ctx context.Context, providerUID, provider string) (*model.UserAuthProvider, error)
 		AddUserAuthProviders(ctx context.Context, userData *model.UserProfileFromProvider, userID model.UserID) (*model.UserAuthProvider, error)
 		GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error)
@@ -45,6 +47,7 @@ type (
 		UpdateContest(ctx context.Context, contestID model.ContestID, u model.ContestUpdate) (*model.Contest, error)
 		SyncNominationPhotoCountsByContest(ctx context.Context, contestID model.ContestID, minPhotoCount, maxPhotoCount int32) error
 		UpdateContestStatus(ctx context.Context, contestID model.ContestID, status model.ContestStatus) (*model.Contest, error)
+		UpdateContestVotingResults(ctx context.Context, contestID model.ContestID, audience, jury []model.ContestWinnerBrief) (*model.Contest, error)
 		ListContestsForStatusAutomation(ctx context.Context) ([]*model.Contest, error)
 		DeleteContest(ctx context.Context, contestID model.ContestID) error
 

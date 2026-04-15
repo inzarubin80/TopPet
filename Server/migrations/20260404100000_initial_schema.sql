@@ -227,7 +227,7 @@ DROP TABLE IF EXISTS contest_comments;
 DROP TABLE IF EXISTS contest_votes;
 DROP TABLE IF EXISTS contest_participant_videos;
 DROP TABLE IF EXISTS contest_participant_photos;
-DROP TABLE IF EXISTS contest_participants;
+DROP TABLE IF EXISTS contest_particcontest_participantsipants;
 DROP TABLE IF EXISTS contest_registration_fields;
 DROP TABLE IF EXISTS contest_jury_criteria;
 DROP TABLE IF EXISTS contest_jury_members;

@@ -6,7 +6,7 @@ VALUES (
     @name,
     NULLIF(btrim(@email::text), '')
 )
-RETURNING user_id, name, created_at, email, role, is_blocked;
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
 
 -- name: SetUserEmailIfEmpty :exec
 UPDATE users AS u SET email = $2
@@ -18,7 +18,7 @@ WHERE u.user_id = $1
   );
 
 -- name: GetUserByID :one
-SELECT user_id, name, created_at, email, role, is_blocked FROM users
+SELECT user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url FROM users
 WHERE user_id = $1;
 
 -- name: IsUserBlocked :one
@@ -35,6 +35,9 @@ SELECT
   u.created_at,
   u.role,
   u.is_blocked,
+  u.date_of_birth,
+  u.phone,
+  u.avatar_url,
   COALESCE((
     SELECT string_agg(DISTINCT p.provider, ', ' ORDER BY p.provider)
     FROM user_auth_providers p
@@ -54,13 +57,13 @@ SELECT count(*)::bigint AS count FROM users WHERE role = 'system_admin';
 UPDATE users
 SET role = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked;
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
 
 -- name: UpdateUserBlocked :one
 UPDATE users
 SET is_blocked = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked;
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
 
 -- name: SearchUsersByQuery :many
 SELECT user_id, name, email
@@ -68,7 +71,8 @@ FROM users
 WHERE (
     $1::text = '' OR
     name ILIKE '%' || $1 || '%' OR
-    COALESCE(email, '') ILIKE '%' || $1 || '%'
+    COALESCE(email, '') ILIKE '%' || $1 || '%' OR
+    COALESCE(phone, '') ILIKE '%' || $1 || '%'
 )
 ORDER BY user_id ASC
 LIMIT $2;
@@ -77,7 +81,22 @@ LIMIT $2;
 UPDATE users
 SET name = $2
 WHERE user_id = $1
-RETURNING user_id, name, created_at, email, role, is_blocked;
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
+
+-- name: UpdateUserProfile :one
+UPDATE users SET
+  name = @name,
+  email = NULLIF(btrim(@email::text), ''),
+  phone = NULLIF(btrim(@phone::text), ''),
+  date_of_birth = @date_of_birth,
+  avatar_url = NULLIF(btrim(@avatar_url::text), '')
+WHERE user_id = @user_id
+RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
+
+-- name: SetUserAvatarIfEmpty :exec
+UPDATE users SET avatar_url = $2
+WHERE user_id = $1
+  AND (avatar_url IS NULL OR btrim(COALESCE(avatar_url, '')) = '');
 
 -- name: GetUserAuthProvidersByProviderUid :one
 SELECT user_id, provider_uid, provider, name FROM user_auth_providers
@@ -91,6 +110,12 @@ RETURNING *;
 -- name: GetUserAuthProvidersByUserID :many
 SELECT * FROM user_auth_providers
 WHERE user_id = $1;
+
+-- name: DeleteUserAuthProvidersByUserID :exec
+DELETE FROM user_auth_providers WHERE user_id = $1;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE user_id = $1;
 
 -- Contests
 
@@ -157,6 +182,16 @@ ORDER BY id;
 -- name: UpdateContestStatus :one
 UPDATE contests
 SET status = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateContestVotingResults :one
+UPDATE contests
+SET
+  audience_winners_snapshot = $2,
+  jury_winners_snapshot = $3,
+  voting_results_computed_at = NOW(),
+  updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
@@ -402,6 +437,26 @@ RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry
 DELETE FROM contest_participants
 WHERE id = $1;
 
+-- name: ListParticipantIDsByUserID :many
+SELECT id FROM contest_participants WHERE user_id = $1;
+
+-- name: DeleteParticipantConsentAuditsForUser :exec
+DELETE FROM participant_consent_audits AS pca
+WHERE pca.user_id = $1
+   OR pca.participant_id IN (SELECT cp.id FROM contest_participants cp WHERE cp.user_id = $1);
+
+-- name: DeleteContestVotesByUserID :exec
+DELETE FROM contest_votes WHERE user_id = $1;
+
+-- name: DeleteContestCommentsByUserID :exec
+DELETE FROM contest_comments WHERE user_id = $1;
+
+-- name: DeleteContestJuryMembersByUserID :exec
+DELETE FROM contest_jury_members WHERE user_id = $1;
+
+-- name: DeletePaymentsByUserID :exec
+DELETE FROM payments WHERE user_id = $1;
+
 -- Contest Participant Photos
 
 -- name: AddParticipantPhoto :one
@@ -643,6 +698,9 @@ RETURNING *;
 DELETE FROM contest_chat_messages
 WHERE id = $1 AND user_id = $2 AND is_system = FALSE
 RETURNING contest_id;
+
+-- name: DeleteChatMessagesByUserID :exec
+DELETE FROM contest_chat_messages WHERE user_id = $1;
 
 -- Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
 

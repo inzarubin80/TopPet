@@ -10,6 +10,8 @@ import (
 
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var oauthEmailFormat = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
@@ -29,7 +31,7 @@ func (r *Repository) CreateUser(ctx context.Context, name string) (*model.User, 
 		return nil, err
 	}
 
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromCreateUserRow(user), nil
 }
 
 func (r *Repository) CreateUserFromProvider(ctx context.Context, userData *model.UserProfileFromProvider) (*model.User, error) {
@@ -59,7 +61,7 @@ func (r *Repository) CreateUserFromProvider(ctx context.Context, userData *model
 		return nil, err
 	}
 
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromCreateUserRow(user), nil
 }
 
 func (r *Repository) SetUserEmailIfEmpty(ctx context.Context, userID model.UserID, email string) error {
@@ -163,7 +165,7 @@ func (r *Repository) GetUser(ctx context.Context, userID model.UserID) (*model.U
 		return nil, err
 	}
 
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromGetUserByIDRow(user), nil
 }
 
 func (r *Repository) UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error) {
@@ -179,7 +181,33 @@ func (r *Repository) UpdateUserName(ctx context.Context, userID model.UserID, na
 		return nil, err
 	}
 
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromUpdateUserNameRow(user), nil
+}
+
+func (r *Repository) UpdateUserProfile(ctx context.Context, userID model.UserID, u *model.User) (*model.User, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	dob := pgtype.Date{}
+	if u.DateOfBirth != nil {
+		dob = pgtype.Date{Time: *u.DateOfBirth, Valid: true}
+	}
+	row, err := reposqlc.UpdateUserProfile(ctx, &sqlc_repository.UpdateUserProfileParams{
+		UserID:      int64(userID),
+		Name:        u.Name,
+		Email:       u.Email,
+		Phone:       u.Phone,
+		DateOfBirth: dob,
+		AvatarUrl:   u.AvatarURL,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		if isUniqueViolation(err) {
+			return nil, fmt.Errorf("%w: %v", model.ErrProfileFieldConflict, err)
+		}
+		return nil, err
+	}
+	return sqlcUserToModelFromUpdateUserProfileRow(row), nil
 }
 
 func (r *Repository) GetUserRole(ctx context.Context, userID model.UserID) (string, error) {
@@ -224,15 +252,7 @@ func (r *Repository) ListUsersForAdmin(ctx context.Context, limit, offset int32)
 	}
 	out := make([]*model.User, 0, len(rows))
 	for _, row := range rows {
-		u := &sqlc_repository.User{
-			UserID:    row.UserID,
-			Name:      row.Name,
-			CreatedAt: row.CreatedAt,
-			Email:     row.Email,
-			Role:      row.Role,
-			IsBlocked: row.IsBlocked,
-		}
-		mu := sqlcUserToModel(u)
+		mu := userRowToModel(row.UserID, row.Name, row.CreatedAt, row.Email, row.Role, row.IsBlocked, row.DateOfBirth, row.Phone, row.AvatarUrl)
 		mu.AuthProviders = authProvidersListFromSQL(row.AuthProviders)
 		out = append(out, mu)
 	}
@@ -273,7 +293,7 @@ func (r *Repository) UpdateUserBlocked(ctx context.Context, userID model.UserID,
 		}
 		return nil, err
 	}
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromUpdateUserBlockedRow(user), nil
 }
 
 func (r *Repository) UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error) {
@@ -288,11 +308,17 @@ func (r *Repository) UpdateUserRole(ctx context.Context, userID model.UserID, ro
 		}
 		return nil, err
 	}
-	return sqlcUserToModel(user), nil
+	return sqlcUserToModelFromUpdateUserRoleRow(user), nil
 }
 
 func (r *Repository) SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error {
-	// This would require a migration to add avatar_url to users table
-	// For now, we'll skip this functionality
-	return nil
+	if avatarURL == nil || strings.TrimSpace(*avatarURL) == "" {
+		return nil
+	}
+	reposqlc := sqlc_repository.New(r.conn)
+	u := strings.TrimSpace(*avatarURL)
+	return reposqlc.SetUserAvatarIfEmpty(ctx, &sqlc_repository.SetUserAvatarIfEmptyParams{
+		UserID:    int64(userID),
+		AvatarUrl: &u,
+	})
 }

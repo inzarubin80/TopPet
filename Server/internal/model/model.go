@@ -30,13 +30,25 @@ type (
 		ID    UserID `json:"id"`
 		Name  string `json:"name"`
 		Email string `json:"email,omitempty"`
+		Phone string `json:"phone,omitempty"`
 		Role  string `json:"role"`
 		// IsBlocked — аккаунт заблокирован администратором системы (мутации API запрещены).
 		IsBlocked bool      `json:"is_blocked"`
 		AvatarURL string    `json:"avatar_url,omitempty"`
+		// DateOfBirth — дата в UTC (время 00:00:00).
+		DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
 		CreatedAt time.Time `json:"created_at"`
 		// AuthProviders заполняется только в GET /api/admin/users (OAuth-провайдеры аккаунта).
 		AuthProviders []string `json:"auth_providers,omitempty"`
+	}
+
+	// CurrentUserPatch — частичное обновление профиля (PATCH /api/auth/me). Поле nil = не менять.
+	CurrentUserPatch struct {
+		Name        *string `json:"name"`
+		Email       *string `json:"email"`
+		Phone       *string `json:"phone"`
+		DateOfBirth *string `json:"date_of_birth"` // YYYY-MM-DD; пустая строка — сбросить дату
+		AvatarURL   *string `json:"avatar_url"`
 	}
 
 	UserAuthProvider struct {
@@ -85,9 +97,14 @@ type (
 		EntryTitleHint string    `json:"entry_title_hint,omitempty"`
 		CreatedAt      time.Time `json:"created_at"`
 		UpdatedAt     time.Time `json:"updated_at"`
+		// VotingResultsComputedAt — момент сохранения снимка результатов (nil = только живой пересчёт из голосов).
+		VotingResultsComputedAt *time.Time `json:"voting_results_computed_at,omitempty"`
 		// Победители после завершения конкурса (заполняются в GET списка/одного конкурса).
 		AudienceWinners []ContestWinnerBrief `json:"audience_winners,omitempty"`
 		JuryWinners     []ContestWinnerBrief `json:"jury_winners,omitempty"`
+		// Persisted* — загрузка из audience_winners_snapshot / jury_winners_snapshot; json:"-" чтобы не дублировать audience_winners.
+		PersistedAudienceWinners []ContestWinnerBrief `json:"-"`
+		PersistedJuryWinners     []ContestWinnerBrief `json:"-"`
 	}
 
 	ContestPrizePlace struct {
@@ -443,4 +460,6 @@ func IsGlobalContestManagerRole(r string) bool {
 var (
 	ErrorNotFound  = errors.New("not found")
 	ErrorForbidden = errors.New("forbidden")
+	// ErrProfileFieldConflict — email или телефон уже заняты другим аккаунтом.
+	ErrProfileFieldConflict = errors.New("this email or phone is already in use")
 )

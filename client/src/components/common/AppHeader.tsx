@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { buildLoginUrl, saveProfileReferrer } from '../../utils/navigation';
+import { buildLoginUrl, saveProfileLoginReferrer, saveProfileReferrer } from '../../utils/navigation';
 import { BRAND_NAME, BRAND_TAGLINE } from '../../config/brand';
 import {
   fetchStaffCommentNotifications,
@@ -42,6 +42,7 @@ export const AppHeader: React.FC = () => {
 
   const handleProfileClick = () => {
     if (!isAuthenticated) {
+      saveProfileLoginReferrer(location.pathname + location.search);
       navigate(buildLoginUrl('/profile'));
       return;
     }

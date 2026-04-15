@@ -184,3 +184,22 @@ func TestComputeContestWinnerOutcome_nominationBucketOrderBySortOrder(t *testing
 		t.Fatalf("expected order p3 (n2) then p1 (n1), got %+v", o.audience)
 	}
 }
+
+func TestOutcomeFromPersistedWinnerBriefs_setsAndMeta(t *testing.T) {
+	aud := []model.ContestWinnerBrief{
+		{ParticipantID: "p1", Place: 1, Prize: "Gold"},
+	}
+	jury := []model.ContestWinnerBrief{
+		{ParticipantID: "p2", Place: 1, Prize: "J1"},
+	}
+	o := outcomeFromPersistedWinnerBriefs(aud, jury)
+	if len(o.audienceSet) != 1 || len(o.jurySet) != 1 {
+		t.Fatalf("sets: want 1+1, got aud=%d jury=%d", len(o.audienceSet), len(o.jurySet))
+	}
+	if m := o.audienceMeta["p1"]; m.place != 1 || m.prize != "Gold" {
+		t.Fatalf("audience meta: %+v", m)
+	}
+	if m := o.juryMeta["p2"]; m.place != 1 || m.prize != "J1" {
+		t.Fatalf("jury meta: %+v", m)
+	}
+}

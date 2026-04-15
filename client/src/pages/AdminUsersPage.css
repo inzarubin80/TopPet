@@ -4,7 +4,7 @@
 }
 
 .admin-users-inner {
-  max-width: 52rem;
+  max-width: min(100%, 72rem);
   margin: 0 auto;
 }
 
@@ -41,6 +41,32 @@
   font-size: var(--font-size-sm);
   line-height: 1.5;
   color: #64748b;
+}
+
+.admin-users-phone {
+  max-width: 10rem;
+  word-break: break-word;
+  white-space: nowrap;
+}
+
+.admin-users-avatar-cell {
+  width: 3.5rem;
+  vertical-align: middle;
+}
+
+.admin-users-avatar-link {
+  display: inline-flex;
+  border-radius: 999px;
+  overflow: hidden;
+  line-height: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.admin-users-avatar-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  display: block;
 }
 
 .admin-users-providers {

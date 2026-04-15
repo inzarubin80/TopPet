@@ -456,9 +456,13 @@ func (r *Repository) SetParticipantSubmissionStatus(ctx context.Context, partici
 }
 
 func (r *Repository) DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error {
+	return r.deleteParticipant(ctx, r.conn, participantID)
+}
+
+func (r *Repository) deleteParticipant(ctx context.Context, conn DBTX, participantID model.ParticipantID) error {
 	log.Printf("[Repository] DeleteParticipant: participantID=%s", participantID)
 
-	reposqlc := sqlc_repository.New(r.conn)
+	reposqlc := sqlc_repository.New(conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {
 		log.Printf("[Repository] DeleteParticipant: ERROR - Failed to parse participantID: %v", err)

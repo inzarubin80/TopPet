@@ -68,6 +68,9 @@ func contestFromSQLc(c *sqlc_repository.Contest) *model.Contest {
 		EntryTitleHint:                 c.EntryTitleHint,
 		CreatedAt:                      c.CreatedAt.Time,
 		UpdatedAt:                      c.UpdatedAt.Time,
+		VotingResultsComputedAt:        pgTimestamptzToTimePtr(c.VotingResultsComputedAt),
+		PersistedAudienceWinners:       parseContestWinnerBriefsJSON(c.AudienceWinnersSnapshot),
+		PersistedJuryWinners:           parseContestWinnerBriefsJSON(c.JuryWinnersSnapshot),
 	}
 }
 
@@ -88,6 +91,17 @@ func contestPrizePlacesBytes(places []model.ContestPrizePlace) ([]byte, error) {
 		return []byte("[]"), nil
 	}
 	return json.Marshal(places)
+}
+
+func parseContestWinnerBriefsJSON(raw []byte) []model.ContestWinnerBrief {
+	if len(raw) == 0 {
+		return nil
+	}
+	var out []model.ContestWinnerBrief
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return out
 }
 
 func (r *Repository) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
@@ -234,6 +248,39 @@ func (r *Repository) UpdateContestStatus(ctx context.Context, contestID model.Co
 		return nil, err
 	}
 
+	return contestFromSQLc(contest), nil
+}
+
+func contestWinnerBriefsJSON(winners []model.ContestWinnerBrief) ([]byte, error) {
+	if len(winners) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal(winners)
+}
+
+// UpdateContestVotingResults сохраняет снимок победителей и выставляет voting_results_computed_at.
+func (r *Repository) UpdateContestVotingResults(ctx context.Context, contestID model.ContestID, audience, jury []model.ContestWinnerBrief) (*model.Contest, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	contestUUID, err := uuid.Parse(string(contestID))
+	if err != nil {
+		return nil, err
+	}
+	audJSON, err := contestWinnerBriefsJSON(audience)
+	if err != nil {
+		return nil, err
+	}
+	juryJSON, err := contestWinnerBriefsJSON(jury)
+	if err != nil {
+		return nil, err
+	}
+	contest, err := reposqlc.UpdateContestVotingResults(ctx, &sqlc_repository.UpdateContestVotingResultsParams{
+		ID:                      pgtype.UUID{Bytes: contestUUID, Valid: true},
+		AudienceWinnersSnapshot: audJSON,
+		JuryWinnersSnapshot:     juryJSON,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return contestFromSQLc(contest), nil
 }
 

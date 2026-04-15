@@ -185,6 +185,60 @@ func computeContestWinnerOutcome(contest *model.Contest, rows []model.Participan
 	return out
 }
 
+// outcomeFromPersistedWinnerBriefs строит наборы победителей из сохранённого снимка (без запроса к contest_votes).
+func outcomeFromPersistedWinnerBriefs(audience, jury []model.ContestWinnerBrief) contestWinnerOutcome {
+	out := contestWinnerOutcome{
+		audienceSet:  make(map[model.ParticipantID]struct{}),
+		jurySet:      make(map[model.ParticipantID]struct{}),
+		audienceMeta: make(map[model.ParticipantID]winnerMeta),
+		juryMeta:     make(map[model.ParticipantID]winnerMeta),
+		audience:     audience,
+		jury:         jury,
+	}
+	for _, w := range audience {
+		out.audienceSet[w.ParticipantID] = struct{}{}
+		out.audienceMeta[w.ParticipantID] = winnerMeta{place: w.Place, prize: w.Prize}
+	}
+	for _, w := range jury {
+		out.jurySet[w.ParticipantID] = struct{}{}
+		out.juryMeta[w.ParticipantID] = winnerMeta{place: w.Place, prize: w.Prize}
+	}
+	return out
+}
+
+// persistVotingResultsAfterFinished пересчитывает победителей из текущих данных и сохраняет снимок в БД.
+// Вызывать при переходе конкурса в finished (статус в строке уже должен быть finished).
+func (s *TopPetService) persistVotingResultsAfterFinished(ctx context.Context, contestID model.ContestID) (*model.Contest, error) {
+	contest, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	if contest.Status != model.ContestStatusFinished {
+		return contest, nil
+	}
+	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	noms, err := s.repository.ListNominationsByContest(ctx, contestID)
+	if err != nil {
+		noms = nil
+	}
+	nomMap := make(map[string]string)
+	nomSortOrder := make(map[string]int)
+	for _, n := range noms {
+		nomMap[n.ID] = n.Title
+		nomSortOrder[n.ID] = n.SortOrder
+	}
+	o := computeContestWinnerOutcome(contest, rows, func(nid *string) string {
+		if nid == nil || *nid == "" {
+			return ""
+		}
+		return nomMap[*nid]
+	}, nomSortOrder)
+	return s.repository.UpdateContestVotingResults(ctx, contestID, o.audience, o.jury)
+}
+
 func (s *TopPetService) computeContestWinnerSets(ctx context.Context, contest *model.Contest) contestWinnerSets {
 	empty := contestWinnerSets{
 		audience: make(map[model.ParticipantID]struct{}),
@@ -208,11 +262,16 @@ func (s *TopPetService) attachParticipantWinnerFlags(ctx context.Context, contes
 	if contest.Status != model.ContestStatusFinished {
 		return
 	}
-	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
-	if err != nil || len(rows) == 0 {
-		return
+	var o contestWinnerOutcome
+	if contest.VotingResultsComputedAt != nil {
+		o = outcomeFromPersistedWinnerBriefs(contest.PersistedAudienceWinners, contest.PersistedJuryWinners)
+	} else {
+		rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+		if err != nil || len(rows) == 0 {
+			return
+		}
+		o = computeContestWinnerOutcome(contest, rows, nil, nil)
 	}
-	o := computeContestWinnerOutcome(contest, rows, nil, nil)
 	for _, p := range participants {
 		if _, ok := o.audienceSet[p.ID]; ok {
 			p.IsAudienceWinner = true
@@ -238,11 +297,16 @@ func (s *TopPetService) attachOneParticipantWinnerFlags(ctx context.Context, con
 	if contest == nil || contest.Status != model.ContestStatusFinished {
 		return
 	}
-	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
-	if err != nil || len(rows) == 0 {
-		return
+	var o contestWinnerOutcome
+	if contest.VotingResultsComputedAt != nil {
+		o = outcomeFromPersistedWinnerBriefs(contest.PersistedAudienceWinners, contest.PersistedJuryWinners)
+	} else {
+		rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+		if err != nil || len(rows) == 0 {
+			return
+		}
+		o = computeContestWinnerOutcome(contest, rows, nil, nil)
 	}
-	o := computeContestWinnerOutcome(contest, rows, nil, nil)
 	if _, ok := o.audienceSet[participant.ID]; ok {
 		participant.IsAudienceWinner = true
 		if meta, has := o.audienceMeta[participant.ID]; has {
@@ -261,6 +325,11 @@ func (s *TopPetService) attachOneParticipantWinnerFlags(ctx context.Context, con
 
 func (s *TopPetService) enrichContestWithWinners(ctx context.Context, contest *model.Contest) {
 	if contest == nil || contest.Status != model.ContestStatusFinished {
+		return
+	}
+	if contest.VotingResultsComputedAt != nil {
+		contest.AudienceWinners = append([]model.ContestWinnerBrief(nil), contest.PersistedAudienceWinners...)
+		contest.JuryWinners = append([]model.ContestWinnerBrief(nil), contest.PersistedJuryWinners...)
 		return
 	}
 	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
@@ -329,6 +398,11 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 	}
 	for _, c := range contests {
 		if c == nil || c.Status != model.ContestStatusFinished {
+			continue
+		}
+		if c.VotingResultsComputedAt != nil {
+			c.AudienceWinners = append([]model.ContestWinnerBrief(nil), c.PersistedAudienceWinners...)
+			c.JuryWinners = append([]model.ContestWinnerBrief(nil), c.PersistedJuryWinners...)
 			continue
 		}
 		nm := nomByContest[c.ID]

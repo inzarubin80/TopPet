@@ -18,7 +18,20 @@ export const getCurrentUser = async (): Promise<User> => {
   return response.data;
 };
 
-export const updateCurrentUser = async (data: { name: string }): Promise<User> => {
+export type PatchCurrentUserBody = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  /** YYYY-MM-DD; пустая строка сбрасывает дату */
+  date_of_birth?: string;
+  avatar_url?: string;
+};
+
+export const updateCurrentUser = async (data: PatchCurrentUserBody): Promise<User> => {
   const response = await axiosClient.patch<User>('/auth/me', data);
   return response.data;
+};
+
+export const deleteCurrentUser = async (): Promise<void> => {
+  await axiosClient.delete('/auth/me');
 };

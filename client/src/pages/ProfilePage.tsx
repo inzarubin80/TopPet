@@ -5,8 +5,12 @@ import { AppDispatch, RootState } from '../store';
 import { logout, setUser } from '../store/slices/authSlice';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
+import { Modal } from '../components/common/Modal';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { getProfileReferrer, clearProfileReferrer } from '../utils/navigation';
 import * as authApi from '../api/authApi';
+import { getApiErrorMessage } from '../types/api';
+import { fetchCurrentUser } from '../store/slices/authSlice';
 import './ProfilePage.css';
 
 const SYSTEM_ROLE_LABEL: Record<string, string> = {
@@ -20,15 +24,31 @@ const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
   const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [dateOfBirth, setDateOfBirth] = useState(
+    user?.date_of_birth ? user.date_of_birth.slice(0, 10) : ''
+  );
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (user?.name) {
-      setName(user.name);
-    }
-  }, [user?.name]);
+    dispatch(fetchCurrentUser());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!user) return;
+    setName(user.name || '');
+    setEmail(user.email || '');
+    setPhone(user.phone || '');
+    setDateOfBirth(user.date_of_birth ? user.date_of_birth.slice(0, 10) : '');
+    setAvatarUrl(user.avatar_url || '');
+  }, [user]);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -43,13 +63,47 @@ const ProfilePage: React.FC = () => {
 
     try {
       setSaving(true);
-      const updatedUser = await authApi.updateCurrentUser({ name: trimmedName });
+      const updatedUser = await authApi.updateCurrentUser({
+        name: trimmedName,
+        email: email.trim(),
+        phone: phone.trim(),
+        date_of_birth: dateOfBirth.trim(),
+        avatar_url: avatarUrl.trim(),
+      });
       dispatch(setUser(updatedUser));
       setSuccess(true);
     } catch (err: any) {
       setError(err?.message || 'Не удалось обновить профиль');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openDeleteConfirm = () => {
+    setDeleteError(null);
+    setShowDeleteConfirm(true);
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!deleting) {
+      setShowDeleteConfirm(false);
+      setDeleteError(null);
+    }
+  };
+
+  const handleConfirmDeleteProfile = async () => {
+    setDeleteError(null);
+    try {
+      setDeleting(true);
+      await authApi.deleteCurrentUser();
+      setShowDeleteConfirm(false);
+      clearProfileReferrer();
+      dispatch(logout());
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      setDeleteError(getApiErrorMessage(err) || 'Не удалось удалить профиль');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -76,15 +130,15 @@ const ProfilePage: React.FC = () => {
     navigate(targetUrl, { replace: true });
   };
 
-  const avatarUrl = user?.avatar_url;
+  const displayAvatarUrl = avatarUrl.trim() || user?.avatar_url;
 
   return (
     <div className="profile-page">
       <div className="profile-card">
         <div className="profile-card-header">
           <div className="profile-avatar">
-            {avatarUrl ? (
-              <img className="profile-avatar-img" src={avatarUrl} alt="Профиль" />
+            {displayAvatarUrl ? (
+              <img className="profile-avatar-img" src={displayAvatarUrl} alt="Профиль" />
             ) : (
               <svg className="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -96,7 +150,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="profile-title">
             <h1>Профиль</h1>
-            <p>Управляйте своим отображаемым именем</p>
+            <p>Имя, контакты и ссылка на аватар</p>
             <p className="profile-system-role">
               Роль в системе: {SYSTEM_ROLE_LABEL[user?.role || 'user'] || user?.role || 'Пользователь'}
             </p>
@@ -111,6 +165,35 @@ const ProfilePage: React.FC = () => {
             placeholder="Ваше имя"
             error={error || undefined}
           />
+          <Input
+            label="Электронная почта"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="email@example.com"
+          />
+          <Input
+            label="Телефон"
+            type="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="+7 …"
+          />
+          <Input
+            label="Дата рождения"
+            type="date"
+            value={dateOfBirth}
+            onChange={(event) => setDateOfBirth(event.target.value)}
+          />
+          <Input
+            label="URL аватарки"
+            type="url"
+            value={avatarUrl}
+            onChange={(event) => setAvatarUrl(event.target.value)}
+            placeholder="https://…"
+          />
           {success && <div className="profile-success">Изменения сохранены</div>}
           <div className="profile-actions">
             <Button type="submit" disabled={saving}>
@@ -121,7 +204,49 @@ const ProfilePage: React.FC = () => {
             </Button>
           </div>
         </form>
+
+        <div className="profile-danger-zone" role="region" aria-label="Удаление профиля">
+          <h2 className="profile-danger-title">Опасная зона</h2>
+          <p className="profile-danger-text">
+            Удаление профиля необратимо: аккаунт, привязки OAuth, ваши заявки участника и сообщения в чатах конкурсов будут стёрты.
+          </p>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={deleting || saving}
+            onClick={openDeleteConfirm}
+          >
+            Удалить профиль
+          </Button>
+        </div>
       </div>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={closeDeleteConfirm}
+        title="Удалить профиль?"
+        footer={
+          <div className="profile-delete-modal-footer">
+            <Button type="button" variant="secondary" onClick={closeDeleteConfirm} disabled={deleting}>
+              Отмена
+            </Button>
+            <Button type="button" variant="danger" onClick={handleConfirmDeleteProfile} disabled={deleting}>
+              {deleting ? <LoadingSpinner size="small" /> : 'Да, удалить навсегда'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="profile-delete-modal-body">
+          <p className="profile-delete-modal-question">
+            Вы уверены, что хотите удалить профиль безвозвратно?
+          </p>
+          <p className="profile-delete-modal-detail">
+            Будут удалены учётная запись, привязки OAuth, ваши заявки на конкурсы и сообщения в чатах конкурсов. Это
+            действие нельзя отменить.
+          </p>
+          {deleteError && <div className="profile-delete-modal-error">{deleteError}</div>}
+        </div>
+      </Modal>
     </div>
   );
 };

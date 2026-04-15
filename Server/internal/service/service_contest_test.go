@@ -61,6 +61,10 @@ func (m *mockRepository) UpdateContestStatus(ctx context.Context, contestID mode
 	return nil, nil
 }
 
+func (m *mockRepository) UpdateContestVotingResults(ctx context.Context, contestID model.ContestID, audience, jury []model.ContestWinnerBrief) (*model.Contest, error) {
+	return nil, nil
+}
+
 func (m *mockRepository) ListContestsForStatusAutomation(ctx context.Context) ([]*model.Contest, error) {
 	return nil, nil
 }
@@ -104,6 +108,9 @@ func (m *mockRepository) GetUser(ctx context.Context, userID model.UserID) (*mod
 	return nil, nil
 }
 func (m *mockRepository) UpdateUserName(ctx context.Context, userID model.UserID, name string) (*model.User, error) {
+	return nil, nil
+}
+func (m *mockRepository) UpdateUserProfile(ctx context.Context, userID model.UserID, u *model.User) (*model.User, error) {
 	return nil, nil
 }
 func (m *mockRepository) IsUserBlocked(ctx context.Context, userID model.UserID) (bool, error) {
@@ -349,6 +356,10 @@ func (m *mockRepository) CountSystemAdmins(ctx context.Context) (int64, error) {
 
 func (m *mockRepository) UpdateUserRole(ctx context.Context, userID model.UserID, role string) (*model.User, error) {
 	return nil, nil
+}
+
+func (m *mockRepository) DeleteUserAccount(ctx context.Context, userID model.UserID) error {
+	return nil
 }
 
 func TestTopPetService_CreateContest(t *testing.T) {

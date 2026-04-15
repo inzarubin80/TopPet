@@ -17,6 +17,12 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'system_admin', label: 'Администратор системы' },
 ];
 
+function formatDateOfBirth(iso?: string): string {
+  if (!iso) return '—';
+  const d = iso.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '—';
+}
+
 const AdminUsersPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -123,6 +129,9 @@ const AdminUsersPage: React.FC = () => {
                     <th>ID</th>
                     <th>Имя</th>
                     <th>Email</th>
+                    <th>Телефон</th>
+                    <th>Дата рождения</th>
+                    <th>Аватар</th>
                     <th>Вход (OAuth)</th>
                     <th>Роль</th>
                     <th>Блокировка</th>
@@ -134,6 +143,23 @@ const AdminUsersPage: React.FC = () => {
                       <td>{u.id}</td>
                       <td>{u.name}</td>
                       <td>{u.email || '—'}</td>
+                      <td className="admin-users-phone">{u.phone?.trim() || '—'}</td>
+                      <td>{formatDateOfBirth(u.date_of_birth)}</td>
+                      <td className="admin-users-avatar-cell">
+                        {u.avatar_url?.trim() ? (
+                          <a
+                            href={u.avatar_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="admin-users-avatar-link"
+                            title={u.avatar_url}
+                          >
+                            <img src={u.avatar_url} alt="" className="admin-users-avatar-thumb" />
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="admin-users-providers">
                         {u.auth_providers && u.auth_providers.length > 0
                           ? u.auth_providers.join(', ')

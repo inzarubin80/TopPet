@@ -81,6 +81,63 @@
   font-size: 14px;
 }
 
+.profile-danger-zone {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e7ecf3;
+}
+
+.profile-danger-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.profile-danger-text {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #64748b;
+  max-width: 560px;
+}
+
+.profile-delete-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-delete-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-delete-modal-question {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.profile-delete-modal-detail {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.profile-delete-modal-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
 @media (max-width: 600px) {
   .profile-card {
     padding: 20px;

@@ -54,6 +54,12 @@ type Contest struct {
 	JuryPrizePlaces []byte
 	// Список мест зрительских симпатий в формате JSON: [{"place":1,"prize":"..."}]
 	AudiencePrizePlaces []byte
+	// Зафиксированные победители зрительского голосования (JSON массив ContestWinnerBrief)
+	AudienceWinnersSnapshot []byte
+	// Зафиксированные победители жюри (JSON массив ContestWinnerBrief)
+	JuryWinnersSnapshot []byte
+	// Момент сохранения/последнего пересчёта снимка результатов
+	VotingResultsComputedAt pgtype.Timestamptz
 }
 
 type ContestChatMessage struct {
@@ -140,15 +146,6 @@ type ContestVote struct {
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 	NominationSlot pgtype.UUID
-}
-
-type User struct {
-	UserID    int64
-	Name      string
-	CreatedAt pgtype.Timestamptz
-	Email     *string
-	Role      string
-	IsBlocked bool
 }
 
 type UserAuthProvider struct {

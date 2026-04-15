@@ -53,6 +53,12 @@ export const finishContest = async (contestId: ContestID): Promise<Contest> => {
   return response.data;
 };
 
+/** Пересчитать и сохранить снимок победителей (только для завершённого конкурса). */
+export const recalculateContestVotingResults = async (contestId: ContestID): Promise<Contest> => {
+  const response = await axiosClient.post<Contest>(`/contests/${contestId}/voting-results/recalculate`);
+  return response.data;
+};
+
 export const updateContestStatus = async (
   contestId: ContestID,
   data: UpdateContestStatusRequest

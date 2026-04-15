@@ -5,7 +5,7 @@ import { AppDispatch, RootState } from '../store';
 import { AuthProviders } from '../components/auth/AuthProviders';
 import { login } from '../store/slices/authSlice';
 import { tokenStorage } from '../utils/tokenStorage';
-import { getAndClearReturnUrl } from '../utils/navigation';
+import { getAndClearProfileLoginReferrer, getAndClearReturnUrl } from '../utils/navigation';
 import { useToast } from '../contexts/ToastContext';
 import { BRAND_NAME, BRAND_TAGLINE } from '../config/brand';
 import './LoginPage.css';
@@ -15,6 +15,18 @@ const LoginPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { showError } = useToast();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
+  const getPostLoginUrl = (): string => {
+    const returnUrl = getAndClearReturnUrl();
+    if (returnUrl === '/profile') {
+      const profileLoginReferrer = getAndClearProfileLoginReferrer();
+      if (profileLoginReferrer && profileLoginReferrer.startsWith('/')) {
+        return profileLoginReferrer;
+      }
+      return '/profile';
+    }
+    return returnUrl || '/';
+  };
 
   useEffect(() => {
     // Если пользователь уже авторизован, редиректим на главную
@@ -32,8 +44,7 @@ const LoginPage: React.FC = () => {
         return;
       }
       
-      const returnUrl = getAndClearReturnUrl();
-      navigate(returnUrl || '/');
+      navigate(getPostLoginUrl());
     }
   }, [isAuthenticated, navigate]);
 
@@ -64,8 +75,7 @@ const LoginPage: React.FC = () => {
       }));
 
       // Очищаем URL и редиректим
-      const returnUrl = getAndClearReturnUrl();
-      const cleanUrl = returnUrl || '/';
+      const cleanUrl = getPostLoginUrl();
       window.history.replaceState({}, '', cleanUrl);
       navigate(cleanUrl);
     }

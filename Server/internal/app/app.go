@@ -194,6 +194,10 @@ func (a *App) registerRoutes() {
 		appHttp.NewUpdateCurrentUserHandler("/api/auth/me", a.service),
 		a.service,
 	))
+	a.mux.Handle("DELETE /api/auth/me", middleware.NewAuthMiddleware(
+		appHttp.NewDeleteCurrentUserHandler("/api/auth/me", a.service),
+		a.service,
+	))
 
 	// Contests (public)
 	a.mux.Handle("GET /api/contests", appHttp.NewListContestsHandler("/api/contests", a.service))
@@ -222,6 +226,10 @@ func (a *App) registerRoutes() {
 	))
 	a.mux.Handle("POST /api/contests/{contestId}/finish", middleware.NewAuthMiddleware(
 		appHttp.NewFinishContestHandler("/api/contests/{contestId}/finish", a.service),
+		a.service,
+	))
+	a.mux.Handle("POST /api/contests/{contestId}/voting-results/recalculate", middleware.NewAuthMiddleware(
+		appHttp.NewRecalculateVotingResultsHandler("/api/contests/{contestId}/voting-results/recalculate", a.service),
 		a.service,
 	))
 

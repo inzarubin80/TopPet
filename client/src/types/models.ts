@@ -15,10 +15,13 @@ export interface User {
   id: UserID;
   name: string;
   email?: string;
+  phone?: string;
   role?: UserRole;
   /** Аккаунт заблокирован администратором системы (запись в API запрещена). */
   is_blocked?: boolean;
   avatar_url?: string;
+  /** Дата рождения (ISO 8601 с сервера). */
+  date_of_birth?: string;
   created_at: string;
   /** Только ответ GET /api/admin/users — OAuth-провайдеры, привязанные к аккаунту. */
   auth_providers?: string[];
@@ -83,6 +86,8 @@ export interface Contest {
   voting_starts_at?: string;
   /** Окончание голосования. */
   voting_ends_at?: string;
+  /** Когда в БД сохранён снимок победителей (после завершения или пересчёта). */
+  voting_results_computed_at?: string | null;
   /** IANA; в каком поясе на форме задаются даты расписания (в API моменты в UTC). */
   schedule_timezone?: string;
   /** Минимум фото в одной заявке (на уровне конкурса). */

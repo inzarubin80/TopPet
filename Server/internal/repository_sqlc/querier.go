@@ -39,19 +39,27 @@ type Querier interface {
 	// Contest Participants
 	CreateParticipant(ctx context.Context, arg *CreateParticipantParams) (*CreateParticipantRow, error)
 	// Users
-	CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error)
+	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
 	DeleteChatMessage(ctx context.Context, arg *DeleteChatMessageParams) (pgtype.UUID, error)
+	DeleteChatMessagesByUserID(ctx context.Context, userID int64) error
 	DeleteComment(ctx context.Context, id pgtype.UUID) error
 	DeleteCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	DeleteContest(ctx context.Context, id pgtype.UUID) error
+	DeleteContestCommentsByUserID(ctx context.Context, userID int64) error
 	DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error
+	DeleteContestJuryMembersByUserID(ctx context.Context, userID int64) error
 	DeleteContestVoteByUserAndNomination(ctx context.Context, arg *DeleteContestVoteByUserAndNominationParams) (pgtype.UUID, error)
+	DeleteContestVotesByUserID(ctx context.Context, userID int64) error
 	DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error
 	DeleteJuryCriterionForContest(ctx context.Context, arg *DeleteJuryCriterionForContestParams) error
 	DeleteNomination(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipant(ctx context.Context, id pgtype.UUID) error
+	DeleteParticipantConsentAuditsForUser(ctx context.Context, userID int64) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
+	DeletePaymentsByUserID(ctx context.Context, userID int64) error
 	DeleteRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) error
+	DeleteUser(ctx context.Context, userID int64) error
+	DeleteUserAuthProvidersByUserID(ctx context.Context, userID int64) error
 	DeleteVotesByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
@@ -64,7 +72,7 @@ type Querier interface {
 	GetPhotosByParticipantID(ctx context.Context, participantID pgtype.UUID) ([]*ContestParticipantPhoto, error)
 	GetUserAuthProvidersByProviderUid(ctx context.Context, arg *GetUserAuthProvidersByProviderUidParams) (*UserAuthProvider, error)
 	GetUserAuthProvidersByUserID(ctx context.Context, userID int64) ([]*UserAuthProvider, error)
-	GetUserByID(ctx context.Context, userID int64) (*User, error)
+	GetUserByID(ctx context.Context, userID int64) (*GetUserByIDRow, error)
 	GetUserRole(ctx context.Context, userID int64) (string, error)
 	InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*ContestJuryMember, error)
 	InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error)
@@ -90,6 +98,7 @@ type Querier interface {
 	ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error)
 	ListNominationsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestNomination, error)
 	ListNominationsForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ContestNomination, error)
+	ListParticipantIDsByUserID(ctx context.Context, userID int64) ([]pgtype.UUID, error)
 	ListParticipantsByContest(ctx context.Context, arg *ListParticipantsByContestParams) ([]*ListParticipantsByContestRow, error)
 	// Contest registration fields (поля заявки участника)
 	ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListRegistrationFieldsByContestRow, error)
@@ -101,6 +110,7 @@ type Querier interface {
 	SearchUsersByQuery(ctx context.Context, arg *SearchUsersByQueryParams) ([]*SearchUsersByQueryRow, error)
 	SetContestJuryMemberSortOrder(ctx context.Context, arg *SetContestJuryMemberSortOrderParams) error
 	SetParticipantSubmissionStatus(ctx context.Context, arg *SetParticipantSubmissionStatusParams) (*SetParticipantSubmissionStatusRow, error)
+	SetUserAvatarIfEmpty(ctx context.Context, arg *SetUserAvatarIfEmptyParams) error
 	SetUserEmailIfEmpty(ctx context.Context, arg *SetUserEmailIfEmptyParams) error
 	SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	SumJuryScoresByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*SumJuryScoresByParticipantIDsRow, error)
@@ -110,6 +120,7 @@ type Querier interface {
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
 	UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*ContestJuryMember, error)
 	UpdateContestStatus(ctx context.Context, arg *UpdateContestStatusParams) (*Contest, error)
+	UpdateContestVotingResults(ctx context.Context, arg *UpdateContestVotingResultsParams) (*Contest, error)
 	UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error)
 	UpdateNomination(ctx context.Context, arg *UpdateNominationParams) (*ContestNomination, error)
 	UpdateNominationLogoUrl(ctx context.Context, arg *UpdateNominationLogoUrlParams) (*ContestNomination, error)
@@ -117,9 +128,10 @@ type Querier interface {
 	UpdateParticipant(ctx context.Context, arg *UpdateParticipantParams) (*UpdateParticipantRow, error)
 	UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, arg *UpdateParticipantOwnerStaffCommentReadAtParams) error
 	UpdateParticipantPhotoOrder(ctx context.Context, arg *UpdateParticipantPhotoOrderParams) error
-	UpdateUserBlocked(ctx context.Context, arg *UpdateUserBlockedParams) (*User, error)
-	UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*User, error)
-	UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams) (*User, error)
+	UpdateUserBlocked(ctx context.Context, arg *UpdateUserBlockedParams) (*UpdateUserBlockedRow, error)
+	UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*UpdateUserNameRow, error)
+	UpdateUserProfile(ctx context.Context, arg *UpdateUserProfileParams) (*UpdateUserProfileRow, error)
+	UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams) (*UpdateUserRoleRow, error)
 	UpsertContestJuryScore(ctx context.Context, arg *UpsertContestJuryScoreParams) (*ContestJuryScore, error)
 	// Contest Votes
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)

@@ -1,26 +1,91 @@
 package repository
 
 import (
+	"strings"
+	"time"
+
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func sqlcUserToModel(u *sqlc_repository.User) *model.User {
+func userRowToModel(
+	userID int64,
+	name string,
+	createdAt pgtype.Timestamptz,
+	email *string,
+	role string,
+	isBlocked bool,
+	dateOfBirth pgtype.Date,
+	phone *string,
+	avatarURL *string,
+) *model.User {
+	out := &model.User{
+		ID:        model.UserID(userID),
+		Name:      name,
+		CreatedAt: createdAt.Time,
+		Role:      role,
+		IsBlocked: isBlocked,
+	}
+	if role == "" {
+		out.Role = model.UserRoleUser
+	}
+	if email != nil {
+		out.Email = *email
+	}
+	if dateOfBirth.Valid {
+		d := dateOfBirth.Time
+		d = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
+		out.DateOfBirth = &d
+	}
+	if phone != nil {
+		out.Phone = strings.TrimSpace(*phone)
+	}
+	if avatarURL != nil {
+		out.AvatarURL = strings.TrimSpace(*avatarURL)
+	}
+	return out
+}
+
+func sqlcUserToModelFromCreateUserRow(u *sqlc_repository.CreateUserRow) *model.User {
 	if u == nil {
 		return nil
 	}
-	out := &model.User{
-		ID:        model.UserID(u.UserID),
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt.Time,
-		Role:      u.Role,
-		IsBlocked: u.IsBlocked,
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
+}
+
+func sqlcUserToModelFromGetUserByIDRow(u *sqlc_repository.GetUserByIDRow) *model.User {
+	if u == nil {
+		return nil
 	}
-	if u.Role == "" {
-		out.Role = model.UserRoleUser
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
+}
+
+func sqlcUserToModelFromUpdateUserNameRow(u *sqlc_repository.UpdateUserNameRow) *model.User {
+	if u == nil {
+		return nil
 	}
-	if u.Email != nil {
-		out.Email = *u.Email
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
+}
+
+func sqlcUserToModelFromUpdateUserBlockedRow(u *sqlc_repository.UpdateUserBlockedRow) *model.User {
+	if u == nil {
+		return nil
 	}
-	return out
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
+}
+
+func sqlcUserToModelFromUpdateUserRoleRow(u *sqlc_repository.UpdateUserRoleRow) *model.User {
+	if u == nil {
+		return nil
+	}
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
+}
+
+func sqlcUserToModelFromUpdateUserProfileRow(u *sqlc_repository.UpdateUserProfileRow) *model.User {
+	if u == nil {
+		return nil
+	}
+	return userRowToModel(u.UserID, u.Name, u.CreatedAt, u.Email, u.Role, u.IsBlocked, u.DateOfBirth, u.Phone, u.AvatarUrl)
 }

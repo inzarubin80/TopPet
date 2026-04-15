@@ -57,6 +57,11 @@ func (s *TopPetService) tickContestStatuses(ctx context.Context) {
 		}
 		log.Printf("[ContestScheduler] contest %s: %s -> %s", c.ID, c.Status, next)
 		s.broadcastContestStatus(c.ID, next)
+		if next == model.ContestStatusFinished {
+			if _, err := s.persistVotingResultsAfterFinished(dbCtx, c.ID); err != nil {
+				log.Printf("[ContestScheduler] persist voting results contest %s: %v", c.ID, err)
+			}
+		}
 	}
 }
 
