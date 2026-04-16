@@ -106,15 +106,21 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	redirectURI := fmt.Sprintf("%s/api/auth/callback?provider=%s", apiRoot, req.Provider)
 
-	scope := "login:info"
+	// Yandex: if Scopes is empty, omit "scope" on /authorize — token uses rights from app registration
+	// (see Yandex ID OAuth docs). Sending scopes not enabled for the app yields invalid_scope.
+	scope := ""
+	omitScope := false
 	if cfg.Oauth2Config != nil && len(cfg.Oauth2Config.Scopes) > 0 {
-		scope = ""
 		for i, s := range cfg.Oauth2Config.Scopes {
 			if i > 0 {
 				scope += " "
 			}
 			scope += s
 		}
+	} else if req.Provider == "yandex" {
+		omitScope = true
+	} else {
+		scope = "login:info"
 	}
 
 	base := cfg.Oauth2Config.Endpoint.AuthURL
@@ -122,7 +128,9 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q.Set("client_id", cfg.Oauth2Config.ClientID)
 	q.Set("response_type", "code")
 	q.Set("redirect_uri", redirectURI)
-	q.Set("scope", scope)
+	if !omitScope {
+		q.Set("scope", scope)
+	}
 	q.Set("state", state)
 	// Only add PKCE parameters if challenge is provided (not for VK)
 	if challenge != "" {

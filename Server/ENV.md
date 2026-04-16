@@ -101,6 +101,14 @@ CLIENT_ID_YANDEX=
 
 # Client Secret из Яндекс.OAuth приложения
 CLIENT_SECRET_YANDEX=
+
+# Опционально: права для параметра scope (через пробел), например login:info login:email.
+# Должны быть включены для приложения в консоли OAuth (см. https://oauth.yandex.com/client/<ID>/info).
+# Если переменная не задана, scope в URL авторизации не передаётся — токен получает права,
+# заданные при регистрации приложения (так обычно устраняют ошибку invalid_scope).
+# Если задаёте список вручную, имена должны совпадать с консолью: для телефона — login:default_phone,
+# не login:phone (иначе invalid_scope при включённых галочках).
+# YANDEX_OAUTH_SCOPES=login:info login:email login:avatar login:birthday login:default_phone
 ```
 
 #### Google OAuth

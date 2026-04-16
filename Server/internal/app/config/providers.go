@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	authinterface "toppet/server/internal/app/authinterface"
 	providerUserData "toppet/server/internal/app/clients/provider_user_data"
@@ -10,6 +11,28 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/yandex"
 )
+
+// yandexOAuthScopesFromEnv returns scopes for Yandex OAuth authorize URL.
+// If YANDEX_OAUTH_SCOPES is unset or empty, returns nil: /authorize must omit scope so that
+// Yandex issues a token with permissions from the app registration (avoids invalid_scope
+// when the code requests rights not enabled for the app).
+// If set, use a space-separated list (must match Yandex OAuth console exactly; phone is login:default_phone, not login:phone).
+func yandexOAuthScopesFromEnv() []string {
+	raw := strings.TrimSpace(os.Getenv("YANDEX_OAUTH_SCOPES"))
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Fields(raw) {
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
 
 // LoadOAuthProviders загружает конфигурацию OAuth провайдеров из переменных окружения
 func LoadOAuthProviders() (authinterface.MapProviderOauthConf, error) {
@@ -26,19 +49,14 @@ func LoadOAuthProviders() (authinterface.MapProviderOauthConf, error) {
 			return nil, fmt.Errorf("CLIENT_SECRET_YANDEX is required when CLIENT_ID_YANDEX is set")
 		}
 
+		yandexScopes := yandexOAuthScopesFromEnv()
 		providers["yandex"] = &authinterface.ProviderOauthConf{
 			Oauth2Config: &oauth2.Config{
 				ClientID:     clientID,
 				ClientSecret: clientSecret,
 				RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=yandex", apiRoot),
-				Scopes: []string{
-					"login:info",
-					"login:email",
-					"login:avatar",
-					"login:birthday",
-					"login:phone",
-				},
-				Endpoint: yandex.Endpoint,
+				Scopes:       yandexScopes,
+				Endpoint:     yandex.Endpoint,
 			},
 			UrlUserData: "https://login.yandex.ru/info?format=json",
 			IconSVG:     icons.GetProviderIcon("yandex"),
@@ -49,13 +67,7 @@ func LoadOAuthProviders() (authinterface.MapProviderOauthConf, error) {
 					ClientID:     clientID,
 					ClientSecret: clientSecret,
 					RedirectURL:  fmt.Sprintf("%s/api/auth/callback?provider=yandex", apiRoot),
-					Scopes: []string{
-						"login:info",
-						"login:email",
-						"login:avatar",
-						"login:birthday",
-						"login:phone",
-					},
+					Scopes:       yandexScopes,
 					Endpoint:     yandex.Endpoint,
 				},
 				"yandex",
