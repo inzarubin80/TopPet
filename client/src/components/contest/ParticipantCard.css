@@ -114,22 +114,14 @@
 .participant-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: 10px;
+  padding: 14px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 18px;
+  border-radius: 16px;
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   background-color: #fff;
   box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
-}
-
-.participant-card-main {
-  display: flex;
-  flex-direction: row;
-  gap: 18px;
-  align-items: flex-start;
-  min-width: 0;
 }
 
 .participant-card:hover {
@@ -138,14 +130,21 @@
   transform: translateY(-1px);
 }
 
+.participant-card-image-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
 .participant-card-image {
-  width: 128px;
-  height: 128px;
-  flex-shrink: 0;
-  border-radius: 14px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
   overflow: hidden;
   background-color: #f1f5f9;
-  display: flex;
+  display: block;
+  position: relative;
 }
 
 .participant-card-single-image {
@@ -153,54 +152,6 @@
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.participant-card-gallery {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  gap: 4px;
-}
-
-.participant-card-gallery-1 {
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
-}
-
-.participant-card-gallery-2 {
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: 1fr;
-}
-
-.participant-card-gallery-3 {
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-}
-
-.participant-card-thumb {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #e5e7eb;
-}
-
-.participant-card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.participant-card-more {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.55);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
 }
 
 .participant-card-placeholder {
@@ -213,19 +164,115 @@
   font-size: 12px;
 }
 
-.participant-card-content {
-  flex: 1;
-  min-width: 0;
+.participant-card-overlays {
+  position: absolute;
+  inset: 8px 8px auto 8px;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  text-align: left;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.participant-card-winner-overlay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.participant-card-winner-overlay svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.participant-card-winner-overlay-audience {
+  background: rgba(220, 38, 38, 0.9);
+}
+
+.participant-card-winner-overlay-jury {
+  background: rgba(79, 70, 229, 0.9);
+}
+
+.participant-card-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.participant-card-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.participant-card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.participant-card-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.participant-card-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participant-card-dot {
+  color: #cbd5e1;
+}
+
+.participant-card-comments,
+.participant-card-hearts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.participant-card-hearts svg {
+  width: 13px;
+  height: 13px;
+  fill: #dc2626;
 }
 
 .participant-card-nomination {
   display: inline-block;
-  align-self: flex-start;
-  padding: 3px 8px;
+  width: fit-content;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
   color: #475569;
@@ -233,153 +280,22 @@
   border-radius: 6px;
 }
 
-.participant-card-name-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 8px;
-  margin: 0 0 12px 0;
-  width: 100%;
-}
-
-.participant-card-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.participant-card-name {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  text-align: left;
-  line-height: 1.25;
-}
-
-.participant-card-winner-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  background: #fef3c7;
-  border-radius: 999px;
-  border: 1px solid #fde68a;
-  font-size: 11px;
-  font-weight: 600;
-  color: #92400e;
-  line-height: 1.2;
-}
-
-.participant-card-winner-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  color: #d97706;
-}
-
-.participant-card-winner-text {
-  line-height: 1.2;
-}
-
-.participant-card-winner-subtitle {
-  font-size: 12px;
-  font-weight: 500;
-  color: #92400e;
-}
-
-.participant-card-description {
-  margin: 0 0 8px 0;
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.45;
-  flex: 1;
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
 .participant-card-footer {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding-top: 14px;
+  padding-top: 10px;
   border-top: 1px solid #f1f5f9;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-}
-
-.participant-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.participant-card-author {
-  color: #64748b;
-}
-
-.participant-card-votes {
-  font-weight: 600;
-  color: #475569;
-}
-
-.participant-card-jury {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  max-width: 100%;
+  gap: 8px;
 }
 
 .participant-card-jury-total {
+  font-size: 12px;
   font-weight: 600;
   color: #475569;
-}
-
-.participant-card-vote-badge {
-  padding: 2px 6px;
-  border-radius: 12px;
-  background-color: #e8f0ff;
-  color: #2f6df6;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.participant-card-winner-meta {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  font-weight: 500;
-  color: #64748b;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.participant-card-winner-meta-wrap {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
 }
 
 .participant-card-icon-actions {
@@ -451,27 +367,6 @@
 }
 
 .participant-card-vote {
-  align-self: flex-start;
-}
-
-@media (max-width: 560px) {
-  .participant-card-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-
-  .participant-card-image {
-    width: 100%;
-    height: min(220px, 52vw);
-    max-height: 240px;
-    align-self: center;
-  }
-
-  .participant-card-winner-meta {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
+  align-self: stretch;
 }
 

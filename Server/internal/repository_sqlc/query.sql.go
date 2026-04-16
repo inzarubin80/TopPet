@@ -365,9 +365,9 @@ func (q *Queries) CountVotesByParticipant(ctx context.Context, participantID pgt
 
 const createChatMessage = `-- name: CreateChatMessage :one
 
-INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at
+INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id
 `
 
 type CreateChatMessageParams struct {
@@ -376,6 +376,7 @@ type CreateChatMessageParams struct {
 	UserID    int64
 	Text      string
 	IsSystem  bool
+	ParentID  pgtype.UUID
 }
 
 // Contest Chat Messages
@@ -386,6 +387,7 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg *CreateChatMessageP
 		arg.UserID,
 		arg.Text,
 		arg.IsSystem,
+		arg.ParentID,
 	)
 	var i ContestChatMessage
 	err := row.Scan(
@@ -396,15 +398,16 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg *CreateChatMessageP
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return &i, err
 }
 
 const createComment = `-- name: CreateComment :one
 
-INSERT INTO contest_comments (id, participant_id, user_id, text)
-VALUES ($1, $2, $3, $4)
-RETURNING id, participant_id, user_id, text, created_at, updated_at
+INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id
 `
 
 type CreateCommentParams struct {
@@ -412,6 +415,7 @@ type CreateCommentParams struct {
 	ParticipantID pgtype.UUID
 	UserID        int64
 	Text          string
+	ParentID      pgtype.UUID
 }
 
 // Contest Comments
@@ -421,6 +425,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg *CreateCommentParams) (
 		arg.ParticipantID,
 		arg.UserID,
 		arg.Text,
+		arg.ParentID,
 	)
 	var i ContestComment
 	err := row.Scan(
@@ -430,6 +435,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg *CreateCommentParams) (
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return &i, err
 }
@@ -879,8 +885,51 @@ func (q *Queries) DeleteVotesByParticipant(ctx context.Context, participantID pg
 	return err
 }
 
+const getChatMessageByID = `-- name: GetChatMessageByID :one
+SELECT id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id FROM contest_chat_messages
+WHERE id = $1
+`
+
+func (q *Queries) GetChatMessageByID(ctx context.Context, id pgtype.UUID) (*ContestChatMessage, error) {
+	row := q.db.QueryRow(ctx, getChatMessageByID, id)
+	var i ContestChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.UserID,
+		&i.Text,
+		&i.IsSystem,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ParentID,
+	)
+	return &i, err
+}
+
+const getChatMessageVoteStats = `-- name: GetChatMessageVoteStats :one
+SELECT 
+  ccm.id,
+  ccm.contest_id,
+  COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score
+FROM contest_chat_messages ccm
+WHERE ccm.id = $1
+`
+
+type GetChatMessageVoteStatsRow struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+	Score     int64
+}
+
+func (q *Queries) GetChatMessageVoteStats(ctx context.Context, id pgtype.UUID) (*GetChatMessageVoteStatsRow, error) {
+	row := q.db.QueryRow(ctx, getChatMessageVoteStats, id)
+	var i GetChatMessageVoteStatsRow
+	err := row.Scan(&i.ID, &i.ContestID, &i.Score)
+	return &i, err
+}
+
 const getCommentByID = `-- name: GetCommentByID :one
-SELECT id, participant_id, user_id, text, created_at, updated_at FROM contest_comments WHERE id = $1
+SELECT id, participant_id, user_id, text, created_at, updated_at, parent_id FROM contest_comments WHERE id = $1
 `
 
 func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error) {
@@ -893,6 +942,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return &i, err
 }
@@ -1073,6 +1123,11 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    (
+      SELECT COUNT(*)::bigint
+      FROM contest_comments cc
+      WHERE cc.participant_id = cp.id
+    ) AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -1100,6 +1155,7 @@ type GetParticipantByContestUserAndNominationRow struct {
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
 	SubmissionComment   *string
+	CommentCount        int64
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }
@@ -1120,6 +1176,7 @@ func (q *Queries) GetParticipantByContestUserAndNomination(ctx context.Context, 
 		&i.NominationID,
 		&i.SubmissionStatus,
 		&i.SubmissionComment,
+		&i.CommentCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1140,6 +1197,11 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    (
+      SELECT COUNT(*)::bigint
+      FROM contest_comments cc
+      WHERE cc.participant_id = cp.id
+    ) AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -1160,6 +1222,7 @@ type GetParticipantByIDRow struct {
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
 	SubmissionComment   *string
+	CommentCount        int64
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }
@@ -1180,6 +1243,7 @@ func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetP
 		&i.NominationID,
 		&i.SubmissionStatus,
 		&i.SubmissionComment,
+		&i.CommentCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1631,12 +1695,15 @@ const listChatMessages = `-- name: ListChatMessages :many
 SELECT 
     ccm.id,
     ccm.contest_id,
+    ccm.parent_id,
     ccm.user_id,
     ccm.text,
     ccm.is_system,
     ccm.created_at,
     ccm.updated_at,
-    COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name
+    COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name,
+    COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score,
+    COALESCE((SELECT v2.value::int FROM contest_chat_message_votes v2 WHERE v2.message_id = ccm.id AND v2.user_id = $4::bigint), 0)::int AS user_vote
 FROM contest_chat_messages ccm
 LEFT JOIN users u ON u.user_id = ccm.user_id
 WHERE ccm.contest_id = $1
@@ -1645,24 +1712,33 @@ LIMIT $2 OFFSET $3
 `
 
 type ListChatMessagesParams struct {
-	ContestID pgtype.UUID
-	Limit     int32
-	Offset    int32
+	ContestID    pgtype.UUID
+	Limit        int32
+	Offset       int32
+	ViewerUserID *int64
 }
 
 type ListChatMessagesRow struct {
 	ID        pgtype.UUID
 	ContestID pgtype.UUID
+	ParentID  pgtype.UUID
 	UserID    int64
 	Text      string
 	IsSystem  bool
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	UserName  string
+	Score     int64
+	UserVote  int32
 }
 
 func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error) {
-	rows, err := q.db.Query(ctx, listChatMessages, arg.ContestID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listChatMessages,
+		arg.ContestID,
+		arg.Limit,
+		arg.Offset,
+		arg.ViewerUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1673,12 +1749,15 @@ func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesPar
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContestID,
+			&i.ParentID,
 			&i.UserID,
 			&i.Text,
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
+			&i.Score,
+			&i.UserVote,
 		); err != nil {
 			return nil, err
 		}
@@ -1694,11 +1773,14 @@ const listCommentsByParticipant = `-- name: ListCommentsByParticipant :many
 SELECT
     cc.id,
     cc.participant_id,
+    cc.parent_id,
     cc.user_id,
     cc.text,
     cc.created_at,
     cc.updated_at,
-    COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name
+    COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
+    COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score,
+    COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = $4::bigint), 0)::int AS user_vote
 FROM contest_comments cc
 LEFT JOIN users u ON u.user_id = cc.user_id
 WHERE cc.participant_id = $1
@@ -1710,20 +1792,29 @@ type ListCommentsByParticipantParams struct {
 	ParticipantID pgtype.UUID
 	Limit         int32
 	Offset        int32
+	ViewerUserID  *int64
 }
 
 type ListCommentsByParticipantRow struct {
 	ID            pgtype.UUID
 	ParticipantID pgtype.UUID
+	ParentID      pgtype.UUID
 	UserID        int64
 	Text          string
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	UserName      string
+	Score         int64
+	UserVote      int32
 }
 
 func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ListCommentsByParticipantRow, error) {
-	rows, err := q.db.Query(ctx, listCommentsByParticipant, arg.ParticipantID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listCommentsByParticipant,
+		arg.ParticipantID,
+		arg.Limit,
+		arg.Offset,
+		arg.ViewerUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1734,11 +1825,14 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 		if err := rows.Scan(
 			&i.ID,
 			&i.ParticipantID,
+			&i.ParentID,
 			&i.UserID,
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
+			&i.Score,
+			&i.UserVote,
 		); err != nil {
 			return nil, err
 		}
@@ -2285,6 +2379,7 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    COALESCE(cc.comment_cnt, 0)::bigint AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -2299,6 +2394,11 @@ LEFT JOIN (
     FROM contest_jury_scores
     GROUP BY participant_id
 ) js ON js.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS comment_cnt
+    FROM contest_comments
+    GROUP BY participant_id
+) cc ON cc.participant_id = cp.id
 WHERE cp.contest_id = $1
   AND (
     cp.submission_status = 'accepted'
@@ -2391,6 +2491,7 @@ type ListParticipantsByContestRow struct {
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
 	SubmissionComment   *string
+	CommentCount        int64
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }
@@ -2430,6 +2531,7 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 			&i.NominationID,
 			&i.SubmissionStatus,
 			&i.SubmissionComment,
+			&i.CommentCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -2957,7 +3059,7 @@ const updateChatMessage = `-- name: UpdateChatMessage :one
 UPDATE contest_chat_messages
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3 AND is_system = FALSE
-RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at
+RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id
 `
 
 type UpdateChatMessageParams struct {
@@ -2977,6 +3079,7 @@ func (q *Queries) UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageP
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return &i, err
 }
@@ -2985,7 +3088,7 @@ const updateComment = `-- name: UpdateComment :one
 UPDATE contest_comments
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
-RETURNING id, participant_id, user_id, text, created_at, updated_at
+RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id
 `
 
 type UpdateCommentParams struct {
@@ -3004,6 +3107,7 @@ func (q *Queries) UpdateComment(ctx context.Context, arg *UpdateCommentParams) (
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return &i, err
 }
@@ -3699,6 +3803,60 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams)
 		&i.Phone,
 		&i.AvatarUrl,
 	)
+	return &i, err
+}
+
+const upsertChatMessageVote = `-- name: UpsertChatMessageVote :one
+INSERT INTO contest_chat_message_votes (message_id, user_id, value)
+VALUES ($1, $2, $3)
+ON CONFLICT (message_id, user_id)
+DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+RETURNING message_id, user_id, value
+`
+
+type UpsertChatMessageVoteParams struct {
+	MessageID pgtype.UUID
+	UserID    int64
+	Value     int16
+}
+
+type UpsertChatMessageVoteRow struct {
+	MessageID pgtype.UUID
+	UserID    int64
+	Value     int16
+}
+
+func (q *Queries) UpsertChatMessageVote(ctx context.Context, arg *UpsertChatMessageVoteParams) (*UpsertChatMessageVoteRow, error) {
+	row := q.db.QueryRow(ctx, upsertChatMessageVote, arg.MessageID, arg.UserID, arg.Value)
+	var i UpsertChatMessageVoteRow
+	err := row.Scan(&i.MessageID, &i.UserID, &i.Value)
+	return &i, err
+}
+
+const upsertCommentVote = `-- name: UpsertCommentVote :one
+INSERT INTO contest_comment_votes (comment_id, user_id, value)
+VALUES ($1, $2, $3)
+ON CONFLICT (comment_id, user_id)
+DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+RETURNING comment_id, user_id, value
+`
+
+type UpsertCommentVoteParams struct {
+	CommentID pgtype.UUID
+	UserID    int64
+	Value     int16
+}
+
+type UpsertCommentVoteRow struct {
+	CommentID pgtype.UUID
+	UserID    int64
+	Value     int16
+}
+
+func (q *Queries) UpsertCommentVote(ctx context.Context, arg *UpsertCommentVoteParams) (*UpsertCommentVoteRow, error) {
+	row := q.db.QueryRow(ctx, upsertCommentVote, arg.CommentID, arg.UserID, arg.Value)
+	var i UpsertCommentVoteRow
+	err := row.Scan(&i.CommentID, &i.UserID, &i.Value)
 	return &i, err
 }
 

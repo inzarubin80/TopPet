@@ -100,10 +100,15 @@ export interface UpdateParticipantRequest {
 
 export interface CreateCommentRequest {
   text: string;
+  parent_id?: string;
 }
 
 export interface UpdateCommentRequest {
   text: string;
+}
+
+export interface VoteValueRequest {
+  value: -1 | 1;
 }
 
 export interface VoteRequest {

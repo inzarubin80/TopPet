@@ -212,6 +212,7 @@ export interface Participant {
   contest_id: ContestID;
   user_id: UserID;
   user_name?: string;
+  user_avatar_url?: string;
   /** UUID номинации, если заявка привязана к категории */
   nomination_id?: string;
   /** Модерация: после редактирования — pending, пока организатор не примет. */
@@ -226,6 +227,7 @@ export interface Participant {
   entry_description?: string;
   registration_answers?: Record<string, unknown>;
   photos?: Photo[];
+  comment_count?: number;
   total_votes?: number;
   /** Сумма баллов жюри по всем критериям и всем членам жюри (если API отдал поле). */
   total_jury_score?: number;
@@ -269,9 +271,12 @@ export interface Vote {
 export interface Comment {
   id: CommentID;
   participant_id: ParticipantID;
+  parent_id?: CommentID | null;
   user_id: UserID;
   user_name?: string;
   text: string;
+  score: number;
+  user_vote: number;
   created_at: string;
   updated_at: string;
 }
@@ -290,10 +295,13 @@ export interface StaffCommentNotification {
 export interface ChatMessage {
   id: ChatMessageID;
   contest_id: ContestID;
+  parent_id?: ChatMessageID | null;
   user_id: UserID;
   user_name?: string;
   text: string;
   is_system: boolean;
+  score: number;
+  user_vote: number;
   created_at: string;
   updated_at: string;
 }

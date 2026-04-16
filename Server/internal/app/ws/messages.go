@@ -11,8 +11,9 @@ const (
 	MessageTypeVoteDeleted          MessageType = "vote_deleted"
 	MessageTypeUserVoteUpdated      MessageType = "user_vote_updated"
 	MessageTypeChatMessage          MessageType = "chat_message"
-	MessageTypeMessageUpdated       MessageType = "message_updated"
-	MessageTypeMessageDeleted       MessageType = "message_deleted"
+	MessageTypeMessageUpdated          MessageType = "message_updated"
+	MessageTypeMessageDeleted          MessageType = "message_deleted"
+	MessageTypeChatMessageVoteUpdated  MessageType = "chat_message_vote_updated"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -65,6 +66,17 @@ type MessageDeletedPayload struct {
 	Type      MessageType     `json:"type"`
 	ContestID model.ContestID `json:"contest_id"`
 	MessageID model.ChatMessageID `json:"message_id"`
+}
+
+// ChatMessageVoteUpdatedPayload — обновление суммы голосов сообщения чата (для всех подписчиков).
+// VoterUserID/VoterValue — кто голосовал и какое значение записано; клиент совмещает с сессией, чтобы обновить user_vote.
+type ChatMessageVoteUpdatedPayload struct {
+	Type        MessageType         `json:"type"`
+	ContestID   model.ContestID     `json:"contest_id"`
+	MessageID   model.ChatMessageID `json:"message_id"`
+	Score       int64               `json:"score"`
+	VoterUserID model.UserID        `json:"voter_user_id"`
+	VoterValue  int16               `json:"voter_value"`
 }
 
 // NewMessagePayload представляет payload для нового сообщения

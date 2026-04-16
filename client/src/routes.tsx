@@ -15,6 +15,7 @@ import { AppHeader } from './components/common/AppHeader';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useToast } from './contexts/ToastContext';
 import { buildLoginUrl } from './utils/navigation';
+import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 
 const SystemAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -52,6 +53,7 @@ const AppLayout: React.FC = () => {
       <main className="app-main">
         <Outlet />
       </main>
+      <CookieConsentBanner />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

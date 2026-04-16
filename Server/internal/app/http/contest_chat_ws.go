@@ -15,7 +15,7 @@ import (
 
 type (
 	contestChatService interface {
-		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string) (*model.ChatMessage, error)
+		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID) (*model.ChatMessage, error)
 	}
 
 	serviceAuth interface {
@@ -23,10 +23,10 @@ type (
 	}
 
 	ContestChatWSHandler struct {
-		name    string
-		service contestChatService
+		name        string
+		service     contestChatService
 		authService serviceAuth
-		hub     *wsapp.Hub
+		hub         *wsapp.Hub
 	}
 )
 
@@ -39,16 +39,17 @@ func NewContestChatWSHandler(name string, svc contestChatService, authSvc servic
 }
 
 type wsIncomingMessage struct {
-	Type      string `json:"type"`
-	ContestID string `json:"contest_id"`
-	Text      string `json:"text"`
+	Type      string               `json:"type"`
+	ContestID string               `json:"contest_id"`
+	Text      string               `json:"text"`
+	ParentID  *model.ChatMessageID `json:"parent_id"`
 }
 
 func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[WS] New WebSocket connection attempt from %s, path: %s", r.RemoteAddr, r.URL.Path)
-	
+
 	var userID model.UserID
-	
+
 	// First, try to get userID from context (set by auth middleware if provided)
 	userIDVal := r.Context().Value(defenitions.UserID)
 	if userIDVal != nil {
@@ -67,13 +68,13 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		} else {
 			log.Printf("[WS] Access token found in query params")
 		}
-		
+
 		if accessToken == "" {
 			log.Printf("[WS] ERROR: No access token provided, rejecting connection")
 			uhttp.HandleError(w, uhttp.NewUnauthorizedError("access token is required", nil))
 			return
 		}
-		
+
 		// Validate token and extract userID
 		log.Printf("[WS] Validating access token...")
 		claims, err := h.authService.Authorization(r.Context(), accessToken)
@@ -82,7 +83,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			uhttp.HandleError(w, uhttp.NewUnauthorizedError("invalid access token", err))
 			return
 		}
-		
+
 		userID = claims.UserID
 		log.Printf("[WS] Access token validated, UserID: %d", userID)
 	}
@@ -93,7 +94,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		log.Printf("[WS] ERROR: Failed to upgrade connection: %v", err)
 		return
 	}
-	
+
 	log.Printf("[WS] WebSocket connection established successfully for user %d", userID)
 	client := &wsapp.Client{
 		Conn:     conn,
@@ -108,7 +109,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("[WS] Starting WritePump for user %d", userID)
 	go client.WritePump()
-	
+
 	log.Printf("[WS] Starting ReadPump for user %d", userID)
 	client.ReadPump(func(raw []byte) {
 		var msg wsIncomingMessage
@@ -138,6 +139,7 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 				model.ContestID(msg.ContestID),
 				userID,
 				msg.Text,
+				msg.ParentID,
 			)
 			if err != nil {
 				log.Printf("[WS] ERROR: Failed to create chat message from user %d: %v", userID, err)

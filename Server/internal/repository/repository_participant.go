@@ -196,6 +196,7 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CommentCount:        participant.CommentCount,
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
 	}
@@ -247,6 +248,7 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
+		CommentCount:        participant.CommentCount,
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
 	}
@@ -330,6 +332,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 			EntryTitle:          p.EntryTitle,
 			EntryDescription:    p.EntryDescription,
 			RegistrationAnswers: parseRegistrationAnswers(p.RegistrationAnswers),
+			CommentCount:        p.CommentCount,
 			CreatedAt:           p.CreatedAt.Time,
 			UpdatedAt:           p.UpdatedAt.Time,
 		}

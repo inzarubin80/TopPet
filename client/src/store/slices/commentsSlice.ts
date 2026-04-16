@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Comment, ParticipantID, CommentID } from '../../types/models';
 import * as commentsApi from '../../api/commentsApi';
 import { CreateCommentRequest, UpdateCommentRequest, CommentsListResponse, getApiErrorMessage } from '../../types/api';
@@ -69,12 +69,36 @@ export const deleteComment = createAsyncThunk(
   }
 );
 
+export const voteComment = createAsyncThunk(
+  'comments/voteComment',
+  async ({ commentId, value }: { commentId: CommentID; value: -1 | 1 }, { rejectWithValue }) => {
+    try {
+      await commentsApi.voteComment(commentId, value);
+      return { commentId, value };
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
+  }
+);
+
 const commentsSlice = createSlice({
   name: 'comments',
   initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    setCommentVote: (state, action: PayloadAction<{ commentId: CommentID; value: -1 | 0 | 1 }>) => {
+      const { commentId, value } = action.payload;
+      Object.keys(state.items).forEach((participantId) => {
+        const comment = state.items[participantId].find((c) => c.id === commentId);
+        if (!comment) {
+          return;
+        }
+        const prevVote = comment.user_vote || 0;
+        comment.user_vote = value;
+        comment.score = (comment.score || 0) - prevVote + value;
+      });
     },
   },
   extraReducers: (builder) => {
@@ -122,9 +146,10 @@ const commentsSlice = createSlice({
           state.items[participantId] = state.items[participantId].filter((c) => c.id !== commentId);
           state.totals[participantId] = Math.max(0, (state.totals[participantId] || 0) - 1);
         });
-      });
+      })
+      .addCase(voteComment.fulfilled, () => {});
   },
 });
 
-export const { clearError } = commentsSlice.actions;
+export const { clearError, setCommentVote } = commentsSlice.actions;
 export default commentsSlice.reducer;

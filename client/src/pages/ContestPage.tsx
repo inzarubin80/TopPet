@@ -17,8 +17,6 @@ import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
-import { ParticipantVotersModal } from '../components/contest/ParticipantVotersModal';
-import { ParticipantJuryReportModal } from '../components/contest/ParticipantJuryReportModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -44,6 +42,17 @@ import { buildLoginUrl } from '../utils/navigation';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
+const EMPTY_STRING_ARRAY: string[] = [];
+const EMPTY_PARTICIPANTS_ARRAY: Participant[] = [];
+const EMPTY_VOTE_SLOTS: Record<string, string> = {};
+
+type ContestTab = 'about' | 'chat' | 'gallery' | 'winners';
+
+function parseContestTabFromHash(hash: string): ContestTab {
+  const h = (hash || '').replace(/^#/, '').trim().toLowerCase();
+  if (h === 'chat' || h === 'gallery' || h === 'winners' || h === 'about') return h;
+  return 'about';
+}
 
 /** Проверка по списку «мои заявки» в конкурсе (актуально при пагинации общего списка). */
 function userHasParticipantForNomination(
@@ -72,13 +81,13 @@ const ContestPage: React.FC = () => {
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const participantIds = useSelector((state: RootState) =>
-    id ? state.participants.byContest[id] || [] : []
+    id ? state.participants.byContest[id] || EMPTY_STRING_ARRAY : EMPTY_STRING_ARRAY
   );
   const participantsListTotal = useSelector((state: RootState) =>
     id ? state.participants.listTotalByContest[id] ?? 0 : 0
   );
   const myContestParticipants = useSelector((state: RootState) =>
-    id ? state.participants.mineByContest[id] ?? [] : []
+    id ? state.participants.mineByContest[id] ?? EMPTY_PARTICIPANTS_ARRAY : EMPTY_PARTICIPANTS_ARRAY
   );
   
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
@@ -101,12 +110,8 @@ const ContestPage: React.FC = () => {
   const [isDeleteParticipantModalOpen, setIsDeleteParticipantModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
-  const [votersModalParticipant, setVotersModalParticipant] = useState<Participant | null>(null);
-  const [votersModalOpen, setVotersModalOpen] = useState(false);
-  const [juryReportModalParticipant, setJuryReportModalParticipant] = useState<Participant | null>(null);
-  const [juryReportModalOpen, setJuryReportModalOpen] = useState(false);
   const userVoteSlots = useSelector((state: RootState) =>
-    id ? state.contests.userVoteSlots[id] ?? {} : {}
+    id ? state.contests.userVoteSlots[id] ?? EMPTY_VOTE_SLOTS : EMPTY_VOTE_SLOTS
   );
 
   // Note: Removed userParticipant check - users can now have unlimited participants
@@ -317,6 +322,8 @@ const ContestPage: React.FC = () => {
     return <div className="contest-page-error">Конкурс не найден</div>;
   }
 
+  const activeTab = parseContestTabFromHash(location.hash);
+
   const participantsListPaginated =
     currentContest.status === 'draft' ||
     currentContest.status === 'publication' ||
@@ -436,7 +443,79 @@ const ContestPage: React.FC = () => {
         />
       )}
       <div className="contest-page-main">
-        <section className="contest-page-overview" aria-label="О конкурсе">
+        <nav className="contest-page-menu" aria-label="Меню конкурса">
+          <button
+            type="button"
+            className={
+              activeTab === 'about'
+                ? 'contest-page-menu-item contest-page-menu-item--active'
+                : 'contest-page-menu-item'
+            }
+            aria-current={activeTab === 'about' ? 'page' : undefined}
+            onClick={() =>
+              navigate(
+                { pathname: location.pathname, search: location.search, hash: '#about' },
+                { replace: true }
+              )
+            }
+          >
+            О конкурсе
+          </button>
+          <button
+            type="button"
+            className={
+              activeTab === 'chat'
+                ? 'contest-page-menu-item contest-page-menu-item--active'
+                : 'contest-page-menu-item'
+            }
+            aria-current={activeTab === 'chat' ? 'page' : undefined}
+            onClick={() =>
+              navigate(
+                { pathname: location.pathname, search: location.search, hash: '#chat' },
+                { replace: true }
+              )
+            }
+          >
+            Чат
+          </button>
+          <button
+            type="button"
+            className={
+              activeTab === 'gallery'
+                ? 'contest-page-menu-item contest-page-menu-item--active'
+                : 'contest-page-menu-item'
+            }
+            aria-current={activeTab === 'gallery' ? 'page' : undefined}
+            onClick={() =>
+              navigate(
+                { pathname: location.pathname, search: location.search, hash: '#gallery' },
+                { replace: true }
+              )
+            }
+          >
+            Галерея работ
+          </button>
+          <button
+            type="button"
+            className={
+              activeTab === 'winners'
+                ? 'contest-page-menu-item contest-page-menu-item--active'
+                : 'contest-page-menu-item'
+            }
+            aria-current={activeTab === 'winners' ? 'page' : undefined}
+            onClick={() =>
+              navigate(
+                { pathname: location.pathname, search: location.search, hash: '#winners' },
+                { replace: true }
+              )
+            }
+          >
+            Победители
+          </button>
+        </nav>
+
+        {activeTab === 'about' ? (
+          <section className="contest-page-overview" aria-label="О конкурсе">
         {hasHeroCover ? (
           <div
             className="contest-page-hero contest-page-hero--in-overview"
@@ -655,7 +734,9 @@ const ContestPage: React.FC = () => {
 
         </div>
         </section>
+        ) : null}
 
+        {activeTab === 'gallery' ? (
         <section id="contest-works" className="contest-page-works" aria-labelledby="contest-works-heading">
         <div className="contest-page-participants">
           <div className="contest-page-participants-header">
@@ -901,14 +982,6 @@ const ContestPage: React.FC = () => {
                       setDeletingParticipant(p);
                       setIsDeleteParticipantModalOpen(true);
                     }}
-                    onShowVoters={(p) => {
-                      setVotersModalParticipant(p);
-                      setVotersModalOpen(true);
-                    }}
-                    onShowJuryReport={(p) => {
-                      setJuryReportModalParticipant(p);
-                      setJuryReportModalOpen(true);
-                    }}
                   />
                 ) : null;
               })}
@@ -939,10 +1012,19 @@ const ContestPage: React.FC = () => {
           ) : null}
         </div>
         </section>
-      </div>
+        ) : null}
 
-      <div className="contest-page-sidebar">
-        <ChatWindow contestId={currentContest.id} contestStatus={currentContest.status} />
+        {activeTab === 'chat' ? (
+          <section className="contest-page-chat" aria-label="Чат конкурса">
+            <ChatWindow contestId={currentContest.id} contestStatus={currentContest.status} />
+          </section>
+        ) : null}
+
+        {activeTab === 'winners' ? (
+          <section className="contest-page-winners" aria-label="Победители">
+            <div className="contest-page-winners-empty" />
+          </section>
+        ) : null}
       </div>
 
       {id && (
@@ -1016,32 +1098,6 @@ const ContestPage: React.FC = () => {
               }
             }
           }}
-        />
-      )}
-
-      {votersModalOpen && votersModalParticipant && id && (
-        <ParticipantVotersModal
-          isOpen={votersModalOpen}
-          onClose={() => {
-            setVotersModalOpen(false);
-            setVotersModalParticipant(null);
-          }}
-          contestId={id}
-          participantId={votersModalParticipant.id}
-          participantName={votersModalParticipant.pet_name}
-        />
-      )}
-
-      {juryReportModalOpen && juryReportModalParticipant && id && (
-        <ParticipantJuryReportModal
-          isOpen={juryReportModalOpen}
-          onClose={() => {
-            setJuryReportModalOpen(false);
-            setJuryReportModalParticipant(null);
-          }}
-          contestId={id}
-          participantId={juryReportModalParticipant.id}
-          participantName={juryReportModalParticipant.pet_name}
         />
       )}
 

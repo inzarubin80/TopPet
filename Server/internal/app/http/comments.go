@@ -13,10 +13,11 @@ import (
 
 type (
 	serviceComments interface {
-		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error)
+		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error)
 		ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
 		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
+		VoteComment(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error
 	}
 
 	CommentsHandler struct {
@@ -74,7 +75,7 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		type resp struct {
 			Items []*model.Comment `json:"items"`
-			Total int64           `json:"total"`
+			Total int64            `json:"total"`
 		}
 		if err := uhttp.SendSuccess(w, resp{Items: comments, Total: total}); err != nil {
 			uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
@@ -85,14 +86,15 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// POST
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	var req struct {
-		Text string `json:"text"`
+		Text     string           `json:"text"`
+		ParentID *model.CommentID `json:"parent_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
-	comment, err := h.service.CreateComment(r.Context(), participantID, userID, req.Text)
+	comment, err := h.service.CreateComment(r.Context(), participantID, userID, req.Text, req.ParentID)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return
@@ -101,6 +103,25 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := uhttp.SendSuccess(w, comment); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
+	}
+}
+
+func (h *CommentsHandler) VoteComment(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	commentID := model.CommentID(r.PathValue("commentId"))
+	var req struct {
+		Value int16 `json:"value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
+		return
+	}
+	if err := h.service.VoteComment(r.Context(), commentID, userID, req.Value); err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	if err := uhttp.SendSuccess(w, map[string]bool{"ok": true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 	}
 }
 

@@ -61,6 +61,8 @@ type Querier interface {
 	DeleteUser(ctx context.Context, userID int64) error
 	DeleteUserAuthProvidersByUserID(ctx context.Context, userID int64) error
 	DeleteVotesByParticipant(ctx context.Context, participantID pgtype.UUID) error
+	GetChatMessageByID(ctx context.Context, id pgtype.UUID) (*ContestChatMessage, error)
+	GetChatMessageVoteStats(ctx context.Context, id pgtype.UUID) (*GetChatMessageVoteStatsRow, error)
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
 	GetContestJuryMemberWithName(ctx context.Context, arg *GetContestJuryMemberWithNameParams) (*GetContestJuryMemberWithNameRow, error)
@@ -134,6 +136,8 @@ type Querier interface {
 	UpdateUserName(ctx context.Context, arg *UpdateUserNameParams) (*UpdateUserNameRow, error)
 	UpdateUserProfile(ctx context.Context, arg *UpdateUserProfileParams) (*UpdateUserProfileRow, error)
 	UpdateUserRole(ctx context.Context, arg *UpdateUserRoleParams) (*UpdateUserRoleRow, error)
+	UpsertChatMessageVote(ctx context.Context, arg *UpsertChatMessageVoteParams) (*UpsertChatMessageVoteRow, error)
+	UpsertCommentVote(ctx context.Context, arg *UpsertCommentVoteParams) (*UpsertCommentVoteRow, error)
 	UpsertContestJuryScore(ctx context.Context, arg *UpsertContestJuryScoreParams) (*ContestJuryScore, error)
 	// Contest Votes
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)

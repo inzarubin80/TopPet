@@ -17,6 +17,13 @@ type UserVoteUpdatedHandler = (
   participantId?: string | null,
   nominationId?: string | null
 ) => void;
+type ChatMessageVoteUpdatedHandler = (
+  contestId: string,
+  messageId: string,
+  score: number,
+  voterUserId: number,
+  voterValue: number
+) => void;
 type ConnectionStateHandler = (state: WSConnectionState) => void;
 type ErrorHandler = (error: Event) => void;
 
@@ -35,6 +42,7 @@ export class WebSocketClient {
   private onContestStatusUpdatedHandler: ContestStatusUpdateHandler | null = null;
   private onVoteCountsUpdatedHandler: VoteCountsUpdatedHandler | null = null;
   private onUserVoteUpdatedHandler: UserVoteUpdatedHandler | null = null;
+  private onChatMessageVoteUpdatedHandler: ChatMessageVoteUpdatedHandler | null = null;
   private onConnectionStateChange: ConnectionStateHandler | null = null;
   private onErrorHandler: ErrorHandler | null = null;
 
@@ -65,6 +73,10 @@ export class WebSocketClient {
 
   setOnUserVoteUpdated(handler: UserVoteUpdatedHandler): void {
     this.onUserVoteUpdatedHandler = handler;
+  }
+
+  setOnChatMessageVoteUpdated(handler: ChatMessageVoteUpdatedHandler): void {
+    this.onChatMessageVoteUpdatedHandler = handler;
   }
 
   setOnConnectionStateChange(handler: ConnectionStateHandler): void {
@@ -260,6 +272,26 @@ export class WebSocketClient {
           nom
         );
       }
+      return;
+    }
+    if (
+      data.type === 'chat_message_vote_updated' &&
+      data.contest_id != null &&
+      data.message_id != null &&
+      typeof data.score === 'number' &&
+      typeof data.voter_user_id === 'number' &&
+      typeof data.voter_value === 'number'
+    ) {
+      if (this.onChatMessageVoteUpdatedHandler) {
+        this.onChatMessageVoteUpdatedHandler(
+          String(data.contest_id),
+          String(data.message_id),
+          data.score,
+          data.voter_user_id,
+          data.voter_value
+        );
+      }
+      return;
     }
   }
 
@@ -279,7 +311,7 @@ export class WebSocketClient {
     this.subscribedContests.delete(contestId);
   }
 
-  sendMessage(contestId: string, text: string): void {
+  sendMessage(contestId: string, text: string, parentId?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('WebSocket: Not connected');
       return;
@@ -289,6 +321,7 @@ export class WebSocketClient {
       type: 'message',
       contest_id: contestId,
       text,
+      parent_id: parentId,
     };
 
     this.ws.send(JSON.stringify(message));

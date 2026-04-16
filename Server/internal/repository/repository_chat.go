@@ -13,12 +13,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool) (*model.ChatMessage, error) {
+func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID) (*model.ChatMessage, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	messageUUID := uuid.New()
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		return nil, err
+	}
+
+	parentUUID := pgtype.UUID{}
+	if parentID != nil && *parentID != "" {
+		parsedParentID, parseErr := uuid.Parse(string(*parentID))
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		parentUUID = pgtype.UUID{Bytes: parsedParentID, Valid: true}
 	}
 
 	message, err := reposqlc.CreateChatMessage(ctx, &sqlc_repository.CreateChatMessageParams{
@@ -27,6 +36,7 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		UserID:    int64(userID),
 		Text:      text,
 		IsSystem:  isSystem,
+		ParentID:  parentUUID,
 	})
 	if err != nil {
 		return nil, err
@@ -49,19 +59,27 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		userName = fmt.Sprintf("Пользователь %d", message.UserID)
 	}
 
+	var parentMessageID *model.ChatMessageID
+	if message.ParentID.Valid {
+		parentIDVal := model.ChatMessageID(uuid.UUID(message.ParentID.Bytes).String())
+		parentMessageID = &parentIDVal
+	}
 	return &model.ChatMessage{
 		ID:        model.ChatMessageID(messageIDStr),
 		ContestID: model.ContestID(contestIDStr),
+		ParentID:  parentMessageID,
 		UserID:    model.UserID(message.UserID),
 		UserName:  userName,
 		Text:      message.Text,
 		IsSystem:  message.IsSystem,
+		Score:     0,
+		UserVote:  0,
 		CreatedAt: message.CreatedAt.Time,
 		UpdatedAt: message.UpdatedAt.Time,
 	}, nil
 }
 
-func (r *Repository) ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error) {
+func (r *Repository) ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error) {
 	log.Printf("[Repository] ListChatMessages: Fetching chat messages for contest %s, limit %d, offset %d", contestID, limit, offset)
 	reposqlc := sqlc_repository.New(r.conn)
 
@@ -72,10 +90,17 @@ func (r *Repository) ListChatMessages(ctx context.Context, contestID model.Conte
 	}
 
 	log.Printf("[Repository] ListChatMessages: Executing SQL query with contestUUID=%s", contestUUID.String())
+	var viewerUserID *int64
+	if viewer != nil {
+		v := int64(*viewer)
+		viewerUserID = &v
+	}
+
 	messages, err := reposqlc.ListChatMessages(ctx, &sqlc_repository.ListChatMessagesParams{
-		ContestID: pgtype.UUID{Bytes: contestUUID, Valid: true},
-		Limit:     int32(limit),
-		Offset:    int32(offset),
+		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
+		ViewerUserID: viewerUserID,
+		Limit:        int32(limit),
+		Offset:       int32(offset),
 	})
 	if err != nil {
 		log.Printf("[Repository] ListChatMessages: ERROR - Failed to list chat messages from DB: %v", err)
@@ -131,13 +156,22 @@ func (r *Repository) ListChatMessages(ctx context.Context, contestID model.Conte
 			log.Printf("[Repository] ListChatMessages: UserName was empty, using default: %s", userName)
 		}
 
+		var parentMessageID *model.ChatMessageID
+		if m.ParentID.Valid {
+			parentIDVal := model.ChatMessageID(uuid.UUID(m.ParentID.Bytes).String())
+			parentMessageID = &parentIDVal
+		}
+
 		chatMessage := &model.ChatMessage{
 			ID:        model.ChatMessageID(messageIDStr),
 			ContestID: model.ContestID(contestIDStr),
+			ParentID:  parentMessageID,
 			UserID:    model.UserID(m.UserID),
 			UserName:  userName,
 			Text:      m.Text,
 			IsSystem:  m.IsSystem,
+			Score:     m.Score,
+			UserVote:  m.UserVote,
 			CreatedAt: m.CreatedAt.Time,
 			UpdatedAt: m.UpdatedAt.Time,
 		}
@@ -184,13 +218,21 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		userName = fmt.Sprintf("Пользователь %d", message.UserID)
 	}
 
+	var parentMessageID *model.ChatMessageID
+	if message.ParentID.Valid {
+		parentIDVal := model.ChatMessageID(uuid.UUID(message.ParentID.Bytes).String())
+		parentMessageID = &parentIDVal
+	}
 	return &model.ChatMessage{
 		ID:        model.ChatMessageID(messageIDStr),
 		ContestID: model.ContestID(contestIDStr),
+		ParentID:  parentMessageID,
 		UserID:    model.UserID(message.UserID),
 		UserName:  userName,
 		Text:      message.Text,
 		IsSystem:  message.IsSystem,
+		Score:     0,
+		UserVote:  0,
 		CreatedAt: message.CreatedAt.Time,
 		UpdatedAt: message.UpdatedAt.Time,
 	}, nil
@@ -214,4 +256,28 @@ func (r *Repository) DeleteChatMessage(ctx context.Context, messageID model.Chat
 		return "", errors.New("contest_id not found for deleted chat message")
 	}
 	return model.ContestID(uuid.UUID(contestID.Bytes).String()), nil
+}
+
+func (r *Repository) UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	messageUUID, err := uuid.Parse(string(messageID))
+	if err != nil {
+		return "", 0, err
+	}
+	_, err = reposqlc.UpsertChatMessageVote(ctx, &sqlc_repository.UpsertChatMessageVoteParams{
+		MessageID: pgtype.UUID{Bytes: messageUUID, Valid: true},
+		UserID:    int64(userID),
+		Value:     value,
+	})
+	if err != nil {
+		return "", 0, err
+	}
+	stats, err := reposqlc.GetChatMessageVoteStats(ctx, pgtype.UUID{Bytes: messageUUID, Valid: true})
+	if err != nil {
+		return "", 0, err
+	}
+	if !stats.ContestID.Valid {
+		return "", 0, errors.New("contest_id not found for chat message vote")
+	}
+	return model.ContestID(uuid.UUID(stats.ContestID.Bytes).String()), stats.Score, nil
 }

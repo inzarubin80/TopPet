@@ -10,6 +10,7 @@ export interface WSIncomingMessage {
   type: WSIncomingMessageType;
   contest_id: string;
   text?: string;
+  parent_id?: string;
 }
 
 export interface WSOutgoingMessage {

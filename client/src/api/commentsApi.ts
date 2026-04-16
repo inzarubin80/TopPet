@@ -38,6 +38,10 @@ export const deleteComment = async (commentId: CommentID): Promise<void> => {
   await axiosClient.delete(`/comments/${commentId}`);
 };
 
+export const voteComment = async (commentId: CommentID, value: -1 | 1): Promise<void> => {
+  await axiosClient.post(`/comments/${commentId}/vote`, { value });
+};
+
 /** Владелец заявки: отметить комментарии организатора просмотренными (уведомления в шапке). */
 export const markStaffCommentsRead = async (participantId: ParticipantID): Promise<void> => {
   await axiosClient.post<{ ok: boolean }>(

@@ -241,6 +241,11 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    (
+      SELECT COUNT(*)::bigint
+      FROM contest_comments cc
+      WHERE cc.participant_id = cp.id
+    ) AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -261,6 +266,11 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    (
+      SELECT COUNT(*)::bigint
+      FROM contest_comments cc
+      WHERE cc.participant_id = cp.id
+    ) AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -343,6 +353,7 @@ SELECT
     cp.nomination_id,
     cp.submission_status,
     cp.submission_comment,
+    COALESCE(cc.comment_cnt, 0)::bigint AS comment_count,
     cp.created_at,
     cp.updated_at
 FROM contest_participants cp
@@ -357,6 +368,11 @@ LEFT JOIN (
     FROM contest_jury_scores
     GROUP BY participant_id
 ) js ON js.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS comment_cnt
+    FROM contest_comments
+    GROUP BY participant_id
+) cc ON cc.participant_id = cp.id
 WHERE cp.contest_id = @contest_id
   AND (
     cp.submission_status = 'accepted'
@@ -585,8 +601,8 @@ GROUP BY contest_id;
 -- Contest Comments
 
 -- name: CreateComment :one
-INSERT INTO contest_comments (id, participant_id, user_id, text)
-VALUES ($1, $2, $3, $4)
+INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetCommentByID :one
@@ -596,11 +612,14 @@ SELECT * FROM contest_comments WHERE id = $1;
 SELECT
     cc.id,
     cc.participant_id,
+    cc.parent_id,
     cc.user_id,
     cc.text,
     cc.created_at,
     cc.updated_at,
-    COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name
+    COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
+    COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score,
+    COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote
 FROM contest_comments cc
 LEFT JOIN users u ON u.user_id = cc.user_id
 WHERE cc.participant_id = $1
@@ -616,6 +635,13 @@ UPDATE contest_comments
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
 RETURNING *;
+
+-- name: UpsertCommentVote :one
+INSERT INTO contest_comment_votes (comment_id, user_id, value)
+VALUES ($1, $2, $3)
+ON CONFLICT (comment_id, user_id)
+DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+RETURNING comment_id, user_id, value;
 
 -- name: DeleteComment :exec
 DELETE FROM contest_comments
@@ -674,25 +700,40 @@ WHERE participant_id = $1;
 -- Contest Chat Messages
 
 -- name: CreateChatMessage :one
-INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: ListChatMessages :many
 SELECT 
     ccm.id,
     ccm.contest_id,
+    ccm.parent_id,
     ccm.user_id,
     ccm.text,
     ccm.is_system,
     ccm.created_at,
     ccm.updated_at,
-    COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name
+    COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name,
+    COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score,
+    COALESCE((SELECT v2.value::int FROM contest_chat_message_votes v2 WHERE v2.message_id = ccm.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote
 FROM contest_chat_messages ccm
 LEFT JOIN users u ON u.user_id = ccm.user_id
 WHERE ccm.contest_id = $1
 ORDER BY ccm.created_at ASC
 LIMIT $2 OFFSET $3;
+
+-- name: GetChatMessageByID :one
+SELECT * FROM contest_chat_messages
+WHERE id = $1;
+
+-- name: GetChatMessageVoteStats :one
+SELECT 
+  ccm.id,
+  ccm.contest_id,
+  COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score
+FROM contest_chat_messages ccm
+WHERE ccm.id = $1;
 
 -- name: CountChatMessages :one
 SELECT count(1) FROM contest_chat_messages
@@ -703,6 +744,13 @@ UPDATE contest_chat_messages
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3 AND is_system = FALSE
 RETURNING *;
+
+-- name: UpsertChatMessageVote :one
+INSERT INTO contest_chat_message_votes (message_id, user_id, value)
+VALUES ($1, $2, $3)
+ON CONFLICT (message_id, user_id)
+DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+RETURNING message_id, user_id, value;
 
 -- name: DeleteChatMessage :one
 DELETE FROM contest_chat_messages

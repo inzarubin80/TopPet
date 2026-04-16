@@ -14,6 +14,7 @@ type (
 	serviceChatMessage interface {
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
 		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) error
+		VoteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) error
 	}
 
 	ChatMessageHandler struct {
@@ -65,5 +66,24 @@ func (h *ChatMessageHandler) DeleteChatMessage(w http.ResponseWriter, r *http.Re
 	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
+	}
+}
+
+func (h *ChatMessageHandler) VoteChatMessage(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	messageID := model.ChatMessageID(r.PathValue("messageId"))
+	var req struct {
+		Value int16 `json:"value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
+		return
+	}
+	if err := h.service.VoteChatMessage(r.Context(), messageID, userID, req.Value); err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	if err := uhttp.SendSuccess(w, map[string]bool{"ok": true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 	}
 }

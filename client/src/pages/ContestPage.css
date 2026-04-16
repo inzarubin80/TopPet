@@ -12,6 +12,59 @@
   min-width: 0;
 }
 
+.contest-page-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 18px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.contest-page-menu-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  border-radius: 999px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.contest-page-menu-item:hover {
+  background: rgba(2, 6, 23, 0.06);
+  color: #111827;
+}
+
+.contest-page-menu-item--active {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--contest-accent, #1d4ed8);
+}
+
+.contest-page-chat {
+  height: 600px;
+  min-height: 420px;
+}
+
+.contest-page-winners {
+  min-height: 200px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 4px 28px rgba(15, 23, 42, 0.07);
+}
+
+.contest-page-winners-empty {
+  height: 100%;
+}
+
 /* Карточка «О конкурсе»: обложка, призы, описание, критерии — отдельно от списка работ */
 .contest-page-overview {
   margin-bottom: 28px;
@@ -611,6 +664,21 @@
 @media (max-width: 720px) {
   .contest-page {
     padding: 24px 16px;
+  }
+
+  .contest-page-menu {
+    gap: 8px;
+    padding-bottom: 14px;
+  }
+
+  .contest-page-menu-item {
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .contest-page-chat {
+    height: 70vh;
+    min-height: 360px;
   }
 }
 

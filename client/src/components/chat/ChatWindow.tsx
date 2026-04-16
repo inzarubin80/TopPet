@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RootState } from '../../store';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { ContestID, ContestStatus } from '../../types/models';
+import { ChatMessage, ContestID, ContestStatus } from '../../types/models';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ConnectionStatus } from './ConnectionStatus';
@@ -11,11 +11,13 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Button } from '../common/Button';
 import { buildLoginUrl } from '../../utils/navigation';
 import * as chatApi from '../../api/chatApi';
-import { removeMessage, setMessages } from '../../store/slices/chatSlice';
+import { removeMessage, setMessageVote, setMessages } from '../../store/slices/chatSlice';
 import { useDispatch } from 'react-redux';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import './ChatWindow.css';
+
+const EMPTY_CHAT_MESSAGES: ChatMessage[] = [];
 
 interface ChatWindowProps {
   contestId: ContestID;
@@ -23,6 +25,7 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus }) => {
+  const [replyTo, setReplyTo] = React.useState<{ id: string; text: string } | null>(null);
   const isChatAvailable =
     contestStatus === 'publication' ||
     contestStatus === 'registration' ||
@@ -45,7 +48,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
   // Get messages from Redux store directly (for both authenticated and unauthenticated users)
   // This ensures messages loaded via API are displayed even when WebSocket is not connected
   const messages = useSelector((state: RootState) =>
-    contestId ? state.chat.messages[contestId] || [] : []
+    contestId ? state.chat.messages[contestId] || EMPTY_CHAT_MESSAGES : EMPTY_CHAT_MESSAGES
   );
 
   // Load chat history on mount
@@ -67,7 +70,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
 
   const handleSendMessage = (text: string) => {
     if (isConnected && isAuthenticated) {
-      sendMessage(text);
+      sendMessage(text, replyTo?.id);
+      setReplyTo(null);
     }
   };
 
@@ -88,10 +92,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
     }
   };
 
+  const handleVoteMessage = async (messageId: string, value: -1 | 1) => {
+    const previousVote = (messages.find((message) => message.id === messageId)?.user_vote || 0) as -1 | 0 | 1;
+    try {
+      dispatch(setMessageVote({ contestId, messageId, value }));
+      await chatApi.voteChatMessage(messageId, value);
+    } catch (error) {
+      dispatch(setMessageVote({ contestId, messageId, value: previousVote }));
+      errorHandler.handleError(error, () => showError('Не удалось поставить оценку'));
+    }
+  };
+
   return (
     <div className="chat-window">
       <div className="chat-header">
-        <h3>Чат конкурса</h3>
         {isAuthenticated && (
           <ConnectionStatus state={connectionState} onReconnect={reconnect} />
         )}
@@ -109,18 +123,33 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
           <MessageList
             messages={messages}
             currentUserId={currentUserId}
+            canVote={isAuthenticated}
             onUpdateMessage={handleUpdateMessage}
             onDeleteMessage={handleDeleteMessage}
+            onReply={(message) => setReplyTo({ id: message.id, text: message.text })}
+            onVote={handleVoteMessage}
           />
         )}
       </div>
       <div className="chat-footer">
         {isAuthenticated && isChatAvailable ? (
-          <MessageInput
-            onSend={handleSendMessage}
-            disabled={!isConnected}
-            placeholder={isConnected ? 'Введите сообщение...' : 'Подключение...'}
-          />
+          <>
+            {replyTo && (
+              <div className="chat-reply-banner">
+                <span className="chat-reply-banner-label">
+                  Вы отвечаете… <span className="chat-reply-banner-snippet">{replyTo.text.slice(0, 100)}</span>
+                </span>
+                <button type="button" className="chat-reply-banner-cancel" onClick={() => setReplyTo(null)}>
+                  Отмена
+                </button>
+              </div>
+            )}
+            <MessageInput
+              onSend={handleSendMessage}
+              disabled={!isConnected}
+              placeholder={isConnected ? 'Введите сообщение...' : 'Подключение...'}
+            />
+          </>
         ) : (
           <div className="chat-auth-required">
             {isChatAvailable ? (

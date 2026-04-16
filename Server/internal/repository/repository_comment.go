@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error) {
+func (r *Repository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	commentUUID := uuid.New()
 	participantUUID, err := uuid.Parse(string(participantID))
@@ -22,11 +22,21 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		return nil, err
 	}
 
+	parentUUID := pgtype.UUID{}
+	if parentID != nil && *parentID != "" {
+		parsedParentID, parseErr := uuid.Parse(string(*parentID))
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		parentUUID = pgtype.UUID{Bytes: parsedParentID, Valid: true}
+	}
+
 	comment, err := reposqlc.CreateComment(ctx, &sqlc_repository.CreateCommentParams{
 		ID:            pgtype.UUID{Bytes: commentUUID, Valid: true},
 		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
 		UserID:        int64(userID),
 		Text:          text,
+		ParentID:      parentUUID,
 	})
 	if err != nil {
 		return nil, err
@@ -48,12 +58,21 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
 	}
 
+	var parentCommentID *model.CommentID
+	if comment.ParentID.Valid {
+		parentIDVal := model.CommentID(uuid.UUID(comment.ParentID.Bytes).String())
+		parentCommentID = &parentIDVal
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
+		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
 		UserName:      userName,
 		Text:          comment.Text,
+		Score:         0,
+		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,
 		UpdatedAt:     comment.UpdatedAt.Time,
 	}, nil
@@ -90,18 +109,27 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
 	}
 
+	var parentCommentID *model.CommentID
+	if comment.ParentID.Valid {
+		parentIDVal := model.CommentID(uuid.UUID(comment.ParentID.Bytes).String())
+		parentCommentID = &parentIDVal
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
+		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
 		UserName:      userName,
 		Text:          comment.Text,
+		Score:         0,
+		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,
 		UpdatedAt:     comment.UpdatedAt.Time,
 	}, nil
 }
 
-func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, limit, offset int) ([]*model.Comment, int64, error) {
+func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID, limit, offset int) ([]*model.Comment, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 
 	participantUUID, err := uuid.Parse(string(participantID))
@@ -109,8 +137,15 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 		return nil, 0, err
 	}
 
+	var viewerUserID *int64
+	if viewer != nil {
+		v := int64(*viewer)
+		viewerUserID = &v
+	}
+
 	comments, err := reposqlc.ListCommentsByParticipant(ctx, &sqlc_repository.ListCommentsByParticipantParams{
 		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+		ViewerUserID:  viewerUserID,
 		Limit:         int32(limit),
 		Offset:        int32(offset),
 	})
@@ -133,12 +168,21 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 			participantIDStr = uuid.UUID(c.ParticipantID.Bytes).String()
 		}
 
+		var parentCommentID *model.CommentID
+		if c.ParentID.Valid {
+			parentIDVal := model.CommentID(uuid.UUID(c.ParentID.Bytes).String())
+			parentCommentID = &parentIDVal
+		}
+
 		result[i] = &model.Comment{
 			ID:            model.CommentID(commentIDStr),
 			ParticipantID: model.ParticipantID(participantIDStr),
+			ParentID:      parentCommentID,
 			UserID:        model.UserID(c.UserID),
 			UserName:      c.UserName,
 			Text:          c.Text,
+			Score:         c.Score,
+			UserVote:      c.UserVote,
 			CreatedAt:     c.CreatedAt.Time,
 			UpdatedAt:     c.UpdatedAt.Time,
 		}
@@ -171,11 +215,20 @@ func (r *Repository) UpdateComment(ctx context.Context, commentID model.CommentI
 		participantIDStr = uuid.UUID(comment.ParticipantID.Bytes).String()
 	}
 
+	var parentCommentID *model.CommentID
+	if comment.ParentID.Valid {
+		parentIDVal := model.CommentID(uuid.UUID(comment.ParentID.Bytes).String())
+		parentCommentID = &parentIDVal
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
+		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
 		Text:          comment.Text,
+		Score:         0,
+		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,
 		UpdatedAt:     comment.UpdatedAt.Time,
 	}, nil
@@ -189,6 +242,21 @@ func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentI
 	}
 
 	return reposqlc.DeleteComment(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
+}
+
+func (r *Repository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	commentUUID, err := uuid.Parse(string(commentID))
+	if err != nil {
+		return err
+	}
+
+	_, err = reposqlc.UpsertCommentVote(ctx, &sqlc_repository.UpsertCommentVoteParams{
+		CommentID: pgtype.UUID{Bytes: commentUUID, Valid: true},
+		UserID:    int64(userID),
+		Value:     value,
+	})
+	return err
 }
 
 func (r *Repository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {

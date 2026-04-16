@@ -390,6 +390,10 @@ func (a *App) registerRoutes() {
 		http.HandlerFunc(commentsHandler.DeleteComment),
 		a.service,
 	))
+	a.mux.Handle("POST /api/comments/{commentId}/vote", middleware.NewAuthMiddleware(
+		http.HandlerFunc(commentsHandler.VoteComment),
+		a.service,
+	))
 	a.mux.Handle("POST /api/participants/{participantId}/staff-comments/mark-read", middleware.NewAuthMiddleware(
 		appHttp.NewMarkStaffCommentsReadHandler("/api/participants/{participantId}/staff-comments/mark-read", a.service),
 		a.service,
@@ -409,6 +413,10 @@ func (a *App) registerRoutes() {
 	))
 	a.mux.Handle("DELETE /api/chat/{messageId}", middleware.NewAuthMiddleware(
 		http.HandlerFunc(chatMessageHandler.DeleteChatMessage),
+		a.service,
+	))
+	a.mux.Handle("POST /api/chat/{messageId}/vote", middleware.NewAuthMiddleware(
+		http.HandlerFunc(chatMessageHandler.VoteChatMessage),
 		a.service,
 	))
 }

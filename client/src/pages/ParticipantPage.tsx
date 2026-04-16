@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { fetchParticipant, fetchParticipantsByContest } from '../store/slices/participantsSlice';
-import { fetchComments, createComment, updateComment, deleteComment } from '../store/slices/commentsSlice';
+import { fetchComments, createComment, updateComment, deleteComment, voteComment, setCommentVote } from '../store/slices/commentsSlice';
 import { fetchContest } from '../store/slices/contestsSlice';
 import { fetchStaffCommentNotifications } from '../store/slices/notificationsSlice';
 import { Comment as ParticipantComment } from '../types/models';
@@ -11,6 +11,7 @@ import { VoteButton } from '../components/contest/VoteButton';
 import { EditParticipantModal } from '../components/contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
 import { ParticipantVotersModal } from '../components/contest/ParticipantVotersModal';
+import { ParticipantJuryReportModal } from '../components/contest/ParticipantJuryReportModal';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { PhotoGallery } from '../components/participant/PhotoGallery';
@@ -29,7 +30,12 @@ import {
 } from '../utils/registrationAnswersDisplay';
 import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../utils/seo';
 import { juryCriteriaWordRu } from '../utils/juryLabels';
+import { buildThreadList } from '../utils/messageTree';
+import { getMessengerAvatarColor, getMessengerInitials } from '../utils/messengerAvatar';
+import '../components/common/MessengerActionBar.css';
 import './ParticipantPage.css';
+
+const EMPTY_COMMENTS: ParticipantComment[] = [];
 
 type ParticipantDescriptionBlocks =
   | { kind: 'single'; title: string; text: string }
@@ -71,7 +77,7 @@ const ParticipantPage: React.FC = () => {
     participantId ? state.participants.items[participantId] : undefined
   );
   const comments = useSelector((state: RootState) =>
-    participantId ? state.comments.items[participantId] || [] : []
+    participantId ? state.comments.items[participantId] || EMPTY_COMMENTS : EMPTY_COMMENTS
   ) as ParticipantComment[];
   const commentsLoading = useSelector((state: RootState) => state.comments.loading);
   const { currentContest } = useSelector((state: RootState) => state.contests);
@@ -93,7 +99,9 @@ const ParticipantPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [votersModalOpen, setVotersModalOpen] = useState(false);
+  const [juryReportModalOpen, setJuryReportModalOpen] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
+  const [replyToComment, setReplyToComment] = useState<ParticipantComment | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [openMenuCommentId, setOpenMenuCommentId] = useState<string | null>(null);
@@ -229,11 +237,12 @@ const ParticipantPage: React.FC = () => {
     const result = await dispatch(
       createComment({
         participantId,
-        data: { text: newCommentText.trim() },
+        data: { text: newCommentText.trim(), parent_id: replyToComment?.id },
       })
     );
     if (createComment.fulfilled.match(result)) {
       setNewCommentText('');
+      setReplyToComment(null);
     }
   };
 
@@ -269,6 +278,16 @@ const ParticipantPage: React.FC = () => {
 
   const toggleCommentMenu = (commentId: string) => {
     setOpenMenuCommentId((prev) => (prev === commentId ? null : commentId));
+  };
+  const threadedComments = useMemo(() => buildThreadList(comments), [comments]);
+  const commentsById = useMemo(() => new Map(comments.map((comment) => [comment.id, comment])), [comments]);
+  const handleVoteComment = async (comment: ParticipantComment, value: -1 | 1) => {
+    const previousVote = (comment.user_vote || 0) as -1 | 0 | 1;
+    dispatch(setCommentVote({ commentId: comment.id, value }));
+    const result = await dispatch(voteComment({ commentId: comment.id, value }));
+    if (voteComment.rejected.match(result)) {
+      dispatch(setCommentVote({ commentId: comment.id, value: previousVote }));
+    }
   };
 
   if (!participantFetchSettled) {
@@ -320,20 +339,38 @@ const ParticipantPage: React.FC = () => {
         {(isContestOwner || canEdit) && (
           <div className="participant-page-icon-actions">
             {isContestOwner && (
-              <button
-                type="button"
-                className="participant-page-icon-btn"
-                onClick={() => setVotersModalOpen(true)}
-                title="Кто проголосовал (зрители)"
-                aria-label="Кто проголосовал зрители"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="participant-page-icon-btn"
+                  onClick={() => setVotersModalOpen(true)}
+                  title="Кто проголосовал (зрители)"
+                  aria-label="Кто проголосовал зрители"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </button>
+                {currentContest?.jury_voting_enabled ? (
+                  <button
+                    type="button"
+                    className="participant-page-icon-btn"
+                    onClick={() => setJuryReportModalOpen(true)}
+                    title="Отчёт по оценкам жюри"
+                    aria-label="Отчёт по оценкам жюри"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="8" y1="13" x2="16" y2="13" />
+                      <line x1="8" y1="17" x2="14" y2="17" />
+                    </svg>
+                  </button>
+                ) : null}
+              </>
             )}
             {canEdit && (
               <>
@@ -534,6 +571,23 @@ const ParticipantPage: React.FC = () => {
             {currentUserId ? (
               canComment ? (
               <form className="participant-page-comment-form" onSubmit={handleCreateComment}>
+                {replyToComment && (
+                  <div className="participant-page-reply-banner">
+                    <span className="participant-page-reply-banner-label">
+                      Вы отвечаете…{' '}
+                      <span className="participant-page-reply-banner-snippet">
+                        {replyToComment.text.slice(0, 120)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      className="participant-page-reply-banner-cancel"
+                      onClick={() => setReplyToComment(null)}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                )}
                 <textarea
                   className="participant-page-comment-input"
                   value={newCommentText}
@@ -559,12 +613,70 @@ const ParticipantPage: React.FC = () => {
               <p>Нет комментариев</p>
             ) : (
               <div className="participant-page-comments-list">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="participant-page-comment">
-                    <div className="comment-header">
-                      <span>{comment.user_name || `Пользователь ${comment.user_id}`}</span>
-                      <span>{new Date(comment.created_at).toLocaleDateString('ru-RU')}</span>
+                {threadedComments.map(({ item: comment, depth }) => {
+                  const showCommentMenu =
+                    editingCommentId !== comment.id &&
+                    canComment &&
+                    (currentUserId === comment.user_id || isContestOwner);
+                  return (
+                  <div
+                    key={comment.id}
+                    className="participant-page-comment"
+                    style={{ marginLeft: `${Math.min(depth, 5) * 14}px` }}
+                  >
+                    <div
+                      className="participant-page-comment-avatar"
+                      style={{ backgroundColor: getMessengerAvatarColor(comment.user_id) }}
+                    >
+                      {getMessengerInitials(comment.user_name || `Пользователь ${comment.user_id}`)}
                     </div>
+                    <div className="participant-page-comment-content">
+                      <div className="participant-page-comment-header">
+                        <div className="participant-page-comment-header-titles">
+                          <span className="participant-page-comment-author">
+                            {comment.user_name || `Пользователь ${comment.user_id}`}
+                          </span>
+                          {comment.parent_id ? (
+                            <span className="participant-page-comment-reply-to">
+                              ↪ {commentsById.get(comment.parent_id)?.user_name || 'Сообщение'}
+                            </span>
+                          ) : null}
+                        </div>
+                        {showCommentMenu ? (
+                          <div className="participant-page-comment-menu">
+                            <button
+                              type="button"
+                              className="comment-menu-trigger"
+                              onClick={() => toggleCommentMenu(comment.id)}
+                              aria-label="Открыть меню"
+                            >
+                              ⋯
+                            </button>
+                            {openMenuCommentId === comment.id && (
+                              <div className="comment-menu">
+                                {currentUserId === comment.user_id && (
+                                  <button
+                                    type="button"
+                                    className="comment-menu-item"
+                                    onClick={() => handleStartEdit(comment.id, comment.text)}
+                                  >
+                                    Редактировать
+                                  </button>
+                                )}
+                                {(currentUserId === comment.user_id || isContestOwner) && (
+                                  <button
+                                    type="button"
+                                    className="comment-menu-item danger"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                  >
+                                    Удалить
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     {editingCommentId === comment.id ? (
                       <div className="participant-page-comment-edit">
                         <textarea
@@ -588,44 +700,51 @@ const ParticipantPage: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <p>{comment.text}</p>
+                      <p className="participant-page-comment-text">{comment.text}</p>
                     )}
-                    {editingCommentId !== comment.id && canComment && (currentUserId === comment.user_id || isContestOwner) && (
-                      <div className="participant-page-comment-menu">
-                        <button
-                          type="button"
-                          className="comment-menu-trigger"
-                          onClick={() => toggleCommentMenu(comment.id)}
-                          aria-label="Открыть меню"
-                        >
-                          ⋯
-                        </button>
-                        {openMenuCommentId === comment.id && (
-                          <div className="comment-menu">
-                            {currentUserId === comment.user_id && (
-                              <button
-                                type="button"
-                                className="comment-menu-item"
-                                onClick={() => handleStartEdit(comment.id, comment.text)}
-                              >
-                                Редактировать
-                              </button>
-                            )}
-                            {(currentUserId === comment.user_id || isContestOwner) && (
-                              <button
-                                type="button"
-                                className="comment-menu-item danger"
-                                onClick={() => handleDeleteComment(comment.id)}
-                              >
-                                Удалить
-                              </button>
-                            )}
-                          </div>
-                        )}
+                    {editingCommentId !== comment.id && (
+                      <div className="participant-page-comment-footer">
+                        <div className="messenger-action-bar">
+                          <button
+                            type="button"
+                            className={`messenger-action-btn ${comment.user_vote === 1 ? 'active-positive' : ''}`}
+                            disabled={!isAuthenticated}
+                            onClick={() => void handleVoteComment(comment, 1)}
+                            aria-label="Плюс"
+                          >
+                            {(comment.score ?? 0) > 0 ? `+ ${comment.score}` : '+'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`messenger-action-btn ${comment.user_vote === -1 ? 'active-negative' : ''}`}
+                            disabled={!isAuthenticated}
+                            onClick={() => void handleVoteComment(comment, -1)}
+                            aria-label="Минус"
+                          >
+                            {(comment.score ?? 0) < 0 ? `- ${Math.abs(comment.score ?? 0)}` : '-'}
+                          </button>
+                          <button
+                            type="button"
+                            className="messenger-action-btn messenger-action-reply"
+                            disabled={!canComment || !currentUserId}
+                            onClick={() => setReplyToComment(comment)}
+                          >
+                            Ответить
+                          </button>
+                        </div>
+                        <span className="participant-page-comment-time">
+                          {new Date(comment.created_at).toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </span>
                       </div>
                     )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -662,6 +781,15 @@ const ParticipantPage: React.FC = () => {
               participantName={participant.pet_name}
             />
           )}
+          {contestId && currentContest?.jury_voting_enabled ? (
+            <ParticipantJuryReportModal
+              isOpen={juryReportModalOpen}
+              onClose={() => setJuryReportModalOpen(false)}
+              contestId={contestId}
+              participantId={participant.id}
+              participantName={participant.pet_name}
+            />
+          ) : null}
         </>
       )}
     </div>

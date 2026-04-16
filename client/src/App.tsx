@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { HelmetProvider } from 'react-helmet-async';
@@ -9,6 +9,7 @@ import { tokenStorage } from './utils/tokenStorage';
 import { ToastProvider } from './contexts/ToastContext';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
 import { logger } from './utils/logger';
+import { COOKIE_CONSENT_ACCEPTED_EVENT, hasCookieConsent } from './utils/cookieConsent';
 import './App.css';
 
 const AppContent: React.FC = () => {
@@ -33,12 +34,26 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  const [cookieConsentAccepted, setCookieConsentAccepted] = useState<boolean>(() => hasCookieConsent());
+
+  useEffect(() => {
+    const update = () => setCookieConsentAccepted(hasCookieConsent());
+
+    window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, update);
+    window.addEventListener('storage', update);
+
+    return () => {
+      window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <Provider store={store}>
         <ToastProvider>
-          <BrowserRouter>
-            <YandexMetrika />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            {cookieConsentAccepted ? <YandexMetrika /> : null}
             <AppContent />
           </BrowserRouter>
         </ToastProvider>

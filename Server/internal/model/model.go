@@ -17,16 +17,16 @@ type (
 	ContestStatus string
 
 	UserProfileFromProvider struct {
-		ProviderID   string `json:"provider_id"`
-		Email        string `json:"email"`
-		Name         string `json:"name"`
-		FirstName    string `json:"first_name"`
-		LastName     string `json:"last_name"`
-		Phone        string `json:"phone"`
+		ProviderID string `json:"provider_id"`
+		Email      string `json:"email"`
+		Name       string `json:"name"`
+		FirstName  string `json:"first_name"`
+		LastName   string `json:"last_name"`
+		Phone      string `json:"phone"`
 		// DateOfBirth — только из OAuth-провайдеров, где дата известна целиком (год не 0000).
-		DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
-		AvatarURL    string `json:"avatar_url"`
-		ProviderName string `json:"provider_name"`
+		DateOfBirth  *time.Time `json:"date_of_birth,omitempty"`
+		AvatarURL    string     `json:"avatar_url"`
+		ProviderName string     `json:"provider_name"`
 	}
 
 	User struct {
@@ -36,11 +36,11 @@ type (
 		Phone string `json:"phone,omitempty"`
 		Role  string `json:"role"`
 		// IsBlocked — аккаунт заблокирован администратором системы (мутации API запрещены).
-		IsBlocked bool      `json:"is_blocked"`
-		AvatarURL string    `json:"avatar_url,omitempty"`
+		IsBlocked bool   `json:"is_blocked"`
+		AvatarURL string `json:"avatar_url,omitempty"`
 		// DateOfBirth — дата в UTC (время 00:00:00).
 		DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
-		CreatedAt time.Time `json:"created_at"`
+		CreatedAt   time.Time  `json:"created_at"`
 		// AuthProviders заполняется только в GET /api/admin/users (OAuth-провайдеры аккаунта).
 		AuthProviders []string `json:"auth_providers,omitempty"`
 	}
@@ -62,27 +62,27 @@ type (
 	}
 
 	Contest struct {
-		ID                  ContestID     `json:"id"`
-		CreatedByUserID     UserID        `json:"created_by_user_id"`
-		Title               string        `json:"title"`
-		Description         string        `json:"description"`
-		Status              ContestStatus `json:"status"`
-		Tier                string        `json:"tier,omitempty"`
-		TotalVotes          int64         `json:"total_votes,omitempty"`
-		PublicVotingEnabled bool          `json:"public_voting_enabled"`
-		JuryVotingEnabled   bool          `json:"jury_voting_enabled"`
-		CoverUrl            string        `json:"cover_url,omitempty"`
-		Tagline             string        `json:"tagline,omitempty"`
-		RulesText           string        `json:"rules_text,omitempty"`
-		PrizeText           string        `json:"prize_text,omitempty"`
+		ID                  ContestID           `json:"id"`
+		CreatedByUserID     UserID              `json:"created_by_user_id"`
+		Title               string              `json:"title"`
+		Description         string              `json:"description"`
+		Status              ContestStatus       `json:"status"`
+		Tier                string              `json:"tier,omitempty"`
+		TotalVotes          int64               `json:"total_votes,omitempty"`
+		PublicVotingEnabled bool                `json:"public_voting_enabled"`
+		JuryVotingEnabled   bool                `json:"jury_voting_enabled"`
+		CoverUrl            string              `json:"cover_url,omitempty"`
+		Tagline             string              `json:"tagline,omitempty"`
+		RulesText           string              `json:"rules_text,omitempty"`
+		PrizeText           string              `json:"prize_text,omitempty"`
 		JuryPrizePlaces     []ContestPrizePlace `json:"jury_prize_places,omitempty"`
 		AudiencePrizePlaces []ContestPrizePlace `json:"audience_prize_places,omitempty"`
-		LogoUrl             string        `json:"logo_url,omitempty"`
-		ThemeColor          string        `json:"theme_color,omitempty"`
-		SponsorName         string        `json:"sponsor_name,omitempty"`
-		SponsorLogoUrl      string        `json:"sponsor_logo_url,omitempty"`
-		SponsorUrl          string        `json:"sponsor_url,omitempty"`
-		CtaLabelOverride    string        `json:"cta_label_override,omitempty"`
+		LogoUrl             string              `json:"logo_url,omitempty"`
+		ThemeColor          string              `json:"theme_color,omitempty"`
+		SponsorName         string              `json:"sponsor_name,omitempty"`
+		SponsorLogoUrl      string              `json:"sponsor_logo_url,omitempty"`
+		SponsorUrl          string              `json:"sponsor_url,omitempty"`
+		CtaLabelOverride    string              `json:"cta_label_override,omitempty"`
 		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
 		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
 		// Расписание фаз (UTC, RFC3339 в JSON). Планировщик сверяет «сейчас» с датами и выставляет статус (в т.ч. откат в черновик).
@@ -99,7 +99,7 @@ type (
 		// Подсказка организатора для поля «Наименование» в заявке участника.
 		EntryTitleHint string    `json:"entry_title_hint,omitempty"`
 		CreatedAt      time.Time `json:"created_at"`
-		UpdatedAt     time.Time `json:"updated_at"`
+		UpdatedAt      time.Time `json:"updated_at"`
 		// VotingResultsComputedAt — момент сохранения снимка результатов (nil = только живой пересчёт из голосов).
 		VotingResultsComputedAt *time.Time `json:"voting_results_computed_at,omitempty"`
 		// Победители после завершения конкурса (заполняются в GET списка/одного конкурса).
@@ -288,6 +288,7 @@ type (
 		ContestID           ContestID              `json:"contest_id"`
 		UserID              UserID                 `json:"user_id"`
 		UserName            string                 `json:"user_name,omitempty"`
+		UserAvatarURL       string                 `json:"user_avatar_url,omitempty"`
 		NominationID        *string                `json:"nomination_id,omitempty"`
 		SubmissionStatus    string                 `json:"submission_status"`
 		SubmissionComment   *string                `json:"submission_comment,omitempty"`
@@ -297,6 +298,7 @@ type (
 		EntryDescription    string                 `json:"entry_description,omitempty"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
+		CommentCount        int64                  `json:"comment_count,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
 		// TotalJuryScore — сумма баллов жюри (организаторам — всегда; остальным — после завершения конкурса).
 		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
@@ -307,14 +309,14 @@ type (
 		// JuryFullyScoredJurors — сколько жюри выставили баллы по всем критериям для этой заявки.
 		JuryFullyScoredJurors *int64 `json:"jury_fully_scored_jurors,omitempty"`
 		// Победители (только для status=finished; внутри номинации — по голосам зрителей / сумме жюри).
-		IsAudienceWinner bool      `json:"is_audience_winner,omitempty"`
-		IsJuryWinner     bool      `json:"is_jury_winner,omitempty"`
-		AudienceWinnerPlace *int   `json:"audience_winner_place,omitempty"`
-		AudienceWinnerPrize string `json:"audience_winner_prize,omitempty"`
-		JuryWinnerPlace     *int   `json:"jury_winner_place,omitempty"`
-		JuryWinnerPrize     string `json:"jury_winner_prize,omitempty"`
-		CreatedAt        time.Time `json:"created_at"`
-		UpdatedAt        time.Time `json:"updated_at"`
+		IsAudienceWinner    bool      `json:"is_audience_winner,omitempty"`
+		IsJuryWinner        bool      `json:"is_jury_winner,omitempty"`
+		AudienceWinnerPlace *int      `json:"audience_winner_place,omitempty"`
+		AudienceWinnerPrize string    `json:"audience_winner_prize,omitempty"`
+		JuryWinnerPlace     *int      `json:"jury_winner_place,omitempty"`
+		JuryWinnerPrize     string    `json:"jury_winner_prize,omitempty"`
+		CreatedAt           time.Time `json:"created_at"`
+		UpdatedAt           time.Time `json:"updated_at"`
 	}
 
 	// ParticipantScoreForWinners — данные для расчёта победителей (принятые заявки).
@@ -362,9 +364,12 @@ type (
 	Comment struct {
 		ID            CommentID     `json:"id"`
 		ParticipantID ParticipantID `json:"participant_id"`
+		ParentID      *CommentID    `json:"parent_id,omitempty"`
 		UserID        UserID        `json:"user_id"`
 		UserName      string        `json:"user_name"`
 		Text          string        `json:"text"`
+		Score         int64         `json:"score"`
+		UserVote      int32         `json:"user_vote"`
 		CreatedAt     time.Time     `json:"created_at"`
 		UpdatedAt     time.Time     `json:"updated_at"`
 	}
@@ -382,14 +387,17 @@ type (
 	}
 
 	ChatMessage struct {
-		ID        ChatMessageID `json:"id"`
-		ContestID ContestID     `json:"contest_id"`
-		UserID    UserID        `json:"user_id"`
-		UserName  string        `json:"user_name"`
-		Text      string        `json:"text"`
-		IsSystem  bool          `json:"is_system"`
-		CreatedAt time.Time     `json:"created_at"`
-		UpdatedAt time.Time     `json:"updated_at"`
+		ID        ChatMessageID  `json:"id"`
+		ContestID ContestID      `json:"contest_id"`
+		ParentID  *ChatMessageID `json:"parent_id,omitempty"`
+		UserID    UserID         `json:"user_id"`
+		UserName  string         `json:"user_name"`
+		Text      string         `json:"text"`
+		IsSystem  bool           `json:"is_system"`
+		Score     int64          `json:"score"`
+		UserVote  int32          `json:"user_vote"`
+		CreatedAt time.Time      `json:"created_at"`
+		UpdatedAt time.Time      `json:"updated_at"`
 	}
 
 	AuthData struct {

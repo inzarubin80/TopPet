@@ -70,6 +70,7 @@ type ContestChatMessage struct {
 	IsSystem  bool
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	ParentID  pgtype.UUID
 }
 
 type ContestComment struct {
@@ -79,6 +80,7 @@ type ContestComment struct {
 	Text          string
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	ParentID      pgtype.UUID
 }
 
 type ContestJuryCriterium struct {

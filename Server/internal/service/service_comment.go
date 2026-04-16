@@ -12,7 +12,7 @@ func commentsAllowed(status model.ContestStatus) bool {
 	return status == model.ContestStatusRegistration || status == model.ContestStatusVoting
 }
 
-func (s *TopPetService) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string) (*model.Comment, error) {
+func (s *TopPetService) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error) {
 	if text == "" {
 		return nil, errors.New("text is required")
 	}
@@ -38,7 +38,17 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
-	return s.repository.CreateComment(ctx, participantID, userID, text)
+	if parentID != nil && *parentID != "" {
+		parent, err := s.repository.GetComment(ctx, *parentID)
+		if err != nil {
+			return nil, err
+		}
+		if parent.ParticipantID != participantID {
+			return nil, errors.New("parent comment belongs to another participant")
+		}
+	}
+
+	return s.repository.CreateComment(ctx, participantID, userID, text, parentID)
 }
 
 func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error) {
@@ -61,11 +71,36 @@ func (s *TopPetService) ListComments(ctx context.Context, participantID model.Pa
 		return nil, 0, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
-	comments, total, err := s.repository.ListCommentsByParticipant(ctx, participantID, limit, offset)
+	comments, total, err := s.repository.ListCommentsByParticipant(ctx, participantID, viewer, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	return comments, total, nil
+}
+
+func (s *TopPetService) VoteComment(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error {
+	if value != -1 && value != 1 {
+		return errors.New("value must be -1 or 1")
+	}
+	comment, err := s.repository.GetComment(ctx, commentID)
+	if err != nil {
+		return err
+	}
+	participant, err := s.repository.GetParticipant(ctx, comment.ParticipantID)
+	if err != nil {
+		return err
+	}
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
+	if err != nil {
+		return err
+	}
+	if !commentsAllowed(contest.Status) {
+		return errors.New("comments are only allowed during registration or voting")
+	}
+	if !s.participantVisible(ctx, participant, contest, &userID) {
+		return fmt.Errorf("%w", model.ErrorNotFound)
+	}
+	return s.repository.UpsertCommentVote(ctx, commentID, userID, value)
 }
 
 // MarkParticipantStaffCommentsRead — владелец заявки отмечает комментарии организатора просмотренными (колокольчик).

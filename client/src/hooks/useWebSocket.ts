@@ -2,7 +2,14 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { WebSocketClient } from '../websocket/wsClient';
-import { addMessage, updateMessage, removeMessage, setConnectionState, setCurrentContestId } from '../store/slices/chatSlice';
+import {
+  addMessage,
+  updateMessage,
+  removeMessage,
+  mergeMessageScore,
+  setConnectionState,
+  setCurrentContestId,
+} from '../store/slices/chatSlice';
 import { refreshTokenAsync } from '../store/slices/authSlice';
 import { fetchContest, setUserVoteSlot, updateContestTotalVotes } from '../store/slices/contestsSlice';
 import { nominationVoteKey } from '../utils/voteKeys';
@@ -14,6 +21,7 @@ import { tokenStorage } from '../utils/tokenStorage';
 import { logger } from '../utils/logger';
 
 let wsClientInstance: WebSocketClient | null = null;
+const EMPTY_MESSAGES: ChatMessage[] = [];
 
 const getWebSocketClient = (): WebSocketClient => {
   if (!wsClientInstance) {
@@ -26,12 +34,13 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
   const dispatch = useDispatch<AppDispatch>();
   const connectionState = useSelector((state: RootState) => state.chat.connectionState);
   const messages = useSelector((state: RootState) => {
-    if (!contestId) return [];
+    if (!contestId) return EMPTY_MESSAGES;
     const contestMessages = state.chat.messages[contestId];
-    return contestMessages || [];
+    return contestMessages || EMPTY_MESSAGES;
   });
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
   const refreshToken = useSelector((state: RootState) => state.auth.refreshToken);
+  const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
   const wsClientRef = useRef<WebSocketClient | null>(null);
 
   // Initialize WebSocket client
@@ -87,6 +96,21 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       }
     });
 
+    client.setOnChatMessageVoteUpdated((contestIdFromPayload, messageId, score, voterUserId, voterValue) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(
+          mergeMessageScore({
+            contestId,
+            messageId,
+            score,
+            voterUserId,
+            voterValue: voterValue === -1 || voterValue === 1 ? voterValue : undefined,
+            currentUserId,
+          })
+        );
+      }
+    });
+
     // Set up connection state handler
     client.setOnConnectionStateChange((state: WSConnectionState) => {
       dispatch(setConnectionState(state));
@@ -100,7 +124,7 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     return () => {
       // Cleanup is handled by disconnect
     };
-  }, [dispatch, contestId, accessToken]);
+  }, [dispatch, contestId, accessToken, currentUserId]);
 
   // Connect when contestId changes
   useEffect(() => {
@@ -174,11 +198,11 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
   }, [accessToken]);
 
   const sendMessage = useCallback(
-    (text: string) => {
+    (text: string, parentId?: string) => {
       if (!contestId || !wsClientRef.current) {
         return;
       }
-      wsClientRef.current.sendMessage(contestId, text);
+      wsClientRef.current.sendMessage(contestId, text, parentId);
     },
     [contestId]
   );

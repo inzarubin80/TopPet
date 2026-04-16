@@ -10,7 +10,6 @@ import { setUserVoteSlot } from '../../store/slices/contestsSlice';
 import { nominationVoteKey } from '../../utils/voteKeys';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
-import { descriptionWithBreaks } from '../../utils/formatText';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
 import './ParticipantCard.css';
@@ -29,9 +28,6 @@ interface ParticipantCardProps {
   voteCtaLabel?: string;
   onEdit?: (participant: Participant) => void;
   onDelete?: (participant: Participant) => void;
-  onShowVoters?: (participant: Participant) => void;
-  /** Отчёт по оценкам жюри (доступен организатору конкурса / глобальным админам). */
-  onShowJuryReport?: (participant: Participant) => void;
   isContestAdmin?: boolean;
   isVoted?: boolean;
 }
@@ -45,11 +41,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   voteCtaLabel,
   onEdit,
   onDelete,
-  onShowVoters,
-  onShowJuryReport,
   isContestAdmin,
   isVoted,
-  juryVotingEnabled = false,
+  juryVotingEnabled,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,33 +61,16 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     contestStatus,
     publicVotingEnabled
   );
-  const authorLabel = isOwner
-    ? 'Вы'
-    : participant.user_name || `Пользователь ${participant.user_id}`;
+  const authorLabel = isOwner ? 'Вы' : participant.user_name || `Пользователь ${participant.user_id}`;
+  const workTitle = participant.entry_title?.trim() || participant.pet_name;
   const photos = participant.photos ?? [];
 
   const submissionStatus = participant.submission_status;
   const showSubmissionBadge =
     submissionStatus === 'pending' || submissionStatus === 'rejected';
   const canModerateSubmission = isContestAdmin && submissionStatus === 'pending';
-  const isWinner =
-    contestStatus === 'finished' && (participant.is_audience_winner || participant.is_jury_winner);
-  const winnerScopeLabel = participant.is_audience_winner && participant.is_jury_winner
-    ? 'Зрители и жюри'
-    : participant.is_audience_winner
-      ? 'Зрители'
-      : 'Жюри';
-  const winnerMetaItems: string[] = [];
-  if (publicVotingEnabled && participant.audience_winner_place != null) {
-    winnerMetaItems.push(
-      `Зрители: ${participant.audience_winner_place} место${participant.audience_winner_prize ? ` (${participant.audience_winner_prize})` : ''}`
-    );
-  }
-  if (juryVotingEnabled && participant.jury_winner_place != null) {
-    winnerMetaItems.push(
-      `Жюри: ${participant.jury_winner_place} место${participant.jury_winner_prize ? ` (${participant.jury_winner_prize})` : ''}`
-    );
-  }
+  const audienceWinnerPlace = publicVotingEnabled ? participant.audience_winner_place : undefined;
+  const juryWinnerPlace = juryVotingEnabled ? participant.jury_winner_place : undefined;
 
   const openRejectModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -169,20 +146,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     }
   };
 
-  const handleShowVotersClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onShowVoters) {
-      onShowVoters(participant);
-    }
-  };
-
-  const handleShowJuryReportClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onShowJuryReport) {
-      onShowJuryReport(participant);
-    }
-  };
-
   const handleVoteClick = async (event: React.MouseEvent) => {
     event.stopPropagation();
     if (!canVote || isVoting) {
@@ -212,60 +175,67 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     }
   };
 
+  const renderWinnerOverlay = (kind: 'audience' | 'jury', place: number) => (
+    <div className={`participant-card-winner-overlay participant-card-winner-overlay-${kind}`}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2L14.8 7.7L21 8.6L16.5 13L17.6 19.2L12 16.3L6.4 19.2L7.5 13L3 8.6L9.2 7.7L12 2Z" />
+      </svg>
+      <span>{kind === 'audience' ? `Голоса #${place}` : `Жюри #${place}`}</span>
+    </div>
+  );
+
+  const avatarInitial = (authorLabel.trim()[0] || 'У').toUpperCase();
+
   return (
     <>
     <div
       className={`participant-card ${isVoted ? 'participant-card-voted' : ''}`}
       onClick={handleClick}
     >
-      <div className="participant-card-main">
+      <div className="participant-card-image-wrap">
         <div className="participant-card-image">
           {photos.length > 0 ? (
             <img
               src={photos[0].thumb_url || photos[0].url}
-              alt={participant.pet_name}
+              alt={workTitle}
               className="participant-card-single-image"
             />
           ) : (
             <div className="participant-card-placeholder">Нет фото</div>
           )}
-        </div>
-        <div className="participant-card-content">
-          <div className="participant-card-name-wrapper">
-            <div className="participant-card-title-row">
-              <h4 className="participant-card-name">{participant.pet_name}</h4>
-              {isWinner ? (
-                <div className="participant-card-winner-badge" aria-label={`Победитель: ${winnerScopeLabel}`}>
-                  <svg className="participant-card-winner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor"/>
-                    <path d="M5 16H19V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="participant-card-winner-text">Победитель</span>
-                </div>
-              ) : null}
-            </div>
-            {nominationTitle ? (
-              <span className="participant-card-nomination">{nominationTitle}</span>
-            ) : null}
-            {isWinner ? (
-              <span className="participant-card-winner-subtitle">{winnerScopeLabel}</span>
-            ) : null}
-            {showSubmissionBadge ? (
-              <span
-                className={
-                  submissionStatus === 'rejected'
-                    ? 'participant-card-submission-badge participant-card-submission-badge-rejected'
-                    : 'participant-card-submission-badge participant-card-submission-badge-pending'
-                }
-              >
-                {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
-              </span>
-            ) : null}
+          <div className="participant-card-overlays">
+            {audienceWinnerPlace != null ? renderWinnerOverlay('audience', audienceWinnerPlace) : null}
+            {juryWinnerPlace != null ? renderWinnerOverlay('jury', juryWinnerPlace) : null}
           </div>
-          {participant.pet_description?.trim() ? (
-            <p className="participant-card-description">
-              {descriptionWithBreaks(participant.pet_description.trim())}
-            </p>
+        </div>
+        <div className="participant-card-summary">
+          <h4 className="participant-card-name">{workTitle}</h4>
+          <div className="participant-card-meta-row">
+            <span className="participant-card-avatar" aria-hidden="true">
+              {avatarInitial}
+            </span>
+            <span className="participant-card-author">{authorLabel}</span>
+            <span className="participant-card-dot" aria-hidden="true">•</span>
+            <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
+            <span className="participant-card-dot" aria-hidden="true">•</span>
+            <span className="participant-card-hearts" title="Пользовательские голоса">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
+              </svg>
+              {participant.total_votes || 0}
+            </span>
+          </div>
+          {nominationTitle ? <span className="participant-card-nomination">{nominationTitle}</span> : null}
+          {showSubmissionBadge ? (
+            <span
+              className={
+                submissionStatus === 'rejected'
+                  ? 'participant-card-submission-badge participant-card-submission-badge-rejected'
+                  : 'participant-card-submission-badge participant-card-submission-badge-pending'
+              }
+            >
+              {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
+            </span>
           ) : null}
           {submissionStatus === 'rejected' &&
           (isContestAdmin || isOwner) &&
@@ -275,32 +245,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         </div>
       </div>
       <div className="participant-card-footer">
-        <div className="participant-card-meta">
-          <span className="participant-card-votes">
-            Голосов: {participant.total_votes || 0}
-          </span>
-          {juryVotingEnabled && participant.total_jury_score !== undefined ? (
-            <div className="participant-card-jury">
-              <span
-                className="participant-card-jury-total"
-                title="Сумма оценок жюри по всем критериям и членам жюри"
-              >
-                Жюри: {participant.total_jury_score}
-              </span>
-            </div>
-          ) : null}
-          <span className="participant-card-author">Автор: {authorLabel}</span>
-          {isVoted && <span className="participant-card-vote-badge">Ваш голос</span>}
-          {winnerMetaItems.length > 0 ? (
-            <div className="participant-card-winner-meta-wrap">
-              {winnerMetaItems.map((item) => (
-                <span key={item} className="participant-card-winner-meta">
-                  {item}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        {juryVotingEnabled && participant.total_jury_score !== undefined ? (
+          <span className="participant-card-jury-total">Сумма оценок жюри: {participant.total_jury_score}</span>
+        ) : null}
         {canVote && isAuthenticated && (
           <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
             <Button
@@ -338,40 +285,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
               </div>
             ) : null}
             <div className="participant-card-icon-toolbar">
-              {isContestAdmin && (
-                <>
-                  <button
-                    type="button"
-                    className="participant-card-icon-btn"
-                    onClick={handleShowVotersClick}
-                    title="Кто проголосовал (зрители)"
-                    aria-label="Кто проголосовал зрители"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                  </button>
-                  {juryVotingEnabled && onShowJuryReport ? (
-                    <button
-                      type="button"
-                      className="participant-card-icon-btn"
-                      onClick={handleShowJuryReportClick}
-                      title="Отчёт по оценкам жюри"
-                      aria-label="Отчёт по оценкам жюри"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="8" y1="13" x2="16" y2="13" />
-                        <line x1="8" y1="17" x2="14" y2="17" />
-                      </svg>
-                    </button>
-                  ) : null}
-                </>
-              )}
               {canEdit && (
                 <>
                   <button

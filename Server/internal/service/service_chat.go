@@ -16,7 +16,7 @@ func chatAllowed(status model.ContestStatus) bool {
 		status == model.ContestStatusFinished
 }
 
-func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string) (*model.ChatMessage, error) {
+func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID) (*model.ChatMessage, error) {
 	if text == "" {
 		return nil, errors.New("text is required")
 	}
@@ -42,7 +42,7 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 		return nil, model.ErrorForbidden
 	}
 
-	message, err := s.repository.CreateChatMessage(ctx, contestID, userID, text, false)
+	message, err := s.repository.CreateChatMessage(ctx, contestID, userID, text, false, parentID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +60,9 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 	return message, nil
 }
 
-func (s *TopPetService) ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error) {
+func (s *TopPetService) ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error) {
 	log.Printf("[Service] ListChatMessages: contestID=%s, limit=%d, offset=%d", contestID, limit, offset)
-	
+
 	if limit <= 0 {
 		log.Printf("[Service] ListChatMessages: limit <= 0, setting to 50")
 		limit = 50
@@ -82,14 +82,36 @@ func (s *TopPetService) ListChatMessages(ctx context.Context, contestID model.Co
 	}
 
 	log.Printf("[Service] ListChatMessages: Calling repository.ListChatMessages...")
-	messages, total, err := s.repository.ListChatMessages(ctx, contestID, limit, offset)
+	messages, total, err := s.repository.ListChatMessages(ctx, contestID, viewer, limit, offset)
 	if err != nil {
 		log.Printf("[Service] ListChatMessages: ERROR - Repository returned error: %v", err)
 		return nil, 0, err
 	}
-	
+
 	log.Printf("[Service] ListChatMessages: Repository returned %d messages, total: %d", len(messages), total)
 	return messages, total, nil
+}
+
+func (s *TopPetService) VoteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) error {
+	if value != -1 && value != 1 {
+		return errors.New("value must be -1 or 1")
+	}
+	contestID, score, err := s.repository.UpsertChatMessageVote(ctx, messageID, userID, value)
+	if err != nil {
+		return err
+	}
+	if s.hub != nil {
+		payload := wsapp.ChatMessageVoteUpdatedPayload{
+			Type:        wsapp.MessageTypeChatMessageVoteUpdated,
+			ContestID:   contestID,
+			MessageID:   messageID,
+			Score:       score,
+			VoterUserID: userID,
+			VoterValue:  value,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
+	}
+	return nil
 }
 
 func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) {

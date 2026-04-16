@@ -6,23 +6,29 @@ import (
 	"net/http"
 	"strconv"
 
+	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
 	"toppet/server/internal/model"
 )
 
 type (
 	serviceChat interface {
-		ListChatMessages(ctx context.Context, contestID model.ContestID, limit, offset int) ([]*model.ChatMessage, int64, error)
+		ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error)
 	}
 
 	ChatHandler struct {
-		name    string
-		service serviceChat
+		name        string
+		service     serviceChat
+		authService serviceOptionalAuth
 	}
 )
 
 func NewChatHandler(name string, service serviceChat) *ChatHandler {
-	return &ChatHandler{name: name, service: service}
+	var authService serviceOptionalAuth
+	if svc, ok := service.(serviceOptionalAuth); ok {
+		authService = svc
+	}
+	return &ChatHandler{name: name, service: service, authService: authService}
 }
 
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +63,21 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[ChatHandler] Parameters: limit=%d, offset=%d", limit, offset)
 	log.Printf("[ChatHandler] Calling service.ListChatMessages...")
-	messages, total, err := h.service.ListChatMessages(r.Context(), contestID, limit, offset)
+	var viewer *model.UserID
+	if userIDVal := r.Context().Value(defenitions.UserID); userIDVal != nil {
+		uid := userIDVal.(model.UserID)
+		viewer = &uid
+	} else if h.authService != nil {
+		uid, ok, authErr := getOptionalUserID(r, h.authService)
+		if authErr != nil {
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication error", authErr))
+			return
+		}
+		if ok {
+			viewer = &uid
+		}
+	}
+	messages, total, err := h.service.ListChatMessages(r.Context(), contestID, viewer, limit, offset)
 	if err != nil {
 		log.Printf("[ChatHandler] ===== ERROR: Failed to list chat messages =====")
 		log.Printf("[ChatHandler] contestID: %s", contestID)

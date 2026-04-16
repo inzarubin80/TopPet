@@ -1,0 +1,89 @@
+/**
+ * Shared compact action group for forum-style messenger (chat + comments).
+ * Pattern: + | - | Ответить with score on + or - only (never both).
+ */
+.messenger-action-bar {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.messenger-action-btn {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 18px;
+  line-height: 1;
+  border-right: 1px solid #e5e7eb;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.messenger-action-btn:last-child {
+  border-right: none;
+}
+
+.messenger-action-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.messenger-action-btn:active:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.messenger-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Upvote selected */
+.messenger-action-btn.active-positive {
+  color: #15803d;
+  font-weight: 700;
+  background: #f0fdf4;
+}
+
+.messenger-action-btn.active-positive:hover:not(:disabled) {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* Downvote selected */
+.messenger-action-btn.active-negative {
+  color: #b91c1c;
+  font-weight: 700;
+  background: #fef2f2;
+}
+
+.messenger-action-btn.active-negative:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.messenger-action-reply {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .messenger-action-btn {
+    min-height: 36px;
+    font-size: 17px;
+  }
+
+  .messenger-action-reply {
+    font-size: 13px;
+  }
+}

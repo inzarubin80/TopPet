@@ -25,3 +25,7 @@ export const updateChatMessage = async (messageId: ChatMessageID, text: string):
 export const deleteChatMessage = async (messageId: ChatMessageID): Promise<void> => {
   await axiosClient.delete(`/chat/${messageId}`);
 };
+
+export const voteChatMessage = async (messageId: ChatMessageID, value: -1 | 1): Promise<void> => {
+  await axiosClient.post(`/chat/${messageId}/vote`, { value });
+};

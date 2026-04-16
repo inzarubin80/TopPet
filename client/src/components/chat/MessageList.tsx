@@ -1,37 +1,29 @@
 import React, { useRef, useState } from 'react';
 import { ChatMessage } from '../../types/models';
+import { buildThreadList } from '../../utils/messageTree';
+import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
+import '../common/MessengerActionBar.css';
 import './MessageList.css';
 
 interface MessageListProps {
   messages: ChatMessage[];
   currentUserId?: number;
+  /** When false, +/- are disabled (e.g. not signed in). */
+  canVote?: boolean;
   onUpdateMessage?: (messageId: string, text: string) => void;
   onDeleteMessage?: (messageId: string) => void;
+  onReply?: (message: ChatMessage) => void;
+  onVote?: (messageId: string, value: -1 | 1) => void;
 }
-
-// Generate color based on user_id for consistent avatar colors
-const getAvatarColor = (userId: number): string => {
-  const colors = [
-    '#2f6df6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
-  ];
-  return colors[userId % colors.length];
-};
-
-// Get initials from user name
-const getInitials = (name: string): string => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-};
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
+  canVote = true,
   onUpdateMessage,
   onDeleteMessage,
+  onReply,
+  onVote,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -151,45 +143,18 @@ export const MessageList: React.FC<MessageListProps> = ({
     setOpenMenuId((prev) => (prev === messageId ? null : messageId));
   };
 
-  // Group consecutive messages from the same user
-  const groupMessages = (messages: ChatMessage[]): Array<{ message: ChatMessage; isFirstInGroup: boolean; isLastInGroup: boolean }> => {
-    const grouped: Array<{ message: ChatMessage; isFirstInGroup: boolean; isLastInGroup: boolean }> = [];
-    
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      const prevMessage = i > 0 ? messages[i - 1] : null;
-      const nextMessage = i < messages.length - 1 ? messages[i + 1] : null;
-      
-      const isFirstInGroup = 
-        message.is_system ||
-        !prevMessage ||
-        prevMessage.is_system ||
-        prevMessage.user_id !== message.user_id ||
-        (new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime()) > 300000; // 5 minutes
-      
-      const isLastInGroup =
-        message.is_system ||
-        !nextMessage ||
-        nextMessage.is_system ||
-        nextMessage.user_id !== message.user_id ||
-        (new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime()) > 300000; // 5 minutes
-      
-      grouped.push({ message, isFirstInGroup, isLastInGroup });
-    }
-    
-    return grouped;
-  };
-
-  const groupedMessages = groupMessages(messages);
+  const threadedMessages = buildThreadList(messages);
+  const byId = new Map(messages.map((msg) => [msg.id, msg]));
 
   return (
     <div className="message-list" ref={listRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
         <div className="message-list-empty">Нет сообщений</div>
       ) : (
-        groupedMessages.map(({ message, isFirstInGroup, isLastInGroup }, index) => {
+        threadedMessages.map(({ item: message, depth }, index) => {
+          const safeDepth = Math.min(depth, 5);
           // Show date separator if this is the first message or if the previous message is from a different day
-          const prevMessage = index > 0 ? groupedMessages[index - 1].message : null;
+          const prevMessage = index > 0 ? threadedMessages[index - 1].item : null;
           const showDateSeparator = 
             !message.is_system && 
             (!prevMessage || 
@@ -198,8 +163,12 @@ export const MessageList: React.FC<MessageListProps> = ({
           
           const isOwn = currentUserId === message.user_id;
           const userName = message.user_name || `Пользователь ${message.user_id}`;
-          const avatarColor = getAvatarColor(message.user_id);
-          const initials = getInitials(userName);
+          const parentMessage = message.parent_id ? byId.get(message.parent_id) : undefined;
+          const replyToName = parentMessage
+            ? (parentMessage.user_name || `Пользователь ${parentMessage.user_id}`)
+            : null;
+          const avatarColor = getMessengerAvatarColor(message.user_id);
+          const initials = getMessengerInitials(userName);
 
           return (
             <React.Fragment key={message.id}>
@@ -209,13 +178,12 @@ export const MessageList: React.FC<MessageListProps> = ({
                 </div>
               )}
               <div
-                className={`message-item-wrapper ${message.is_system ? 'message-system-wrapper' : ''} ${
-                  isOwn ? 'message-own-wrapper' : ''
-                } ${!isFirstInGroup ? 'message-grouped' : ''}`}
+                className={`message-item-wrapper ${message.is_system ? 'message-system-wrapper' : ''}`}
+                style={{ marginLeft: `${safeDepth * 14}px` }}
               >
-              {!message.is_system && !isOwn && (
+              {!message.is_system && (
                 <div
-                  className={`message-avatar ${!isFirstInGroup ? 'message-avatar-hidden' : ''}`}
+                  className="message-avatar"
                   style={{ backgroundColor: avatarColor }}
                   title={userName}
                 >
@@ -223,91 +191,52 @@ export const MessageList: React.FC<MessageListProps> = ({
                 </div>
               )}
               <div
-                className={`message-item ${message.is_system ? 'message-system' : ''} ${
-                  isOwn ? 'message-own' : ''
-                }`}
+                className={`message-item ${message.is_system ? 'message-system' : ''}`}
               >
-                {!message.is_system && isFirstInGroup && (
+                {!message.is_system && (
                   <div className="message-header">
-                    <span className="message-user">
-                      {userName}
-                    </span>
-                    <span 
-                      className="message-time" 
-                      title={formatFullDate(message.created_at)}
-                    >
-                      {formatDate(message.created_at)}
-                    </span>
+                    <div className="message-header-titles">
+                      <span className="message-user">{userName}</span>
+                      {replyToName ? (
+                        <span className="message-reply-target">↪ {replyToName}</span>
+                      ) : null}
+                    </div>
                     {isOwn && (
-                      <div className="message-menu">
-                        <button
-                          type="button"
-                          className="message-menu-trigger"
-                          onClick={() => toggleMenu(message.id)}
-                          aria-label="Открыть меню"
-                        >
-                          ⋯
-                        </button>
-                        {openMenuId === message.id && (
-                          <div className="message-menu-dropdown">
-                            <button
-                              type="button"
-                              className="message-menu-item"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleStartEdit(message.id, message.text);
-                              }}
-                            >
-                              Редактировать
-                            </button>
-                            <button
-                              type="button"
-                              className="message-menu-item danger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDelete(message.id);
-                              }}
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!message.is_system && !isFirstInGroup && isOwn && (
-                  <div className="message-menu-inline">
-                    <button
-                      type="button"
-                      className="message-menu-trigger"
-                      onClick={() => toggleMenu(message.id)}
-                      aria-label="Открыть меню"
-                    >
-                      ⋯
-                    </button>
-                    {openMenuId === message.id && (
-                      <div className="message-menu-dropdown">
-                        <button
-                          type="button"
-                          className="message-menu-item"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleStartEdit(message.id, message.text);
-                          }}
-                        >
-                          Редактировать
-                        </button>
-                        <button
-                          type="button"
-                          className="message-menu-item danger"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDelete(message.id);
-                          }}
-                        >
-                          Удалить
-                        </button>
+                      <div className="message-actions">
+                        <div className="message-menu">
+                          <button
+                            type="button"
+                            className="message-menu-trigger"
+                            onClick={() => toggleMenu(message.id)}
+                            aria-label="Открыть меню"
+                          >
+                            ⋯
+                          </button>
+                          {openMenuId === message.id && (
+                            <div className="message-menu-dropdown">
+                              <button
+                                type="button"
+                                className="message-menu-item"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleStartEdit(message.id, message.text);
+                                }}
+                              >
+                                Редактировать
+                              </button>
+                              <button
+                                type="button"
+                                className="message-menu-item danger"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDelete(message.id);
+                                }}
+                              >
+                                Удалить
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -342,18 +271,48 @@ export const MessageList: React.FC<MessageListProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="message-text">{message.text}</div>
+                  <>
+                    <div className="message-text">{message.text}</div>
+                    {!message.is_system && (
+                      <div className="message-footer-row">
+                        <div className="messenger-action-bar">
+                          <button
+                            type="button"
+                            className={`messenger-action-btn ${message.user_vote === 1 ? 'active-positive' : ''}`}
+                            disabled={!canVote || !onVote}
+                            onClick={() => onVote?.(message.id, 1)}
+                            aria-label="Плюс"
+                          >
+                            {message.score > 0 ? `+ ${message.score}` : '+'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`messenger-action-btn ${message.user_vote === -1 ? 'active-negative' : ''}`}
+                            disabled={!canVote || !onVote}
+                            onClick={() => onVote?.(message.id, -1)}
+                            aria-label="Минус"
+                          >
+                            {message.score < 0 ? `- ${Math.abs(message.score)}` : '-'}
+                          </button>
+                          <button
+                            type="button"
+                            className="messenger-action-btn messenger-action-reply"
+                            onClick={() => onReply?.(message)}
+                          >
+                            Ответить
+                          </button>
+                        </div>
+                        <span
+                          className="message-time"
+                          title={formatFullDate(message.created_at)}
+                        >
+                          {formatDate(message.created_at)}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-              {!message.is_system && isOwn && (
-                <div
-                  className={`message-avatar message-avatar-own ${!isFirstInGroup ? 'message-avatar-hidden' : ''}`}
-                  style={{ backgroundColor: avatarColor }}
-                  title={userName}
-                >
-                  {initials}
-                </div>
-              )}
             </div>
             </React.Fragment>
           );
