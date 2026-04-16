@@ -2839,6 +2839,22 @@ func (q *Queries) SetUserAvatarIfEmpty(ctx context.Context, arg *SetUserAvatarIf
 	return err
 }
 
+const setUserDateOfBirthIfEmpty = `-- name: SetUserDateOfBirthIfEmpty :exec
+UPDATE users SET date_of_birth = $2
+WHERE user_id = $1
+  AND date_of_birth IS NULL
+`
+
+type SetUserDateOfBirthIfEmptyParams struct {
+	UserID      int64
+	DateOfBirth pgtype.Date
+}
+
+func (q *Queries) SetUserDateOfBirthIfEmpty(ctx context.Context, arg *SetUserDateOfBirthIfEmptyParams) error {
+	_, err := q.db.Exec(ctx, setUserDateOfBirthIfEmpty, arg.UserID, arg.DateOfBirth)
+	return err
+}
+
 const setUserEmailIfEmpty = `-- name: SetUserEmailIfEmpty :exec
 UPDATE users AS u SET email = $2
 WHERE u.user_id = $1
@@ -2856,6 +2872,22 @@ type SetUserEmailIfEmptyParams struct {
 
 func (q *Queries) SetUserEmailIfEmpty(ctx context.Context, arg *SetUserEmailIfEmptyParams) error {
 	_, err := q.db.Exec(ctx, setUserEmailIfEmpty, arg.UserID, arg.Email)
+	return err
+}
+
+const setUserPhoneIfEmpty = `-- name: SetUserPhoneIfEmpty :exec
+UPDATE users SET phone = $2
+WHERE user_id = $1
+  AND (phone IS NULL OR btrim(COALESCE(phone, '')) = '')
+`
+
+type SetUserPhoneIfEmptyParams struct {
+	UserID int64
+	Phone  *string
+}
+
+func (q *Queries) SetUserPhoneIfEmpty(ctx context.Context, arg *SetUserPhoneIfEmptyParams) error {
+	_, err := q.db.Exec(ctx, setUserPhoneIfEmpty, arg.UserID, arg.Phone)
 	return err
 }
 

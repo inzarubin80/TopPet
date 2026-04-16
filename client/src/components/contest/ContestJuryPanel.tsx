@@ -465,7 +465,7 @@ const JuryMemberPublicView: React.FC<{ member: JuryMember }> = ({ member }) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Открыть профиль
+            Открыть партфолио
           </a>
         </div>
       ) : null}

@@ -98,6 +98,16 @@ UPDATE users SET avatar_url = $2
 WHERE user_id = $1
   AND (avatar_url IS NULL OR btrim(COALESCE(avatar_url, '')) = '');
 
+-- name: SetUserPhoneIfEmpty :exec
+UPDATE users SET phone = $2
+WHERE user_id = $1
+  AND (phone IS NULL OR btrim(COALESCE(phone, '')) = '');
+
+-- name: SetUserDateOfBirthIfEmpty :exec
+UPDATE users SET date_of_birth = $2
+WHERE user_id = $1
+  AND date_of_birth IS NULL;
+
 -- name: GetUserAuthProvidersByProviderUid :one
 SELECT user_id, provider_uid, provider, name FROM user_auth_providers
 WHERE provider_uid = $1 AND provider = $2;

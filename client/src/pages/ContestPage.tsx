@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import {
@@ -40,6 +40,7 @@ import { sortNominationsByOrder } from '../components/contest/contestNominations
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
+import { buildLoginUrl } from '../utils/navigation';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -61,6 +62,7 @@ function userHasParticipantForNomination(
 const ContestPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { showError } = useToast();
   const { currentContest, loading } = useSelector((state: RootState) => state.contests);
@@ -340,11 +342,17 @@ const ContestPage: React.FC = () => {
   const canAddParticipant =
     isAuthenticated &&
     (currentContest.status === 'registration' || currentContest.status === 'draft');
-  const showWorksParticipationChrome = canAddParticipant || canManageParticipants;
+  const participationPeriodOpen =
+    currentContest.status === 'registration' || currentContest.status === 'draft';
+  const showGuestParticipationCta = !isAuthenticated && participationPeriodOpen;
+  const showWorksParticipationChrome =
+    canAddParticipant || canManageParticipants || showGuestParticipationCta;
   const showDomainParticipationNote =
     participantEmailDomainsActive &&
     (currentContest.status === 'registration' || currentContest.status === 'draft');
   const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
+  /** Блокировка по домену e-mail имеет смысл только после входа; гостю показываем кнопку ведущую на логин. */
+  const participationCtaDisabledByDomain = isAuthenticated && blockedByEmailDomain;
   const hasContestNominations = contestNominations.length > 0;
   const nominationsOpenToUser = hasContestNominations
     ? contestNominations.filter(
@@ -384,6 +392,10 @@ const ContestPage: React.FC = () => {
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
+
+  const participateNominationCtaLabel = isAuthenticated
+    ? 'Участвовать'
+    : 'Зарегистрироваться для участия';
 
   const accentHex = (currentContest.theme_color || '').trim();
   const hasThemedAccent = /^#[0-9A-Fa-f]{6}$/.test(accentHex);
@@ -619,13 +631,17 @@ const ContestPage: React.FC = () => {
                 type="button"
                 size="small"
                 variant="primary"
-                disabled={blockedByEmailDomain}
+                disabled={participationCtaDisabledByDomain}
                 onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate(buildLoginUrl(`${location.pathname}${location.search}`));
+                    return;
+                  }
                   setAddParticipantNomination({ id: n.id, title: n.title });
                   setIsAddParticipantModalOpen(true);
                 }}
               >
-                Участвовать
+                {participateNominationCtaLabel}
               </Button>
             );
           }}
@@ -732,15 +748,25 @@ const ContestPage: React.FC = () => {
                     <Button
                       type="button"
                       size="large"
-                      disabled={blockedByEmailDomain}
+                      disabled={participationCtaDisabledByDomain}
                       className="contest-page-add-participant-button"
                       onClick={() => {
+                        if (!isAuthenticated) {
+                          navigate(buildLoginUrl(`${location.pathname}${location.search}`));
+                          return;
+                        }
                         setAddParticipantNomination(null);
                         setIsAddParticipantModalOpen(true);
                       }}
                     >
-                      {participatePlusIcon}
-                      Добавить участника
+                      {isAuthenticated ? (
+                        <>
+                          {participatePlusIcon}
+                          Добавить участника
+                        </>
+                      ) : (
+                        'Зарегистрироваться для участия'
+                      )}
                     </Button>
                   </div>
                 ) : null}

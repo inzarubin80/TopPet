@@ -55,10 +55,12 @@ func (s *TopPetService) Login(ctx context.Context, providerKey string, authoriza
 		return nil, model.ErrUserBlocked
 	}
 
-	// Set avatar if empty and provider returned one
+	// Дозаполняем поля профиля из провайдера, если в БД ещё пусто
 	if userProfileFromProvider.AvatarURL != "" {
 		_ = s.repository.SetUserAvatarIfEmpty(ctx, userID, &userProfileFromProvider.AvatarURL)
 	}
+	_ = s.repository.SetUserPhoneIfEmpty(ctx, userID, userProfileFromProvider.Phone)
+	_ = s.repository.SetUserDateOfBirthIfEmpty(ctx, userID, userProfileFromProvider.DateOfBirth)
 
 	refreshToken, err := s.refreshTokenService.GenerateToken(userID)
 	if err != nil {

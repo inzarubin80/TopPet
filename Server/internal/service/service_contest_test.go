@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"toppet/server/internal/model"
 )
@@ -132,6 +133,12 @@ func (m *mockRepository) SetUserAvatarIfEmpty(ctx context.Context, userID model.
 	return nil
 }
 func (m *mockRepository) SetUserEmailIfEmpty(ctx context.Context, userID model.UserID, email string) error {
+	return nil
+}
+func (m *mockRepository) SetUserPhoneIfEmpty(ctx context.Context, userID model.UserID, phone string) error {
+	return nil
+}
+func (m *mockRepository) SetUserDateOfBirthIfEmpty(ctx context.Context, userID model.UserID, dob *time.Time) error {
 	return nil
 }
 

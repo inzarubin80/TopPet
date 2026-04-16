@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"toppet/server/internal/model"
 	sqlc_repository "toppet/server/internal/repository_sqlc"
@@ -320,5 +321,32 @@ func (r *Repository) SetUserAvatarIfEmpty(ctx context.Context, userID model.User
 	return reposqlc.SetUserAvatarIfEmpty(ctx, &sqlc_repository.SetUserAvatarIfEmptyParams{
 		UserID:    int64(userID),
 		AvatarUrl: &u,
+	})
+}
+
+func (r *Repository) SetUserPhoneIfEmpty(ctx context.Context, userID model.UserID, phone string) error {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return nil
+	}
+	reposqlc := sqlc_repository.New(r.conn)
+	p := phone
+	return reposqlc.SetUserPhoneIfEmpty(ctx, &sqlc_repository.SetUserPhoneIfEmptyParams{
+		UserID: int64(userID),
+		Phone:  &p,
+	})
+}
+
+func (r *Repository) SetUserDateOfBirthIfEmpty(ctx context.Context, userID model.UserID, dob *time.Time) error {
+	if dob == nil {
+		return nil
+	}
+	reposqlc := sqlc_repository.New(r.conn)
+	return reposqlc.SetUserDateOfBirthIfEmpty(ctx, &sqlc_repository.SetUserDateOfBirthIfEmptyParams{
+		UserID: int64(userID),
+		DateOfBirth: pgtype.Date{
+			Time:  *dob,
+			Valid: true,
+		},
 	})
 }

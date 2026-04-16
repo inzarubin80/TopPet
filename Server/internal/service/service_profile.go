@@ -68,6 +68,8 @@ func (s *TopPetService) LinkAuthProvider(ctx context.Context, userID model.UserI
 		avatarURL := userData.AvatarURL
 		_ = s.repository.SetUserAvatarIfEmpty(ctx, userID, &avatarURL)
 	}
+	_ = s.repository.SetUserPhoneIfEmpty(ctx, userID, userData.Phone)
+	_ = s.repository.SetUserDateOfBirthIfEmpty(ctx, userID, userData.DateOfBirth)
 
 	return authProvider, nil
 }

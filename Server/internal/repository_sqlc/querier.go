@@ -111,7 +111,9 @@ type Querier interface {
 	SetContestJuryMemberSortOrder(ctx context.Context, arg *SetContestJuryMemberSortOrderParams) error
 	SetParticipantSubmissionStatus(ctx context.Context, arg *SetParticipantSubmissionStatusParams) (*SetParticipantSubmissionStatusRow, error)
 	SetUserAvatarIfEmpty(ctx context.Context, arg *SetUserAvatarIfEmptyParams) error
+	SetUserDateOfBirthIfEmpty(ctx context.Context, arg *SetUserDateOfBirthIfEmptyParams) error
 	SetUserEmailIfEmpty(ctx context.Context, arg *SetUserEmailIfEmptyParams) error
+	SetUserPhoneIfEmpty(ctx context.Context, arg *SetUserPhoneIfEmptyParams) error
 	SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	SumJuryScoresByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*SumJuryScoresByParticipantIDsRow, error)
 	SyncNominationPhotoCountsByContest(ctx context.Context, arg *SyncNominationPhotoCountsByContestParams) error

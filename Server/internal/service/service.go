@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"toppet/server/internal/model"
 )
@@ -39,6 +40,8 @@ type (
 		GetUserAuthProvidersByUserID(ctx context.Context, userID model.UserID) ([]*model.UserAuthProvider, error)
 		SetUserAvatarIfEmpty(ctx context.Context, userID model.UserID, avatarURL *string) error
 		SetUserEmailIfEmpty(ctx context.Context, userID model.UserID, email string) error
+		SetUserPhoneIfEmpty(ctx context.Context, userID model.UserID, phone string) error
+		SetUserDateOfBirthIfEmpty(ctx context.Context, userID model.UserID, dob *time.Time) error
 
 		// Contest
 		CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error)

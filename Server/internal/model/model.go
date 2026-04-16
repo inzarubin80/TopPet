@@ -22,6 +22,9 @@ type (
 		Name         string `json:"name"`
 		FirstName    string `json:"first_name"`
 		LastName     string `json:"last_name"`
+		Phone        string `json:"phone"`
+		// DateOfBirth — только из OAuth-провайдеров, где дата известна целиком (год не 0000).
+		DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
 		AvatarURL    string `json:"avatar_url"`
 		ProviderName string `json:"provider_name"`
 	}
