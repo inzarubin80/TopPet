@@ -95,16 +95,6 @@ type ContestJuryCriterium struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
-type ContestJuryMember struct {
-	ID           pgtype.UUID
-	ContestID    pgtype.UUID
-	UserID       int64
-	CreatedAt    pgtype.Timestamptz
-	SortOrder    int32
-	PortfolioUrl string
-	BioShort     string
-}
-
 type ContestJuryScore struct {
 	ID            pgtype.UUID
 	ParticipantID pgtype.UUID

@@ -53,8 +53,8 @@ func (s *TopPetService) PatchContestJuryMember(ctx context.Context, contestID mo
 	if !c.JuryVotingEnabled {
 		return nil, fmt.Errorf("%w: jury voting is disabled for this contest", model.ErrBadRequest)
 	}
-	if patch.PortfolioURL == nil && patch.BioShort == nil && patch.SortOrder == nil {
-		return nil, fmt.Errorf("%w: at least one of portfolio_url, bio_short, sort_order is required", model.ErrBadRequest)
+	if patch.PortfolioURL == nil && patch.BioShort == nil && patch.SortOrder == nil && patch.IsChair == nil {
+		return nil, fmt.Errorf("%w: at least one of portfolio_url, bio_short, sort_order, is_chair is required", model.ErrBadRequest)
 	}
 	cur, err := s.repository.GetContestJuryMember(ctx, contestID, memberUserID)
 	if err != nil {
@@ -63,6 +63,7 @@ func (s *TopPetService) PatchContestJuryMember(ctx context.Context, contestID mo
 	portfolio := cur.PortfolioURL
 	bio := cur.BioShort
 	ord := cur.SortOrder
+	isChair := cur.IsChair
 	if patch.PortfolioURL != nil {
 		portfolio = strings.TrimSpace(*patch.PortfolioURL)
 		if utf8.RuneCountInString(portfolio) > maxJuryPortfolioURLLen {
@@ -81,7 +82,10 @@ func (s *TopPetService) PatchContestJuryMember(ctx context.Context, contestID mo
 		}
 		ord = *patch.SortOrder
 	}
-	return s.repository.UpdateContestJuryMember(ctx, contestID, memberUserID, portfolio, bio, ord)
+	if patch.IsChair != nil {
+		isChair = *patch.IsChair
+	}
+	return s.repository.UpdateContestJuryMember(ctx, contestID, memberUserID, portfolio, bio, ord, isChair)
 }
 
 // ReorderContestJuryMembers задаёт порядок отображения жюри (полный список user_id в нужном порядке).

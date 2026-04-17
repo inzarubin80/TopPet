@@ -514,24 +514,16 @@ WHERE id = $1;
 -- name: UpsertContestVote :one
 INSERT INTO contest_votes (id, contest_id, participant_id, user_id, nomination_id)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (contest_id, user_id, nomination_slot) DO UPDATE
-SET participant_id = EXCLUDED.participant_id, nomination_id = EXCLUDED.nomination_id, updated_at = NOW()
 RETURNING *;
-
--- name: GetContestVoteForUserNominationSlot :one
-SELECT * FROM contest_votes
-WHERE contest_id = @contest_id AND user_id = @user_id
-  AND nomination_id IS NOT DISTINCT FROM sqlc.narg('nomination_id')::uuid;
 
 -- name: ListContestVotesByUser :many
 SELECT * FROM contest_votes
 WHERE contest_id = $1 AND user_id = $2
-ORDER BY nomination_slot ASC;
+ORDER BY created_at ASC;
 
--- name: DeleteContestVoteByUserAndNomination :one
+-- name: DeleteContestVoteByUserAndParticipant :one
 DELETE FROM contest_votes
-WHERE contest_id = @contest_id AND user_id = @user_id
-  AND nomination_id IS NOT DISTINCT FROM sqlc.narg('nomination_id')::uuid
+WHERE contest_id = @contest_id AND user_id = @user_id AND participant_id = @participant_id
 RETURNING participant_id;
 
 -- name: ListAcceptedParticipantScoresForContest :many
@@ -846,6 +838,7 @@ SELECT
     jm.user_id,
     jm.created_at,
     jm.sort_order,
+    jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
     u.name AS user_name
@@ -860,9 +853,9 @@ FROM contest_jury_members
 WHERE contest_id = $1;
 
 -- name: InsertContestJuryMember :one
-INSERT INTO contest_jury_members (id, contest_id, user_id, sort_order, portfolio_url, bio_short)
-VALUES ($1, $2, $3, $4, '', '')
-RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short;
+INSERT INTO contest_jury_members (id, contest_id, user_id, sort_order, is_chair, portfolio_url, bio_short)
+VALUES ($1, $2, $3, $4, false, '', '')
+RETURNING id, contest_id, user_id, created_at, sort_order, is_chair, portfolio_url, bio_short;
 
 -- name: GetContestJuryMemberWithName :one
 SELECT
@@ -871,6 +864,7 @@ SELECT
     jm.user_id,
     jm.created_at,
     jm.sort_order,
+    jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
     u.name AS user_name
@@ -883,9 +877,10 @@ UPDATE contest_jury_members
 SET
     portfolio_url = $3,
     bio_short = $4,
-    sort_order = $5
+    sort_order = $5,
+    is_chair = $6
 WHERE contest_id = $1 AND user_id = $2
-RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short;
+RETURNING id, contest_id, user_id, created_at, sort_order, is_chair, portfolio_url, bio_short;
 
 -- name: SetContestJuryMemberSortOrder :exec
 UPDATE contest_jury_members

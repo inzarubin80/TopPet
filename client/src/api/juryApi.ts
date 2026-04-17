@@ -27,6 +27,7 @@ export type PatchJuryMemberBody = {
   portfolio_url?: string;
   bio_short?: string;
   sort_order?: number;
+  is_chair?: boolean;
 };
 
 export const patchJuryMember = async (

@@ -46,7 +46,7 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
     const [submitting, setSubmitting] = useState(false);
     /** Локальные правки полей; на сервер — через flushPendingJuryMemberEdits. */
     const [memberFieldEdits, setMemberFieldEdits] = useState<
-      Record<number, { portfolio: string; bio: string }>
+      Record<number, { portfolio: string; bio: string; isChair: boolean }>
     >({});
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchWrapRef = useRef<HTMLDivElement | null>(null);
@@ -195,19 +195,50 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
 
     const getPortfolio = (m: JuryMember) => memberFieldEdits[m.user_id]?.portfolio ?? m.portfolio_url ?? '';
     const getBio = (m: JuryMember) => memberFieldEdits[m.user_id]?.bio ?? m.bio_short ?? '';
+    const getIsChair = (m: JuryMember) => memberFieldEdits[m.user_id]?.isChair ?? Boolean(m.is_chair);
 
     const setPortfolio = (m: JuryMember, v: string) => {
       setMemberFieldEdits((prev) => ({
         ...prev,
-        [m.user_id]: { portfolio: v, bio: prev[m.user_id]?.bio ?? (m.bio_short ?? '') },
+        [m.user_id]: {
+          portfolio: v,
+          bio: prev[m.user_id]?.bio ?? (m.bio_short ?? ''),
+          isChair: prev[m.user_id]?.isChair ?? Boolean(m.is_chair),
+        },
       }));
     };
 
     const setBio = (m: JuryMember, v: string) => {
       setMemberFieldEdits((prev) => ({
         ...prev,
-        [m.user_id]: { portfolio: prev[m.user_id]?.portfolio ?? (m.portfolio_url ?? ''), bio: v },
+        [m.user_id]: {
+          portfolio: prev[m.user_id]?.portfolio ?? (m.portfolio_url ?? ''),
+          bio: v,
+          isChair: prev[m.user_id]?.isChair ?? Boolean(m.is_chair),
+        },
       }));
+    };
+
+    const setIsChair = (m: JuryMember, v: boolean) => {
+      setMemberFieldEdits((prev) => {
+        const next: Record<number, { portfolio: string; bio: string; isChair: boolean }> = {
+          ...prev,
+          [m.user_id]: {
+            portfolio: prev[m.user_id]?.portfolio ?? (m.portfolio_url ?? ''),
+            bio: prev[m.user_id]?.bio ?? (m.bio_short ?? ''),
+            isChair: v,
+          },
+        };
+        if (v) {
+          for (const key of Object.keys(next)) {
+            const uid = Number(key);
+            if (uid !== m.user_id) {
+              next[uid] = { ...next[uid], isChair: false };
+            }
+          }
+        }
+        return next;
+      });
     };
 
     const flushPendingJuryMemberEdits = useCallback(
@@ -222,6 +253,7 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
           }
           return (
             e.portfolio !== (m.portfolio_url ?? '') || e.bio !== (m.bio_short ?? '')
+            || e.isChair !== Boolean(m.is_chair)
           );
         });
         if (pending.length === 0) {
@@ -238,6 +270,7 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
             const updated = await patchJuryMember(contest.id, m.user_id, {
               portfolio_url: e.portfolio,
               bio_short: e.bio,
+              is_chair: e.isChair,
             });
             setItems((prev) => prev.map((x) => (x.user_id === m.user_id ? updated : x)));
           }
@@ -335,9 +368,11 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
                       member={j}
                       portfolio={getPortfolio(j)}
                       bio={getBio(j)}
+                      isChair={getIsChair(j)}
                       disabled={submitting}
                       onPortfolioChange={(v) => setPortfolio(j, v)}
                       onBioChange={(v) => setBio(j, v)}
+                      onIsChairChange={(v) => setIsChair(j, v)}
                     />
                   ) : (
                     <JuryMemberPublicView member={j} />
@@ -405,10 +440,12 @@ const JuryMemberEditFields: React.FC<{
   member: JuryMember;
   portfolio: string;
   bio: string;
+  isChair: boolean;
   disabled: boolean;
   onPortfolioChange: (v: string) => void;
   onBioChange: (v: string) => void;
-}> = ({ member, portfolio, bio, disabled, onPortfolioChange, onBioChange }) => {
+  onIsChairChange: (v: boolean) => void;
+}> = ({ member, portfolio, bio, isChair, disabled, onPortfolioChange, onBioChange, onIsChairChange }) => {
   return (
     <div className="contest-jury-edit-fields">
       <div className="contest-jury-field">
@@ -425,6 +462,17 @@ const JuryMemberEditFields: React.FC<{
           disabled={disabled}
           autoComplete="off"
         />
+      </div>
+      <div className="contest-jury-field">
+        <label className="contest-jury-field-label contest-jury-field-label--checkbox">
+          <input
+            type="checkbox"
+            checked={isChair}
+            onChange={(e) => onIsChairChange(e.target.checked)}
+            disabled={disabled}
+          />
+          <span>Председатель жюри</span>
+        </label>
       </div>
       <div className="contest-jury-field">
         <label className="contest-jury-field-label" htmlFor={`jury-bio-${member.user_id}`}>

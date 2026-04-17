@@ -56,10 +56,6 @@ func (v *voteFlowMock) GetParticipant(ctx context.Context, participantID model.P
 	return v.mockRepository.GetParticipant(ctx, participantID)
 }
 
-func (v *voteFlowMock) GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error) {
-	return nil, model.ErrorNotFound
-}
-
 func (v *voteFlowMock) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
 	v.upsertNoms = append(v.upsertNoms, nominationID)
 	nomCopy := nominationID

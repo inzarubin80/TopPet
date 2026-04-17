@@ -201,6 +201,7 @@ type (
 		UserID       UserID    `json:"user_id"`
 		UserName     string    `json:"user_name,omitempty"`
 		SortOrder    int32     `json:"sort_order"`
+		IsChair      bool      `json:"is_chair"`
 		PortfolioURL string    `json:"portfolio_url,omitempty"`
 		BioShort     string    `json:"bio_short,omitempty"`
 		CreatedAt    time.Time `json:"created_at"`
@@ -211,6 +212,7 @@ type (
 		PortfolioURL *string `json:"portfolio_url"`
 		BioShort     *string `json:"bio_short"`
 		SortOrder    *int32  `json:"sort_order"`
+		IsChair      *bool   `json:"is_chair"`
 	}
 
 	// JuryScore — оценка члена жюри по одному критерию для заявки.

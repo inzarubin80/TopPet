@@ -26,7 +26,6 @@ import { useToast } from '../contexts/ToastContext';
 import { errorHandler } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { useContestPermissions } from '../hooks/useContestPermissions';
-import { nominationVoteKey } from '../utils/voteKeys';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
 import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
@@ -44,13 +43,22 @@ import './ContestPage.css';
 const PARTICIPANTS_PAGE_SIZE = 24;
 const EMPTY_STRING_ARRAY: string[] = [];
 const EMPTY_PARTICIPANTS_ARRAY: Participant[] = [];
-const EMPTY_VOTE_SLOTS: Record<string, string> = {};
+const EMPTY_VOTE_SLOTS: Record<string, boolean> = {};
 
-type ContestTab = 'about' | 'chat' | 'gallery' | 'winners';
+type ContestTab = 'about' | 'chat' | 'gallery' | 'winners' | 'jury_voting' | 'jury_chair';
 
 function parseContestTabFromHash(hash: string): ContestTab {
   const h = (hash || '').replace(/^#/, '').trim().toLowerCase();
-  if (h === 'chat' || h === 'gallery' || h === 'winners' || h === 'about') return h;
+  if (
+    h === 'chat' ||
+    h === 'gallery' ||
+    h === 'winners' ||
+    h === 'about' ||
+    h === 'jury_voting' ||
+    h === 'jury_chair'
+  ) {
+    return h;
+  }
   return 'about';
 }
 
@@ -101,6 +109,7 @@ const ContestPage: React.FC = () => {
   const [participantsSort, setParticipantsSort] = useState<ParticipantsListSort>('created_at');
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
+  const [isCurrentUserJuryChair, setIsCurrentUserJuryChair] = useState(false);
   const [addParticipantNomination, setAddParticipantNomination] = useState<{ id: string; title: string } | null>(
     null
   );
@@ -141,16 +150,19 @@ const ContestPage: React.FC = () => {
       setParticipantsJuryUnscoredOnly(false);
       setParticipantsSubmissionFilter('all');
       setParticipantsVotedOnly(false);
-      setParticipantsSort(
-        currentContest.status === 'voting' || currentContest.status === 'finished' ? 'votes' : 'created_at'
-      );
+      const initialSort: ParticipantsListSort = currentContest.public_voting_enabled
+        ? 'votes'
+        : currentContest.jury_voting_enabled
+          ? 'jury'
+          : 'created_at';
+      setParticipantsSort(initialSort);
       setParticipantsPage(0);
       participantsListFiltersRef.current = {
         nomination: 'all',
         juryUnscored: false,
         submission: 'all',
         votedOnly: false,
-        sort: currentContest.status === 'voting' || currentContest.status === 'finished' ? 'votes' : 'created_at',
+        sort: initialSort,
       };
       return;
     }
@@ -237,18 +249,22 @@ const ContestPage: React.FC = () => {
   useEffect(() => {
     if (!id || !isAuthenticated || !currentContest?.jury_voting_enabled) {
       setIsCurrentUserJuror(false);
+      setIsCurrentUserJuryChair(false);
       return;
     }
     let cancelled = false;
     getContestJury(id)
       .then((members) => {
         if (!cancelled) {
-          setIsCurrentUserJuror(members.some((m) => m.user_id === currentUser?.id));
+          const currentMember = members.find((m) => m.user_id === currentUser?.id);
+          setIsCurrentUserJuror(Boolean(currentMember));
+          setIsCurrentUserJuryChair(Boolean(currentMember?.is_chair));
         }
       })
       .catch(() => {
         if (!cancelled) {
           setIsCurrentUserJuror(false);
+          setIsCurrentUserJuryChair(false);
         }
       });
     return () => {
@@ -309,6 +325,34 @@ const ContestPage: React.FC = () => {
   const audiencePrizePlaces = [...(currentContest?.audience_prize_places ?? [])].sort(
     (a, b) => a.place - b.place
   );
+  const activeTab = parseContestTabFromHash(location.hash);
+  const canAccessJuryVotingTab =
+    Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuror);
+  const canAccessJuryChairTab =
+    Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuryChair);
+
+  useEffect(() => {
+    if (activeTab === 'jury_voting' && !canAccessJuryVotingTab) {
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: '#about' },
+        { replace: true }
+      );
+      return;
+    }
+    if (activeTab === 'jury_chair' && !canAccessJuryChairTab) {
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: '#about' },
+        { replace: true }
+      );
+    }
+  }, [
+    activeTab,
+    canAccessJuryVotingTab,
+    canAccessJuryChairTab,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
 
   if (loading) {
     return (
@@ -321,8 +365,6 @@ const ContestPage: React.FC = () => {
   if (!currentContest) {
     return <div className="contest-page-error">Конкурс не найден</div>;
   }
-
-  const activeTab = parseContestTabFromHash(location.hash);
 
   const participantsListPaginated =
     currentContest.status === 'draft' ||
@@ -512,6 +554,44 @@ const ContestPage: React.FC = () => {
           >
             Победители
           </button>
+          {canAccessJuryVotingTab ? (
+            <button
+              type="button"
+              className={
+                activeTab === 'jury_voting'
+                  ? 'contest-page-menu-item contest-page-menu-item--active'
+                  : 'contest-page-menu-item'
+              }
+              aria-current={activeTab === 'jury_voting' ? 'page' : undefined}
+              onClick={() =>
+                navigate(
+                  { pathname: location.pathname, search: location.search, hash: '#jury_voting' },
+                  { replace: true }
+                )
+              }
+            >
+              Голосование жюри
+            </button>
+          ) : null}
+          {canAccessJuryChairTab ? (
+            <button
+              type="button"
+              className={
+                activeTab === 'jury_chair'
+                  ? 'contest-page-menu-item contest-page-menu-item--active'
+                  : 'contest-page-menu-item'
+              }
+              aria-current={activeTab === 'jury_chair' ? 'page' : undefined}
+              onClick={() =>
+                navigate(
+                  { pathname: location.pathname, search: location.search, hash: '#jury_chair' },
+                  { replace: true }
+                )
+              }
+            >
+              Председатель жюри
+            </button>
+          ) : null}
         </nav>
 
         {activeTab === 'about' ? (
@@ -971,9 +1051,7 @@ const ContestPage: React.FC = () => {
                     voteCtaLabel={voteCtaLabel}
                     juryVotingEnabled={currentContest.jury_voting_enabled ?? false}
                     isContestAdmin={isAdmin}
-                    isVoted={
-                      userVoteSlots[nominationVoteKey(participant.nomination_id)] === participant.id
-                    }
+                    isVoted={Boolean(userVoteSlots[participant.id])}
                     onEdit={(p) => {
                       setEditingParticipant(p);
                       setIsEditParticipantModalOpen(true);
@@ -1023,6 +1101,16 @@ const ContestPage: React.FC = () => {
         {activeTab === 'winners' ? (
           <section className="contest-page-winners" aria-label="Победители">
             <div className="contest-page-winners-empty" />
+          </section>
+        ) : null}
+        {activeTab === 'jury_voting' && canAccessJuryVotingTab ? (
+          <section className="contest-page-winners" aria-label="Голосование жюри">
+            <div className="contest-page-winners-empty">Раздел в разработке</div>
+          </section>
+        ) : null}
+        {activeTab === 'jury_chair' && canAccessJuryChairTab ? (
+          <section className="contest-page-winners" aria-label="Председатель жюри">
+            <div className="contest-page-winners-empty">Раздел в разработке</div>
           </section>
         ) : null}
       </div>

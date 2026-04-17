@@ -11,9 +11,14 @@ import {
   setCurrentContestId,
 } from '../store/slices/chatSlice';
 import { refreshTokenAsync } from '../store/slices/authSlice';
-import { fetchContest, setUserVoteSlot, updateContestTotalVotes } from '../store/slices/contestsSlice';
-import { nominationVoteKey } from '../utils/voteKeys';
+import {
+  fetchContest,
+  setUserVoteSlot,
+  setUserVotesForContest,
+  updateContestTotalVotes,
+} from '../store/slices/contestsSlice';
 import { updateParticipantVotes } from '../store/slices/participantsSlice';
+import { getVotes } from '../api/votesApi';
 import { ChatMessage, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
 import { RefreshTokenResponse } from '../types/api';
@@ -84,13 +89,27 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       }
     });
 
-    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload, nominationIdFromPayload) => {
+    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload) => {
       if (contestId && contestIdFromPayload === contestId) {
+        if (!participantIdFromPayload) {
+          // #region agent log
+          fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H5',location:'client/src/hooks/useWebSocket.ts:onUserVoteUpdated',message:'WS vote update for unlike (empty participant)',data:{contestId},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          getVotes(contestId)
+            .then((votes) => dispatch(setUserVotesForContest({ contestId, votes })))
+            .catch(() => {
+              // Ignore resync errors; state will refresh on next explicit load.
+            });
+          return;
+        }
+        // #region agent log
+        fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H5',location:'client/src/hooks/useWebSocket.ts:onUserVoteUpdated',message:'WS vote update for participant',data:{contestId,participantId:participantIdFromPayload},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         dispatch(
           setUserVoteSlot({
             contestId,
-            nominationKey: nominationVoteKey(nominationIdFromPayload),
-            participantId: participantIdFromPayload || null,
+            participantId: participantIdFromPayload,
+            voted: true,
           })
         );
       }

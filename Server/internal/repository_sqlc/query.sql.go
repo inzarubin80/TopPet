@@ -746,21 +746,20 @@ func (q *Queries) DeleteContestJuryMembersByUserID(ctx context.Context, userID i
 	return err
 }
 
-const deleteContestVoteByUserAndNomination = `-- name: DeleteContestVoteByUserAndNomination :one
+const deleteContestVoteByUserAndParticipant = `-- name: DeleteContestVoteByUserAndParticipant :one
 DELETE FROM contest_votes
-WHERE contest_id = $1 AND user_id = $2
-  AND nomination_id IS NOT DISTINCT FROM $3::uuid
+WHERE contest_id = $1 AND user_id = $2 AND participant_id = $3
 RETURNING participant_id
 `
 
-type DeleteContestVoteByUserAndNominationParams struct {
-	ContestID    pgtype.UUID
-	UserID       int64
-	NominationID pgtype.UUID
+type DeleteContestVoteByUserAndParticipantParams struct {
+	ContestID     pgtype.UUID
+	UserID        int64
+	ParticipantID pgtype.UUID
 }
 
-func (q *Queries) DeleteContestVoteByUserAndNomination(ctx context.Context, arg *DeleteContestVoteByUserAndNominationParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, deleteContestVoteByUserAndNomination, arg.ContestID, arg.UserID, arg.NominationID)
+func (q *Queries) DeleteContestVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestVoteByUserAndParticipantParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteContestVoteByUserAndParticipant, arg.ContestID, arg.UserID, arg.ParticipantID)
 	var participant_id pgtype.UUID
 	err := row.Scan(&participant_id)
 	return participant_id, err
@@ -1001,6 +1000,7 @@ SELECT
     jm.user_id,
     jm.created_at,
     jm.sort_order,
+    jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
     u.name AS user_name
@@ -1020,6 +1020,7 @@ type GetContestJuryMemberWithNameRow struct {
 	UserID       int64
 	CreatedAt    pgtype.Timestamptz
 	SortOrder    int32
+	IsChair      bool
 	PortfolioUrl string
 	BioShort     string
 	UserName     string
@@ -1034,37 +1035,10 @@ func (q *Queries) GetContestJuryMemberWithName(ctx context.Context, arg *GetCont
 		&i.UserID,
 		&i.CreatedAt,
 		&i.SortOrder,
+		&i.IsChair,
 		&i.PortfolioUrl,
 		&i.BioShort,
 		&i.UserName,
-	)
-	return &i, err
-}
-
-const getContestVoteForUserNominationSlot = `-- name: GetContestVoteForUserNominationSlot :one
-SELECT id, contest_id, participant_id, user_id, nomination_id, created_at, updated_at, nomination_slot FROM contest_votes
-WHERE contest_id = $1 AND user_id = $2
-  AND nomination_id IS NOT DISTINCT FROM $3::uuid
-`
-
-type GetContestVoteForUserNominationSlotParams struct {
-	ContestID    pgtype.UUID
-	UserID       int64
-	NominationID pgtype.UUID
-}
-
-func (q *Queries) GetContestVoteForUserNominationSlot(ctx context.Context, arg *GetContestVoteForUserNominationSlotParams) (*ContestVote, error) {
-	row := q.db.QueryRow(ctx, getContestVoteForUserNominationSlot, arg.ContestID, arg.UserID, arg.NominationID)
-	var i ContestVote
-	err := row.Scan(
-		&i.ID,
-		&i.ContestID,
-		&i.ParticipantID,
-		&i.UserID,
-		&i.NominationID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.NominationSlot,
 	)
 	return &i, err
 }
@@ -1381,9 +1355,9 @@ func (q *Queries) GetUserRole(ctx context.Context, userID int64) (string, error)
 }
 
 const insertContestJuryMember = `-- name: InsertContestJuryMember :one
-INSERT INTO contest_jury_members (id, contest_id, user_id, sort_order, portfolio_url, bio_short)
-VALUES ($1, $2, $3, $4, '', '')
-RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short
+INSERT INTO contest_jury_members (id, contest_id, user_id, sort_order, is_chair, portfolio_url, bio_short)
+VALUES ($1, $2, $3, $4, false, '', '')
+RETURNING id, contest_id, user_id, created_at, sort_order, is_chair, portfolio_url, bio_short
 `
 
 type InsertContestJuryMemberParams struct {
@@ -1393,20 +1367,32 @@ type InsertContestJuryMemberParams struct {
 	SortOrder int32
 }
 
-func (q *Queries) InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*ContestJuryMember, error) {
+type InsertContestJuryMemberRow struct {
+	ID           pgtype.UUID
+	ContestID    pgtype.UUID
+	UserID       int64
+	CreatedAt    pgtype.Timestamptz
+	SortOrder    int32
+	IsChair      bool
+	PortfolioUrl string
+	BioShort     string
+}
+
+func (q *Queries) InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*InsertContestJuryMemberRow, error) {
 	row := q.db.QueryRow(ctx, insertContestJuryMember,
 		arg.ID,
 		arg.ContestID,
 		arg.UserID,
 		arg.SortOrder,
 	)
-	var i ContestJuryMember
+	var i InsertContestJuryMemberRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContestID,
 		&i.UserID,
 		&i.CreatedAt,
 		&i.SortOrder,
+		&i.IsChair,
 		&i.PortfolioUrl,
 		&i.BioShort,
 	)
@@ -1852,6 +1838,7 @@ SELECT
     jm.user_id,
     jm.created_at,
     jm.sort_order,
+    jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
     u.name AS user_name
@@ -1867,6 +1854,7 @@ type ListContestJuryMembersWithNamesRow struct {
 	UserID       int64
 	CreatedAt    pgtype.Timestamptz
 	SortOrder    int32
+	IsChair      bool
 	PortfolioUrl string
 	BioShort     string
 	UserName     string
@@ -1888,6 +1876,7 @@ func (q *Queries) ListContestJuryMembersWithNames(ctx context.Context, contestID
 			&i.UserID,
 			&i.CreatedAt,
 			&i.SortOrder,
+			&i.IsChair,
 			&i.PortfolioUrl,
 			&i.BioShort,
 			&i.UserName,
@@ -2063,7 +2052,7 @@ func (q *Queries) ListContestJuryVotingProgressByContest(ctx context.Context, co
 const listContestVotesByUser = `-- name: ListContestVotesByUser :many
 SELECT id, contest_id, participant_id, user_id, nomination_id, created_at, updated_at, nomination_slot FROM contest_votes
 WHERE contest_id = $1 AND user_id = $2
-ORDER BY nomination_slot ASC
+ORDER BY created_at ASC
 `
 
 type ListContestVotesByUserParams struct {
@@ -3249,9 +3238,10 @@ UPDATE contest_jury_members
 SET
     portfolio_url = $3,
     bio_short = $4,
-    sort_order = $5
+    sort_order = $5,
+    is_chair = $6
 WHERE contest_id = $1 AND user_id = $2
-RETURNING id, contest_id, user_id, created_at, sort_order, portfolio_url, bio_short
+RETURNING id, contest_id, user_id, created_at, sort_order, is_chair, portfolio_url, bio_short
 `
 
 type UpdateContestJuryMemberParams struct {
@@ -3260,23 +3250,37 @@ type UpdateContestJuryMemberParams struct {
 	PortfolioUrl string
 	BioShort     string
 	SortOrder    int32
+	IsChair      bool
 }
 
-func (q *Queries) UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*ContestJuryMember, error) {
+type UpdateContestJuryMemberRow struct {
+	ID           pgtype.UUID
+	ContestID    pgtype.UUID
+	UserID       int64
+	CreatedAt    pgtype.Timestamptz
+	SortOrder    int32
+	IsChair      bool
+	PortfolioUrl string
+	BioShort     string
+}
+
+func (q *Queries) UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*UpdateContestJuryMemberRow, error) {
 	row := q.db.QueryRow(ctx, updateContestJuryMember,
 		arg.ContestID,
 		arg.UserID,
 		arg.PortfolioUrl,
 		arg.BioShort,
 		arg.SortOrder,
+		arg.IsChair,
 	)
-	var i ContestJuryMember
+	var i UpdateContestJuryMemberRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContestID,
 		&i.UserID,
 		&i.CreatedAt,
 		&i.SortOrder,
+		&i.IsChair,
 		&i.PortfolioUrl,
 		&i.BioShort,
 	)
@@ -3901,8 +3905,6 @@ const upsertContestVote = `-- name: UpsertContestVote :one
 
 INSERT INTO contest_votes (id, contest_id, participant_id, user_id, nomination_id)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (contest_id, user_id, nomination_slot) DO UPDATE
-SET participant_id = EXCLUDED.participant_id, nomination_id = EXCLUDED.nomination_id, updated_at = NOW()
 RETURNING id, contest_id, participant_id, user_id, nomination_id, created_at, updated_at, nomination_slot
 `
 

@@ -30,7 +30,7 @@ export const useParticipantPermissions = (
     const submissionOk =
       !participant.submission_status || participant.submission_status === 'accepted';
     const canVote =
-      contestStatus === 'voting' && !isOwner && publicVotingEnabled && submissionOk;
+      contestStatus === 'voting' && publicVotingEnabled && submissionOk;
 
     return {
       isOwner,

@@ -30,10 +30,6 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 		return nil, errors.New("voting is only allowed during voting stage")
 	}
 
-	if !contest.PublicVotingEnabled {
-		return nil, errors.New("public voting is disabled for this contest")
-	}
-
 	participant, err := s.repository.GetParticipant(ctx, participantID)
 	if err != nil {
 		return nil, err
@@ -51,12 +47,6 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 	}
 
 	nomSlot := voteNominationSlotFromParticipant(participant)
-
-	var previousParticipantID model.ParticipantID
-	if existingVote, err := s.repository.GetContestVoteForUserNominationSlot(ctx, contestID, userID, nomSlot); err == nil {
-		previousParticipantID = existingVote.ParticipantID
-	}
-
 	vote, err := s.repository.UpsertContestVote(ctx, contestID, participantID, userID, nomSlot)
 	if err != nil {
 		return nil, err
@@ -73,17 +63,6 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 			ContestTotalVotes:     contestTotalVotes,
 		}
 		_ = s.hub.BroadcastContestMessage(contestID, payload)
-		if previousParticipantID != "" && previousParticipantID != participantID {
-			previousTotalVotes, _ := s.repository.CountVotesByParticipant(ctx, previousParticipantID)
-			prevPayload := wsapp.VoteCountsUpdatedPayload{
-				Type:                  wsapp.MessageTypeVoteCreated,
-				ContestID:             contestID,
-				ParticipantID:         previousParticipantID,
-				ParticipantTotalVotes: previousTotalVotes,
-				ContestTotalVotes:     contestTotalVotes,
-			}
-			_ = s.hub.BroadcastContestMessage(contestID, prevPayload)
-		}
 		userPayload := wsapp.UserVoteUpdatedPayload{
 			Type:          wsapp.MessageTypeUserVoteUpdated,
 			ContestID:     contestID,
@@ -100,7 +79,7 @@ func (s *TopPetService) ListUserVotesForContest(ctx context.Context, contestID m
 	return s.repository.ListContestVotesByUser(ctx, contestID, userID)
 }
 
-func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
+func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error) {
 	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return "", err
@@ -110,19 +89,7 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 		return "", errors.New("voting is only allowed during voting stage")
 	}
 
-	if !contest.PublicVotingEnabled {
-		return "", errors.New("public voting is disabled for this contest")
-	}
-
-	var nomSlot *string
-	if nominationID != nil {
-		t := strings.TrimSpace(*nominationID)
-		if t != "" {
-			nomSlot = &t
-		}
-	}
-
-	participantID, err := s.repository.DeleteContestVoteByUserAndNomination(ctx, contestID, userID, nomSlot)
+	participantID, err = s.repository.DeleteContestVoteByUserAndParticipant(ctx, contestID, userID, participantID)
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +111,7 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 			Type:          wsapp.MessageTypeUserVoteUpdated,
 			ContestID:     contestID,
 			ParticipantID: "",
-			NominationID:  nomSlot,
+			NominationID:  nil,
 		}
 		_ = s.hub.SendContestMessageToUser(contestID, userID, userPayload)
 	}

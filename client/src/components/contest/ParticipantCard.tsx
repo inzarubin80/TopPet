@@ -5,13 +5,12 @@ import { AppDispatch, RootState } from '../../store';
 import { Participant, ContestStatus } from '../../types/models';
 import { Button } from '../common/Button';
 import { buildLoginUrl } from '../../utils/navigation';
-import { vote, unvote } from '../../api/votesApi';
-import { setUserVoteSlot } from '../../store/slices/contestsSlice';
-import { nominationVoteKey } from '../../utils/voteKeys';
+import { getVotes, vote, unvote } from '../../api/votesApi';
+import { setUserVotesForContest } from '../../store/slices/contestsSlice';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
-import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
+import { patchParticipantSubmission, updateParticipantVotes } from '../../store/slices/participantsSlice';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -159,14 +158,25 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
 
     try {
       setIsVoting(true);
-      const slotKey = nominationVoteKey(participant.nomination_id);
       if (isVoted) {
-        await unvote(contestId, participant.nomination_id);
-        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId: null }));
+        await unvote(contestId, participant.id);
+        dispatch(
+          updateParticipantVotes({
+            participantId: participant.id,
+            totalVotes: Math.max(0, (participant.total_votes ?? 0) - 1),
+          })
+        );
       } else {
         await vote(contestId, { participant_id: participant.id });
-        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId: participant.id }));
+        dispatch(
+          updateParticipantVotes({
+            participantId: participant.id,
+            totalVotes: (participant.total_votes ?? 0) + 1,
+          })
+        );
       }
+      const actualVotes = await getVotes(contestId);
+      dispatch(setUserVotesForContest({ contestId, votes: actualVotes }));
     } catch (error) {
       const errorMessage = isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
       errorHandler.handleError(error, () => showError(errorMessage));
@@ -255,8 +265,17 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
               variant={isVoted ? 'secondary' : 'primary'}
               onClick={handleVoteClick}
               disabled={isVoting}
+              className="participant-card-like-icon-btn"
+              title={isVoted ? 'Убрать лайк' : voteCtaLabel?.trim() || 'Поставить лайк'}
+              aria-label={isVoted ? 'Убрать лайк' : voteCtaLabel?.trim() || 'Поставить лайк'}
             >
-              {isVoted ? 'Отменить' : voteCtaLabel?.trim() || 'Голосовать'}
+              <svg
+                className={`participant-card-like-icon ${isVoted ? 'participant-card-like-icon-filled' : ''}`}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
+              </svg>
             </Button>
           </div>
         )}

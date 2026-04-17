@@ -73,7 +73,7 @@ type (
 		ListContestJuryMembers(ctx context.Context, contestID model.ContestID) ([]*model.JuryMember, error)
 		GetContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
 		AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error)
-		UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error)
+		UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32, isChair bool) (*model.JuryMember, error)
 		ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, orderedUserIDs []model.UserID) error
 		RemoveContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) error
 		CountContestJuryMembers(ctx context.Context, contestID model.ContestID) (int64, error)
@@ -106,9 +106,8 @@ type (
 
 		// Votes
 		UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error)
-		GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error)
 		ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error)
-		DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error)
+		DeleteContestVoteByUserAndParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error)
 		ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error)
 		ListAcceptedParticipantScoresForContests(ctx context.Context, contestIDs []model.ContestID) ([]model.ParticipantScoreForWinners, error)
 		CountVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error)

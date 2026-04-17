@@ -6,8 +6,7 @@ import { Button } from '../common/Button';
 import { vote, getVotes, unvote } from '../../api/votesApi';
 import { ContestID, ParticipantID, ContestStatus } from '../../types/models';
 import { buildLoginUrl } from '../../utils/navigation';
-import { setUserVoteSlot, setUserVotesForContest } from '../../store/slices/contestsSlice';
-import { nominationVoteKey } from '../../utils/voteKeys';
+import { setUserVotesForContest } from '../../store/slices/contestsSlice';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import { logger } from '../../utils/logger';
@@ -45,10 +44,9 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   const dispatch = useDispatch();
   const { showError } = useToast();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-  const slotKey = nominationVoteKey(nominationId);
-  const currentVote = useSelector((state: RootState) => {
+  const isVoted = useSelector((state: RootState) => {
     const slots = state.contests.userVoteSlots[contestId];
-    return slots ? slots[slotKey] : undefined;
+    return Boolean(slots?.[participantId]);
   });
   const [loading, setLoading] = useState(false);
   const [voting, setVoting] = useState(false);
@@ -75,6 +73,12 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     }
   }, [isAuthenticated, contestId, loadVote]);
 
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H3',location:'client/src/components/contest/VoteButton.tsx:isVotedEffect',message:'Vote button state changed',data:{contestId,participantId,isVoted,isAuthenticated,pathname:location.pathname},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [contestId, participantId, isVoted, isAuthenticated, location.pathname]);
+
   const handleVote = async () => {
     if (!isAuthenticated) {
       const returnUrl = location.pathname + location.search;
@@ -82,46 +86,35 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       return;
     }
 
-    if (contestStatus !== 'voting' || voting || isOwner || !publicVotingEnabled || !canReceiveVotes) {
+    if (contestStatus !== 'voting' || voting || !publicVotingEnabled || !canReceiveVotes) {
       return;
     }
 
     try {
       setVoting(true);
-      if (currentVote === participantId) {
-        await unvote(contestId, nominationId);
-        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId: null }));
+      // #region agent log
+      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H4',location:'client/src/components/contest/VoteButton.tsx:handleVote',message:'Handle vote started',data:{contestId,participantId,isVotedBefore:isVoted,action:isVoted?'unvote':'vote'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      if (isVoted) {
+        await unvote(contestId, participantId);
       } else {
         await vote(contestId, { participant_id: participantId });
-        dispatch(setUserVoteSlot({ contestId, nominationKey: slotKey, participantId }));
       }
+      const actualVotes = await getVotes(contestId);
+      // #region agent log
+      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H4',location:'client/src/components/contest/VoteButton.tsx:handleVote',message:'Handle vote resynced',data:{contestId,participantId,isPresentAfterResync:actualVotes.some((v)=>v.participant_id===participantId),countAfterResync:actualVotes.length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      dispatch(setUserVotesForContest({ contestId, votes: actualVotes }));
       if (onVoted) {
         onVoted(participantId);
       }
     } catch (error) {
-      const message = currentVote === participantId ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
+      const message = isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
       errorHandler.handleError(error, () => showError(message));
     } finally {
       setVoting(false);
     }
   };
-
-  if (isOwner && contestStatus === 'voting') {
-    return (
-      <div className="vote-button-owner-info">
-        <svg className="vote-button-owner-info-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
-          <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="12" cy="8" r="1" fill="currentColor"/>
-        </svg>
-        <span className="vote-button-owner-info-text">Это ваш участник</span>
-      </div>
-    );
-  }
-
-  if (isOwner) {
-    return null;
-  }
 
   if (contestStatus === 'voting' && !publicVotingEnabled) {
     return (
@@ -151,8 +144,8 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     return null;
   }
 
-  const isVoted = currentVote === participantId;
   const primaryVoteLabel = voteCtaLabel?.trim() || 'Проголосовать';
+  const iconTitle = isVoted ? 'Убрать лайк' : primaryVoteLabel === 'Проголосовать' ? 'Поставить лайк' : primaryVoteLabel;
 
   return (
     <Button
@@ -161,8 +154,22 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       disabled={loading || voting}
       size="large"
       fullWidth={true}
+      className={`vote-button-main ${isVoted ? 'vote-button-main-active' : ''}`}
+      title={iconTitle}
+      aria-label={iconTitle}
     >
-      {loading ? 'Загрузка...' : voting ? 'Голосование...' : isVoted ? 'Отменить голос' : primaryVoteLabel}
+      <span className="vote-button-main-content">
+        <svg
+          className={`vote-button-main-icon ${isVoted ? 'vote-button-main-icon-filled' : ''}`}
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
+        </svg>
+        {loading || voting ? (
+          <span>{loading ? 'Загрузка...' : 'Сохраняем...'}</span>
+        ) : null}
+      </span>
     </Button>
   );
 };

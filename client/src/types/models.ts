@@ -197,6 +197,8 @@ export interface JuryMember {
   user_name?: string;
   /** Порядок отображения (0 — первый). */
   sort_order: number;
+  /** Председатель жюри (максимум один на конкурс). */
+  is_chair?: boolean;
   /** Ссылка на портфолио или профиль. */
   portfolio_url?: string;
   /** Краткое описание для публичной страницы. */

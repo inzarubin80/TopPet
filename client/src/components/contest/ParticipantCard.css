@@ -370,3 +370,25 @@
   align-self: stretch;
 }
 
+.participant-card-like-icon-btn {
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  align-self: flex-start;
+  border-radius: 999px;
+}
+
+.participant-card-like-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.participant-card-like-icon-filled {
+  fill: currentColor;
+  stroke: currentColor;
+}
+

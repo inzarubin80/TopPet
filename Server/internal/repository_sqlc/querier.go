@@ -48,7 +48,7 @@ type Querier interface {
 	DeleteContestCommentsByUserID(ctx context.Context, userID int64) error
 	DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error
 	DeleteContestJuryMembersByUserID(ctx context.Context, userID int64) error
-	DeleteContestVoteByUserAndNomination(ctx context.Context, arg *DeleteContestVoteByUserAndNominationParams) (pgtype.UUID, error)
+	DeleteContestVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestVoteByUserAndParticipantParams) (pgtype.UUID, error)
 	DeleteContestVotesByUserID(ctx context.Context, userID int64) error
 	DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error
 	DeleteJuryCriterionForContest(ctx context.Context, arg *DeleteJuryCriterionForContestParams) error
@@ -66,7 +66,6 @@ type Querier interface {
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
 	GetContestJuryMemberWithName(ctx context.Context, arg *GetContestJuryMemberWithNameParams) (*GetContestJuryMemberWithNameRow, error)
-	GetContestVoteForUserNominationSlot(ctx context.Context, arg *GetContestVoteForUserNominationSlotParams) (*ContestVote, error)
 	GetMaxPhotoPositionByParticipant(ctx context.Context, participantID pgtype.UUID) (interface{}, error)
 	GetNominationByContest(ctx context.Context, arg *GetNominationByContestParams) (*ContestNomination, error)
 	GetParticipantByContestUserAndNomination(ctx context.Context, arg *GetParticipantByContestUserAndNominationParams) (*GetParticipantByContestUserAndNominationRow, error)
@@ -76,7 +75,7 @@ type Querier interface {
 	GetUserAuthProvidersByUserID(ctx context.Context, userID int64) ([]*UserAuthProvider, error)
 	GetUserByID(ctx context.Context, userID int64) (*GetUserByIDRow, error)
 	GetUserRole(ctx context.Context, userID int64) (string, error)
-	InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*ContestJuryMember, error)
+	InsertContestJuryMember(ctx context.Context, arg *InsertContestJuryMemberParams) (*InsertContestJuryMemberRow, error)
 	InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error)
 	InsertParticipantConsentAudit(ctx context.Context, arg *InsertParticipantConsentAuditParams) error
 	InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*InsertRegistrationFieldRow, error)
@@ -122,7 +121,7 @@ type Querier interface {
 	UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageParams) (*ContestChatMessage, error)
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
-	UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*ContestJuryMember, error)
+	UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*UpdateContestJuryMemberRow, error)
 	UpdateContestStatus(ctx context.Context, arg *UpdateContestStatusParams) (*Contest, error)
 	UpdateContestVotingResults(ctx context.Context, arg *UpdateContestVotingResultsParams) (*Contest, error)
 	UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error)

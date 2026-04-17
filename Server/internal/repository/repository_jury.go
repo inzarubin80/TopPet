@@ -19,6 +19,7 @@ func juryMemberFromJoinRow(
 	userID int64,
 	createdAt pgtype.Timestamptz,
 	sortOrder int32,
+	isChair bool,
 	portfolioURL, bioShort, userName string,
 ) *model.JuryMember {
 	var idStr, cidStr string
@@ -34,6 +35,7 @@ func juryMemberFromJoinRow(
 		UserID:         model.UserID(userID),
 		UserName:       userName,
 		SortOrder:      sortOrder,
+		IsChair:        isChair,
 		PortfolioURL:   portfolioURL,
 		BioShort:       bioShort,
 		CreatedAt:      createdAt.Time,
@@ -43,14 +45,14 @@ func juryMemberFromJoinRow(
 func juryMemberFromListRow(row *sqlc_repository.ListContestJuryMembersWithNamesRow) *model.JuryMember {
 	return juryMemberFromJoinRow(
 		row.ID, row.ContestID, row.UserID, row.CreatedAt,
-		row.SortOrder, row.PortfolioUrl, row.BioShort, row.UserName,
+		row.SortOrder, row.IsChair, row.PortfolioUrl, row.BioShort, row.UserName,
 	)
 }
 
 func juryMemberFromGetRow(row *sqlc_repository.GetContestJuryMemberWithNameRow) *model.JuryMember {
 	return juryMemberFromJoinRow(
 		row.ID, row.ContestID, row.UserID, row.CreatedAt,
-		row.SortOrder, row.PortfolioUrl, row.BioShort, row.UserName,
+		row.SortOrder, row.IsChair, row.PortfolioUrl, row.BioShort, row.UserName,
 	)
 }
 
@@ -90,7 +92,7 @@ func (r *Repository) GetContestJuryMember(ctx context.Context, contestID model.C
 	return juryMemberFromGetRow(row), nil
 }
 
-func (r *Repository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error) {
+func (r *Repository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32, isChair bool) (*model.JuryMember, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	cid, err := pgUUIDFromContestID(contestID)
 	if err != nil {
@@ -102,6 +104,7 @@ func (r *Repository) UpdateContestJuryMember(ctx context.Context, contestID mode
 		PortfolioUrl: portfolioURL,
 		BioShort:     bioShort,
 		SortOrder:    sortOrder,
+		IsChair:      isChair,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

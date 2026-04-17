@@ -40,3 +40,27 @@
   color: var(--color-text-muted, #78716c);
   line-height: 1.45;
 }
+
+.vote-button-main {
+  border-radius: 999px;
+}
+
+.vote-button-main-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.vote-button-main-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.vote-button-main-icon-filled {
+  fill: currentColor;
+  stroke: currentColor;
+}

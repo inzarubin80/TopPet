@@ -500,6 +500,10 @@ const ParticipantPage: React.FC = () => {
                   !participant.submission_status || participant.submission_status === 'accepted'
                 }
                 voteCtaLabel={currentContest.cta_label_override?.trim() || undefined}
+                onVoted={() => {
+                  if (!contestId || !participantId) return;
+                  void dispatch(fetchParticipant({ contestId, participantId }));
+                }}
               />
             </div>
           )}

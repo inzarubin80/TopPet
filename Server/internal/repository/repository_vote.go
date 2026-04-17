@@ -81,28 +81,6 @@ func (r *Repository) UpsertContestVote(ctx context.Context, contestID model.Cont
 	return voteModelFromSQLc(vote), nil
 }
 
-func (r *Repository) GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error) {
-	reposqlc := sqlc_repository.New(r.conn)
-	contestUUID, err := uuid.Parse(string(contestID))
-	if err != nil {
-		return nil, err
-	}
-
-	vote, err := reposqlc.GetContestVoteForUserNominationSlot(ctx, &sqlc_repository.GetContestVoteForUserNominationSlotParams{
-		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:       int64(userID),
-		NominationID: nominationUUIDForVote(nominationID),
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
-		}
-		return nil, err
-	}
-
-	return voteModelFromSQLc(vote), nil
-}
-
 func (r *Repository) ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
@@ -123,17 +101,21 @@ func (r *Repository) ListContestVotesByUser(ctx context.Context, contestID model
 	return out, nil
 }
 
-func (r *Repository) DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
+func (r *Repository) DeleteContestVoteByUserAndParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
 		return "", err
 	}
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return "", err
+	}
 
-	participantID, err := reposqlc.DeleteContestVoteByUserAndNomination(ctx, &sqlc_repository.DeleteContestVoteByUserAndNominationParams{
-		ContestID:    pgtype.UUID{Bytes: contestUUID, Valid: true},
-		UserID:       int64(userID),
-		NominationID: nominationUUIDForVote(nominationID),
+	deletedParticipantID, err := reposqlc.DeleteContestVoteByUserAndParticipant(ctx, &sqlc_repository.DeleteContestVoteByUserAndParticipantParams{
+		ContestID:     pgtype.UUID{Bytes: contestUUID, Valid: true},
+		UserID:        int64(userID),
+		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -142,8 +124,8 @@ func (r *Repository) DeleteContestVoteByUserAndNomination(ctx context.Context, c
 		return "", err
 	}
 
-	if participantID.Valid {
-		return model.ParticipantID(uuid.UUID(participantID.Bytes).String()), nil
+	if deletedParticipantID.Valid {
+		return model.ParticipantID(uuid.UUID(deletedParticipantID.Bytes).String()), nil
 	}
 	return "", nil
 }

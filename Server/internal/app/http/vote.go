@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
@@ -16,7 +15,7 @@ type (
 	serviceVote interface {
 		Vote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error)
 		ListUserVotesForContest(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error)
-		Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error)
+		Unvote(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error)
 	}
 
 	VoteHandler struct {
@@ -75,12 +74,12 @@ func (h *VoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodDelete {
 		userID := r.Context().Value(defenitions.UserID).(model.UserID)
-		q := strings.TrimSpace(r.URL.Query().Get("nomination_id"))
-		var nom *string
-		if q != "" {
-			nom = &q
+		pid := model.ParticipantID(r.URL.Query().Get("participant_id"))
+		if pid == "" {
+			uhttp.HandleError(w, uhttp.NewBadRequestError("participant_id is required", nil))
+			return
 		}
-		participantID, err := h.service.Unvote(r.Context(), contestID, userID, nom)
+		participantID, err := h.service.Unvote(r.Context(), contestID, userID, pid)
 		if err != nil {
 			if errors.Is(err, model.ErrorNotFound) {
 				w.WriteHeader(http.StatusNoContent)

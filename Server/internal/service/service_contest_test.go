@@ -182,13 +182,10 @@ func (m *mockRepository) UpdateParticipantPhotoOrder(ctx context.Context, partic
 func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
 	return nil, nil
 }
-func (m *mockRepository) GetContestVoteForUserNominationSlot(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Vote, error) {
-	return nil, nil
-}
 func (m *mockRepository) ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
 	return nil, nil
 }
-func (m *mockRepository) DeleteContestVoteByUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (model.ParticipantID, error) {
+func (m *mockRepository) DeleteContestVoteByUserAndParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error) {
 	return "", nil
 }
 func (m *mockRepository) ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error) {
@@ -299,7 +296,7 @@ func (m *mockRepository) GetContestJuryMember(ctx context.Context, contestID mod
 func (m *mockRepository) AddContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID) (*model.JuryMember, error) {
 	return nil, nil
 }
-func (m *mockRepository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32) (*model.JuryMember, error) {
+func (m *mockRepository) UpdateContestJuryMember(ctx context.Context, contestID model.ContestID, userID model.UserID, portfolioURL, bioShort string, sortOrder int32, isChair bool) (*model.JuryMember, error) {
 	return nil, nil
 }
 func (m *mockRepository) ReorderContestJuryMembers(ctx context.Context, contestID model.ContestID, orderedUserIDs []model.UserID) error {

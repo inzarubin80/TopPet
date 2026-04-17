@@ -266,8 +266,10 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	listOrder := strings.TrimSpace(strings.ToLower(sort))
 	switch listOrder {
 	case "":
-		if contest.Status == model.ContestStatusVoting || contest.Status == model.ContestStatusFinished {
+		if contest.PublicVotingEnabled {
 			listOrder = model.ParticipantListSortVotes
+		} else if contest.JuryVotingEnabled {
+			listOrder = model.ParticipantListSortJury
 		} else {
 			listOrder = model.ParticipantListSortCreatedAt
 		}

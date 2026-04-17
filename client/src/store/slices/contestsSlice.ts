@@ -9,8 +9,8 @@ interface ContestsState {
   total: number;
   loading: boolean;
   error: string | null;
-  /** Голос пользователя по слоту: ключ — nominationVoteKey(nomination_id), значение — participant_id */
-  userVoteSlots: Record<ContestID, Record<string, string>>;
+  /** Голоса пользователя: ключ — participant_id, значение=true */
+  userVoteSlots: Record<ContestID, Record<string, boolean>>;
   filters: {
     status?: ContestStatus;
     limit: number;
@@ -143,26 +143,25 @@ const contestsSlice = createSlice({
     },
     setUserVoteSlot: (
       state,
-      action: PayloadAction<{ contestId: ContestID; nominationKey: string; participantId: string | null }>
+      action: PayloadAction<{ contestId: ContestID; participantId: string; voted: boolean }>
     ) => {
-      const { contestId, nominationKey, participantId } = action.payload;
+      const { contestId, participantId, voted } = action.payload;
       if (!state.userVoteSlots[contestId]) {
         state.userVoteSlots[contestId] = {};
       }
-      if (!participantId) {
-        delete state.userVoteSlots[contestId][nominationKey];
+      if (!participantId || !voted) {
+        delete state.userVoteSlots[contestId][participantId];
       } else {
-        state.userVoteSlots[contestId][nominationKey] = participantId;
+        state.userVoteSlots[contestId][participantId] = true;
       }
     },
     setUserVotesForContest: (
       state,
       action: PayloadAction<{ contestId: ContestID; votes: { participant_id: string; nomination_id?: string | null }[] }>
     ) => {
-      const m: Record<string, string> = {};
+      const m: Record<string, boolean> = {};
       for (const v of action.payload.votes) {
-        const k = v.nomination_id?.trim() ? v.nomination_id : '';
-        m[k] = v.participant_id;
+        m[v.participant_id] = true;
       }
       state.userVoteSlots[action.payload.contestId] = m;
     },
