@@ -36,6 +36,7 @@ import { listNominations } from '../api/nominationsApi';
 import { sortNominationsByOrder } from '../components/contest/contestNominationsDisplay';
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
+import { ParticipantGalleryNavigationState } from '../types/participantNavigation';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import { buildLoginUrl } from '../utils/navigation';
 import './ContestPage.css';
@@ -374,6 +375,19 @@ const ContestPage: React.FC = () => {
     participantsListPaginated && participantsListTotal > 0
       ? Math.max(1, Math.ceil(participantsListTotal / PARTICIPANTS_PAGE_SIZE))
       : 1;
+  const participantGalleryNavigationState: ParticipantGalleryNavigationState | null = id
+    ? {
+        contestId: id,
+        nominationFilter: participantsNominationFilter,
+        submissionFilter: participantsSubmissionFilter,
+        juryUnscoredOnly: participantsJuryUnscoredOnly,
+        votedOnly: participantsVotedOnly,
+        sort: participantsSort,
+        page: participantsListPaginated ? participantsPage : 0,
+        pageSize: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
+        total: participantsListTotal,
+      }
+    : null;
 
   const showMyVotesFilter =
     isAuthenticated &&
@@ -1052,6 +1066,7 @@ const ContestPage: React.FC = () => {
                     juryVotingEnabled={currentContest.jury_voting_enabled ?? false}
                     isContestAdmin={isAdmin}
                     isVoted={Boolean(userVoteSlots[participant.id])}
+                    galleryNavigationState={participantGalleryNavigationState ?? undefined}
                     onEdit={(p) => {
                       setEditingParticipant(p);
                       setIsEditParticipantModalOpen(true);

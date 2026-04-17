@@ -11,6 +11,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import { patchParticipantSubmission, updateParticipantVotes } from '../../store/slices/participantsSlice';
+import { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -29,6 +30,7 @@ interface ParticipantCardProps {
   onDelete?: (participant: Participant) => void;
   isContestAdmin?: boolean;
   isVoted?: boolean;
+  galleryNavigationState?: ParticipantGalleryNavigationState;
 }
 
 export const ParticipantCard: React.FC<ParticipantCardProps> = ({ 
@@ -43,6 +45,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   isContestAdmin,
   isVoted,
   juryVotingEnabled,
+  galleryNavigationState,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,7 +131,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   };
 
   const handleClick = () => {
-    navigate(`/contests/${contestId}/participants/${participant.id}`);
+    navigate(`/contests/${contestId}/participants/${participant.id}`, {
+      state: galleryNavigationState ? { galleryNavigation: galleryNavigationState } : undefined,
+    });
   };
 
   const handleEditClick = (e: React.MouseEvent) => {

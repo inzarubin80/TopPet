@@ -32,14 +32,20 @@ import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePubli
 import { juryCriteriaWordRu } from '../utils/juryLabels';
 import { buildThreadList } from '../utils/messageTree';
 import { getMessengerAvatarColor, getMessengerInitials } from '../utils/messengerAvatar';
+import type { ParticipantGalleryNavigationState } from '../types/participantNavigation';
 import '../components/common/MessengerActionBar.css';
 import './ParticipantPage.css';
 
 const EMPTY_COMMENTS: ParticipantComment[] = [];
+const DEFAULT_GALLERY_PAGE_SIZE = 24;
 
 type ParticipantDescriptionBlocks =
   | { kind: 'single'; title: string; text: string }
   | { kind: 'pair'; workText: string; petText: string };
+
+type ParticipantLocationState = {
+  galleryNavigation?: ParticipantGalleryNavigationState;
+};
 
 function RegistrationAnswersDl({ rows }: { rows: RegistrationAnswerDisplayRow[] }) {
   return (
@@ -80,6 +86,12 @@ const ParticipantPage: React.FC = () => {
     participantId ? state.comments.items[participantId] || EMPTY_COMMENTS : EMPTY_COMMENTS
   ) as ParticipantComment[];
   const commentsLoading = useSelector((state: RootState) => state.comments.loading);
+  const participantIds = useSelector((state: RootState) =>
+    contestId ? state.participants.byContest[contestId] || [] : []
+  );
+  const participantsListTotal = useSelector((state: RootState) =>
+    contestId ? state.participants.listTotalByContest[contestId] ?? 0 : 0
+  );
   const { currentContest } = useSelector((state: RootState) => state.contests);
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const currentUserId = currentUser?.id;
@@ -106,9 +118,131 @@ const ParticipantPage: React.FC = () => {
   const [editingText, setEditingText] = useState('');
   const [openMenuCommentId, setOpenMenuCommentId] = useState<string | null>(null);
   const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
+  const [participantNavPending, setParticipantNavPending] = useState(false);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>([]);
   const commentsSectionRef = useRef<HTMLDivElement | null>(null);
   const staffCommentsMarkedRef = useRef(false);
+
+  const locationState = location.state as ParticipantLocationState | null;
+  const galleryNavigation = locationState?.galleryNavigation;
+  const hasGalleryNavigation =
+    !!contestId &&
+    !!galleryNavigation &&
+    galleryNavigation.contestId === contestId &&
+    galleryNavigation.total > 1;
+  const currentGalleryPage = hasGalleryNavigation ? Math.max(0, galleryNavigation.page) : 0;
+  const currentGalleryPageSize = hasGalleryNavigation
+    ? Math.max(1, galleryNavigation.pageSize || DEFAULT_GALLERY_PAGE_SIZE)
+    : DEFAULT_GALLERY_PAGE_SIZE;
+  const currentParticipantIndex = participantId ? participantIds.indexOf(participantId) : -1;
+  const hasPreviousParticipant = hasGalleryNavigation
+    ? currentParticipantIndex > 0 || currentGalleryPage > 0
+    : false;
+  const hasNextParticipant = hasGalleryNavigation
+    ? currentParticipantIndex >= 0 &&
+      (currentParticipantIndex < participantIds.length - 1 ||
+        (currentGalleryPage + 1) * currentGalleryPageSize < galleryNavigation.total)
+    : false;
+
+  const buildGalleryNavigationState = (
+    page: number,
+    total: number
+  ): ParticipantGalleryNavigationState | undefined => {
+    if (!hasGalleryNavigation || !galleryNavigation) {
+      return undefined;
+    }
+    return {
+      ...galleryNavigation,
+      page,
+      total,
+    };
+  };
+
+  const navigateToParticipantInGallery = (
+    targetParticipantId: string,
+    page: number,
+    total: number
+  ) => {
+    if (!contestId) {
+      return;
+    }
+    navigate(`/contests/${contestId}/participants/${targetParticipantId}`, {
+      state: { galleryNavigation: buildGalleryNavigationState(page, total) },
+    });
+  };
+
+  const fetchGalleryPage = async (page: number) => {
+    if (!contestId || !hasGalleryNavigation || !galleryNavigation) {
+      return null;
+    }
+    const result = await dispatch(
+      fetchParticipantsByContest({
+        contestId,
+        nominationFilter: galleryNavigation.nominationFilter,
+        submissionFilter: galleryNavigation.submissionFilter,
+        juryUnscoredOnly: galleryNavigation.juryUnscoredOnly,
+        votedOnly: galleryNavigation.votedOnly,
+        sort: galleryNavigation.sort,
+        limit: currentGalleryPageSize,
+        offset: page * currentGalleryPageSize,
+      })
+    ).unwrap();
+    return result;
+  };
+
+  const handleGoToPreviousParticipant = async () => {
+    if (!hasPreviousParticipant || !contestId || !participantId || participantNavPending) {
+      return;
+    }
+    if (currentParticipantIndex > 0) {
+      navigateToParticipantInGallery(
+        participantIds[currentParticipantIndex - 1],
+        currentGalleryPage,
+        participantsListTotal || galleryNavigation?.total || 0
+      );
+      return;
+    }
+    if (currentGalleryPage <= 0) {
+      return;
+    }
+    try {
+      setParticipantNavPending(true);
+      const previousPage = currentGalleryPage - 1;
+      const payload = await fetchGalleryPage(previousPage);
+      const previousPageIds = payload?.participants?.map((p) => p.id) || [];
+      const previousParticipantId = previousPageIds[previousPageIds.length - 1];
+      if (previousParticipantId) {
+        navigateToParticipantInGallery(previousParticipantId, previousPage, payload?.total ?? 0);
+      }
+    } finally {
+      setParticipantNavPending(false);
+    }
+  };
+
+  const handleGoToNextParticipant = async () => {
+    if (!hasNextParticipant || !contestId || !participantId || participantNavPending) {
+      return;
+    }
+    if (currentParticipantIndex >= 0 && currentParticipantIndex < participantIds.length - 1) {
+      navigateToParticipantInGallery(
+        participantIds[currentParticipantIndex + 1],
+        currentGalleryPage,
+        participantsListTotal || galleryNavigation?.total || 0
+      );
+      return;
+    }
+    try {
+      setParticipantNavPending(true);
+      const nextPage = currentGalleryPage + 1;
+      const payload = await fetchGalleryPage(nextPage);
+      const nextParticipantId = payload?.participants?.[0]?.id;
+      if (nextParticipantId) {
+        navigateToParticipantInGallery(nextParticipantId, nextPage, payload?.total ?? 0);
+      }
+    } finally {
+      setParticipantNavPending(false);
+    }
+  };
 
   useWebSocket(contestId ?? null, participantId ?? null);
 
@@ -335,6 +469,28 @@ const ParticipantPage: React.FC = () => {
         <div className="participant-page-title-block">
           <h1>{displayTitle}</h1>
           {petNameSubtitle ? <p className="participant-page-title-sub">{petNameSubtitle}</p> : null}
+          {hasGalleryNavigation ? (
+            <div className="participant-page-work-nav">
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                onClick={() => void handleGoToPreviousParticipant()}
+                disabled={!hasPreviousParticipant || participantNavPending}
+              >
+                Предыдущая работа
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                onClick={() => void handleGoToNextParticipant()}
+                disabled={!hasNextParticipant || participantNavPending}
+              >
+                Следующая работа
+              </Button>
+            </div>
+          ) : null}
         </div>
         {(isContestOwner || canEdit) && (
           <div className="participant-page-icon-actions">

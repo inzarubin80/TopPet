@@ -116,6 +116,13 @@
   line-height: 1.35;
 }
 
+.participant-page-work-nav {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .participant-page-icon-actions {
   display: flex;
   flex-direction: row;
