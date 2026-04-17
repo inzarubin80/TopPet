@@ -322,6 +322,7 @@ func (r *Repository) ReplaceContestJuryCriteria(ctx context.Context, contestID m
 					ScaleMax:    it.ScaleMax,
 					ScaleStep:   it.ScaleStep,
 					SortOrder:   sortOrder,
+					Weight:      it.Weight,
 				}); err != nil {
 					if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 						return fmt.Errorf("%w: criterion update", model.ErrorNotFound)
@@ -341,6 +342,7 @@ func (r *Repository) ReplaceContestJuryCriteria(ctx context.Context, contestID m
 				ScaleMax:    it.ScaleMax,
 				ScaleStep:   it.ScaleStep,
 				SortOrder:   sortOrder,
+				Weight:      it.Weight,
 			}); err != nil {
 				return err
 			}
@@ -380,6 +382,7 @@ func (r *Repository) ReplaceContestJuryCriteria(ctx context.Context, contestID m
 					ScaleMax:    it.ScaleMax,
 					ScaleStep:   it.ScaleStep,
 					SortOrder:   sortOrder,
+					Weight:      it.Weight,
 				}); err != nil {
 					if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 						return fmt.Errorf("%w: criterion not found", model.ErrorNotFound)
@@ -399,6 +402,7 @@ func (r *Repository) ReplaceContestJuryCriteria(ctx context.Context, contestID m
 				ScaleMax:    it.ScaleMax,
 				ScaleStep:   it.ScaleStep,
 				SortOrder:   sortOrder,
+				Weight:      it.Weight,
 			}); err != nil {
 				return err
 			}
@@ -439,6 +443,7 @@ func juryCriterionFromSQLc(j *sqlc_repository.ContestJuryCriterium) *model.JuryC
 		ScaleMax:    j.ScaleMax,
 		ScaleStep:   j.ScaleStep,
 		SortOrder:   j.SortOrder,
+		Weight:      j.Weight,
 		CreatedAt:   j.CreatedAt.Time,
 	}
 }

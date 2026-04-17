@@ -83,8 +83,8 @@ type (
 		ListContestJuryScoresByParticipantAndUser(ctx context.Context, participantID model.ParticipantID, userID model.UserID) ([]*model.JuryScore, error)
 		ListContestJuryScoresReportByParticipant(ctx context.Context, participantID model.ParticipantID) ([]*model.JuryScoreReportItem, error)
 		ListContestJuryVotingProgressByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryVotingProgressRow, error)
-		SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error)
-		SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
+		SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (float64, error)
+		SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]float64, error)
 		CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
 		SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error)
 

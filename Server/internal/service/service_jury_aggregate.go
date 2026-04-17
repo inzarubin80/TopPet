@@ -37,7 +37,7 @@ func (s *TopPetService) attachParticipantJuryScoreTotals(ctx context.Context, co
 	showProgress := mErr == nil && cErr == nil && pErr == nil && memberCount > 0 && criteriaCount > 0
 	for _, p := range participants {
 		v := sums[p.ID]
-		p.TotalJuryScore = new(int64)
+		p.TotalJuryScore = new(float64)
 		*p.TotalJuryScore = v
 		if mErr == nil && memberCount > 0 {
 			p.JuryMemberCount = new(int64)
@@ -66,7 +66,7 @@ func (s *TopPetService) attachOneParticipantJuryScoreTotal(ctx context.Context, 
 	if err != nil {
 		return
 	}
-	participant.TotalJuryScore = new(int64)
+	participant.TotalJuryScore = new(float64)
 	*participant.TotalJuryScore = sum
 	memberCount, mErr := s.repository.CountContestJuryMembers(ctx, contest.ID)
 	criteriaCount, cErr := s.repository.CountContestJuryCriteria(ctx, contest.ID)

@@ -31,6 +31,9 @@ func normalizeJuryCriterionInput(in *model.JuryCriterionInput) {
 	if in.ScaleStep == 0 {
 		in.ScaleStep = 1
 	}
+	if in.Weight == 0 {
+		in.Weight = 1
+	}
 }
 
 func validateJuryCriterionInput(i int, in *model.JuryCriterionInput) error {
@@ -45,6 +48,9 @@ func validateJuryCriterionInput(i int, in *model.JuryCriterionInput) error {
 	}
 	if in.ScaleMax-in.ScaleMin > 10000 {
 		return fmt.Errorf("criterion %d: scale range too large", i+1)
+	}
+	if in.Weight <= 0 || in.Weight > 1e6 {
+		return fmt.Errorf("criterion %d: weight must be between 0 (exclusive) and 1e6", i+1)
 	}
 	return nil
 }

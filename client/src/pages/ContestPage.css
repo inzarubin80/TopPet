@@ -65,6 +65,10 @@
   height: 100%;
 }
 
+.contest-page-jury-voting {
+  min-height: 200px;
+}
+
 /* Карточка «О конкурсе»: обложка, призы, описание, критерии — отдельно от списка работ */
 .contest-page-overview {
   margin-bottom: 28px;

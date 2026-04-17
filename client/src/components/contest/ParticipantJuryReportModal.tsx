@@ -3,6 +3,7 @@ import { Modal } from '../common/Modal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { getJuryScoresReport } from '../../api/juryScoresApi';
 import type { JuryScoreReportItem } from '../../types/models';
+import { formatJuryTotalScore } from '../../utils/juryLabels';
 import './ParticipantJuryReportModal.css';
 
 type SortKey =
@@ -150,10 +151,10 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
     <Modal isOpen={isOpen} onClose={onClose} title={`Оценки жюри: ${participantName}`}>
       <div className="participant-jury-report-modal-body">
         <p className="participant-jury-report-modal-hint">
-          Сводка по выставленным баллам. Итог совпадает с суммой всех оценок по всем членам жюри и критериям.
+          Сводка по выставленным баллам. Итог — сумма Σ(оценка × вес критерия) по всем членам жюри и критериям.
         </p>
         <div className="participant-jury-report-modal-total" role="status">
-          Итоговая сумма баллов жюри: <strong>{totalJuryScore}</strong>
+          Итоговая сумма баллов жюри: <strong>{formatJuryTotalScore(totalJuryScore)}</strong>
         </div>
         {loading && (
           <div className="participant-jury-report-modal-loading">

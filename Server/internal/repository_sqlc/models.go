@@ -93,6 +93,7 @@ type ContestJuryCriterium struct {
 	ScaleStep   int32
 	SortOrder   int32
 	CreatedAt   pgtype.Timestamptz
+	Weight      float64
 }
 
 type ContestJuryScore struct {

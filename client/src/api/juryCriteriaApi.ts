@@ -9,6 +9,8 @@ export type JuryCriterionInput = {
   scale_min: number;
   scale_max: number;
   scale_step: number;
+  /** Вес критерия; по умолчанию на сервере 1. */
+  weight?: number;
 };
 
 export const listJuryCriteria = async (contestId: ContestID): Promise<JuryCriterion[]> => {

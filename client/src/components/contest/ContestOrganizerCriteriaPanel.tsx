@@ -66,6 +66,7 @@ const emptyCriterion = (): JuryCriterionInput => ({
   scale_min: 1,
   scale_max: 10,
   scale_step: 1,
+  weight: 1,
 });
 
 export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteriaPanelHandle, Props>(
@@ -121,6 +122,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             scale_min: c.scale_min,
             scale_max: c.scale_max,
             scale_step: c.scale_step,
+            weight: c.weight ?? 1,
           }))
         );
       } else {
@@ -191,6 +193,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             scale_min: c.scale_min,
             scale_max: c.scale_max,
             scale_step: c.scale_step,
+            weight: c.weight ?? 1,
           };
           const tid = c.id?.trim();
           return tid ? { ...base, id: tid } : base;
@@ -204,13 +207,14 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
         const saved = await replaceJuryCriteria(contest.id, items);
         setCriteriaDraft(
           saved.length > 0
-            ? saved.map((c) => ({
+            ?             saved.map((c) => ({
                 id: c.id,
                 title: c.title,
                 description: c.description || '',
                 scale_min: c.scale_min,
                 scale_max: c.scale_max,
                 scale_step: c.scale_step,
+                weight: c.weight ?? 1,
               }))
             : [emptyCriterion()]
         );
@@ -394,6 +398,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
               const scaleText = audienceView
                 ? juryScaleAudiencePhrase(c.scale_min, c.scale_max, c.scale_step)
                 : juryScaleOrganizerPhrase(c.scale_min, c.scale_max, c.scale_step);
+              const w = c.weight ?? 1;
               return (
                 <li key={c.id ?? `jury-ro-${idx}`}>
                   {audienceView ? (
@@ -404,6 +409,7 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                       ) : null}
                       <span className="contest-organizer-criteria-scale contest-organizer-criteria-scale--audience">
                         {scaleText}
+                        {w !== 1 ? ` · вес × ${w}` : ''}
                       </span>
                     </div>
                   ) : (
@@ -412,7 +418,10 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                       {secondary ? (
                         <span className="contest-organizer-criteria-jury-card-desc">{secondary}</span>
                       ) : null}
-                      <span className="contest-organizer-criteria-jury-card-meta">{scaleText}</span>
+                      <span className="contest-organizer-criteria-jury-card-meta">
+                        {scaleText}
+                        {w !== 1 ? ` · вес × ${w}` : ''}
+                      </span>
                     </div>
                   )}
                 </li>
@@ -484,6 +493,23 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                     setCriteriaDraft(next);
                   }}
                   disabled={fieldsLocked}
+                />
+              </label>
+              <label>
+                Вес
+                <input
+                  type="number"
+                  min={0.01}
+                  step={0.1}
+                  value={c.weight ?? 1}
+                  onChange={(e) => {
+                    const next = [...criteriaDraft];
+                    const raw = Number(e.target.value);
+                    next[idx] = { ...next[idx], weight: Number.isFinite(raw) && raw > 0 ? raw : 1 };
+                    setCriteriaDraft(next);
+                  }}
+                  disabled={fieldsLocked}
+                  title="Множитель в формуле суммы: балл × вес"
                 />
               </label>
             </div>

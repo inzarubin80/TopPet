@@ -1,3 +1,8 @@
+/** Отображение суммы оценок жюри (взвешенная Σ score×weight). */
+export function formatJuryTotalScore(value: number): string {
+  return value.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+}
+
 /** Склонение «N критериев» для подписей жюри. */
 export function juryCriteriaWordRu(n: number): string {
   const m10 = n % 10;

@@ -29,6 +29,7 @@ import { useContestPermissions } from '../hooks/useContestPermissions';
 import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
 import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
+import { ContestJuryVotingTab } from '../components/contest/ContestJuryVotingTab';
 import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
@@ -1119,8 +1120,14 @@ const ContestPage: React.FC = () => {
           </section>
         ) : null}
         {activeTab === 'jury_voting' && canAccessJuryVotingTab ? (
-          <section className="contest-page-winners" aria-label="Голосование жюри">
-            <div className="contest-page-winners-empty">Раздел в разработке</div>
+          <section className="contest-page-jury-voting" aria-label="Голосование жюри">
+            <ContestJuryVotingTab
+              contestId={currentContest.id}
+              contestStatus={currentContest.status}
+              isJuror={isCurrentUserJuror}
+              nominationTitleById={nominationTitleById}
+              nominations={contestNominations}
+            />
           </section>
         ) : null}
         {activeTab === 'jury_chair' && canAccessJuryChairTab ? (

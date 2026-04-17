@@ -181,17 +181,20 @@ type (
 		ScaleMax    int32     `json:"scale_max"`
 		ScaleStep   int32     `json:"scale_step"`
 		SortOrder   int32     `json:"sort_order"`
-		CreatedAt   time.Time `json:"created_at"`
+		// Weight — множитель при подсчёте суммы: вклад в итог = score × weight (для всех членов жюри).
+		Weight    float64   `json:"weight"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	JuryCriterionInput struct {
 		// ID существующего критерия; пусто — создать новую строку (новый UUID).
-		ID          string `json:"id,omitempty"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		ScaleMin    int32  `json:"scale_min"`
-		ScaleMax    int32  `json:"scale_max"`
-		ScaleStep   int32  `json:"scale_step"`
+		ID          string  `json:"id,omitempty"`
+		Title       string  `json:"title"`
+		Description string  `json:"description"`
+		ScaleMin    int32   `json:"scale_min"`
+		ScaleMax    int32   `json:"scale_max"`
+		ScaleStep   int32   `json:"scale_step"`
+		Weight      float64 `json:"weight"`
 	}
 
 	// JuryMember — член жюри конкурса.
@@ -302,8 +305,8 @@ type (
 		Photos              []*Photo               `json:"photos,omitempty"`
 		CommentCount        int64                  `json:"comment_count,omitempty"`
 		TotalVotes          int64                  `json:"total_votes,omitempty"`
-		// TotalJuryScore — сумма баллов жюри (организаторам — всегда; остальным — после завершения конкурса).
-		TotalJuryScore *int64 `json:"total_jury_score,omitempty"`
+		// TotalJuryScore — сумма вкладов Σ(score × weight) по всем членам жюри (организаторам — всегда; остальным — после завершения конкурса).
+		TotalJuryScore *float64 `json:"total_jury_score,omitempty"`
 		// JuryMemberCount — число членов жюри конкурса (для подписи прогресса оценивания).
 		JuryMemberCount *int64 `json:"jury_member_count,omitempty"`
 		// JuryCriteriaCount — число критериев оценки.

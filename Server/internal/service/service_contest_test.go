@@ -326,11 +326,11 @@ func (m *mockRepository) ListContestJuryScoresReportByParticipant(ctx context.Co
 func (m *mockRepository) ListContestJuryVotingProgressByContest(ctx context.Context, contestID model.ContestID) ([]*model.JuryVotingProgressRow, error) {
 	return nil, nil
 }
-func (m *mockRepository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error) {
+func (m *mockRepository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (float64, error) {
 	return 0, nil
 }
-func (m *mockRepository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
-	return map[model.ParticipantID]int64{}, nil
+func (m *mockRepository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]float64, error) {
+	return map[model.ParticipantID]float64{}, nil
 }
 func (m *mockRepository) CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
 	return map[model.ParticipantID]int64{}, nil

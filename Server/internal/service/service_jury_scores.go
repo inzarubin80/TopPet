@@ -75,7 +75,7 @@ func (s *TopPetService) GetMyJuryScoresForParticipant(ctx context.Context, conte
 }
 
 // GetJuryScoresReportForParticipant — детальные оценки жюри по заявке (только организатор конкурса / глобальные админы).
-func (s *TopPetService) GetJuryScoresReportForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, actorID model.UserID) ([]*model.JuryScoreReportItem, int64, error) {
+func (s *TopPetService) GetJuryScoresReportForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, actorID model.UserID) ([]*model.JuryScoreReportItem, float64, error) {
 	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, 0, err

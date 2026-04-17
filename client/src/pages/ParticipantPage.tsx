@@ -29,7 +29,7 @@ import {
   type RegistrationAnswerDisplayRow,
 } from '../utils/registrationAnswersDisplay';
 import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../utils/seo';
-import { juryCriteriaWordRu } from '../utils/juryLabels';
+import { formatJuryTotalScore, juryCriteriaWordRu } from '../utils/juryLabels';
 import { buildThreadList } from '../utils/messageTree';
 import { getMessengerAvatarColor, getMessengerInitials } from '../utils/messengerAvatar';
 import type { ParticipantGalleryNavigationState } from '../types/participantNavigation';
@@ -694,10 +694,10 @@ const ParticipantPage: React.FC = () => {
                     participant.jury_criteria_count != null &&
                     participant.jury_fully_scored_jurors != null
                       ? `Полностью оценили работу (${participant.jury_criteria_count} ${juryCriteriaWordRu(participant.jury_criteria_count)}): ${participant.jury_fully_scored_jurors} из ${participant.jury_member_count} членов жюри.`
-                      : 'Сумма оценок жюри по всем критериям и всем членам жюри'
+                      : 'Сумма Σ(оценка × вес) по всем критериям и всем членам жюри'
                   }
                 >
-                  Сумма оценок жюри: {participant.total_jury_score}
+                  Сумма оценок жюри: {formatJuryTotalScore(participant.total_jury_score)}
                 </p>
                 {participant.jury_member_count != null &&
                 participant.jury_criteria_count != null &&

@@ -46,7 +46,7 @@ func (r *Repository) UpsertContestJuryScore(ctx context.Context, participantID m
 	return juryScoreFromSQLc(row), nil
 }
 
-func (r *Repository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (int64, error) {
+func (r *Repository) SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (float64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	pid, err := uuid.Parse(string(participantID))
 	if err != nil {
@@ -55,9 +55,9 @@ func (r *Repository) SumJuryScoresByParticipantID(ctx context.Context, participa
 	return reposqlc.SumJuryScoresByParticipantID(ctx, pgtype.UUID{Bytes: pid, Valid: true})
 }
 
-func (r *Repository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
+func (r *Repository) SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]float64, error) {
 	if len(participantIDs) == 0 {
-		return map[model.ParticipantID]int64{}, nil
+		return map[model.ParticipantID]float64{}, nil
 	}
 	reposqlc := sqlc_repository.New(r.conn)
 	arr := make([]pgtype.UUID, 0, len(participantIDs))
@@ -72,7 +72,7 @@ func (r *Repository) SumJuryScoresByParticipantIDs(ctx context.Context, particip
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[model.ParticipantID]int64, len(rows))
+	out := make(map[model.ParticipantID]float64, len(rows))
 	for _, row := range rows {
 		if !row.ParticipantID.Valid {
 			continue

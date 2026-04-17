@@ -1,4 +1,11 @@
-import { juryCriteriaWordRu } from './juryLabels';
+import { formatJuryTotalScore, juryCriteriaWordRu } from './juryLabels';
+
+describe('formatJuryTotalScore', () => {
+  it('formats numeric total for display', () => {
+    expect(formatJuryTotalScore(24)).toMatch(/24/);
+    expect(formatJuryTotalScore(24.567)).toMatch(/24/);
+  });
+});
 
 describe('juryCriteriaWordRu', () => {
   it('declines criteria count in Russian', () => {

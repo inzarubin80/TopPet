@@ -1401,10 +1401,10 @@ func (q *Queries) InsertContestJuryMember(ctx context.Context, arg *InsertContes
 
 const insertJuryCriterion = `-- name: InsertJuryCriterion :one
 INSERT INTO contest_jury_criteria (
-    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order
+    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, weight
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at, weight
 `
 
 type InsertJuryCriterionParams struct {
@@ -1416,6 +1416,7 @@ type InsertJuryCriterionParams struct {
 	ScaleMax    int32
 	ScaleStep   int32
 	SortOrder   int32
+	Weight      float64
 }
 
 func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error) {
@@ -1428,6 +1429,7 @@ func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriter
 		arg.ScaleMax,
 		arg.ScaleStep,
 		arg.SortOrder,
+		arg.Weight,
 	)
 	var i ContestJuryCriterium
 	err := row.Scan(
@@ -1440,6 +1442,7 @@ func (q *Queries) InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriter
 		&i.ScaleStep,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.Weight,
 	)
 	return &i, err
 }
@@ -2222,7 +2225,7 @@ func (q *Queries) ListContestsForStatusAutomation(ctx context.Context) ([]*Conte
 
 const listJuryCriteriaByContest = `-- name: ListJuryCriteriaByContest :many
 
-SELECT id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at FROM contest_jury_criteria
+SELECT id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at, weight FROM contest_jury_criteria
 WHERE contest_id = $1
 ORDER BY sort_order ASC, created_at ASC
 `
@@ -2247,6 +2250,7 @@ func (q *Queries) ListJuryCriteriaByContest(ctx context.Context, contestID pgtyp
 			&i.ScaleStep,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.Weight,
 		); err != nil {
 			return nil, err
 		}
@@ -2983,28 +2987,32 @@ func (q *Queries) SetUserPhoneIfEmpty(ctx context.Context, arg *SetUserPhoneIfEm
 }
 
 const sumJuryScoresByParticipantID = `-- name: SumJuryScoresByParticipantID :one
-SELECT COALESCE(SUM(score), 0)::bigint
-FROM contest_jury_scores
-WHERE participant_id = $1
+SELECT COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision
+FROM contest_jury_scores j
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id
+WHERE j.participant_id = $1
 `
 
-func (q *Queries) SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (int64, error) {
+func (q *Queries) SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (float64, error) {
 	row := q.db.QueryRow(ctx, sumJuryScoresByParticipantID, participantID)
-	var column_1 int64
+	var column_1 float64
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
 const sumJuryScoresByParticipantIDs = `-- name: SumJuryScoresByParticipantIDs :many
-SELECT participant_id, COALESCE(SUM(score), 0)::bigint AS total_score
-FROM contest_jury_scores
-WHERE participant_id = ANY($1::uuid[])
-GROUP BY participant_id
+SELECT
+    j.participant_id,
+    COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision AS total_score
+FROM contest_jury_scores j
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id
+WHERE j.participant_id = ANY($1::uuid[])
+GROUP BY j.participant_id
 `
 
 type SumJuryScoresByParticipantIDsRow struct {
 	ParticipantID pgtype.UUID
-	TotalScore    int64
+	TotalScore    float64
 }
 
 func (q *Queries) SumJuryScoresByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*SumJuryScoresByParticipantIDsRow, error) {
@@ -3410,9 +3418,10 @@ SET
     scale_min = $5,
     scale_max = $6,
     scale_step = $7,
-    sort_order = $8
+    sort_order = $8,
+    weight = $9
 WHERE id = $1 AND contest_id = $2
-RETURNING id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at
+RETURNING id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, created_at, weight
 `
 
 type UpdateJuryCriterionParams struct {
@@ -3424,6 +3433,7 @@ type UpdateJuryCriterionParams struct {
 	ScaleMax    int32
 	ScaleStep   int32
 	SortOrder   int32
+	Weight      float64
 }
 
 func (q *Queries) UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error) {
@@ -3436,6 +3446,7 @@ func (q *Queries) UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriter
 		arg.ScaleMax,
 		arg.ScaleStep,
 		arg.SortOrder,
+		arg.Weight,
 	)
 	var i ContestJuryCriterium
 	err := row.Scan(
@@ -3448,6 +3459,7 @@ func (q *Queries) UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriter
 		&i.ScaleStep,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.Weight,
 	)
 	return &i, err
 }

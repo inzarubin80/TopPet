@@ -129,6 +129,8 @@ export interface JuryCriterion {
   scale_max: number;
   scale_step: number;
   sort_order: number;
+  /** Множитель при подсчёте суммы: вклад = оценка × вес. */
+  weight: number;
   created_at: string;
 }
 

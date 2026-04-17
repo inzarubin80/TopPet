@@ -10,7 +10,7 @@ import (
 )
 
 type juryScoresReportService interface {
-	GetJuryScoresReportForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, actorID model.UserID) ([]*model.JuryScoreReportItem, int64, error)
+	GetJuryScoresReportForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, actorID model.UserID) ([]*model.JuryScoreReportItem, float64, error)
 }
 
 type JuryScoresReportHandler struct {

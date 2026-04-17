@@ -808,9 +808,9 @@ DELETE FROM contest_jury_criteria WHERE contest_id = $1;
 
 -- name: InsertJuryCriterion :one
 INSERT INTO contest_jury_criteria (
-    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order
+    id, contest_id, title, description, scale_min, scale_max, scale_step, sort_order, weight
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateJuryCriterion :one
@@ -821,7 +821,8 @@ SET
     scale_min = $5,
     scale_max = $6,
     scale_step = $7,
-    sort_order = $8
+    sort_order = $8,
+    weight = $9
 WHERE id = $1 AND contest_id = $2
 RETURNING *;
 
@@ -978,15 +979,19 @@ WHERE cp.contest_id = $1 AND jm.contest_id = $1
 ORDER BY cp.created_at ASC, jm.user_id ASC;
 
 -- name: SumJuryScoresByParticipantID :one
-SELECT COALESCE(SUM(score), 0)::bigint
-FROM contest_jury_scores
-WHERE participant_id = $1;
+SELECT COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision
+FROM contest_jury_scores j
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id
+WHERE j.participant_id = $1;
 
 -- name: SumJuryScoresByParticipantIDs :many
-SELECT participant_id, COALESCE(SUM(score), 0)::bigint AS total_score
-FROM contest_jury_scores
-WHERE participant_id = ANY($1::uuid[])
-GROUP BY participant_id;
+SELECT
+    j.participant_id,
+    COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision AS total_score
+FROM contest_jury_scores j
+INNER JOIN contest_jury_criteria c ON c.id = j.criterion_id
+WHERE j.participant_id = ANY($1::uuid[])
+GROUP BY j.participant_id;
 
 -- Contest registration fields (поля заявки участника)
 

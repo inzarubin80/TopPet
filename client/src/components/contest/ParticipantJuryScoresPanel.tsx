@@ -92,6 +92,18 @@ export const ParticipantJuryScoresPanel: React.FC<Props> = ({
     [readOnly, contestStatus]
   );
 
+  const { weightedTotal, weightedMax } = useMemo(() => {
+    let t = 0;
+    let m = 0;
+    for (const c of criteria) {
+      const w = c.weight ?? 1;
+      const v = values[c.id] ?? c.scale_min;
+      t += v * w;
+      m += c.scale_max * w;
+    }
+    return { weightedTotal: t, weightedMax: m };
+  }, [criteria, values]);
+
   const handleSave = async () => {
     if (!canEdit) return;
     setSaving(true);
@@ -128,7 +140,14 @@ export const ParticipantJuryScoresPanel: React.FC<Props> = ({
     <section className="participant-jury-scores" aria-labelledby="participant-jury-scores-heading">
       <h2 id="participant-jury-scores-heading">Оценки жюри</h2>
       <p className="participant-jury-scores-hint">
-        Ваши баллы по критериям. Оценки других членов жюри не видны. Сводную сумму по работе видят только организаторы конкурса и администраторы платформы.
+        Ваши баллы по критериям. Итог по работе считается как сумма (оценка × вес критерия) по всем членам жюри. Оценки других жюри не видны. Сводную сумму по работе видят только организаторы конкурса и администраторы платформы.
+      </p>
+      <p className="participant-jury-scores-total-preview">
+        Ваш черновой итог (только ваши баллы):{' '}
+        <strong>
+          {weightedTotal.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} /{' '}
+          {weightedMax.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}
+        </strong>
       </p>
       <ul className="participant-jury-scores-list">
         {criteria.map((c) => (
@@ -137,6 +156,7 @@ export const ParticipantJuryScoresPanel: React.FC<Props> = ({
               <span className="participant-jury-scores-title">{c.title}</span>
               <span className="participant-jury-scores-scale">
                 {c.scale_min}…{c.scale_max}, шаг {c.scale_step}
+                {(c.weight ?? 1) !== 1 ? ` · вес × ${c.weight}` : ''}
               </span>
             </div>
             {c.description?.trim() ? (

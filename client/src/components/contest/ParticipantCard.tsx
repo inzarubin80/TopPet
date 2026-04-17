@@ -12,6 +12,7 @@ import { errorHandler } from '../../utils/errorHandler';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import { patchParticipantSubmission, updateParticipantVotes } from '../../store/slices/participantsSlice';
 import { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
+import { formatJuryTotalScore } from '../../utils/juryLabels';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -261,7 +262,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
       </div>
       <div className="participant-card-footer">
         {juryVotingEnabled && participant.total_jury_score !== undefined ? (
-          <span className="participant-card-jury-total">Сумма оценок жюри: {participant.total_jury_score}</span>
+          <span className="participant-card-jury-total">
+            Сумма оценок жюри: {formatJuryTotalScore(participant.total_jury_score)}
+          </span>
         ) : null}
         {canVote && isAuthenticated && (
           <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
