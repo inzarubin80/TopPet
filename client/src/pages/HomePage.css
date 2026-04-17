@@ -6,7 +6,7 @@
 
 .home-page-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
@@ -14,50 +14,9 @@
 }
 
 .home-page-filters {
-  max-width: 100%;
+  width: min(100%, 760px);
   flex-shrink: 0;
-}
-
-.home-page-list-actions {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 12px;
-}
-
-/* Стили для кнопки "Создать конкурс" - выравнивание с фильтрами */
-.home-page-create-button {
-  padding: 10px 24px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  border-radius: 6px !important;
-  line-height: 1.5;
-  letter-spacing: 0.5px;
-  min-width: 180px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.home-page-create-button:hover:not(:disabled) {
-  box-shadow: 0 4px 14px var(--color-accent-shadow-soft, rgba(37, 99, 235, 0.22));
-  transform: translateY(-1px);
-}
-
-.home-page-create-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.home-page-create-button:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Обёртка содержимого кнопки «Создать конкурс» (иконка + текст) */
-.home-page-create-button-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  margin: 0 auto;
 }
 
 /* Адаптивность для мобильных */
@@ -71,10 +30,6 @@
     width: 100%;
   }
 
-  .home-page-list-actions {
-    width: 100%;
-  }
-
   .home-page-contests .contest-card {
     min-height: 420px;
     max-height: 420px;
@@ -83,23 +38,6 @@
   .home-page-contests .contest-card-cover img {
     height: 200px;
     max-height: 200px;
-  }
-
-  .home-page-create-button {
-    width: 100% !important;
-    box-sizing: border-box !important;
-    min-height: 48px !important;
-    padding: 14px 20px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    border-radius: 12px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .home-page-create-button {
-    padding: 14px 20px !important;
-    font-size: 16px !important;
   }
 }
 
