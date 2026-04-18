@@ -53,9 +53,7 @@ function rowSnapshot(
   row: Record<string, number> | undefined,
   crit: JuryCriterion[]
 ): string {
-  return JSON.stringify(
-    crit.map((c) => ({ id: c.id, v: row?.[c.id] ?? defaultScore(c) }))
-  );
+  return JSON.stringify(crit.map((c) => ({ id: c.id, v: row?.[c.id] })));
 }
 
 async function mapWithConcurrency<T, R>(
@@ -190,11 +188,19 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
       const row = scoresRef.current[participantId];
       if (!row || crit.length === 0) return;
 
+      const items = crit
+        .map((c) => {
+          const score = row[c.id];
+          if (score === undefined) return null;
+          return { criterion_id: c.id, score };
+        })
+        .filter((x): x is { criterion_id: string; score: number } => x !== null);
+      if (items.length === 0) {
+        setSyncByParticipant((prev) => ({ ...prev, [participantId]: 'synced' }));
+        return;
+      }
+
       const sentSnapshot = rowSnapshot(row, crit);
-      const items = crit.map((c) => ({
-        criterion_id: c.id,
-        score: row[c.id] ?? defaultScore(c),
-      }));
 
       setSyncByParticipant((prev) => ({ ...prev, [participantId]: 'saving' }));
 
@@ -278,6 +284,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
           offset: 0,
           sort: 'created_at',
           votedOnly: likesOnly,
+          submissionFilter: 'accepted',
         }),
       ]);
       critRes.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
@@ -308,8 +315,6 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
           const v = byCrit[c.id];
           if (v !== undefined && v >= c.scale_min && v <= c.scale_max) {
             row[c.id] = v;
-          } else {
-            row[c.id] = defaultScore(c);
           }
         }
         nextScores[p.id] = row;
@@ -382,10 +387,13 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
       if (column === 'total') {
         return weightedTotal(participantId);
       }
-      const crit = criterionById.get(column);
-      if (!crit) return 0;
+      const critCol = criterionById.get(column);
+      if (!critCol) return 0;
       const v = scores[participantId]?.[column];
-      return v !== undefined ? v : defaultScore(crit);
+      if (v === undefined) {
+        return desc ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+      }
+      return v;
     };
     list.sort((a, b) => {
       const va = scoreForSort(a.id);
@@ -397,10 +405,15 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     return list;
   }, [participants, sort, weightedTotal, scores, criterionById]);
 
-  const setCell = (participantId: ParticipantID, criterionId: string, value: number) => {
+  const setCell = (participantId: ParticipantID, criterionId: string, value: number | undefined) => {
     setScores((prev) => {
-      const row = { ...(prev[participantId] || {}), [criterionId]: value };
-      const next = { ...prev, [participantId]: row };
+      const base = { ...(prev[participantId] || {}) };
+      if (value === undefined) {
+        delete base[criterionId];
+      } else {
+        base[criterionId] = value;
+      }
+      const next = { ...prev, [participantId]: base };
       scoresRef.current = next;
       return next;
     });
@@ -681,7 +694,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                           />
                         </td>
                         {criteria.map((c) => {
-                          const v = scores[p.id]?.[c.id] ?? defaultScore(c);
+                          const v = scores[p.id]?.[c.id];
                           return (
                             <td key={c.id} className="contest-jury-voting-td-criterion">
                               <input
@@ -690,17 +703,30 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                                 min={c.scale_min}
                                 max={c.scale_max}
                                 step={c.scale_step}
-                                value={v}
+                                value={v === undefined ? '' : v}
                                 disabled={!canEdit}
                                 onChange={(e) => {
-                                  let n = Number(e.target.value);
+                                  const raw = e.target.value;
+                                  if (raw === '') {
+                                    setCell(p.id, c.id, undefined);
+                                    return;
+                                  }
+                                  let n = Number(raw);
                                   if (Number.isNaN(n)) return;
                                   n = Math.min(c.scale_max, Math.max(c.scale_min, n));
                                   setCell(p.id, c.id, n);
                                 }}
                                 onBlur={(e) => {
-                                  let n = Number(e.target.value);
-                                  if (Number.isNaN(n)) n = defaultScore(c);
+                                  const raw = e.target.value;
+                                  if (raw === '') {
+                                    setCell(p.id, c.id, undefined);
+                                    return;
+                                  }
+                                  let n = Number(raw);
+                                  if (Number.isNaN(n)) {
+                                    setCell(p.id, c.id, undefined);
+                                    return;
+                                  }
                                   n = Math.min(c.scale_max, Math.max(c.scale_min, n));
                                   setCell(p.id, c.id, n);
                                 }}

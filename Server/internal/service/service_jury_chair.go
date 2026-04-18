@@ -97,7 +97,7 @@ func (s *TopPetService) GetJuryChairboard(ctx context.Context, contestID model.C
 	}
 
 	viewer := &actorID
-	participants, _, err := s.ListParticipantsByContest(ctx, contestID, viewer, nominationFilter, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAll, false, false, 10000, 0, model.ParticipantListSortCreatedAt)
+	participants, _, err := s.ListParticipantsByContest(ctx, contestID, viewer, nominationFilter, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, false, 10000, 0, model.ParticipantListSortCreatedAt)
 	if err != nil {
 		return nil, err
 	}

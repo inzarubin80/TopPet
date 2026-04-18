@@ -67,6 +67,9 @@ func (s *TopPetService) GetMyJuryScoresForParticipant(ctx context.Context, conte
 	if participant.ContestID != contestID {
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
+	if !participantAcceptedForJuryScoring(participant) {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
+	}
 	jurorPtr := &jurorID
 	if !s.participantVisible(ctx, participant, contest, jurorPtr) {
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
@@ -160,6 +163,9 @@ func (s *TopPetService) PutMyJuryScoresForParticipant(ctx context.Context, conte
 	if participant.ContestID != contestID {
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
+	if !participantAcceptedForJuryScoring(participant) {
+		return nil, fmt.Errorf("%w: jury scores only for accepted submissions", model.ErrBadRequest)
+	}
 	jurorPtr := &jurorID
 	if !s.participantVisible(ctx, participant, contest, jurorPtr) {
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
@@ -198,4 +204,16 @@ func (s *TopPetService) PutMyJuryScoresForParticipant(ctx context.Context, conte
 		}
 	}
 	return s.repository.ListContestJuryScoresByParticipantAndUser(ctx, participantID, jurorID)
+}
+
+// participantAcceptedForJuryScoring — в матрице жюри участвуют только принятые заявки (пустой статус в БД = accepted).
+func participantAcceptedForJuryScoring(p *model.Participant) bool {
+	if p == nil {
+		return false
+	}
+	st := strings.TrimSpace(p.SubmissionStatus)
+	if st == "" {
+		return true
+	}
+	return st == model.ParticipantSubmissionAccepted
 }

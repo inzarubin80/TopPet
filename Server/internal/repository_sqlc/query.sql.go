@@ -2102,6 +2102,7 @@ FROM contest_participants cp
 CROSS JOIN contest_jury_members jm
 LEFT JOIN users u ON u.user_id = jm.user_id
 WHERE cp.contest_id = $1 AND jm.contest_id = $1
+  AND cp.submission_status = 'accepted'
 ORDER BY cp.created_at ASC, jm.user_id ASC
 `
 
@@ -2362,6 +2363,7 @@ INNER JOIN contest_jury_members jm ON jm.contest_id = cp.contest_id
 LEFT JOIN contest_jury_scores j ON j.participant_id = cp.id AND j.user_id = jm.user_id
 LEFT JOIN contest_jury_criteria c ON c.id = j.criterion_id AND c.contest_id = cp.contest_id
 WHERE cp.contest_id = $1
+  AND cp.submission_status = 'accepted'
 GROUP BY cp.id, jm.user_id, jm.sort_order
 ORDER BY cp.created_at ASC, jm.sort_order ASC, jm.user_id ASC
 `
