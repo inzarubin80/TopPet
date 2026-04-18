@@ -9,7 +9,6 @@ import {
 } from '../../store/slices/participantsSlice';
 import { fetchComments, createComment, updateComment, deleteComment, voteComment, setCommentVote } from '../../store/slices/commentsSlice';
 import { fetchContest } from '../../store/slices/contestsSlice';
-import { fetchStaffCommentNotifications } from '../../store/slices/notificationsSlice';
 import { Comment as ParticipantComment } from '../../types/models';
 import { EditParticipantModal } from '../contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../contest/DeleteParticipantModal';
@@ -117,7 +116,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const comments = useSelector((state: RootState) =>
     participantId ? state.comments.items[participantId] || EMPTY_COMMENTS : EMPTY_COMMENTS
   ) as ParticipantComment[];
-  const commentsLoading = useSelector((state: RootState) => state.comments.loading);
   const participantIds = useSelector((state: RootState) =>
     contestId ? state.participants.byContest[contestId] || [] : []
   );
@@ -387,13 +385,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   }, [haveParticipantInStore, participantFetchSettled]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isOwner || !participantId || commentsLoading) {
-      return;
-    }
-    void dispatch(fetchStaffCommentNotifications());
-  }, [dispatch, isAuthenticated, isOwner, participantId, commentsLoading]);
-
-  useEffect(() => {
     staffCommentsMarkedRef.current = false;
   }, [participantId]);
 
@@ -415,7 +406,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         void (async () => {
           try {
             await markStaffCommentsRead(participantId);
-            dispatch(fetchStaffCommentNotifications());
           } catch {
             staffCommentsMarkedRef.current = false;
           }
