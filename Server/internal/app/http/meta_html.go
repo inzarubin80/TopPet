@@ -542,7 +542,7 @@ func (h *metaHTMLHandler) injectParticipantPreviewCard(htmlBytes []byte, imageUR
 // homeMetaTitle and homeMetaDescription are default og values for the main page.
 const (
 	homeMetaTitle       = "ShotContest — платформа конкурсов"
-	homeMetaDescription = "Создавайте и проводите конкурсы, подавайте заявки и следите за результатами на ShotContest."
+	homeMetaDescription = "ShotContest — платформа конкурсов. Участвуйте в конкурсах, голосуйте за работы."
 )
 
 func (h *metaHTMLHandler) ServeHome(w http.ResponseWriter, r *http.Request) {

@@ -21,6 +21,11 @@ func voteNominationSlotFromParticipant(participant *model.Participant) *string {
 	return &s
 }
 
+// publicVoteAllowedForContestPhase — пользовательские голоса (лайки) на этапах приёма заявок и голосования.
+func publicVoteAllowedForContestPhase(st model.ContestStatus) bool {
+	return st == model.ContestStatusRegistration || st == model.ContestStatusVoting
+}
+
 func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) (*model.Vote, error) {
 	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
@@ -29,6 +34,9 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 
 	if !contest.PublicVotingEnabled {
 		return nil, fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
+	}
+	if !publicVoteAllowedForContestPhase(contest.Status) {
+		return nil, fmt.Errorf("%w: public voting is only available during registration or voting phase", model.ErrBadRequest)
 	}
 
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -88,6 +96,9 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 
 	if !contest.PublicVotingEnabled {
 		return "", fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
+	}
+	if !publicVoteAllowedForContestPhase(contest.Status) {
+		return "", fmt.Errorf("%w: public voting is only available during registration or voting phase", model.ErrBadRequest)
 	}
 
 	participantID, err = s.repository.DeleteContestVoteByUserAndParticipant(ctx, contestID, userID, participantID)

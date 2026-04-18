@@ -31,7 +31,7 @@ export const useContestPermissions = (
     const currentUserId = currentUser.id;
     const isAdmin = userCanManageContest(contest, currentUserId, currentUser);
     const canManageParticipants = isAdmin && (contest.status === 'draft' || contest.status === 'registration');
-    const canVote = contest.status === 'voting';
+    const canVote = contest.status === 'voting' || contest.status === 'registration';
     const canEdit = isAdmin;
 
     return {

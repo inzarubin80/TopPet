@@ -22,6 +22,8 @@ interface VoteButtonProps {
   publicVotingEnabled?: boolean;
   /** false — заявка не принята (модерация), голосовать нельзя */
   canReceiveVotes?: boolean;
+  /** false — лайки недоступны (например черновик или конкурс завершён); при true — этапы приёма заявок и голосования */
+  phaseAllowsLikes?: boolean;
   /** Текст кнопки вместо «Голосовать» */
   voteCtaLabel?: string;
   onVoted?: (participantId: ParticipantID) => void;
@@ -43,6 +45,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   isOwner = false,
   publicVotingEnabled = true,
   canReceiveVotes = true,
+  phaseAllowsLikes = true,
   voteCtaLabel,
   onVoted,
   fullWidth = true,
@@ -83,12 +86,6 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     }
   }, [isAuthenticated, contestId, loadVote]);
 
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H3',location:'client/src/components/contest/VoteButton.tsx:isVotedEffect',message:'Vote button state changed',data:{contestId,participantId,isVoted,isAuthenticated,pathname:location.pathname},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  }, [contestId, participantId, isVoted, isAuthenticated, location.pathname]);
-
   const handleVote = async () => {
     if (!isAuthenticated) {
       const returnUrl = location.pathname + location.search;
@@ -96,24 +93,18 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       return;
     }
 
-    if (voting || !publicVotingEnabled || !canReceiveVotes) {
+    if (voting || !publicVotingEnabled || !canReceiveVotes || !phaseAllowsLikes) {
       return;
     }
 
     try {
       setVoting(true);
-      // #region agent log
-      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H4',location:'client/src/components/contest/VoteButton.tsx:handleVote',message:'Handle vote started',data:{contestId,participantId,isVotedBefore:isVoted,action:isVoted?'unvote':'vote'},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (isVoted) {
         await unvote(contestId, participantId);
       } else {
         await vote(contestId, { participant_id: participantId });
       }
       const actualVotes = await getVotes(contestId);
-      // #region agent log
-      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H4',location:'client/src/components/contest/VoteButton.tsx:handleVote',message:'Handle vote resynced',data:{contestId,participantId,isPresentAfterResync:actualVotes.some((v)=>v.participant_id===participantId),countAfterResync:actualVotes.length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       dispatch(setUserVotesForContest({ contestId, votes: actualVotes }));
       if (onVoted) {
         onVoted(participantId);
@@ -199,6 +190,17 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       );
     }
 
+    if (!phaseAllowsLikes) {
+      return (
+        <div className="vote-button-stat-strip-block">
+          {readonlyStrip(isVoted)}
+          <p className="vote-button-stat-strip-hint" role="status">
+            Лайки доступны на этапах приёма заявок и голосования. Сейчас другая фаза конкурса.
+          </p>
+        </div>
+      );
+    }
+
     if (!isAuthenticated) {
       return (
         <button
@@ -250,6 +252,14 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     return (
       <p className="vote-button-disabled-hint" role="status">
         Заявка на модерации — голосование за эту работу пока недоступно.
+      </p>
+    );
+  }
+
+  if (!phaseAllowsLikes) {
+    return (
+      <p className="vote-button-disabled-hint" role="status">
+        Лайки доступны на этапах приёма заявок и голосования. Сейчас другая фаза конкурса.
       </p>
     );
   }

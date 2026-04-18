@@ -21,6 +21,7 @@ import { useParticipantPermissions } from '../../hooks/useParticipantPermissions
 import { ParticipantMetaTags } from '../seo/ParticipantMetaTags';
 import { descriptionWithBreaks } from '../../utils/formatText';
 import { userCanManageContest } from '../../utils/contestPermissions';
+import { getEffectiveContestStatus } from '../../utils/contestEffectiveStatus';
 import { markStaffCommentsRead, uploadCommentImage } from '../../api/commentsApi';
 import { listRegistrationFields } from '../../api/registrationFieldsApi';
 import { Nomination, RegistrationField } from '../../types/models';
@@ -149,10 +150,15 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     if (!contestId || !currentUserId) return;
     void dispatch(fetchMyParticipantsForContest({ contestId }));
   }, [contestId, currentUserId, dispatch]);
+  const contestPhase = currentContest
+    ? getEffectiveContestStatus(currentContest)
+    : 'draft';
+  const phaseAllowsLikes =
+    contestPhase === 'registration' || contestPhase === 'voting';
   const { isOwner, canEdit } = useParticipantPermissions(
     participant,
     currentUserId,
-    currentContest?.status || 'draft',
+    contestPhase,
     currentContest?.public_voting_enabled ?? true
   );
   /** После загрузки конкурса в store; этап конкурса не ограничивает комментарии. */
@@ -955,6 +961,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                         participant.submission_status == null ||
                         participant.submission_status === 'accepted'
                       }
+                      phaseAllowsLikes={phaseAllowsLikes}
                       appearance="statStrip"
                       totalVotes={participant.total_votes ?? 0}
                       fullWidth
@@ -982,6 +989,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                       participant.submission_status == null ||
                       participant.submission_status === 'accepted'
                     }
+                    phaseAllowsLikes={phaseAllowsLikes}
                     appearance="statStrip"
                     totalVotes={participant.total_votes ?? 0}
                     fullWidth

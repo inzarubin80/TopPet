@@ -136,7 +136,60 @@ func TestVote_GeneralNominationUsesNilSlot(t *testing.T) {
 	}
 }
 
-func TestVote_AllowsOutsideVotingPhase(t *testing.T) {
+func TestUnvote_RejectsWhenPhaseNotRegistrationOrVoting(t *testing.T) {
+	t.Parallel()
+	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	partID := model.ParticipantID("pppppppp-pppp-pppp-pppp-pppppppppppp")
+	contest := &model.Contest{
+		ID:                  contestID,
+		Status:              model.ContestStatusFinished,
+		PublicVotingEnabled: true,
+	}
+	repo := &voteFlowMock{
+		mockRepository: &mockRepository{},
+		contest:        contest,
+		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+	}
+	svc := &TopPetService{repository: repo}
+
+	_, err := svc.Unvote(context.Background(), contestID, 1, partID)
+	if err == nil {
+		t.Fatal("expected error when contest is finished")
+	}
+	if !errors.Is(err, model.ErrBadRequest) {
+		t.Fatalf("expected bad request, got %v", err)
+	}
+}
+
+func TestVote_RejectsWhenPhaseNotRegistrationOrVoting(t *testing.T) {
+	t.Parallel()
+	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	partID := model.ParticipantID("pppppppp-pppp-pppp-pppp-pppppppppppp")
+	contest := &model.Contest{
+		ID:                  contestID,
+		Status:              model.ContestStatusDraft,
+		PublicVotingEnabled: true,
+	}
+	repo := &voteFlowMock{
+		mockRepository: &mockRepository{},
+		contest:        contest,
+		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+	}
+	svc := &TopPetService{repository: repo}
+
+	_, err := svc.Vote(context.Background(), contestID, partID, 1)
+	if err == nil {
+		t.Fatal("expected error during draft phase")
+	}
+	if !errors.Is(err, model.ErrBadRequest) {
+		t.Fatalf("expected bad request, got %v", err)
+	}
+	if len(repo.upsertNoms) != 0 {
+		t.Fatalf("expected no upsert, got %d", len(repo.upsertNoms))
+	}
+}
+
+func TestVote_AllowsRegistrationPhase(t *testing.T) {
 	t.Parallel()
 	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 	partID := model.ParticipantID("pppppppp-pppp-pppp-pppp-pppppppppppp")

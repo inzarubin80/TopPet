@@ -29,8 +29,9 @@ export const useParticipantPermissions = (
     const canEdit = isOwner && (contestStatus === 'draft' || contestStatus === 'registration');
     const submissionOk =
       !participant.submission_status || participant.submission_status === 'accepted';
-    const canVote =
-      contestStatus === 'voting' && publicVotingEnabled && submissionOk;
+    const phaseAllowsPublicLikes =
+      contestStatus === 'registration' || contestStatus === 'voting';
+    const canVote = phaseAllowsPublicLikes && publicVotingEnabled && submissionOk;
 
     return {
       isOwner,
