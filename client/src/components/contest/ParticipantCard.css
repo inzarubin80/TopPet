@@ -195,8 +195,10 @@
 
 .participant-card-meta-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  row-gap: 4px;
   color: #6b7280;
   font-size: 13px;
   min-width: 0;
@@ -228,6 +230,14 @@
 }
 
 .participant-card-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.participant-card-likes {
   display: inline-flex;
   align-items: center;
   gap: 4px;

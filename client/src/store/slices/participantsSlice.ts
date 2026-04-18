@@ -245,6 +245,58 @@ const participantsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    /** Снимок заявки из WebSocket (галерея, модерация, фото, счётчики). */
+    mergeParticipantFromWebSocket: (
+      state,
+      action: {
+        payload: { contestId: ContestID; participant: Participant };
+        type: string;
+      }
+    ) => {
+      const { contestId, participant } = action.payload;
+      const prev = state.items[participant.id];
+      const next: Participant = { ...participant };
+      if (prev?.viewer_favorite !== undefined && next.viewer_favorite === undefined) {
+        next.viewer_favorite = prev.viewer_favorite;
+      }
+      state.items[participant.id] = next;
+      const existing = state.byContest[contestId];
+      if (existing && !existing.includes(participant.id)) {
+        state.byContest[contestId] = [...existing, participant.id];
+        if (state.listTotalByContest[contestId] !== undefined) {
+          state.listTotalByContest[contestId] += 1;
+        }
+      }
+      for (const cid of Object.keys(state.mineByContest)) {
+        if (cid !== contestId) continue;
+        const mine = state.mineByContest[cid];
+        const idx = mine.findIndex((p) => p.id === participant.id);
+        if (idx >= 0) {
+          mine[idx] = next;
+        }
+      }
+    },
+    removeParticipantFromWebSocket: (
+      state,
+      action: {
+        payload: { contestId: ContestID; participantId: ParticipantID };
+        type: string;
+      }
+    ) => {
+      const { contestId, participantId } = action.payload;
+      delete state.items[participantId];
+      const list = state.byContest[contestId];
+      if (list) {
+        state.byContest[contestId] = list.filter((id) => id !== participantId);
+      }
+      if (state.listTotalByContest[contestId] !== undefined) {
+        state.listTotalByContest[contestId] = Math.max(0, state.listTotalByContest[contestId] - 1);
+      }
+      const mine = state.mineByContest[contestId];
+      if (mine) {
+        state.mineByContest[contestId] = mine.filter((p) => p.id !== participantId);
+      }
+    },
     updateParticipantVotes: (
       state,
       action: {
@@ -402,5 +454,6 @@ const participantsSlice = createSlice({
   },
 });
 
-export const { clearError, updateParticipantVotes } = participantsSlice.actions;
+export const { clearError, updateParticipantVotes, mergeParticipantFromWebSocket, removeParticipantFromWebSocket } =
+  participantsSlice.actions;
 export default participantsSlice.reducer;

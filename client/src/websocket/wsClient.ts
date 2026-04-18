@@ -1,6 +1,6 @@
 import { WSConnectionState, WSIncomingMessage } from '../types/ws';
 import { tokenStorage } from '../utils/tokenStorage';
-import { ChatMessage, ContestStatus } from '../types/models';
+import { ChatMessage, ContestStatus, Participant } from '../types/models';
 import { logger } from '../utils/logger';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api';
@@ -25,6 +25,8 @@ type ChatMessageVoteUpdatedHandler = (
   voterUserId: number,
   voterValue: number
 ) => void;
+type ParticipantUpdatedHandler = (contestId: string, participant: Participant) => void;
+type ParticipantDeletedHandler = (contestId: string, participantId: string) => void;
 type ConnectionStateHandler = (state: WSConnectionState) => void;
 type ErrorHandler = (error: Event) => void;
 
@@ -46,6 +48,8 @@ export class WebSocketClient {
   private onVoteCountsUpdatedHandler: VoteCountsUpdatedHandler | null = null;
   private onUserVoteUpdatedHandler: UserVoteUpdatedHandler | null = null;
   private onChatMessageVoteUpdatedHandler: ChatMessageVoteUpdatedHandler | null = null;
+  private onParticipantUpdatedHandler: ParticipantUpdatedHandler | null = null;
+  private onParticipantDeletedHandler: ParticipantDeletedHandler | null = null;
   private onConnectionStateChange: ConnectionStateHandler | null = null;
   private onErrorHandler: ErrorHandler | null = null;
 
@@ -80,6 +84,14 @@ export class WebSocketClient {
 
   setOnChatMessageVoteUpdated(handler: ChatMessageVoteUpdatedHandler): void {
     this.onChatMessageVoteUpdatedHandler = handler;
+  }
+
+  setOnParticipantUpdated(handler: ParticipantUpdatedHandler): void {
+    this.onParticipantUpdatedHandler = handler;
+  }
+
+  setOnParticipantDeleted(handler: ParticipantDeletedHandler): void {
+    this.onParticipantDeletedHandler = handler;
   }
 
   setOnConnectionStateChange(handler: ConnectionStateHandler): void {
@@ -325,6 +337,18 @@ export class WebSocketClient {
           data.voter_user_id,
           data.voter_value
         );
+      }
+      return;
+    }
+    if (data.type === 'participant_updated' && data.contest_id && data.participant) {
+      if (this.onParticipantUpdatedHandler) {
+        this.onParticipantUpdatedHandler(String(data.contest_id), data.participant as Participant);
+      }
+      return;
+    }
+    if (data.type === 'participant_deleted' && data.contest_id && data.participant_id) {
+      if (this.onParticipantDeletedHandler) {
+        this.onParticipantDeletedHandler(String(data.contest_id), String(data.participant_id));
       }
       return;
     }

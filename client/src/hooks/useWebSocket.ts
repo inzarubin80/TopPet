@@ -17,7 +17,11 @@ import {
   setUserVotesForContest,
   updateContestTotalVotes,
 } from '../store/slices/contestsSlice';
-import { updateParticipantVotes } from '../store/slices/participantsSlice';
+import {
+  mergeParticipantFromWebSocket,
+  removeParticipantFromWebSocket,
+  updateParticipantVotes,
+} from '../store/slices/participantsSlice';
 import { getVotes } from '../api/votesApi';
 import { ChatMessage, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
@@ -121,6 +125,18 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
             currentUserId,
           })
         );
+      }
+    });
+
+    client.setOnParticipantUpdated((contestIdFromPayload, participant) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(mergeParticipantFromWebSocket({ contestId, participant }));
+      }
+    });
+
+    client.setOnParticipantDeleted((contestIdFromPayload, participantId) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(removeParticipantFromWebSocket({ contestId, participantId }));
       }
     });
 

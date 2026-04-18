@@ -55,5 +55,6 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	if status == model.ParticipantSubmissionRejected && commentArg != nil {
 		s.postSubmissionRejectionToContestChat(ctx, contest, updated, actorID, *commentArg)
 	}
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return updated, nil
 }

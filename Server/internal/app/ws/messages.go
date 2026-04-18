@@ -14,6 +14,8 @@ const (
 	MessageTypeMessageUpdated          MessageType = "message_updated"
 	MessageTypeMessageDeleted          MessageType = "message_deleted"
 	MessageTypeChatMessageVoteUpdated  MessageType = "chat_message_vote_updated"
+	MessageTypeParticipantUpdated   MessageType = "participant_updated"
+	MessageTypeParticipantDeleted   MessageType = "participant_deleted"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -66,6 +68,20 @@ type MessageDeletedPayload struct {
 	Type      MessageType     `json:"type"`
 	ContestID model.ContestID `json:"contest_id"`
 	MessageID model.ChatMessageID `json:"message_id"`
+}
+
+// ParticipantUpdatedPayload — снимок заявки для галереи (как в списке участников).
+type ParticipantUpdatedPayload struct {
+	Type        MessageType       `json:"type"`
+	ContestID   model.ContestID   `json:"contest_id"`
+	Participant *model.Participant `json:"participant"`
+}
+
+// ParticipantDeletedPayload — заявка удалена из конкурса.
+type ParticipantDeletedPayload struct {
+	Type            MessageType         `json:"type"`
+	ContestID       model.ContestID     `json:"contest_id"`
+	ParticipantID   model.ParticipantID `json:"participant_id"`
 }
 
 // ChatMessageVoteUpdatedPayload — обновление суммы голосов сообщения чата (для всех подписчиков).

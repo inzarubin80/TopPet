@@ -134,6 +134,10 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
             <span className="participant-card-author">{authorLabel}</span>
             <span className="participant-card-dot" aria-hidden="true">•</span>
             <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
+            <span className="participant-card-dot" aria-hidden="true">•</span>
+            <span className="participant-card-likes" aria-label={`Лайков: ${participant.total_votes ?? 0}`}>
+              ♥ {participant.total_votes ?? 0}
+            </span>
           </div>
           {nominationTitle ? <span className="participant-card-nomination">{nominationTitle}</span> : null}
           {showSubmissionBadge ? (

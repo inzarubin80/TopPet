@@ -74,6 +74,7 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
 		comment.IsStaffComment = contest.CreatedByUserID == userID || model.IsGlobalContestManagerRole(u.Role)
 	}
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return comment, nil
 }
 
@@ -196,5 +197,9 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 		}
 	}
 
-	return s.repository.DeleteComment(ctx, commentID, userID)
+	if err := s.repository.DeleteComment(ctx, commentID, userID); err != nil {
+		return err
+	}
+	s.broadcastParticipantUpdated(ctx, comment.ParticipantID)
+	return nil
 }

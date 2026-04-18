@@ -951,7 +951,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                       contestId={contestId}
                       participantId={participantId}
                       nominationId={participant.nomination_id ?? null}
-                      publicVotingEnabled={currentContest.public_voting_enabled ?? true}
                       canReceiveVotes={
                         participant.submission_status == null ||
                         participant.submission_status === 'accepted'
@@ -979,7 +978,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                     contestId={contestId}
                     participantId={participantId}
                     nominationId={participant.nomination_id ?? null}
-                    publicVotingEnabled={currentContest.public_voting_enabled ?? true}
                     canReceiveVotes={
                       participant.submission_status == null ||
                       participant.submission_status === 'accepted'

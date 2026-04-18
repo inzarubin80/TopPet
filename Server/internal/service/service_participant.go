@@ -188,6 +188,7 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	log.Printf("[Service] CreateParticipant: Loaded %d photos for participant %s", len(photos), participant.ID)
 
 	log.Printf("[Service] CreateParticipant: Successfully created participant %s", participant.ID)
+	s.broadcastParticipantUpdated(ctx, participant.ID)
 	return participant, nil
 }
 
@@ -441,6 +442,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	updated.Photos = photos
 	log.Printf("[Service] UpdateParticipant: Loaded %d photos for participant %s", len(photos), updated.ID)
 
+	s.broadcastParticipantUpdated(ctx, updated.ID)
 	return updated, nil
 }
 
@@ -480,6 +482,7 @@ func (s *TopPetService) AddParticipantPhoto(ctx context.Context, participantID m
 		return nil, err
 	}
 	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return photo, nil
 }
 
@@ -512,6 +515,7 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 		return fmt.Errorf("%w: can only withdraw participation during registration", model.ErrBadRequest)
 	}
 
+	contestID := participant.ContestID
 	log.Printf("[Service] DeleteParticipant: Deleting participant in repository")
 	err = s.repository.DeleteParticipant(ctx, participantID)
 	if err != nil {
@@ -520,6 +524,7 @@ func (s *TopPetService) DeleteParticipant(ctx context.Context, participantID mod
 	}
 	log.Printf("[Service] DeleteParticipant: Participant deleted successfully: participantID=%s", participantID)
 
+	s.broadcastParticipantDeleted(contestID, participantID)
 	return nil
 }
 
@@ -561,6 +566,7 @@ func (s *TopPetService) DeleteParticipantPhoto(ctx context.Context, participantI
 	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 	log.Printf("[Service] DeleteParticipantPhoto: Photo deleted successfully: photoID=%s", photoID)
 
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return nil
 }
 
@@ -626,6 +632,7 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 	_ = s.repository.MarkParticipantSubmissionPending(ctx, participantID)
 
 	log.Printf("[Service] UpdateParticipantPhotoOrder: Order updated successfully")
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return nil
 }
 
