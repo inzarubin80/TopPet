@@ -511,8 +511,6 @@ const ContestPage: React.FC = () => {
   const showDomainParticipationNote =
     participantEmailDomainsActive && currentContest.status === 'registration';
   const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
-  /** Блокировка по домену e-mail имеет смысл только после входа; гостю показываем кнопку ведущую на логин. */
-  const participationCtaDisabledByDomain = isAuthenticated && blockedByEmailDomain;
   const hasContestNominations = contestNominations.length > 0;
   const nominationsOpenToUser = hasContestNominations
     ? contestNominations.filter(
@@ -539,21 +537,10 @@ const ContestPage: React.FC = () => {
     ? 'Участвовать'
     : 'Зарегистрироваться для участия';
 
-  const hideParticipateCta =
-    isAuthenticated &&
-    !blockedByEmailDomain &&
-    hasContestNominations &&
-    nominationsOpenToUser.length === 0 &&
-    contestNominations.length > 0;
-
-  const hideParticipateCtaNoNominations =
-    isAuthenticated &&
-    !blockedByEmailDomain &&
-    !hasContestNominations &&
-    alreadyInContestWithoutNominations;
-
+  /** Регистрация: CTA для всех (гость → логин); черновик: только у организатора. */
   const showParticipateCtaButton =
-    showWorksParticipationChrome && !hideParticipateCta && !hideParticipateCtaNoNominations;
+    currentContest.status === 'registration' ||
+    (canManageParticipants && currentContest.status === 'draft');
 
   const handleParticipateClick = () => {
     if (!isAuthenticated) {
@@ -752,7 +739,6 @@ const ContestPage: React.FC = () => {
             <Button
               type="button"
               size="large"
-              disabled={participationCtaDisabledByDomain}
               className="contest-page-add-participant-button"
               onClick={handleParticipateClick}
             >
@@ -892,7 +878,6 @@ const ContestPage: React.FC = () => {
                     <Button
                       type="button"
                       size="large"
-                      disabled={participationCtaDisabledByDomain}
                       className="contest-page-add-participant-button"
                       onClick={handleParticipateClick}
                     >
