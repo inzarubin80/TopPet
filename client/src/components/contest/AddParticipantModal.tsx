@@ -18,7 +18,7 @@ import { ErrorMessage } from '../common/ErrorMessage';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { FileUpload } from '../common/FileUpload';
 import { Textarea } from '../common/Textarea';
-import { ContestID, Participant, Photo, RegistrationField } from '../../types/models';
+import { ContestID, Nomination, Participant, Photo, RegistrationField } from '../../types/models';
 import type {
   ParticipantsListNominationFilter,
   ParticipantsListSort,
@@ -185,15 +185,14 @@ interface AddParticipantModalProps {
   onClose: () => void;
   contestId: ContestID;
   participant?: Participant | null;
-  /** Только при создании: id номинации с кнопки «Участвовать» */
-  nominationId?: string | null;
-  nominationTitle?: string | null;
+  /** Номинации конкурса — для выбора при подаче/редактировании заявки */
+  nominations?: Nomination[];
+  /** Заявки текущего пользователя в этом конкурсе (для исключения занятых номинаций) */
+  myContestParticipants?: Participant[];
   /** Текущий фильтр списка на странице конкурса (после сохранения заявки) */
   participantsListNominationFilter?: ParticipantsListNominationFilter;
   participantsListSubmissionFilter?: ParticipantsListSubmissionFilter;
   participantsListVotedOnly?: boolean;
-  participantsListJuryUnscoredOnly?: boolean;
-  participantsListFavoriteOnly?: boolean;
   /** Пагинация списка на странице конкурса */
   participantsListLimit?: number;
   participantsListOffset?: number;
@@ -210,13 +209,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   onClose,
   contestId,
   participant,
-  nominationId: nominationIdProp = null,
-  nominationTitle = null,
+  nominations: nominationsProp,
+  myContestParticipants = [],
   participantsListNominationFilter = 'all',
   participantsListSubmissionFilter = 'all',
   participantsListVotedOnly = false,
-  participantsListJuryUnscoredOnly = false,
-  participantsListFavoriteOnly = false,
   participantsListLimit = 10000,
   participantsListOffset = 0,
   participantsListSort,
@@ -227,7 +224,28 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const isEditMode = !!participant;
+
+  const nominationRows = useMemo(() => nominationsProp ?? [], [nominationsProp]);
+  const selectableNominations = useMemo(() => {
+    if (nominationRows.length === 0) return [];
+    const uid = currentUser?.id;
+    if (uid === undefined) return nominationRows;
+    if (!participant) {
+      return nominationRows.filter(
+        (n) => !myContestParticipants.some((p) => p.user_id === uid && p.nomination_id === n.id)
+      );
+    }
+    return nominationRows.filter((n) => {
+      if (participant.nomination_id === n.id) return true;
+      return !myContestParticipants.some(
+        (p) => p.user_id === uid && p.nomination_id === n.id && p.id !== participant.id
+      );
+    });
+  }, [nominationRows, myContestParticipants, currentUser?.id, participant]);
+
+  const [selectedNominationId, setSelectedNominationId] = useState('');
 
   const [existingPhotos, setExistingPhotos] = useState<Photo[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<Set<string>>(new Set());
@@ -246,6 +264,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [entryTitle, setEntryTitle] = useState('');
+  const [entryDescription, setEntryDescription] = useState('');
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
   const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
   const [registrationImagePicks, setRegistrationImagePicks] = useState<
@@ -317,11 +336,27 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     if (participant) {
       const t = (participant.entry_title ?? '').trim();
       setEntryTitle(t || participant.pet_name || '');
+      setEntryDescription((participant.entry_description ?? '').trim());
     } else {
       setEntryTitle('');
+      setEntryDescription('');
     }
     setPrivacyConsent(!!participant);
   }, [isOpen, participant]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (nominationRows.length === 0) {
+      setSelectedNominationId('');
+      return;
+    }
+    if (participant) {
+      setSelectedNominationId(participant.nomination_id ?? '');
+      return;
+    }
+    const first = selectableNominations[0];
+    setSelectedNominationId(first ? first.id : '');
+  }, [isOpen, participant, participant?.nomination_id, participant?.id, nominationRows.length, selectableNominations]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -474,6 +509,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError('Укажите наименование заявки');
       return;
     }
+    const trimmedDescription = entryDescription.trim();
+    if (Array.from(trimmedDescription).length > REGISTRATION_TEXTAREA_MAX_RUNES) {
+      setError(`Описание: не более ${REGISTRATION_TEXTAREA_MAX_RUNES} символов`);
+      return;
+    }
     if (!isEditMode && !privacyConsent) {
       setError('Для отправки заявки необходимо согласие на обработку персональных данных');
       return;
@@ -495,6 +535,19 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     try {
       setLoading(true);
       setError(null);
+
+      if (nominationRows.length > 0) {
+        if (!selectedNominationId.trim()) {
+          setError('Выберите номинацию');
+          setLoading(false);
+          return;
+        }
+        if (!selectableNominations.some((n) => n.id === selectedNominationId)) {
+          setError('Выбрана недоступная номинация');
+          setLoading(false);
+          return;
+        }
+      }
 
       let workingDraft = { ...registrationAnswersDraft };
       for (const f of fields) {
@@ -524,7 +577,9 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             participantId: participant.id,
             data: {
               entry_title: trimmedTitle,
+              entry_description: trimmedDescription,
               registration_answers: built.answers,
+              ...(nominationRows.length > 0 ? { nomination_id: selectedNominationId } : {}),
             },
           })
         );
@@ -591,8 +646,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             contestId,
             data: {
               entry_title: trimmedTitle,
-              pet_description: '',
-              ...(nominationIdProp ? { nomination_id: nominationIdProp } : {}),
+              entry_description: trimmedDescription,
+              ...(nominationRows.length > 0 ? { nomination_id: selectedNominationId } : {}),
               ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
               privacy_consent: true,
               policy_version: PRIVACY_POLICY_VERSION,
@@ -636,8 +691,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           nominationFilter: participantsListNominationFilter,
           submissionFilter: participantsListSubmissionFilter,
           votedOnly: participantsListVotedOnly,
-          juryUnscoredOnly: participantsListJuryUnscoredOnly,
-          favoriteOnly: participantsListFavoriteOnly,
           limit: participantsListLimit,
           offset: participantsListOffset,
           sort: participantsListSort,
@@ -686,25 +739,22 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         return {};
       });
       setEntryTitle('');
+      setEntryDescription('');
       setPrivacyConsent(false);
       setError(null);
+      setSelectedNominationId('');
       onClose();
     }
   };
 
   return (
     <Modal
+      className="add-participant-modal-overlay"
       isOpen={isOpen}
       onClose={handleClose}
       showHeaderDivider={false}
       showFooterDivider={false}
-      title={
-        isEditMode
-          ? 'Редактировать заявку участника'
-          : nominationTitle
-            ? `Участвовать: ${nominationTitle}`
-            : 'Добавить участника'
-      }
+      title={isEditMode ? 'Редактировать заявку участника' : 'Участвовать'}
       footer={
         <div className="add-participant-modal-footer">
           <Button
@@ -720,16 +770,42 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             form="add-participant-form"
             disabled={loading || uploadingMedia || registrationFields === null}
           >
-            {loading || uploadingMedia ? <LoadingSpinner size="small" /> : (isEditMode ? 'Сохранить' : 'Добавить')}
+            {loading || uploadingMedia ? <LoadingSpinner size="small" /> : (isEditMode ? 'Сохранить' : 'Участвовать')}
           </Button>
         </div>
       }
     >
       <form id="add-participant-form" onSubmit={handleSubmit}>
-        {!isEditMode && nominationTitle ? (
-          <p className="add-participant-nomination-hint">
-            Номинация: <strong>{nominationTitle}</strong>
-          </p>
+        {nominationRows.length > 0 ? (
+          <div className="add-participant-nomination-field">
+            <label className="add-participant-nomination-label" htmlFor="add-participant-nomination">
+              Номинация
+            </label>
+            <select
+              id="add-participant-nomination"
+              className="add-participant-nomination-select"
+              value={selectedNominationId}
+              onChange={(e) => setSelectedNominationId(e.target.value)}
+              disabled={
+                loading || uploadingMedia || registrationFields === null || selectableNominations.length === 0
+              }
+            >
+              {selectableNominations.length === 0 ? (
+                <option value="">—</option>
+              ) : (
+                selectableNominations.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.title}
+                  </option>
+                ))
+              )}
+            </select>
+            {selectableNominations.length === 0 ? (
+              <p className="add-participant-nomination-empty" role="status">
+                Нет номинаций, в которых вы ещё не участвуете.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         <div className="add-participant-form-stack">
@@ -741,6 +817,16 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             onChange={(e) => setEntryTitle(e.target.value)}
             disabled={loading || uploadingMedia || registrationFields === null}
             autoComplete="off"
+          />
+          <Textarea
+            label="Описание"
+            hint="Расскажите о работе или питомце — текст будет на странице участника под наименованием."
+            value={entryDescription}
+            onChange={(e) => setEntryDescription(e.target.value)}
+            disabled={loading || uploadingMedia || registrationFields === null}
+            rows={4}
+            autoComplete="off"
+            className="add-participant-entry-description"
           />
           <div className="add-participant-photos">
             <label className="add-participant-media-label">Фотографии</label>

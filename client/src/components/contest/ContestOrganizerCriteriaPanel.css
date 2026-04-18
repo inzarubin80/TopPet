@@ -64,43 +64,66 @@
   margin-top: 0;
 }
 
-/* Критерии жюри (read-only): список карточек как у номинаций */
+/* Критерии жюри (read-only): компактный список, без карточек */
 .contest-organizer-criteria-jury-readonly-list {
   margin-bottom: 0.5rem;
 }
 
-.contest-organizer-criteria-jury-readonly-list--audience li {
+.contest-organizer-criteria-jury-readonly-list--inline {
+  gap: 0.3rem;
+}
+
+.contest-organizer-criteria-jury-readonly-list--inline > li {
   padding: 0;
 }
 
-.contest-organizer-criteria-jury-card {
-  padding: 0.65rem 0.85rem;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 10px;
+.contest-organizer-criteria-jury-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
 }
 
-.contest-organizer-criteria-jury-card-title {
+.contest-organizer-criteria-jury-inline-lead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.08rem;
+  color: var(--contest-accent, var(--color-accent, #2563eb));
+}
+
+.contest-organizer-criteria-jury-inline-glyph {
+  width: 1.25rem;
+  height: 1.25rem;
   display: block;
-  font-size: 1.02rem;
+}
+
+.contest-organizer-criteria-jury-inline-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.contest-organizer-criteria-jury-inline-title {
+  font-weight: 600;
+  font-size: 0.95rem;
   line-height: 1.35;
   color: #0f172a;
-  font-weight: 600;
 }
 
-.contest-organizer-criteria-jury-card-desc {
-  display: block;
-  margin-top: 0.3rem;
-  font-size: 0.9rem;
-  color: #444;
+.contest-organizer-criteria-jury-inline-desc {
+  font-size: 0.85rem;
+  color: #4b5563;
   line-height: 1.45;
 }
 
-.contest-organizer-criteria-jury-card-meta {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 0.85rem;
+.contest-organizer-criteria-jury-inline-meta {
+  font-size: 0.8125rem;
   color: #64748b;
+  margin-top: 0.05rem;
 }
 
 .contest-organizer-criteria-list {
@@ -340,68 +363,85 @@
   border-bottom: none;
 }
 
-.contest-organizer-criteria-nom-card {
-  padding: 0.65rem 0.85rem;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 10px;
+.contest-organizer-criteria-list--audience li + li {
+  margin-top: 0.65rem;
 }
 
-.contest-organizer-criteria-nom-card--row {
+.contest-organizer-criteria-list--compact.contest-organizer-criteria-list--audience {
+  gap: 0.2rem;
+}
+
+.contest-organizer-criteria-list--compact.contest-organizer-criteria-list--audience li + li {
+  margin-top: 0.35rem;
+}
+
+.contest-organizer-criteria-list--compact .contest-organizer-criteria-nom-inline-title {
+  font-size: 0.95rem;
+}
+
+.contest-organizer-criteria-list--compact .contest-organizer-criteria-nom-inline-desc {
+  font-size: 0.85rem;
+}
+
+.contest-organizer-criteria-nom-list-footnote {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  max-width: 40rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+/* Публичный список номинаций: строка «иконка + текст», без карточки */
+.contest-organizer-criteria-nom-inline {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.85rem;
+  align-items: flex-start;
+  gap: 0.65rem;
 }
 
-.contest-organizer-criteria-nom-card-action {
+.contest-organizer-criteria-nom-inline-lead {
   flex: 0 0 auto;
-  margin-left: auto;
-  align-self: center;
-}
-
-.contest-organizer-criteria-nom-card-thumb {
-  flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+  color: var(--contest-accent, var(--color-accent, #2563eb));
 }
 
-.contest-organizer-criteria-nom-card-thumb img {
-  width: 100%;
-  height: 100%;
+.contest-organizer-criteria-nom-inline-logo {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
   object-fit: contain;
+  display: block;
 }
 
-.contest-organizer-criteria-nom-card-body {
-  flex: 1;
+.contest-organizer-criteria-nom-inline-default-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+}
+
+.contest-organizer-criteria-nom-inline-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   min-width: 0;
 }
 
-.contest-organizer-criteria-nom-card-title {
+.contest-organizer-criteria-nom-inline-title {
   font-weight: 600;
   font-size: 1rem;
   line-height: 1.35;
+  color: #0f172a;
 }
 
-.contest-organizer-criteria-nom-card-desc {
-  margin: 0.35rem 0 0;
+.contest-organizer-criteria-nom-inline-desc {
   font-size: 0.9rem;
-  color: #444;
+  color: #4b5563;
   line-height: 1.45;
-}
-
-.contest-organizer-criteria-nom-meta--audience {
-  display: block;
-  margin-top: 0.45rem;
-  font-size: 0.85rem;
-  color: #64748b;
 }
 
 .contest-organizer-criteria-readonly--audience {
@@ -418,26 +458,6 @@
   margin-bottom: 0;
 }
 
-.contest-organizer-criteria-criterion-audience-title {
-  font-weight: 600;
-  font-size: 0.98rem;
-  line-height: 1.35;
-}
-
-.contest-organizer-criteria-criterion-audience-desc {
-  margin: 0.3rem 0 0.35rem;
-  font-size: 0.88rem;
-  color: #4b5563;
-  line-height: 1.45;
-}
-
-.contest-organizer-criteria-scale--audience {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.82rem;
-  color: #6b7280;
-}
-
 @media (max-width: 28rem) {
   .contest-organizer-criteria-nom-head {
     flex-direction: column;
@@ -449,21 +469,6 @@
     max-width: 100%;
   }
 
-  .contest-organizer-criteria-nom-card--row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .contest-organizer-criteria-nom-card-action {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .contest-organizer-criteria-nom-card-action .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
   .contest-organizer-criteria-nom-head-action {
     margin-left: 0;
     width: 100%;
@@ -472,10 +477,5 @@
   .contest-organizer-criteria-nom-head-action .btn {
     width: 100%;
     justify-content: center;
-  }
-
-  .contest-organizer-criteria-nom-card-thumb {
-    width: 64px;
-    height: 64px;
   }
 }

@@ -39,6 +39,8 @@ export type ContestTier = 'free' | 'pro';
 export interface ContestWinnerBrief {
   participant_id: ParticipantID;
   pet_name: string;
+  /** Название работы; на сервере может дублировать pet_name. */
+  entry_title?: string;
   nomination_id?: string;
   nomination_title?: string;
   score: number;
@@ -168,6 +170,39 @@ export interface JuryVotingProgressRow {
   criteria_scored: number;
 }
 
+/** Колонка «член жюри» в своде председателя (GET …/jury-chairboard). */
+export interface JuryChairJurorColumn {
+  user_id: UserID;
+  user_name: string;
+  sort_order: number;
+}
+
+/** Строка свода председателя. */
+export interface JuryChairboardRow {
+  participant_id: ParticipantID;
+  pet_name: string;
+  entry_title?: string;
+  user_name: string;
+  nomination_id?: string | null;
+  /** Первое фото (превью) для ссылки в таблице */
+  cover_thumb_url?: string;
+  /** Полный кадр первого фото (модалка), как у голосования жюри */
+  cover_image_url?: string;
+  juror_totals: Record<string, number>;
+  total_score: number;
+  place?: number | null;
+  prize?: string;
+}
+
+export interface JuryChairboardData {
+  jurors: JuryChairJurorColumn[];
+  rows: JuryChairboardRow[];
+  max_weighted_per_juror: number;
+  max_total_weighted: number;
+  criteria_count: number;
+  jury_member_count: number;
+}
+
 export type RegistrationFieldType = 'string' | 'number' | 'boolean' | 'enum' | 'textarea' | 'image';
 
 export interface RegistrationField {
@@ -282,6 +317,7 @@ export interface Comment {
   user_name?: string;
   user_avatar_url?: string;
   text: string;
+  image_url?: string;
   score: number;
   user_vote: number;
   created_at: string;
@@ -307,6 +343,7 @@ export interface ChatMessage {
   user_name?: string;
   user_avatar_url?: string;
   text: string;
+  image_url?: string;
   is_system: boolean;
   score: number;
   user_vote: number;

@@ -284,9 +284,9 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 		} else {
 			listOrder = model.ParticipantListSortCreatedAt
 		}
-	case model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt:
+	case model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt, model.ParticipantListSortComments:
 	default:
-		return nil, 0, fmt.Errorf("%w: sort must be votes, jury or created_at", model.ErrBadRequest)
+		return nil, 0, fmt.Errorf("%w: sort must be votes, jury, created_at or comments", model.ErrBadRequest)
 	}
 	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, favoriteOnly, limit, offset, listOrder)
 	if err != nil {
@@ -307,7 +307,30 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	return participants, total, nil
 }
 
-func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers *map[string]interface{}) (*model.Participant, error) {
+func normalizeNominationIDPtr(p *string) *string {
+	if p == nil {
+		return nil
+	}
+	s := strings.TrimSpace(*p)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func nominationIDPtrEqual(a, b *string) bool {
+	na := normalizeNominationIDPtr(a)
+	nb := normalizeNominationIDPtr(b)
+	if na == nil && nb == nil {
+		return true
+	}
+	if na == nil || nb == nil {
+		return false
+	}
+	return *na == *nb
+}
+
+func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers *map[string]interface{}, nominationFromRequest *string, nominationKeyPresent bool) (*model.Participant, error) {
 	log.Printf("[Service] UpdateParticipant: participantID=%s, userID=%d", participantID, userID)
 
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -356,12 +379,56 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, err
 	}
 
-	if err := s.ensureParticipantPhotoCountInBounds(ctx, participant); err != nil {
+	nCount, err := s.repository.CountNominationsByContest(ctx, participant.ContestID)
+	if err != nil {
+		return nil, err
+	}
+
+	var effectiveNom *string
+	if nominationKeyPresent {
+		if nCount > 0 {
+			if nominationFromRequest == nil || strings.TrimSpace(*nominationFromRequest) == "" {
+				return nil, errors.New("nomination_id is required when the contest has nominations")
+			}
+			trimmed := strings.TrimSpace(*nominationFromRequest)
+			effectiveNom = &trimmed
+			if _, err := s.repository.GetNominationByContest(ctx, participant.ContestID, trimmed); err != nil {
+				if errors.Is(err, model.ErrorNotFound) {
+					return nil, errors.New("nomination not found")
+				}
+				return nil, err
+			}
+		} else {
+			if nominationFromRequest != nil && strings.TrimSpace(*nominationFromRequest) != "" {
+				return nil, errors.New("nomination_id must not be set when the contest has no nominations")
+			}
+			effectiveNom = nil
+		}
+	} else {
+		effectiveNom = normalizeNominationIDPtr(participant.NominationID)
+	}
+
+	if !nominationIDPtrEqual(effectiveNom, normalizeNominationIDPtr(participant.NominationID)) {
+		existing, err := s.repository.GetParticipantByContestUserAndNomination(ctx, participant.ContestID, userID, effectiveNom)
+		if err != nil && !errors.Is(err, model.ErrorNotFound) {
+			return nil, err
+		}
+		if existing != nil && existing.ID != participantID {
+			if nCount > 0 {
+				return nil, model.ErrAlreadyParticipatingInNomination
+			}
+			return nil, model.ErrAlreadyParticipatingInContest
+		}
+	}
+
+	checkParticipant := *participant
+	checkParticipant.NominationID = effectiveNom
+	if err := s.ensureParticipantPhotoCountInBounds(ctx, &checkParticipant); err != nil {
 		return nil, err
 	}
 
 	log.Printf("[Service] UpdateParticipant: Updating participant in repository")
-	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, merged)
+	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, merged, effectiveNom)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to update participant: %v", err)
 		return nil, err

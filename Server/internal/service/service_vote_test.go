@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"toppet/server/internal/model"
@@ -135,13 +136,38 @@ func TestVote_GeneralNominationUsesNilSlot(t *testing.T) {
 	}
 }
 
-func TestVote_RejectsWhenNotVotingPhase(t *testing.T) {
+func TestVote_AllowsOutsideVotingPhase(t *testing.T) {
 	t.Parallel()
 	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	partID := model.ParticipantID("pppppppp-pppp-pppp-pppp-pppppppppppp")
 	contest := &model.Contest{
 		ID:                  contestID,
 		Status:              model.ContestStatusRegistration,
 		PublicVotingEnabled: true,
+	}
+	repo := &voteFlowMock{
+		mockRepository: &mockRepository{},
+		contest:        contest,
+		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+	}
+	svc := &TopPetService{repository: repo}
+
+	_, err := svc.Vote(context.Background(), contestID, partID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.upsertNoms) != 1 {
+		t.Fatalf("expected 1 upsert, got %d", len(repo.upsertNoms))
+	}
+}
+
+func TestVote_RejectsWhenPublicVotingDisabled(t *testing.T) {
+	t.Parallel()
+	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	contest := &model.Contest{
+		ID:                  contestID,
+		Status:              model.ContestStatusVoting,
+		PublicVotingEnabled: false,
 	}
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
@@ -154,7 +180,10 @@ func TestVote_RejectsWhenNotVotingPhase(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+	if !errors.Is(err, model.ErrorForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
 	if len(repo.upsertNoms) != 0 {
-		t.Fatal("should not upsert when voting closed")
+		t.Fatal("should not upsert when public voting disabled")
 	}
 }

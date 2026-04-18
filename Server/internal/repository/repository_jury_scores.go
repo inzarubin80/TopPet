@@ -192,6 +192,31 @@ func (r *Repository) ListContestJuryVotingProgressByContest(ctx context.Context,
 	return out, nil
 }
 
+func (r *Repository) ListJuryWeightedTotalsByContest(ctx context.Context, contestID model.ContestID) ([]model.JuryChairWeightedCell, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	cid, err := pgUUIDFromContestID(contestID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := reposqlc.ListJuryWeightedTotalsByContest(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.JuryChairWeightedCell, 0, len(rows))
+	for _, row := range rows {
+		var pidStr string
+		if row.ParticipantID.Valid {
+			pidStr = uuid.UUID(row.ParticipantID.Bytes).String()
+		}
+		out = append(out, model.JuryChairWeightedCell{
+			ParticipantID: model.ParticipantID(pidStr),
+			JurorUserID:   model.UserID(row.JurorUserID),
+			WeightedTotal: row.WeightedTotal,
+		})
+	}
+	return out, nil
+}
+
 func juryScoreFromSQLc(row *sqlc_repository.ContestJuryScore) *model.JuryScore {
 	var idStr, pidStr, critStr string
 	if row.ID.Valid {

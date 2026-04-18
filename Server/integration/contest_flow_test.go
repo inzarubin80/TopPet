@@ -104,8 +104,8 @@ func TestLargeContestFlow300x3x3x3(t *testing.T) {
 	if finished.Status != model.ContestStatusFinished {
 		t.Errorf("status: want finished, got %s", finished.Status)
 	}
-	if len(finished.JuryWinners) != 3 {
-		t.Errorf("JuryWinners: want 3, got %d (%+v)", len(finished.JuryWinners), finished.JuryWinners)
+	if len(finished.JuryWinners) != 0 {
+		t.Errorf("JuryWinners: want 0 until chair saves assignments, got %d (%+v)", len(finished.JuryWinners), finished.JuryWinners)
 	}
 	if len(finished.AudienceWinners) != 0 {
 		t.Errorf("AudienceWinners: want 0 (public voting off), got %d", len(finished.AudienceWinners))

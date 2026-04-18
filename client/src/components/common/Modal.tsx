@@ -15,6 +15,8 @@ interface ModalProps {
   showHeaderDivider?: boolean;
   /** Линия над футером (по умолчанию включена). */
   showFooterDivider?: boolean;
+  /** Закрыть по клику на затемнённый фон (не на содержимое). */
+  closeOnBackdropClick?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -27,6 +29,7 @@ export const Modal: React.FC<ModalProps> = ({
   closeOnlyHeader = false,
   showHeaderDivider = true,
   showFooterDivider = true,
+  closeOnBackdropClick = false,
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -44,7 +47,11 @@ export const Modal: React.FC<ModalProps> = ({
   }
 
   return (
-    <div className={className ? `modal-overlay ${className}` : 'modal-overlay'}>
+    <div
+      className={className ? `modal-overlay ${className}` : 'modal-overlay'}
+      onClick={closeOnBackdropClick ? onClose : undefined}
+      role="presentation"
+    >
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {(title || closeOnlyHeader) && (
           <div

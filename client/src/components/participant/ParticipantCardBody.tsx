@@ -2,7 +2,11 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
-import { fetchParticipant, fetchParticipantsByContest } from '../../store/slices/participantsSlice';
+import {
+  fetchParticipant,
+  fetchParticipantsByContest,
+  fetchMyParticipantsForContest,
+} from '../../store/slices/participantsSlice';
 import { fetchComments, createComment, updateComment, deleteComment, voteComment, setCommentVote } from '../../store/slices/commentsSlice';
 import { fetchContest } from '../../store/slices/contestsSlice';
 import { fetchStaffCommentNotifications } from '../../store/slices/notificationsSlice';
@@ -11,15 +15,18 @@ import { EditParticipantModal } from '../contest/EditParticipantModal';
 import { DeleteParticipantModal } from '../contest/DeleteParticipantModal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Button } from '../common/Button';
+import { VoteButton } from '../contest/VoteButton';
 import { PhotoGallery } from './PhotoGallery';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import { ParticipantMetaTags } from '../seo/ParticipantMetaTags';
 import { descriptionWithBreaks } from '../../utils/formatText';
 import { userCanManageContest } from '../../utils/contestPermissions';
-import { markStaffCommentsRead } from '../../api/commentsApi';
+import { markStaffCommentsRead, uploadCommentImage } from '../../api/commentsApi';
 import { listRegistrationFields } from '../../api/registrationFieldsApi';
-import { RegistrationField } from '../../types/models';
+import { Nomination, RegistrationField } from '../../types/models';
+import { listNominations } from '../../api/nominationsApi';
+import { sortNominationsByOrder } from '../contest/contestNominationsDisplay';
 import {
   registrationAnswersToDisplaySections,
   type RegistrationAnswerDisplayRow,
@@ -28,7 +35,7 @@ import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePubli
 import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
 import type { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
 import { MessageList } from '../chat/MessageList';
-import { MessageInput } from '../chat/MessageInput';
+import { MessageInput, MessageSendPayload } from '../chat/MessageInput';
 import '../chat/ChatWindow.css';
 import { buildLoginUrl } from '../../utils/navigation';
 import '../../pages/ParticipantPage.css';
@@ -36,9 +43,7 @@ import '../../pages/ParticipantPage.css';
 const EMPTY_COMMENTS: ParticipantComment[] = [];
 const DEFAULT_GALLERY_PAGE_SIZE = 24;
 
-type ParticipantDescriptionBlocks =
-  | { kind: 'single'; title: string; text: string }
-  | { kind: 'pair'; workText: string; petText: string };
+type ParticipantDescriptionBlocks = { kind: 'single'; title: string; text: string };
 
 type ParticipantLocationState = {
   galleryNavigation?: ParticipantGalleryNavigationState;
@@ -122,6 +127,30 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const { currentContest } = useSelector((state: RootState) => state.contests);
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const currentUserId = currentUser?.id;
+  const myContestParticipants = useSelector((state: RootState) =>
+    contestId ? state.participants.mineByContest[contestId] ?? [] : []
+  );
+  const [editModalNominations, setEditModalNominations] = useState<Nomination[]>([]);
+
+  useEffect(() => {
+    if (!contestId) return;
+    let cancelled = false;
+    void listNominations(contestId)
+      .then((rows) => {
+        if (!cancelled) setEditModalNominations([...rows].sort(sortNominationsByOrder));
+      })
+      .catch(() => {
+        if (!cancelled) setEditModalNominations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contestId]);
+
+  useEffect(() => {
+    if (!contestId || !currentUserId) return;
+    void dispatch(fetchMyParticipantsForContest({ contestId }));
+  }, [contestId, currentUserId, dispatch]);
   const { isOwner, canEdit } = useParticipantPermissions(
     participant,
     currentUserId,
@@ -154,8 +183,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     !!galleryNavigation &&
     galleryNavigation.contestId === contestId &&
     galleryNavigation.total > 1;
-  /** Навигация по соседним работам отключена при просмотре из отфильтрованного списка «только избранное». */
-  const showGalleryWorkNav = hasGalleryNavigation && !galleryNavigation.favoritesOnly;
+  const showGalleryWorkNav = hasGalleryNavigation;
   const currentGalleryPage = hasGalleryNavigation ? Math.max(0, galleryNavigation.page) : 0;
   const currentGalleryPageSize = hasGalleryNavigation
     ? Math.max(1, galleryNavigation.pageSize || DEFAULT_GALLERY_PAGE_SIZE)
@@ -206,9 +234,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         contestId,
         nominationFilter: galleryNavigation.nominationFilter,
         submissionFilter: galleryNavigation.submissionFilter,
-        juryUnscoredOnly: galleryNavigation.juryUnscoredOnly,
         votedOnly: galleryNavigation.votedOnly,
-        favoriteOnly: galleryNavigation.favoritesOnly ?? false,
         sort: galleryNavigation.sort,
         limit: currentGalleryPageSize,
         offset: page * currentGalleryPageSize,
@@ -307,24 +333,28 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
 
   const displayTitle = participant ? getParticipantDisplayTitle(participant) : '';
   const petNameSubtitle = participant ? getParticipantPetNameSubtitle(participant) : undefined;
+  const entrySummaryText = participant?.entry_description?.trim() || '';
 
   const descriptionBlocks: ParticipantDescriptionBlocks | null = useMemo(() => {
     if (!participant) {
       return null;
     }
-    const work = participant.entry_description?.trim() || '';
+    const entry = participant.entry_description?.trim() || '';
     const pet = participant.pet_description?.trim() || '';
-    if (!work && !pet) {
+    const entryInHeader = entry.length > 0;
+    if (entryInHeader && (!pet || pet === entry)) {
       return null;
     }
-    if (work && pet && work === pet) {
-      return { kind: 'single', title: 'Описание', text: work };
+    if (!entryInHeader && !pet) {
+      return null;
     }
-    if (work && pet && work !== pet) {
-      return { kind: 'pair', workText: work, petText: pet };
+    if (!entryInHeader && pet) {
+      return { kind: 'single', title: 'Описание', text: pet };
     }
-    const only = work || pet;
-    return { kind: 'single', title: 'Описание', text: only };
+    if (entryInHeader && pet && pet !== entry) {
+      return { kind: 'single', title: 'О питомце', text: pet };
+    }
+    return null;
   }, [participant]);
 
   useEffect(() => {
@@ -407,14 +437,22 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     return () => clearTimeout(t);
   }, [location.hash, participantFetchSettled, participant]);
 
-  const handleSendComment = async (text: string) => {
-    if (!participantId || !text.trim() || !canComment) {
+  const handleSendComment = async (payload: MessageSendPayload) => {
+    if (!participantId || !canComment) {
+      return;
+    }
+    const t = payload.text.trim();
+    if (t === '' && !payload.imageUrl) {
       return;
     }
     const result = await dispatch(
       createComment({
         participantId,
-        data: { text: text.trim(), parent_id: replyToComment?.id },
+        data: {
+          text: t,
+          parent_id: replyToComment?.id,
+          image_url: payload.imageUrl || undefined,
+        },
       })
     );
     if (createComment.fulfilled.match(result)) {
@@ -492,7 +530,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       {(registrationSchemaRows.length > 0 || registrationOrphanRows.length > 0) && (
         <details className="participant-page-registration-details">
           <summary className="participant-page-registration-summary">
-            {registrationSchemaRows.length > 0 ? 'Поля заявки' : 'Дополнительные данные заявки'}
+            Дополнительные поля
           </summary>
           <section className="participant-page-registration">
             <div className="participant-page-registration-card">
@@ -527,18 +565,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
           <p>{descriptionWithBreaks(descriptionBlocks.text)}</p>
         </div>
       ) : null}
-      {descriptionBlocks?.kind === 'pair' ? (
-        <>
-          <div className="participant-page-description">
-            <h2>О работе</h2>
-            <p>{descriptionWithBreaks(descriptionBlocks.workText)}</p>
-          </div>
-          <div className="participant-page-description participant-page-description-pet">
-            <h2>О питомце</h2>
-            <p>{descriptionWithBreaks(descriptionBlocks.petText)}</p>
-          </div>
-        </>
-      ) : null}
     </>
   );
 
@@ -551,6 +577,9 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       }
     >
       <h1 className="participant-page-work-title">{displayTitle}</h1>
+      {entrySummaryText ? (
+        <div className="participant-page-entry-summary">{descriptionWithBreaks(entrySummaryText)}</div>
+      ) : null}
       {petNameSubtitle ? <p className="participant-page-title-sub">{petNameSubtitle}</p> : null}
       {participant.user_name?.trim() ? (
         <div
@@ -588,7 +617,12 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       }
     >
       {participant.photos && participant.photos.length > 0 && (
-        <PhotoGallery photos={participant.photos} />
+        <PhotoGallery
+          photos={participant.photos}
+          showOwnerActions={variant === 'page' && canEdit}
+          onEdit={() => setIsEditModalOpen(true)}
+          onDelete={() => setIsDeleteModalOpen(true)}
+        />
       )}
       {!participant.photos?.length && !isOwner && (
         <div className="participant-page-media-empty">Нет медиа</div>
@@ -691,7 +725,9 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                 <div className="chat-reply-banner">
                   <span className="chat-reply-banner-label">
                     Вы отвечаете…{' '}
-                    <span className="chat-reply-banner-snippet">{replyToComment.text.slice(0, 120)}</span>
+                    <span className="chat-reply-banner-snippet">
+                      {(replyToComment.text || 'Вложение').slice(0, 120)}
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -703,7 +739,10 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                 </div>
               ) : null}
               <MessageInput
-                onSend={(text) => void handleSendComment(text)}
+                onSend={(p) => void handleSendComment(p)}
+                uploadImage={
+                  participantId ? (file) => uploadCommentImage(participantId, file) : undefined
+                }
                 disabled={!participantId}
                 placeholder="Напишите комментарий..."
               />
@@ -778,7 +817,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             ) : null}
           </div>
         ) : null}
-        {showGalleryWorkNav ? (
+        {showGalleryWorkNav && variant !== 'page' ? (
           <div className="participant-page-title-block">
             <div className="participant-page-work-nav">
               <Button
@@ -804,7 +843,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             </div>
           </div>
         ) : null}
-        {canEdit && (
+        {canEdit && (variant !== 'page' || !participant.photos?.length) && (
           <div className="participant-page-icon-actions">
             <button
               type="button"
@@ -862,6 +901,33 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                   {floatingBackCluster}
                   {mediaBlock}
                 </div>
+                {showGalleryWorkNav ? (
+                  <nav
+                    className="participant-page-work-nav participant-page-work-nav--under-media"
+                    aria-label="Переход между работами в галерее"
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="small"
+                      onClick={() => void handleGoToPreviousParticipant()}
+                      disabled={
+                        lockWorkNavigationPrevious || !hasPreviousParticipant || participantNavPending
+                      }
+                    >
+                      Предыдущая работа
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="small"
+                      onClick={() => void handleGoToNextParticipant()}
+                      disabled={lockWorkNavigationNext || !hasNextParticipant || participantNavPending}
+                    >
+                      Следующая работа
+                    </Button>
+                  </nav>
+                ) : null}
               </div>
               <div className="participant-page-split-aside">
                 <div className="participant-page-work-meta">
@@ -871,6 +937,23 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                     {infoDetails}
                   </div>
                 </div>
+                {currentContest ? (
+                  <div className="participant-page-like-row">
+                    <VoteButton
+                      contestId={contestId}
+                      participantId={participantId}
+                      nominationId={participant.nomination_id ?? null}
+                      publicVotingEnabled={currentContest.public_voting_enabled ?? true}
+                      canReceiveVotes={
+                        participant.submission_status == null ||
+                        participant.submission_status === 'accepted'
+                      }
+                      appearance="statStrip"
+                      totalVotes={participant.total_votes ?? 0}
+                      fullWidth
+                    />
+                  </div>
+                ) : null}
                 {commentsSection}
               </div>
             </div>
@@ -881,6 +964,23 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
               <div className="participant-page-info">
                 {infoDetails}
               </div>
+              {currentContest ? (
+                <div className="participant-page-like-row">
+                  <VoteButton
+                    contestId={contestId}
+                    participantId={participantId}
+                    nominationId={participant.nomination_id ?? null}
+                    publicVotingEnabled={currentContest.public_voting_enabled ?? true}
+                    canReceiveVotes={
+                      participant.submission_status == null ||
+                      participant.submission_status === 'accepted'
+                    }
+                    appearance="statStrip"
+                    totalVotes={participant.total_votes ?? 0}
+                    fullWidth
+                  />
+                </div>
+              ) : null}
             </div>
           )}
         </article>
@@ -894,6 +994,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             isOpen={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
             participant={participant}
+            nominations={editModalNominations}
+            myContestParticipants={myContestParticipants}
             contestMinPhotoCount={currentContest?.min_photo_count}
             contestMaxPhotoCount={currentContest?.max_photo_count}
           />

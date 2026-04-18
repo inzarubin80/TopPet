@@ -15,14 +15,10 @@ interface ParticipantCardProps {
   participant: Participant;
   contestId: string;
   contestStatus: ContestStatus;
-  /** Учитывать призовые места жюри на обложке */
-  juryVotingEnabled?: boolean;
   /** Подпись номинации (если заявка привязана к категории) */
   nominationTitle?: string;
-  /** По умолчанию true — если false, приз зрительского голосования на обложке скрыт */
+  /** По умолчанию true — если false, участник не может получать голоса (права редактирования и т.д.) */
   publicVotingEnabled?: boolean;
-  onEdit?: (participant: Participant) => void;
-  onDelete?: (participant: Participant) => void;
   isContestAdmin?: boolean;
   galleryNavigationState?: ParticipantGalleryNavigationState;
 }
@@ -33,10 +29,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   contestStatus,
   nominationTitle,
   publicVotingEnabled = true,
-  onEdit,
-  onDelete,
   isContestAdmin,
-  juryVotingEnabled,
   galleryNavigationState,
 }) => {
   const navigate = useNavigate();
@@ -46,7 +39,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const [moderationBusy, setModerationBusy] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
-  const { isOwner, canEdit } = useParticipantPermissions(
+  const { isOwner } = useParticipantPermissions(
     participant,
     currentUserId,
     contestStatus,
@@ -60,8 +53,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const showSubmissionBadge =
     submissionStatus === 'pending' || submissionStatus === 'rejected';
   const canModerateSubmission = isContestAdmin && submissionStatus === 'pending';
-  const audienceWinnerPlace = publicVotingEnabled ? participant.audience_winner_place : undefined;
-  const juryWinnerPlace = juryVotingEnabled ? participant.jury_winner_place : undefined;
 
   const openRejectModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -125,29 +116,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     });
   };
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onEdit) {
-      onEdit(participant);
-    }
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDelete) {
-      onDelete(participant);
-    }
-  };
-
-  const renderWinnerOverlay = (kind: 'audience' | 'jury', place: number) => (
-    <div className={`participant-card-winner-overlay participant-card-winner-overlay-${kind}`}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2L14.8 7.7L21 8.6L16.5 13L17.6 19.2L12 16.3L6.4 19.2L7.5 13L3 8.6L9.2 7.7L12 2Z" />
-      </svg>
-      <span>{kind === 'audience' ? `Голоса #${place}` : `Жюри #${place}`}</span>
-    </div>
-  );
-
   const avatarInitial = (authorLabel.trim()[0] || 'У').toUpperCase();
 
   return (
@@ -164,10 +132,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           ) : (
             <div className="participant-card-placeholder">Нет фото</div>
           )}
-          <div className="participant-card-overlays">
-            {audienceWinnerPlace != null ? renderWinnerOverlay('audience', audienceWinnerPlace) : null}
-            {juryWinnerPlace != null ? renderWinnerOverlay('jury', juryWinnerPlace) : null}
-          </div>
         </div>
         <div className="participant-card-summary">
           <h4 className="participant-card-name">{workTitle}</h4>
@@ -178,13 +142,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
             <span className="participant-card-author">{authorLabel}</span>
             <span className="participant-card-dot" aria-hidden="true">•</span>
             <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
-            <span className="participant-card-dot" aria-hidden="true">•</span>
-            <span className="participant-card-hearts" title="Пользовательские голоса">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
-              </svg>
-              {participant.total_votes || 0}
-            </span>
           </div>
           {nominationTitle ? <span className="participant-card-nomination">{nominationTitle}</span> : null}
           {showSubmissionBadge ? (
@@ -205,64 +162,32 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           ) : null}
         </div>
       </div>
-      {(isContestAdmin || canEdit) && (
+      {canModerateSubmission ? (
         <div className="participant-card-footer">
           <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
-            {canModerateSubmission ? (
-              <div className="participant-card-moderation-row">
-                <button
-                  type="button"
-                  className="participant-card-moderation-btn participant-card-moderation-accept"
-                  onClick={handleAccept}
-                  disabled={moderationBusy}
-                  title="Принять заявку"
-                >
-                  Принять
-                </button>
-                <button
-                  type="button"
-                  className="participant-card-moderation-btn participant-card-moderation-reject"
-                  onClick={openRejectModal}
-                  disabled={moderationBusy}
-                  title="Отклонить заявку"
-                >
-                  Отклонить
-                </button>
-              </div>
-            ) : null}
-            <div className="participant-card-icon-toolbar">
-              {canEdit && (
-                <>
-                  <button
-                    type="button"
-                    className="participant-card-icon-btn"
-                    onClick={handleEditClick}
-                    title="Редактировать заявку"
-                    aria-label="Редактировать заявку"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="participant-card-icon-btn participant-card-icon-btn-danger"
-                    onClick={handleDeleteClick}
-                    title="Удалить"
-                    aria-label="Удалить"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                </>
-              )}
+            <div className="participant-card-moderation-row">
+              <button
+                type="button"
+                className="participant-card-moderation-btn participant-card-moderation-accept"
+                onClick={handleAccept}
+                disabled={moderationBusy}
+                title="Принять заявку"
+              >
+                Принять
+              </button>
+              <button
+                type="button"
+                className="participant-card-moderation-btn participant-card-moderation-reject"
+                onClick={openRejectModal}
+                disabled={moderationBusy}
+                title="Отклонить заявку"
+              >
+                Отклонить
+              </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
     {rejectModalOpen ? (
       <div className="participant-card-reject-overlay" role="presentation" onClick={() => closeRejectModal()}>

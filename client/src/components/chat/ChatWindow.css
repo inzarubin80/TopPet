@@ -1,12 +1,26 @@
 .chat-window {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-width: 0;
   height: 100%;
   border: none;
   border-radius: 16px;
   background-color: var(--color-surface);
   box-shadow: none;
   overflow: hidden;
+}
+
+.chat-window--natural-flow {
+  height: auto;
+  min-height: 320px;
+  overflow: visible;
+}
+
+.chat-window--natural-flow .chat-content {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .chat-header {
@@ -42,6 +56,9 @@
 }
 
 .chat-footer {
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
   border-top: none;
   background: var(--color-surface);
 }
@@ -109,9 +126,15 @@
 
 /* Mobile adaptations */
 @media (max-width: 768px) {
-  .chat-window {
+  /* Не страница участника: там высоту задаёт ParticipantPage.css (модалка жюри иначе ломается). */
+  .chat-window:not(.chat-window--natural-flow):not(.participant-page-comments-window) {
     border-radius: 0;
     height: 100vh;
+  }
+
+  .chat-window--natural-flow {
+    min-height: 0;
+    border-radius: 0;
   }
 
   .chat-header {

@@ -1,11 +1,13 @@
 import React from 'react';
-import { Participant, ContestID } from '../../types/models';
+import { Participant, ContestID, Nomination } from '../../types/models';
 import { AddParticipantModal } from './AddParticipantModal';
 
 interface EditParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   participant: Participant | null;
+  nominations?: Nomination[];
+  myContestParticipants?: Participant[];
   contestMinPhotoCount?: number;
   contestMaxPhotoCount?: number;
   entryTitleHint?: string;
@@ -15,6 +17,8 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
   isOpen,
   onClose,
   participant,
+  nominations,
+  myContestParticipants,
   contestMinPhotoCount,
   contestMaxPhotoCount,
   entryTitleHint,
@@ -31,6 +35,8 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
       onClose={onClose}
       contestId={contestId}
       participant={participant}
+      nominations={nominations}
+      myContestParticipants={myContestParticipants}
       contestMinPhotoCount={contestMinPhotoCount}
       contestMaxPhotoCount={contestMaxPhotoCount}
       entryTitleHint={entryTitleHint}

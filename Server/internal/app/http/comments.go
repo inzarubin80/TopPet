@@ -13,7 +13,7 @@ import (
 
 type (
 	serviceComments interface {
-		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error)
+		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error)
 		ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
 		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
@@ -88,13 +88,14 @@ func (h *CommentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Text     string           `json:"text"`
 		ParentID *model.CommentID `json:"parent_id"`
+		ImageURL string           `json:"image_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("invalid json", err))
 		return
 	}
 
-	comment, err := h.service.CreateComment(r.Context(), participantID, userID, req.Text, req.ParentID)
+	comment, err := h.service.CreateComment(r.Context(), participantID, userID, req.Text, req.ParentID, req.ImageURL)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	wsapp "toppet/server/internal/app/ws"
@@ -26,8 +27,8 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 		return nil, err
 	}
 
-	if contest.Status != model.ContestStatusVoting {
-		return nil, errors.New("voting is only allowed during voting stage")
+	if !contest.PublicVotingEnabled {
+		return nil, fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
 	}
 
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -85,8 +86,8 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 		return "", err
 	}
 
-	if contest.Status != model.ContestStatusVoting {
-		return "", errors.New("voting is only allowed during voting stage")
+	if !contest.PublicVotingEnabled {
+		return "", fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
 	}
 
 	participantID, err = s.repository.DeleteContestVoteByUserAndParticipant(ctx, contestID, userID, participantID)

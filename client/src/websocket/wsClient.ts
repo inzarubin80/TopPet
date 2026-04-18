@@ -346,7 +346,7 @@ export class WebSocketClient {
     this.subscribedContests.delete(contestId);
   }
 
-  sendMessage(contestId: string, text: string, parentId?: string): void {
+  sendMessage(contestId: string, text: string, parentId?: string, imageUrl?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('WebSocket: Not connected');
       return;
@@ -357,6 +357,7 @@ export class WebSocketClient {
       contest_id: contestId,
       text,
       parent_id: parentId,
+      ...(imageUrl ? { image_url: imageUrl } : {}),
     };
 
     this.ws.send(JSON.stringify(message));

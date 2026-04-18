@@ -21,6 +21,11 @@ interface ParticipantJuryReportModalProps {
   contestId: string;
   participantId: string;
   participantName: string;
+  /** Показать только строки этого члена жюри (свод председателя). */
+  focusJurorUserId?: number | null;
+  focusJurorName?: string;
+  /** Взвешенная сумма по колонке (как в таблице председателя), для подписи итога. */
+  focusJurorWeightedTotal?: number | null;
 }
 
 const formatUpdatedAt = (iso: string): string => {
@@ -89,6 +94,9 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
   contestId,
   participantId,
   participantName,
+  focusJurorUserId = null,
+  focusJurorName,
+  focusJurorWeightedTotal = null,
 }) => {
   const [items, setItems] = useState<JuryScoreReportItem[]>([]);
   const [totalJuryScore, setTotalJuryScore] = useState(0);
@@ -96,6 +104,8 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('juror_name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const jurorFocus = focusJurorUserId != null;
 
   useEffect(() => {
     if (!isOpen || !contestId || !participantId) {
@@ -126,10 +136,28 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
     };
   }, [isOpen, contestId, participantId]);
 
+  useEffect(() => {
+    if (isOpen && jurorFocus) {
+      setSortKey('criterion_sort_order');
+      setSortDir('asc');
+    }
+    if (isOpen && !jurorFocus) {
+      setSortKey('juror_name');
+      setSortDir('asc');
+    }
+  }, [isOpen, jurorFocus]);
+
+  const filteredItems = useMemo(() => {
+    if (focusJurorUserId == null) {
+      return items;
+    }
+    return items.filter((row) => row.juror_user_id === focusJurorUserId);
+  }, [items, focusJurorUserId]);
+
   const sortedItems = useMemo(() => {
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...items].sort((a, b) => compareItems(a, b, sortKey, dir));
-  }, [items, sortKey, sortDir]);
+    return [...filteredItems].sort((a, b) => compareItems(a, b, sortKey, dir));
+  }, [filteredItems, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -147,14 +175,30 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
     return sortDir === 'asc' ? ' ▲' : ' ▼';
   };
 
+  const modalTitle =
+    jurorFocus && focusJurorName?.trim()
+      ? `Оценки: ${focusJurorName.trim()} — ${participantName}`
+      : `Оценки жюри: ${participantName}`;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Оценки жюри: ${participantName}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
       <div className="participant-jury-report-modal-body">
         <p className="participant-jury-report-modal-hint">
-          Сводка по выставленным баллам. Итог — сумма Σ(оценка × вес критерия) по всем членам жюри и критериям.
+          {jurorFocus
+            ? 'Баллы этого члена жюри по каждому критерию. Взвешенный итог в таблице председателя = Σ(оценка × вес критерия).'
+            : 'Сводка по выставленным баллам. Итог — сумма Σ(оценка × вес критерия) по всем членам жюри и критериям.'}
         </p>
         <div className="participant-jury-report-modal-total" role="status">
-          Итоговая сумма баллов жюри: <strong>{formatJuryTotalScore(totalJuryScore)}</strong>
+          {jurorFocus && focusJurorWeightedTotal != null ? (
+            <>
+              Взвешенный итог по этому члену жюри:{' '}
+              <strong>{formatJuryTotalScore(focusJurorWeightedTotal)}</strong>
+            </>
+          ) : (
+            <>
+              Итоговая сумма баллов жюри: <strong>{formatJuryTotalScore(totalJuryScore)}</strong>
+            </>
+          )}
         </div>
         {loading && (
           <div className="participant-jury-report-modal-loading">
@@ -162,24 +206,36 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
           </div>
         )}
         {!loading && error && <div className="participant-jury-report-modal-error">{error}</div>}
-        {!loading && !error && items.length === 0 && (
-          <div className="participant-jury-report-modal-empty">Пока нет ни одной сохранённой оценки.</div>
+        {!loading && !error && filteredItems.length === 0 && (
+          <div className="participant-jury-report-modal-empty">
+            {jurorFocus ? 'Нет сохранённых оценок этого члена жюри по этой работе.' : 'Пока нет ни одной сохранённой оценки.'}
+          </div>
         )}
-        {!loading && !error && items.length > 0 && (
+        {!loading && !error && filteredItems.length > 0 && (
           <div className="participant-jury-report-modal-table-wrap">
-            <table className="participant-jury-report-modal-table">
+            <table
+              className={
+                jurorFocus
+                  ? 'participant-jury-report-modal-table participant-jury-report-modal-table--juror-focus'
+                  : 'participant-jury-report-modal-table'
+              }
+            >
               <thead>
                 <tr>
-                  <th scope="col">
-                    <button type="button" className="participant-jury-report-sort" onClick={() => toggleSort('juror_name')}>
-                      Член жюри{sortMark('juror_name')}
-                    </button>
-                  </th>
-                  <th scope="col">
-                    <button type="button" className="participant-jury-report-sort" onClick={() => toggleSort('juror_user_id')}>
-                      ID{sortMark('juror_user_id')}
-                    </button>
-                  </th>
+                  {!jurorFocus ? (
+                    <>
+                      <th scope="col">
+                        <button type="button" className="participant-jury-report-sort" onClick={() => toggleSort('juror_name')}>
+                          Член жюри{sortMark('juror_name')}
+                        </button>
+                      </th>
+                      <th scope="col">
+                        <button type="button" className="participant-jury-report-sort" onClick={() => toggleSort('juror_user_id')}>
+                          ID{sortMark('juror_user_id')}
+                        </button>
+                      </th>
+                    </>
+                  ) : null}
                   <th scope="col">
                     <button type="button" className="participant-jury-report-sort" onClick={() => toggleSort('criterion_title')}>
                       Критерий{sortMark('criterion_title')}
@@ -210,8 +266,12 @@ export const ParticipantJuryReportModal: React.FC<ParticipantJuryReportModalProp
               <tbody>
                 {sortedItems.map((row) => (
                   <tr key={`${row.juror_user_id}-${row.criterion_id}`}>
-                    <td>{row.juror_name}</td>
-                    <td>{row.juror_user_id}</td>
+                    {!jurorFocus ? (
+                      <>
+                        <td>{row.juror_name}</td>
+                        <td>{row.juror_user_id}</td>
+                      </>
+                    ) : null}
                     <td>{row.criterion_title}</td>
                     <td>{row.criterion_sort_order}</td>
                     <td>

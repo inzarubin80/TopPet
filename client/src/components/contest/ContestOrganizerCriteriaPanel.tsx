@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Contest, Nomination } from '../../types/models';
+import { Contest } from '../../types/models';
 import {
   listNominations,
   createNomination,
@@ -56,8 +56,6 @@ interface Props {
    * По умолчанию: readOnly && !isAdmin.
    */
   audienceMode?: boolean;
-  /** Страница конкурса: кнопка «Участвовать» и т.п. у номинации (только при readOnly). */
-  renderNominationAction?: (nomination: Nomination) => React.ReactNode;
 }
 
 const emptyCriterion = (): JuryCriterionInput => ({
@@ -68,6 +66,45 @@ const emptyCriterion = (): JuryCriterionInput => ({
   scale_step: 1,
   weight: 1,
 });
+
+/** Иконка категории, если у номинации нет своего логотипа */
+function NominationCategoryGlyph() {
+  return (
+    <svg
+      className="contest-organizer-criteria-nom-inline-default-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
+    </svg>
+  );
+}
+
+/** Иконка строки критерия жюри (read-only) */
+function JuryCriterionGlyph() {
+  return (
+    <svg
+      className="contest-organizer-criteria-jury-inline-glyph"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="16" y2="12" />
+      <line x1="4" y1="17" x2="12" y2="17" />
+    </svg>
+  );
+}
 
 export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteriaPanelHandle, Props>(
   function ContestOrganizerCriteriaPanel(
@@ -81,7 +118,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       juryCriteriaPortalMode = false,
       juryCriteriaPortalHost = null,
       audienceMode: audienceModeProp,
-      renderNominationAction,
     },
     ref
   ) {
@@ -103,6 +139,8 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
   const audienceView = audienceModeProp ?? (readOnly && !isAdmin);
+  /** Публичная страница конкурса: номинации списком без карточек (и для гостя, и для админа) */
+  const nominationsPublicCompact = audienceView || readOnly;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -383,16 +421,10 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     showJuryCriteriaSection ? (
       <div className="contest-organizer-criteria-block contest-organizer-criteria-block--jury">
         <h2 className="contest-section-heading contest-organizer-criteria-jury-subtitle">
-          {audienceView ? 'По чему жюри оценивает работы' : 'Критерии оценки (на конкурс)'}
+          {audienceView ? 'По чему жюри оценивает работы' : 'Критерии оценки'}
         </h2>
         {!canEdit && (
-          <ul
-            className={
-              audienceView
-                ? 'contest-organizer-criteria-list contest-organizer-criteria-jury-readonly-list contest-organizer-criteria-jury-readonly-list--audience'
-                : 'contest-organizer-criteria-list contest-organizer-criteria-jury-readonly-list'
-            }
-          >
+          <ul className="contest-organizer-criteria-list contest-organizer-criteria-jury-readonly-list contest-organizer-criteria-jury-readonly-list--inline">
             {criteriaDraft.filter((c) => c.title.trim()).map((c, idx) => {
               const { primary, secondary } = criterionPrimarySecondary(c);
               const scaleText = audienceView
@@ -401,29 +433,21 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
               const w = c.weight ?? 1;
               return (
                 <li key={c.id ?? `jury-ro-${idx}`}>
-                  {audienceView ? (
-                    <div className="contest-organizer-criteria-jury-card contest-organizer-criteria-jury-card--audience">
-                      <div className="contest-organizer-criteria-criterion-audience-title">{primary}</div>
+                  <div className="contest-organizer-criteria-jury-inline">
+                    <span className="contest-organizer-criteria-jury-inline-lead" aria-hidden>
+                      <JuryCriterionGlyph />
+                    </span>
+                    <div className="contest-organizer-criteria-jury-inline-text">
+                      <span className="contest-organizer-criteria-jury-inline-title">{primary}</span>
                       {secondary ? (
-                        <p className="contest-organizer-criteria-criterion-audience-desc">{secondary}</p>
+                        <span className="contest-organizer-criteria-jury-inline-desc">{secondary}</span>
                       ) : null}
-                      <span className="contest-organizer-criteria-scale contest-organizer-criteria-scale--audience">
+                      <span className="contest-organizer-criteria-jury-inline-meta">
                         {scaleText}
                         {w !== 1 ? ` · вес × ${w}` : ''}
                       </span>
                     </div>
-                  ) : (
-                    <div className="contest-organizer-criteria-jury-card">
-                      <strong className="contest-organizer-criteria-jury-card-title">{primary}</strong>
-                      {secondary ? (
-                        <span className="contest-organizer-criteria-jury-card-desc">{secondary}</span>
-                      ) : null}
-                      <span className="contest-organizer-criteria-jury-card-meta">
-                        {scaleText}
-                        {w !== 1 ? ` · вес × ${w}` : ''}
-                      </span>
-                    </div>
-                  )}
+                  </div>
                 </li>
               );
             })}
@@ -616,10 +640,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             {audienceView ? 'Организатор пока не указал категории участия.' : 'Номинации не заданы.'}
           </p>
         ) : (
+          <>
           <ul
             className={
-              audienceView
-                ? 'contest-organizer-criteria-list contest-organizer-criteria-list--audience'
+              nominationsPublicCompact
+                ? 'contest-organizer-criteria-list contest-organizer-criteria-list--audience contest-organizer-criteria-list--compact'
                 : 'contest-organizer-criteria-list'
             }
           >
@@ -674,32 +699,25 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                     </div>
                   ) : (
                     <>
-                      {audienceView ? (
-                        <div className="contest-organizer-criteria-nom-card contest-organizer-criteria-nom-card--row">
-                          {(n.logo_url || '').trim() ? (
-                            <div className="contest-organizer-criteria-nom-card-thumb">
+                      {nominationsPublicCompact ? (
+                        <div className="contest-organizer-criteria-nom-inline">
+                          <span className="contest-organizer-criteria-nom-inline-lead" aria-hidden>
+                            {(n.logo_url || '').trim() ? (
                               <img
+                                className="contest-organizer-criteria-nom-inline-logo"
                                 src={resolvePublicAssetUrl((n.logo_url || '').trim())}
                                 alt=""
                               />
-                            </div>
-                          ) : null}
-                          <div className="contest-organizer-criteria-nom-card-body">
-                            <div className="contest-organizer-criteria-nom-card-title">{primary}</div>
+                            ) : (
+                              <NominationCategoryGlyph />
+                            )}
+                          </span>
+                          <div className="contest-organizer-criteria-nom-inline-text">
+                            <span className="contest-organizer-criteria-nom-inline-title">{primary}</span>
                             {secondary ? (
-                              <p className="contest-organizer-criteria-nom-card-desc">{secondary}</p>
-                            ) : null}
-                            {contestPhotoHint ? (
-                              <span className="contest-organizer-criteria-nom-meta contest-organizer-criteria-nom-meta--audience">
-                                {contestPhotoHint}
-                              </span>
+                              <span className="contest-organizer-criteria-nom-inline-desc">{secondary}</span>
                             ) : null}
                           </div>
-                          {readOnly && renderNominationAction ? (
-                            <div className="contest-organizer-criteria-nom-card-action">
-                              {renderNominationAction(n)}
-                            </div>
-                          ) : null}
                         </div>
                       ) : (
                         <div className="contest-organizer-criteria-nom-block">
@@ -730,11 +748,6 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                                 <span className="contest-organizer-criteria-desc">{secondary}</span>
                               ) : null}
                             </div>
-                            {readOnly && renderNominationAction ? (
-                              <div className="contest-organizer-criteria-nom-head-action">
-                                {renderNominationAction(n)}
-                              </div>
-                            ) : null}
                           </div>
                         </div>
                       )}
@@ -792,6 +805,10 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
               );
             })}
           </ul>
+          {nominationsPublicCompact && contestPhotoHint && nominations.length > 0 ? (
+            <p className="contest-organizer-criteria-nom-list-footnote">{contestPhotoHint}</p>
+          ) : null}
+          </>
         )}
         {canEdit && (
           <form onSubmit={handleAddNomination} className="contest-organizer-criteria-form">

@@ -14,6 +14,7 @@ export type MessageListRow = Pick<
   | 'user_name'
   | 'user_avatar_url'
   | 'text'
+  | 'image_url'
   | 'parent_id'
   | 'score'
   | 'user_vote'
@@ -54,6 +55,8 @@ const MessageAuthorAvatar: React.FC<{
 
 interface MessageListProps {
   messages: MessageListRow[];
+  /** false — список растёт по высоте, без внутренней прокрутки (чат конкурса). По умолчанию true — скролл внутри области (комментарии). */
+  containedScroll?: boolean;
   currentUserId?: number;
   /** When false, +/- are disabled (e.g. not signed in). */
   canVote?: boolean;
@@ -73,6 +76,7 @@ interface MessageListProps {
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
+  containedScroll = true,
   currentUserId,
   canVote = true,
   canReply = true,
@@ -93,6 +97,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   React.useEffect(() => {
+    if (!containedScroll) return;
     if (isAtBottom && listRef.current) {
       requestAnimationFrame(() => {
         if (listRef.current) {
@@ -100,9 +105,10 @@ export const MessageList: React.FC<MessageListProps> = ({
         }
       });
     }
-  }, [messages, isAtBottom]);
+  }, [messages, isAtBottom, containedScroll]);
 
   const handleScroll = () => {
+    if (!containedScroll) return;
     const el = listRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -112,9 +118,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const scrollToBottom = () => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
+    if (!containedScroll || !listRef.current) return;
+    listRef.current.scrollTop = listRef.current.scrollHeight;
   };
 
   const formatDate = (dateString: string) => {
@@ -218,7 +223,11 @@ export const MessageList: React.FC<MessageListProps> = ({
   const byId = new Map(messages.map((msg) => [msg.id, msg]));
 
   return (
-    <div className="message-list" ref={listRef} onScroll={handleScroll}>
+    <div
+      className={`message-list${containedScroll ? '' : ' message-list--natural-flow'}`}
+      ref={containedScroll ? listRef : undefined}
+      onScroll={containedScroll ? handleScroll : undefined}
+    >
       {messages.length === 0 ? (
         <div className="message-list-empty">{emptyLabel}</div>
       ) : (
@@ -303,7 +312,23 @@ export const MessageList: React.FC<MessageListProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div className="message-text">{message.text}</div>
+                    {message.image_url ? (
+                      <a
+                        href={resolvePublicAssetUrl(message.image_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="message-inline-image-link"
+                      >
+                        <img
+                          className="message-inline-image"
+                          src={resolvePublicAssetUrl(message.image_url)}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </a>
+                    ) : null}
+                    {message.text ? <div className="message-text">{message.text}</div> : null}
                     {message.is_system !== true && (
                       <div className="message-footer-row">
                         <div className="messenger-action-bar">
@@ -431,7 +456,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         })
       )}
       <div ref={messagesEndRef} />
-      {showScrollButton && (
+      {containedScroll && showScrollButton && (
         <button
           type="button"
           className="message-scroll-button"

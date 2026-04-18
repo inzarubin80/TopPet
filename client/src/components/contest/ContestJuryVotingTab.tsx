@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Modal } from '../common/Modal';
-import { ParticipantCardBody } from '../participant/ParticipantCardBody';
 import { Button } from '../common/Button';
+import { JuryParticipantWorkCell } from './JuryParticipantWorkCell';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { listJuryCriteria } from '../../api/juryCriteriaApi';
 import { getMyJuryScores, putMyJuryScores } from '../../api/juryScoresApi';
@@ -22,7 +20,8 @@ const RETRY_DELAYS_MS = [1000, 2000, 4000];
 const MAX_AUTO_RETRIES = 3;
 const ONLINE_FLUSH_CONCURRENCY = 3;
 
-type SortDir = 'desc' | 'asc';
+/** Сортировка таблицы: взвешенный итог или id критерия (сырой балл по критерию). */
+type JuryVotingSortColumn = 'total' | string;
 
 type SyncStatus = 'synced' | 'pending' | 'saving' | 'error';
 
@@ -33,7 +32,7 @@ type Props = {
   isJuror: boolean;
   /** Подписи номинаций для строки автора */
   nominationTitleById: Record<string, string>;
-  /** Номинации конкурса — при непустом списке показывается отбор */
+  /** Номинации конкурса — при более чем одной номинации показывается отбор */
   nominations: Nomination[];
 };
 
@@ -97,19 +96,24 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
 }) => {
   const { showError } = useToast();
   const [nominationFilter, setNominationFilter] = useState<ParticipantsListNominationFilter>('all');
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  /** Только заявки с отметкой «Мне нравится» у текущего пользователя. */
+  const [likesOnly, setLikesOnly] = useState(false);
+
+  useEffect(() => {
+    if (nominations.length <= 1 && nominationFilter === 'none') {
+      setNominationFilter('all');
+    }
+  }, [nominations.length, nominationFilter]);
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [criteria, setCriteria] = useState<JuryCriterion[]>([]);
   /** scores[participantId][criterionId] */
   const [scores, setScores] = useState<Record<string, Record<string, number>>>({});
   const [syncByParticipant, setSyncByParticipant] = useState<Record<string, SyncStatus>>({});
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [participantModal, setParticipantModal] = useState<{
-    participantId: string;
-    title: string;
-  } | null>(null);
-
+  const [sort, setSort] = useState<{ column: JuryVotingSortColumn; desc: boolean }>({
+    column: 'total',
+    desc: true,
+  });
   const [isOnline, setIsOnline] = useState(
     () => (typeof navigator !== 'undefined' ? navigator.onLine : true)
   );
@@ -149,6 +153,17 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
   const weightedMaxOneJuror = useMemo(() => {
     return criteria.reduce((s, c) => s + c.scale_max * (c.weight ?? 1), 0);
   }, [criteria]);
+
+  const criterionById = useMemo(() => new Map(criteria.map((c) => [c.id, c])), [criteria]);
+
+  const onSortColumn = useCallback((col: JuryVotingSortColumn) => {
+    setSort((s) => {
+      if (s.column === col) {
+        return { column: col, desc: !s.desc };
+      }
+      return { column: col, desc: true };
+    });
+  }, []);
 
   const clearParticipantTimers = useCallback((participantId: string) => {
     const d = debounceTimersRef.current.get(participantId);
@@ -258,11 +273,11 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     try {
       const [critRes, partRes] = await Promise.all([
         listJuryCriteria(contestId),
-        getParticipantsByContest(contestId, nominationFilter, false, {
+        getParticipantsByContest(contestId, nominationFilter, {
           limit: 10000,
           offset: 0,
           sort: 'created_at',
-          favoriteOnly: favoritesOnly,
+          votedOnly: likesOnly,
         }),
       ]);
       critRes.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
@@ -308,7 +323,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, [contestId, isJuror, showError, nominationFilter, favoritesOnly]);
+  }, [contestId, isJuror, showError, nominationFilter, likesOnly]);
 
   useEffect(() => {
     void load();
@@ -321,7 +336,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     debMap.clear();
     retryMap.forEach((t) => clearTimeout(t));
     retryMap.clear();
-  }, [nominationFilter, favoritesOnly]);
+  }, [nominationFilter, likesOnly]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -362,20 +377,25 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
 
   const sortedParticipants = useMemo(() => {
     const list = [...participants];
-    list.sort((a, b) => {
-      const ta = weightedTotal(a.id);
-      const tb = weightedTotal(b.id);
-      if (ta !== tb) {
-        return sortDir === 'desc' ? tb - ta : ta - tb;
+    const { column, desc } = sort;
+    const scoreForSort = (participantId: string): number => {
+      if (column === 'total') {
+        return weightedTotal(participantId);
       }
-      const oa =
-        criteria.map((c) => scores[a.id]?.[c.id] ?? 0).join(',') + a.id;
-      const ob =
-        criteria.map((c) => scores[b.id]?.[c.id] ?? 0).join(',') + b.id;
-      return oa.localeCompare(ob);
+      const crit = criterionById.get(column);
+      if (!crit) return 0;
+      const v = scores[participantId]?.[column];
+      return v !== undefined ? v : defaultScore(crit);
+    };
+    list.sort((a, b) => {
+      const va = scoreForSort(a.id);
+      const vb = scoreForSort(b.id);
+      const primary = desc ? vb - va : va - vb;
+      if (primary !== 0) return primary;
+      return a.id.localeCompare(b.id);
     });
     return list;
-  }, [participants, sortDir, weightedTotal, criteria, scores]);
+  }, [participants, sort, weightedTotal, scores, criterionById]);
 
   const setCell = (participantId: ParticipantID, criterionId: string, value: number) => {
     setScores((prev) => {
@@ -408,24 +428,36 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     }
   };
 
-  const handleRetryRow = (participantId: string) => {
-    retryCountRef.current.delete(participantId);
-    clearParticipantTimers(participantId);
-    void flushParticipant(participantId);
-  };
+  const handleRetryAllErrors = useCallback(() => {
+    for (const p of participants) {
+      if ((syncByParticipant[p.id] ?? 'synced') === 'error') {
+        retryCountRef.current.delete(p.id);
+        clearParticipantTimers(p.id);
+        void flushParticipant(p.id);
+      }
+    }
+  }, [participants, syncByParticipant, clearParticipantTimers, flushParticipant]);
 
-  const openParticipantPage = (p: Participant) => {
-    setParticipantModal({
-      participantId: p.id,
-      title: getParticipantDisplayTitle(p),
-    });
-  };
+  const aggregateSync = useMemo((): SyncStatus => {
+    let hasError = false;
+    let hasSaving = false;
+    let hasPending = false;
+    for (const p of participants) {
+      const s = syncByParticipant[p.id] ?? 'synced';
+      if (s === 'error') hasError = true;
+      else if (s === 'saving') hasSaving = true;
+      else if (s === 'pending') hasPending = true;
+    }
+    if (hasError) return 'error';
+    if (hasSaving) return 'saving';
+    if (hasPending) return 'pending';
+    return 'synced';
+  }, [participants, syncByParticipant]);
 
-  const syncLabel = (pid: string): { text: string; title: string } => {
-    const s = syncByParticipant[pid] ?? 'synced';
-    switch (s) {
+  const toolbarSyncLabel = useMemo((): { text: string; title: string } => {
+    switch (aggregateSync) {
       case 'synced':
-        return { text: 'Сохранено', title: 'Оценки на сервере' };
+        return { text: 'Сохранено', title: 'Все оценки на сервере' };
       case 'pending':
         return {
           text: isOnline ? 'Ожидает…' : 'Офлайн',
@@ -436,11 +468,14 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
       case 'saving':
         return { text: '…', title: 'Сохранение…' };
       case 'error':
-        return { text: 'Ошибка', title: 'Не удалось сохранить. Нажмите «Повторить».' };
+        return {
+          text: 'Ошибка',
+          title: 'Не удалось сохранить одну или несколько работ. Нажмите «Повторить».',
+        };
       default:
         return { text: '—', title: '' };
     }
-  };
+  }, [aggregateSync, isOnline]);
 
   if (!isJuror) {
     return (
@@ -496,78 +531,93 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
               Установить пустые в середину шкалы
             </button>
           </div>
-          <div className="contest-jury-voting-badge">
-            Максимум на вашу оценку одной работы:{' '}
-            <strong>{formatJuryTotalScore(weightedMaxOneJuror)}</strong> (по шкале × вес)
+          <div className="contest-jury-voting-toolbar-right">
+            <span
+              className={`contest-jury-voting-sync contest-jury-voting-sync--${aggregateSync}`}
+              title={toolbarSyncLabel.title}
+            >
+              {aggregateSync === 'saving' ? <LoadingSpinner size="small" /> : null}
+              {aggregateSync === 'saving' ? ' ' : ''}
+              {toolbarSyncLabel.text}
+            </span>
+            {aggregateSync === 'error' && canEdit ? (
+              <Button type="button" size="small" variant="secondary" onClick={handleRetryAllErrors}>
+                Повторить
+              </Button>
+            ) : null}
+            <div className="contest-jury-voting-badge">
+              Максимум на вашу оценку одной работы:{' '}
+              <strong>{formatJuryTotalScore(weightedMaxOneJuror)}</strong> (по шкале × вес)
+            </div>
           </div>
         </div>
 
-        <label className="contest-jury-voting-favorite-filter contest-page-participants-jury-filter">
-          <input
-            type="checkbox"
-            checked={favoritesOnly}
-            onChange={(e) => setFavoritesOnly(e.target.checked)}
-          />
-          <span>Только избранное</span>
-        </label>
-
-        {nominations.length > 0 ? (
-          <div
-            className="contest-jury-voting-nomination-bar contest-page-nomination-tabs-bar"
-            role="tablist"
-            aria-label="Фильтр по номинации"
-          >
-            <div className="contest-page-nomination-tab-row">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={nominationFilter === 'all'}
-                className={
-                  nominationFilter === 'all'
-                    ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                    : 'contest-page-nomination-tab'
-                }
-                onClick={() => setNominationFilter('all')}
-              >
-                Все номинации
-              </button>
-              {nominations.map((n) => (
+        <div
+          className="contest-jury-voting-nomination-bar contest-page-nomination-tabs-bar"
+          role="toolbar"
+          aria-label="Фильтры списка работ"
+        >
+          <div className="contest-page-nomination-tab-row">
+            {nominations.length > 1 ? (
+              <>
                 <button
-                  key={n.id}
                   type="button"
                   role="tab"
-                  aria-selected={nominationFilter === n.id}
+                  aria-selected={nominationFilter === 'all'}
                   className={
-                    nominationFilter === n.id
+                    nominationFilter === 'all'
                       ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
                       : 'contest-page-nomination-tab'
                   }
-                  onClick={() => setNominationFilter(n.id)}
+                  onClick={() => setNominationFilter('all')}
                 >
-                  {n.title}
+                  Все номинации
                 </button>
-              ))}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={nominationFilter === 'none'}
-                className={
-                  nominationFilter === 'none'
-                    ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                    : 'contest-page-nomination-tab'
-                }
-                onClick={() => setNominationFilter('none')}
-              >
-                Без номинации
-              </button>
-            </div>
+                {nominations.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={nominationFilter === n.id}
+                    className={
+                      nominationFilter === n.id
+                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
+                        : 'contest-page-nomination-tab'
+                    }
+                    onClick={() => setNominationFilter(n.id)}
+                  >
+                    {n.title}
+                  </button>
+                ))}
+              </>
+            ) : null}
+            <button
+              type="button"
+              className={[
+                likesOnly
+                  ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
+                  : 'contest-page-nomination-tab',
+                nominations.length > 1 ? 'contest-jury-voting-likes-tab' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={likesOnly}
+              title={
+                likesOnly
+                  ? 'Показать все работы (с учётом номинации)'
+                  : 'Только работы с отметкой «Мне нравится»'
+              }
+              onClick={() => setLikesOnly((v) => !v)}
+            >
+              Мне нравится
+            </button>
           </div>
-        ) : null}
+        </div>
 
         {participants.length === 0 ? (
           <p className="contest-jury-voting-empty">
-            {favoritesOnly
-              ? 'Нет избранных работ (с учётом выбранного фильтра по номинации).'
+            {likesOnly
+              ? 'Нет заявок с отметкой «Мне нравится» при текущем фильтре номинации.'
               : nominations.length > 0 && nominationFilter !== 'all'
                 ? 'В выбранной номинации пока нет заявок.'
                 : 'Пока нет заявок для отображения.'}
@@ -583,7 +633,15 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                     </th>
                     {criteria.map((c) => (
                       <th key={c.id} scope="col">
-                        {c.title}
+                        <button
+                          type="button"
+                          className="contest-jury-voting-th-sort contest-jury-voting-th-criterion"
+                          onClick={() => onSortColumn(c.id)}
+                          title={`Сортировать по баллу: ${c.title}`}
+                        >
+                          {c.title}
+                          {sort.column === c.id ? (sort.desc ? ' ▼' : ' ▲') : ''}
+                        </button>
                         <br />
                         <span className="contest-jury-voting-weight-badge">вес × {c.weight ?? 1}</span>
                       </th>
@@ -592,42 +650,40 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                       <button
                         type="button"
                         className="contest-jury-voting-th-sort"
-                        onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                        onClick={() => onSortColumn('total')}
+                        title="Сортировать по взвешенному итогу (ваши баллы)"
                       >
-                        Итог (ваши баллы){sortDir === 'desc' ? ' ▼' : ' ▲'}
+                        Итог (ваши баллы)
+                        {sort.column === 'total' ? (sort.desc ? ' ▼' : ' ▲') : ''}
                       </button>
-                    </th>
-                    <th scope="col" className="contest-jury-voting-th-sync">
-                      Синхронизация
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedParticipants.map((p) => {
-                    const sync = syncByParticipant[p.id] ?? 'synced';
-                    const label = syncLabel(p.id);
                     return (
                       <tr key={p.id}>
-                        <td>
-                          <button
-                            type="button"
-                            className="contest-jury-voting-work-title"
-                            onClick={() => openParticipantPage(p)}
-                            title="Открыть страницу участника"
-                          >
-                            {getParticipantDisplayTitle(p)}
-                          </button>
-                          <span className="contest-jury-voting-work-sub">
-                            {p.user_name?.trim() || 'Участник'}
-                            {p.nomination_id && nominationTitleById[p.nomination_id]
-                              ? ` · ${nominationTitleById[p.nomination_id]}`
-                              : ''}
-                          </span>
+                        <td className="contest-jury-voting-td-work">
+                          <JuryParticipantWorkCell
+                            contestId={contestId}
+                            participantId={p.id}
+                            title={getParticipantDisplayTitle(p)}
+                            coverUrlRaw={p.photos?.[0]?.thumb_url || p.photos?.[0]?.url || undefined}
+                            lightboxUrlRaw={p.photos?.[0]?.url || p.photos?.[0]?.thumb_url || undefined}
+                            subLine={
+                              <>
+                                {p.user_name?.trim() || 'Участник'}
+                                {p.nomination_id && nominationTitleById[p.nomination_id]
+                                  ? ` · ${nominationTitleById[p.nomination_id]}`
+                                  : ''}
+                              </>
+                            }
+                          />
                         </td>
                         {criteria.map((c) => {
                           const v = scores[p.id]?.[c.id] ?? defaultScore(c);
                           return (
-                            <td key={c.id}>
+                            <td key={c.id} className="contest-jury-voting-td-criterion">
                               <input
                                 type="number"
                                 className="contest-jury-voting-score-input"
@@ -657,28 +713,6 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                           {formatJuryTotalScore(weightedTotal(p.id))} /{' '}
                           {formatJuryTotalScore(weightedMaxOneJuror)}
                         </td>
-                        <td className="contest-jury-voting-sync-cell">
-                          <span
-                            className={`contest-jury-voting-sync contest-jury-voting-sync--${sync}`}
-                            title={label.title}
-                          >
-                            {sync === 'saving' ? (
-                              <LoadingSpinner size="small" />
-                            ) : (
-                              label.text
-                            )}
-                          </span>
-                          {sync === 'error' && canEdit ? (
-                            <Button
-                              type="button"
-                              size="small"
-                              variant="secondary"
-                              onClick={() => handleRetryRow(p.id)}
-                            >
-                              Повторить
-                            </Button>
-                          ) : null}
-                        </td>
                       </tr>
                     );
                   })}
@@ -690,40 +724,11 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                 Оценки сохраняются автоматически после паузы в редактировании. Ваш итог по строке = Σ(оценка × вес).
                 Общая сумма по работе на конкурсе учитывает всех членов жюри.
               </span>
-              <span>При равном итоге смотрите сравнение по отдельным критериям вручную.</span>
+              <span>Сортировка — по клику на заголовок критерия или «Итог (ваши баллы)»; повторный клик меняет направление.</span>
             </div>
           </>
         )}
       </div>
-
-      <Modal
-        className="contest-jury-voting-participant-modal"
-        isOpen={participantModal !== null}
-        onClose={() => setParticipantModal(null)}
-        closeOnlyHeader
-        footer={
-          participantModal ? (
-            <Link
-              to={`/contests/${contestId}/participants/${participantModal.participantId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="contest-jury-voting-participant-open-tab"
-            >
-              Открыть в отдельной вкладке
-            </Link>
-          ) : undefined
-        }
-      >
-        {participantModal ? (
-          <ParticipantCardBody
-            contestId={contestId}
-            participantId={participantModal.participantId}
-            variant="modal"
-            lockWorkNavigationPrevious
-            lockWorkNavigationNext
-          />
-        ) : null}
-      </Modal>
     </div>
   );
 };

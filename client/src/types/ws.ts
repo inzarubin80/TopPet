@@ -11,6 +11,7 @@ export interface WSIncomingMessage {
   contest_id: string;
   text?: string;
   parent_id?: string;
+  image_url?: string;
 }
 
 export interface WSOutgoingMessage {

@@ -71,6 +71,7 @@ type ContestChatMessage struct {
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	ParentID  pgtype.UUID
+	ImageUrl  *string
 }
 
 type ContestComment struct {
@@ -81,6 +82,7 @@ type ContestComment struct {
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	ParentID      pgtype.UUID
+	ImageUrl      *string
 }
 
 type ContestJuryCriterium struct {

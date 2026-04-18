@@ -12,77 +12,52 @@
   min-width: 0;
 }
 
+/* Обёртка над общим SegmentMenu (variant contest): отступ снизу без двойного margin у .segment-menu--contest */
 .contest-page-menu {
+  width: 100%;
+  margin: 0 0 18px;
+}
+
+.contest-page-menu > .segment-menu--contest {
+  margin-bottom: 0;
+}
+
+/* Как у блока «О конкурсе»: полная ширина колонки (inline-flex иначе сжимается по контенту) */
+.contest-page-menu .segment-menu.segment-menu--contest {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0 18px;
-  margin: 0 0 18px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.contest-page-menu-item {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 10px 12px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  border-radius: 999px;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.contest-page-menu-item:hover {
-  background: rgba(2, 6, 23, 0.06);
-  color: #111827;
-}
-
-.contest-page-menu-item--active {
-  background: rgba(37, 99, 235, 0.12);
-  color: var(--contest-accent, #1d4ed8);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .contest-page-chat {
-  height: 600px;
   min-height: 420px;
 }
 
 .contest-page-winners {
   min-height: 200px;
-  border-radius: 20px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: var(--color-surface);
-}
-
-.contest-page-winners-empty {
-  height: 100%;
 }
 
 .contest-page-jury-voting {
   min-height: 200px;
 }
 
-/* Карточка «О конкурсе»: обложка, призы, описание, критерии — отдельно от списка работ */
+/* «О конкурсе»: на всю ширину колонки, как меню конкурса над ним */
 .contest-page-overview {
-  margin-bottom: 28px;
+  width: 100%;
+  margin: 0 0 28px;
   border-radius: 20px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: none;
   background: var(--color-surface);
   overflow: hidden;
 }
 
 .contest-page-overview-top {
-  padding: 20px 22px 4px;
+  padding: 20px 0 4px;
 }
 
 .contest-page-overview-body {
-  padding: 8px 22px 22px;
+  padding: 8px 0 22px;
 }
 
 .contest-page-overview-body > .contest-organizer-criteria {
@@ -94,12 +69,12 @@
   margin-bottom: 0.35rem;
 }
 
-/* Блок работ: визуально отдельная секция */
+/* Блок работ: без рамки вокруг секции */
 .contest-page-works {
   scroll-margin-top: 88px;
-  padding: 22px 22px 24px;
+  padding: 22px 0 24px;
   border-radius: 20px;
-  border: 1px solid #e2e8f0;
+  border: none;
   background: var(--color-surface);
 }
 
@@ -116,10 +91,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 14px;
-}
-
-.contest-page-jury-progress-open {
-  flex-shrink: 0;
 }
 
 .contest-page-works-count {
@@ -148,7 +119,7 @@
 .contest-page-hero.contest-page-hero--in-overview {
   margin: 0;
   border-radius: 0;
-  padding: 28px 32px 32px;
+  padding: 28px 0 32px;
 }
 
 .contest-page-hero-inner {
@@ -180,6 +151,21 @@
   line-height: 1.15;
   color: #fff;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+.contest-page-participate-cta {
+  margin-top: 18px;
+}
+
+.contest-page-participate-cta--overview {
+  margin-top: 16px;
+}
+
+.contest-page-participate-cta .contest-page-add-participant-button {
+  min-height: 48px;
+  padding-left: 22px;
+  padding-right: 22px;
+  font-size: 1.05rem;
 }
 
 .contest-page-hero-tagline {
@@ -279,10 +265,10 @@
 
 .contest-page-sponsor {
   margin-bottom: 20px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px dashed rgba(0, 0, 0, 0.12);
-  background: #fafafa;
+  padding: 12px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .contest-page-sponsor-label {
@@ -453,9 +439,9 @@
 }
 
 .contest-page-prize-places-group {
-  padding: 12px 14px;
+  padding: 12px 0;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: none;
   background: var(--color-surface);
 }
 
@@ -667,18 +653,7 @@
     padding: 24px 16px;
   }
 
-  .contest-page-menu {
-    gap: 8px;
-    padding-bottom: 14px;
-  }
-
-  .contest-page-menu-item {
-    padding: 9px 10px;
-    font-size: 14px;
-  }
-
   .contest-page-chat {
-    height: 70vh;
     min-height: 360px;
   }
 }

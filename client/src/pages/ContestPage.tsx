@@ -15,8 +15,6 @@ import {
 import { Participant, Nomination } from '../types/models';
 import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
-import { EditParticipantModal } from '../components/contest/EditParticipantModal';
-import { DeleteParticipantModal } from '../components/contest/DeleteParticipantModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -30,6 +28,8 @@ import { ContestMetaTags } from '../components/seo/ContestMetaTags';
 import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrganizerCriteriaPanel';
 import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
 import { ContestJuryVotingTab } from '../components/contest/ContestJuryVotingTab';
+import { ContestJuryChairTab } from '../components/contest/ContestJuryChairTab';
+import { ContestWinnersSection } from '../components/contest/ContestWinnersSection';
 import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
@@ -40,6 +40,7 @@ import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../
 import { ParticipantGalleryNavigationState } from '../types/participantNavigation';
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import { buildLoginUrl } from '../utils/navigation';
+import { SegmentMenu } from '../components/common/SegmentMenu';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -47,6 +48,15 @@ const EMPTY_STRING_ARRAY: string[] = [];
 const EMPTY_PARTICIPANTS_ARRAY: Participant[] = [];
 
 type ContestTab = 'about' | 'chat' | 'gallery' | 'winners' | 'jury_voting' | 'jury_chair';
+
+const CONTEST_TAB_HASH: Record<ContestTab, string> = {
+  about: '#about',
+  chat: '#chat',
+  gallery: '#gallery',
+  winners: '#winners',
+  jury_voting: '#jury_voting',
+  jury_chair: '#jury_chair',
+};
 
 function parseContestTabFromHash(hash: string): ContestTab {
   const h = (hash || '').replace(/^#/, '').trim().toLowerCase();
@@ -103,36 +113,28 @@ const ContestPage: React.FC = () => {
   const [contestNominations, setContestNominations] = useState<Nomination[]>([]);
   const [participantsNominationFilter, setParticipantsNominationFilter] =
     useState<ParticipantsListNominationFilter>('all');
-  const [participantsJuryUnscoredOnly, setParticipantsJuryUnscoredOnly] = useState(false);
   const [participantsSubmissionFilter, setParticipantsSubmissionFilter] =
     useState<ParticipantsListSubmissionFilter>('all');
   const [participantsVotedOnly, setParticipantsVotedOnly] = useState(false);
-  const [participantsFavoritesOnly, setParticipantsFavoritesOnly] = useState(false);
   const [participantsSort, setParticipantsSort] = useState<ParticipantsListSort>('created_at');
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
   const [isCurrentUserJuryChair, setIsCurrentUserJuryChair] = useState(false);
-  const [addParticipantNomination, setAddParticipantNomination] = useState<{ id: string; title: string } | null>(
-    null
-  );
   const [isDeleteContestModalOpen, setIsDeleteContestModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isEditParticipantModalOpen, setIsEditParticipantModalOpen] = useState(false);
-  const [isDeleteParticipantModalOpen, setIsDeleteParticipantModalOpen] = useState(false);
-  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
-  const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
 
   // Note: Removed userParticipant check - users can now have unlimited participants
 
   const participantsListContestIdRef = useRef<string | undefined>(undefined);
   const participantsListFiltersRef = useRef({
     nomination: participantsNominationFilter as string,
-    juryUnscored: participantsJuryUnscoredOnly,
     submission: participantsSubmissionFilter,
     votedOnly: participantsVotedOnly,
-    favoritesOnly: participantsFavoritesOnly,
     sort: participantsSort,
   });
+  /** Синхронно: идёт getContestJury — не редиректить с #jury_* на #about до ответа API. */
+  const juryMembershipPendingRef = useRef(false);
+  const [juryFetchNonce, setJuryFetchNonce] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -147,41 +149,31 @@ const ContestPage: React.FC = () => {
     if (participantsListContestIdRef.current !== id) {
       participantsListContestIdRef.current = id;
       setParticipantsNominationFilter('all');
-      setParticipantsJuryUnscoredOnly(false);
       setParticipantsSubmissionFilter('all');
       setParticipantsVotedOnly(false);
-      setParticipantsFavoritesOnly(false);
       const initialSort: ParticipantsListSort = currentContest.public_voting_enabled
         ? 'votes'
-        : currentContest.jury_voting_enabled
-          ? 'jury'
-          : 'created_at';
+        : 'created_at';
       setParticipantsSort(initialSort);
       setParticipantsPage(0);
       participantsListFiltersRef.current = {
         nomination: 'all',
-        juryUnscored: false,
         submission: 'all',
         votedOnly: false,
-        favoritesOnly: false,
         sort: initialSort,
       };
       return;
     }
     const filtersChanged =
       participantsListFiltersRef.current.nomination !== participantsNominationFilter ||
-      participantsListFiltersRef.current.juryUnscored !== participantsJuryUnscoredOnly ||
       participantsListFiltersRef.current.submission !== participantsSubmissionFilter ||
       participantsListFiltersRef.current.votedOnly !== participantsVotedOnly ||
-      participantsListFiltersRef.current.favoritesOnly !== participantsFavoritesOnly ||
       participantsListFiltersRef.current.sort !== participantsSort;
     if (filtersChanged) {
       participantsListFiltersRef.current = {
         nomination: participantsNominationFilter as string,
-        juryUnscored: participantsJuryUnscoredOnly,
         submission: participantsSubmissionFilter,
         votedOnly: participantsVotedOnly,
-        favoritesOnly: participantsFavoritesOnly,
         sort: participantsSort,
       };
       if (participantsPage !== 0) {
@@ -200,9 +192,7 @@ const ContestPage: React.FC = () => {
         contestId: id,
         nominationFilter: participantsNominationFilter,
         submissionFilter: participantsSubmissionFilter,
-        juryUnscoredOnly: participantsJuryUnscoredOnly,
         votedOnly: participantsVotedOnly,
-        favoriteOnly: participantsFavoritesOnly,
         sort: participantsSort,
         limit,
         offset,
@@ -213,10 +203,8 @@ const ContestPage: React.FC = () => {
     id,
     currentContest,
     participantsNominationFilter,
-    participantsJuryUnscoredOnly,
     participantsSubmissionFilter,
     participantsVotedOnly,
-    participantsFavoritesOnly,
     participantsSort,
     participantsPage,
   ]);
@@ -253,11 +241,19 @@ const ContestPage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
+    if (contestNominations.length <= 1 && participantsNominationFilter === 'none') {
+      setParticipantsNominationFilter('all');
+    }
+  }, [contestNominations.length, participantsNominationFilter]);
+
+  useEffect(() => {
     if (!id || !isAuthenticated || !currentContest?.jury_voting_enabled) {
+      juryMembershipPendingRef.current = false;
       setIsCurrentUserJuror(false);
       setIsCurrentUserJuryChair(false);
       return;
     }
+    juryMembershipPendingRef.current = true;
     let cancelled = false;
     getContestJury(id)
       .then((members) => {
@@ -272,17 +268,17 @@ const ContestPage: React.FC = () => {
           setIsCurrentUserJuror(false);
           setIsCurrentUserJuryChair(false);
         }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          juryMembershipPendingRef.current = false;
+          setJuryFetchNonce((n) => n + 1);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [id, isAuthenticated, currentContest?.jury_voting_enabled, currentUser?.id]);
-
-  useEffect(() => {
-    if (!currentContest?.jury_voting_enabled) {
-      setParticipantsJuryUnscoredOnly(false);
-    }
-  }, [currentContest?.jury_voting_enabled]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -337,24 +333,107 @@ const ContestPage: React.FC = () => {
   const canAccessJuryChairTab =
     Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuryChair);
 
+  const contestMenuItems = useMemo(() => {
+    const items: { key: ContestTab; label: string }[] = [
+      { key: 'about', label: 'О конкурсе' },
+      { key: 'chat', label: 'Чат' },
+      { key: 'gallery', label: 'Галерея работ' },
+      { key: 'winners', label: 'Победители' },
+    ];
+    if (canAccessJuryVotingTab) {
+      items.push({ key: 'jury_voting', label: 'Голосование жюри' });
+    }
+    if (canAccessJuryChairTab) {
+      items.push({ key: 'jury_chair', label: 'Председатель жюри' });
+    }
+    return items;
+  }, [canAccessJuryVotingTab, canAccessJuryChairTab]);
+
+  const handleContestMenuChange = (key: ContestTab) => {
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: CONTEST_TAB_HASH[key] },
+      { replace: true }
+    );
+  };
+
   useEffect(() => {
-    if (activeTab === 'jury_voting' && !canAccessJuryVotingTab) {
-      navigate(
-        { pathname: location.pathname, search: location.search, hash: '#about' },
-        { replace: true }
-      );
+    if (loading) {
       return;
     }
-    if (activeTab === 'jury_chair' && !canAccessJuryChairTab) {
-      navigate(
-        { pathname: location.pathname, search: location.search, hash: '#about' },
-        { replace: true }
-      );
+    if (!currentContest || currentContest.id !== id) {
+      return;
+    }
+
+    const juryEnabled = Boolean(currentContest.jury_voting_enabled);
+
+    if (activeTab === 'jury_voting') {
+      if (!juryEnabled) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+        return;
+      }
+      if (!isAuthenticated) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+        return;
+      }
+      if (isAdmin) {
+        return;
+      }
+      if (juryMembershipPendingRef.current) {
+        return;
+      }
+      if (!canAccessJuryVotingTab) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+      }
+      return;
+    }
+
+    if (activeTab === 'jury_chair') {
+      if (!juryEnabled) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+        return;
+      }
+      if (!isAuthenticated) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+        return;
+      }
+      if (isAdmin) {
+        return;
+      }
+      if (juryMembershipPendingRef.current) {
+        return;
+      }
+      if (!canAccessJuryChairTab) {
+        navigate(
+          { pathname: location.pathname, search: location.search, hash: '#about' },
+          { replace: true }
+        );
+      }
     }
   }, [
     activeTab,
     canAccessJuryVotingTab,
     canAccessJuryChairTab,
+    loading,
+    currentContest,
+    id,
+    isAuthenticated,
+    isAdmin,
+    juryFetchNonce,
     navigate,
     location.pathname,
     location.search,
@@ -385,9 +464,7 @@ const ContestPage: React.FC = () => {
         contestId: id,
         nominationFilter: participantsNominationFilter,
         submissionFilter: participantsSubmissionFilter,
-        juryUnscoredOnly: participantsJuryUnscoredOnly,
         votedOnly: participantsVotedOnly,
-        favoritesOnly: participantsFavoritesOnly,
         sort: participantsSort,
         page: participantsListPaginated ? participantsPage : 0,
         pageSize: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
@@ -466,6 +543,30 @@ const ContestPage: React.FC = () => {
     ? 'Участвовать'
     : 'Зарегистрироваться для участия';
 
+  const hideParticipateCta =
+    isAuthenticated &&
+    !blockedByEmailDomain &&
+    hasContestNominations &&
+    nominationsOpenToUser.length === 0 &&
+    contestNominations.length > 0;
+
+  const hideParticipateCtaNoNominations =
+    isAuthenticated &&
+    !blockedByEmailDomain &&
+    !hasContestNominations &&
+    alreadyInContestWithoutNominations;
+
+  const showParticipateCtaButton =
+    showWorksParticipationChrome && !hideParticipateCta && !hideParticipateCtaNoNominations;
+
+  const handleParticipateClick = () => {
+    if (!isAuthenticated) {
+      navigate(buildLoginUrl(`${location.pathname}${location.search}`));
+      return;
+    }
+    setIsAddParticipantModalOpen(true);
+  };
+
   const accentHex = (currentContest.theme_color || '').trim();
   const hasThemedAccent = /^#[0-9A-Fa-f]{6}$/.test(accentHex);
   const coverRaw = (currentContest.cover_url || '').trim();
@@ -505,112 +606,12 @@ const ContestPage: React.FC = () => {
       )}
       <div className="contest-page-main">
         <nav className="contest-page-menu" aria-label="Меню конкурса">
-          <button
-            type="button"
-            className={
-              activeTab === 'about'
-                ? 'contest-page-menu-item contest-page-menu-item--active'
-                : 'contest-page-menu-item'
-            }
-            aria-current={activeTab === 'about' ? 'page' : undefined}
-            onClick={() =>
-              navigate(
-                { pathname: location.pathname, search: location.search, hash: '#about' },
-                { replace: true }
-              )
-            }
-          >
-            О конкурсе
-          </button>
-          <button
-            type="button"
-            className={
-              activeTab === 'chat'
-                ? 'contest-page-menu-item contest-page-menu-item--active'
-                : 'contest-page-menu-item'
-            }
-            aria-current={activeTab === 'chat' ? 'page' : undefined}
-            onClick={() =>
-              navigate(
-                { pathname: location.pathname, search: location.search, hash: '#chat' },
-                { replace: true }
-              )
-            }
-          >
-            Чат
-          </button>
-          <button
-            type="button"
-            className={
-              activeTab === 'gallery'
-                ? 'contest-page-menu-item contest-page-menu-item--active'
-                : 'contest-page-menu-item'
-            }
-            aria-current={activeTab === 'gallery' ? 'page' : undefined}
-            onClick={() =>
-              navigate(
-                { pathname: location.pathname, search: location.search, hash: '#gallery' },
-                { replace: true }
-              )
-            }
-          >
-            Галерея работ
-          </button>
-          <button
-            type="button"
-            className={
-              activeTab === 'winners'
-                ? 'contest-page-menu-item contest-page-menu-item--active'
-                : 'contest-page-menu-item'
-            }
-            aria-current={activeTab === 'winners' ? 'page' : undefined}
-            onClick={() =>
-              navigate(
-                { pathname: location.pathname, search: location.search, hash: '#winners' },
-                { replace: true }
-              )
-            }
-          >
-            Победители
-          </button>
-          {canAccessJuryVotingTab ? (
-            <button
-              type="button"
-              className={
-                activeTab === 'jury_voting'
-                  ? 'contest-page-menu-item contest-page-menu-item--active'
-                  : 'contest-page-menu-item'
-              }
-              aria-current={activeTab === 'jury_voting' ? 'page' : undefined}
-              onClick={() =>
-                navigate(
-                  { pathname: location.pathname, search: location.search, hash: '#jury_voting' },
-                  { replace: true }
-                )
-              }
-            >
-              Голосование жюри
-            </button>
-          ) : null}
-          {canAccessJuryChairTab ? (
-            <button
-              type="button"
-              className={
-                activeTab === 'jury_chair'
-                  ? 'contest-page-menu-item contest-page-menu-item--active'
-                  : 'contest-page-menu-item'
-              }
-              aria-current={activeTab === 'jury_chair' ? 'page' : undefined}
-              onClick={() =>
-                navigate(
-                  { pathname: location.pathname, search: location.search, hash: '#jury_chair' },
-                  { replace: true }
-                )
-              }
-            >
-              Председатель жюри
-            </button>
-          ) : null}
+          <SegmentMenu<ContestTab>
+            variant="contest"
+            items={contestMenuItems}
+            activeKey={activeTab}
+            onChange={handleContestMenuChange}
+          />
         </nav>
 
         {activeTab === 'about' ? (
@@ -656,6 +657,26 @@ const ContestPage: React.FC = () => {
                 )}
               </div>
               {taglineRaw ? <p className="contest-page-hero-tagline">{taglineRaw}</p> : null}
+              {showParticipateCtaButton ? (
+                <div className="contest-page-participate-cta contest-page-participate-cta--hero">
+                  <Button
+                    type="button"
+                    size="large"
+                    disabled={participationCtaDisabledByDomain}
+                    className="contest-page-add-participant-button"
+                    onClick={handleParticipateClick}
+                  >
+                    {isAuthenticated ? (
+                      <>
+                        {participatePlusIcon}
+                        {participateNominationCtaLabel}
+                      </>
+                    ) : (
+                      participateNominationCtaLabel
+                    )}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -693,6 +714,26 @@ const ContestPage: React.FC = () => {
               )}
             </div>
             {taglineRaw ? <p className="contest-page-tagline">{taglineRaw}</p> : null}
+            {showParticipateCtaButton ? (
+              <div className="contest-page-participate-cta contest-page-participate-cta--overview">
+                <Button
+                  type="button"
+                  size="large"
+                  disabled={participationCtaDisabledByDomain}
+                  className="contest-page-add-participant-button"
+                  onClick={handleParticipateClick}
+                >
+                  {isAuthenticated ? (
+                    <>
+                      {participatePlusIcon}
+                      {participateNominationCtaLabel}
+                    </>
+                  ) : (
+                    participateNominationCtaLabel
+                  )}
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -764,7 +805,7 @@ const ContestPage: React.FC = () => {
             ) : null}
             {audiencePrizePlaces.length > 0 ? (
               <div className="contest-page-prize-places-group">
-                <h2 className="contest-page-prize-places-title">Призы по итогам пользовательского голосования</h2>
+                <h2 className="contest-page-prize-places-title">Призы по итогам народного голосования</h2>
                 {audiencePrizePlaces.map((item) => (
                   <p key={`audience-${item.place}`} className="contest-page-prize-place-item">
                     {item.place} место - {item.prize}
@@ -799,30 +840,6 @@ const ContestPage: React.FC = () => {
           readOnly
           audienceMode={!isAdmin}
           showJuryCriteriaSection={currentContest.jury_voting_enabled ?? false}
-          renderNominationAction={(n) => {
-            if (!showWorksParticipationChrome) return null;
-            if (userHasParticipantForNomination(myContestParticipants, currentUser?.id, n.id)) {
-              return null;
-            }
-            return (
-              <Button
-                type="button"
-                size="small"
-                variant="primary"
-                disabled={participationCtaDisabledByDomain}
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    navigate(buildLoginUrl(`${location.pathname}${location.search}`));
-                    return;
-                  }
-                  setAddParticipantNomination({ id: n.id, title: n.title });
-                  setIsAddParticipantModalOpen(true);
-                }}
-              >
-                {participateNominationCtaLabel}
-              </Button>
-            );
-          }}
         />
 
         {currentContest.jury_voting_enabled ? (
@@ -856,17 +873,6 @@ const ContestPage: React.FC = () => {
                         : 'работ'}
                   </span>
                 ) : null}
-                {isAdmin && currentContest.jury_voting_enabled && id ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    className="contest-page-jury-progress-open"
-                    onClick={() => navigate(`/contests/${id}/jury-voting-progress`)}
-                  >
-                    Контроль оценок жюри
-                  </Button>
-                ) : null}
               </div>
               <div className="contest-page-participants-filters">
                 <div className="contest-page-participants-filter">
@@ -877,9 +883,9 @@ const ContestPage: React.FC = () => {
                     value={participantsSort}
                     onChange={(e) => setParticipantsSort(e.target.value as ParticipantsListSort)}
                   >
-                    <option value="created_at">По дате подачи</option>
-                    <option value="votes">По голосам зрителей</option>
-                    <option value="jury">По баллам жюри</option>
+                    <option value="created_at">Новые</option>
+                    <option value="votes">Популярные</option>
+                    <option value="comments">Обсуждаемые</option>
                   </select>
                 </div>
                 {isAuthenticated && isAdmin ? (
@@ -901,16 +907,6 @@ const ContestPage: React.FC = () => {
                     </select>
                   </div>
                 ) : null}
-                {isCurrentUserJuror && currentContest.jury_voting_enabled ? (
-                  <label className="contest-page-participants-jury-filter">
-                    <input
-                      type="checkbox"
-                      checked={participantsJuryUnscoredOnly}
-                      onChange={(e) => setParticipantsJuryUnscoredOnly(e.target.checked)}
-                    />
-                    <span>Только не оценённые мной</span>
-                  </label>
-                ) : null}
                 {showMyVotesFilter ? (
                   <label className="contest-page-participants-jury-filter">
                     <input
@@ -918,51 +914,32 @@ const ContestPage: React.FC = () => {
                       checked={participantsVotedOnly}
                       onChange={(e) => setParticipantsVotedOnly(e.target.checked)}
                     />
-                    <span>Только за кого я проголосовал</span>
+                    <span>Мне нравится</span>
                   </label>
                 ) : null}
-                {isAuthenticated ? (
-                  <label className="contest-page-participants-jury-filter">
-                    <input
-                      type="checkbox"
-                      checked={participantsFavoritesOnly}
-                      onChange={(e) => setParticipantsFavoritesOnly(e.target.checked)}
-                    />
-                    <span>Только избранное</span>
-                  </label>
-                ) : null}
-                {showWorksParticipationChrome &&
-                !hasContestNominations &&
-                !alreadyInContestWithoutNominations ? (
+                {showParticipateCtaButton ? (
                   <div className="contest-page-participants-filter">
                     <Button
                       type="button"
                       size="large"
                       disabled={participationCtaDisabledByDomain}
                       className="contest-page-add-participant-button"
-                      onClick={() => {
-                        if (!isAuthenticated) {
-                          navigate(buildLoginUrl(`${location.pathname}${location.search}`));
-                          return;
-                        }
-                        setAddParticipantNomination(null);
-                        setIsAddParticipantModalOpen(true);
-                      }}
+                      onClick={handleParticipateClick}
                     >
                       {isAuthenticated ? (
                         <>
                           {participatePlusIcon}
-                          Добавить участника
+                          {participateNominationCtaLabel}
                         </>
                       ) : (
-                        'Зарегистрироваться для участия'
+                        participateNominationCtaLabel
                       )}
                     </Button>
                   </div>
                 ) : null}
               </div>
             </div>
-            {hasContestNominations ? (
+            {contestNominations.length > 1 ? (
               <div
                 className="contest-page-nomination-tabs-bar"
                 role="tablist"
@@ -998,19 +975,6 @@ const ContestPage: React.FC = () => {
                       {n.title}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={participantsNominationFilter === 'none'}
-                    className={
-                      participantsNominationFilter === 'none'
-                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                        : 'contest-page-nomination-tab'
-                    }
-                    onClick={() => setParticipantsNominationFilter('none')}
-                  >
-                    Без номинации
-                  </button>
                 </div>
               </div>
             ) : null}
@@ -1043,12 +1007,8 @@ const ContestPage: React.FC = () => {
             </div>
           ) : participantIds.length === 0 ? (
             <div className="contest-page-participants-empty">
-              {participantsJuryUnscoredOnly
-                ? 'Среди видимых работ нет таких, где вам не хватает оценок по критериям (или вы оценили все).'
-                : participantsFavoritesOnly
-                  ? 'Нет работ в избранном (с учётом выбранных фильтров).'
-                  : participantsVotedOnly
-                  ? 'Нет работ, за которые вы проголосовали (с учётом выбранных фильтров).'
+              {participantsVotedOnly
+                  ? 'Нет понравившихся работ (с учётом выбранных фильтров).'
                   : participantsSubmissionFilter !== 'all'
                   ? participantsSubmissionFilter === 'pending'
                     ? 'Нет заявок со статусом «На модерации»'
@@ -1079,17 +1039,8 @@ const ContestPage: React.FC = () => {
                     }
                     contestStatus={currentContest.status}
                     publicVotingEnabled={currentContest.public_voting_enabled ?? true}
-                    juryVotingEnabled={currentContest.jury_voting_enabled ?? false}
                     isContestAdmin={isAdmin}
                     galleryNavigationState={participantGalleryNavigationState ?? undefined}
-                    onEdit={(p) => {
-                      setEditingParticipant(p);
-                      setIsEditParticipantModalOpen(true);
-                    }}
-                    onDelete={(p) => {
-                      setDeletingParticipant(p);
-                      setIsDeleteParticipantModalOpen(true);
-                    }}
                   />
                 ) : null;
               })}
@@ -1130,7 +1081,13 @@ const ContestPage: React.FC = () => {
 
         {activeTab === 'winners' ? (
           <section className="contest-page-winners" aria-label="Победители">
-            <div className="contest-page-winners-empty" />
+            <ContestWinnersSection
+              contest={currentContest}
+              nominations={contestNominations}
+              nominationTitleById={nominationTitleById}
+              participants={participantsArray}
+              participantsLoading={participantsLoading}
+            />
           </section>
         ) : null}
         {activeTab === 'jury_voting' && canAccessJuryVotingTab ? (
@@ -1144,9 +1101,15 @@ const ContestPage: React.FC = () => {
             />
           </section>
         ) : null}
-        {activeTab === 'jury_chair' && canAccessJuryChairTab ? (
-          <section className="contest-page-winners" aria-label="Председатель жюри">
-            <div className="contest-page-winners-empty">Раздел в разработке</div>
+        {activeTab === 'jury_chair' && canAccessJuryChairTab && currentContest ? (
+          <section className="contest-page-jury-voting" aria-label="Председатель жюри">
+            <ContestJuryChairTab
+              contestId={currentContest.id}
+              contestStatus={currentContest.status}
+              nominationTitleById={nominationTitleById}
+              nominations={contestNominations}
+              juryPrizePlaces={juryPrizePlaces}
+            />
           </section>
         ) : null}
       </div>
@@ -1156,16 +1119,13 @@ const ContestPage: React.FC = () => {
           isOpen={isAddParticipantModalOpen}
           onClose={() => {
             setIsAddParticipantModalOpen(false);
-            setAddParticipantNomination(null);
           }}
           contestId={id}
-          nominationId={addParticipantNomination?.id ?? null}
-          nominationTitle={addParticipantNomination?.title ?? null}
+          nominations={contestNominations}
+          myContestParticipants={myContestParticipants}
           participantsListNominationFilter={participantsNominationFilter}
           participantsListSubmissionFilter={participantsSubmissionFilter}
           participantsListVotedOnly={participantsVotedOnly}
-          participantsListJuryUnscoredOnly={participantsJuryUnscoredOnly}
-          participantsListFavoriteOnly={participantsFavoritesOnly}
           participantsListLimit={
             participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000
           }
@@ -1176,54 +1136,6 @@ const ContestPage: React.FC = () => {
           contestMinPhotoCount={currentContest?.min_photo_count}
           contestMaxPhotoCount={currentContest?.max_photo_count}
           entryTitleHint={currentContest?.entry_title_hint}
-        />
-      )}
-
-      {editingParticipant && (
-        <EditParticipantModal
-          isOpen={isEditParticipantModalOpen}
-          onClose={() => {
-            setIsEditParticipantModalOpen(false);
-            setEditingParticipant(null);
-          }}
-          // Always use the latest participant data from Redux store
-          participant={editingParticipant.id ? participants[editingParticipant.id] || editingParticipant : editingParticipant}
-          contestMinPhotoCount={currentContest?.min_photo_count}
-          contestMaxPhotoCount={currentContest?.max_photo_count}
-          entryTitleHint={currentContest?.entry_title_hint}
-        />
-      )}
-
-      {deletingParticipant && (
-        <DeleteParticipantModal
-          isOpen={isDeleteParticipantModalOpen}
-          onClose={() => {
-            setIsDeleteParticipantModalOpen(false);
-            setDeletingParticipant(null);
-          }}
-          participant={deletingParticipant}
-          onDeleted={() => {
-            if (id) {
-              dispatch(
-                fetchParticipantsByContest({
-                  contestId: id,
-                  nominationFilter: participantsNominationFilter,
-                  submissionFilter: participantsSubmissionFilter,
-                  juryUnscoredOnly: participantsJuryUnscoredOnly,
-                  votedOnly: participantsVotedOnly,
-                  favoriteOnly: participantsFavoritesOnly,
-                  sort: participantsSort,
-                  limit: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
-                  offset: participantsListPaginated
-                    ? participantsPage * PARTICIPANTS_PAGE_SIZE
-                    : 0,
-                })
-              );
-              if (participantsListPaginated && isAuthenticated) {
-                dispatch(fetchMyParticipantsForContest({ contestId: id }));
-              }
-            }
-          }}
         />
       )}
 

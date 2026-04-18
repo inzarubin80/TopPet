@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"toppet/server/internal/app/defenitions"
@@ -15,7 +16,7 @@ import (
 
 type (
 	contestChatService interface {
-		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID) (*model.ChatMessage, error)
+		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error)
 	}
 
 	serviceAuth interface {
@@ -43,6 +44,7 @@ type wsIncomingMessage struct {
 	ContestID string               `json:"contest_id"`
 	Text      string               `json:"text"`
 	ParentID  *model.ChatMessageID `json:"parent_id"`
+	ImageURL  string               `json:"image_url,omitempty"`
 }
 
 func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -129,17 +131,20 @@ func (h *ContestChatWSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 				log.Printf("[WS] WARNING: Subscribe message from user %d has empty contest_id", userID)
 			}
 		case "message":
-			if msg.ContestID == "" || msg.Text == "" {
-				log.Printf("[WS] WARNING: Message from user %d has empty contest_id or text", userID)
+			t := strings.TrimSpace(msg.Text)
+			img := strings.TrimSpace(msg.ImageURL)
+			if msg.ContestID == "" || (t == "" && img == "") {
+				log.Printf("[WS] WARNING: Message from user %d has empty contest_id or content", userID)
 				return
 			}
-			log.Printf("[WS] User %d sending message to contest %s: %s", userID, msg.ContestID, msg.Text)
+			log.Printf("[WS] User %d sending message to contest %s: text=%q image=%v", userID, msg.ContestID, t, img != "")
 			_, err := h.service.CreateChatMessage(
 				r.Context(),
 				model.ContestID(msg.ContestID),
 				userID,
-				msg.Text,
+				t,
 				msg.ParentID,
+				img,
 			)
 			if err != nil {
 				log.Printf("[WS] ERROR: Failed to create chat message from user %d: %v", userID, err)

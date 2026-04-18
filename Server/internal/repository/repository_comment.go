@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error) {
+func (r *Repository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	commentUUID := uuid.New()
 	participantUUID, err := uuid.Parse(string(participantID))
@@ -37,6 +37,7 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		UserID:        int64(userID),
 		Text:          text,
 		ParentID:      parentUUID,
+		ImageUrl:      nonEmptyStringPtr(imageURL),
 	})
 	if err != nil {
 		return nil, err
@@ -74,6 +75,7 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		UserName:      userName,
 		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
+		ImageURL:      optionalImageURL(comment.ImageUrl),
 		Score:         0,
 		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,
@@ -128,6 +130,7 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 		UserName:      userName,
 		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
+		ImageURL:      optionalImageURL(comment.ImageUrl),
 		Score:         0,
 		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,
@@ -188,6 +191,7 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 			UserName:      c.UserName,
 			UserAvatarURL: optionalUserAvatarURL(c.UserAvatarUrl),
 			Text:          c.Text,
+			ImageURL:      optionalImageURL(c.ImageUrl),
 			Score:         c.Score,
 			UserVote:      c.UserVote,
 			CreatedAt:     c.CreatedAt.Time,
@@ -246,6 +250,7 @@ func (r *Repository) UpdateComment(ctx context.Context, commentID model.CommentI
 		UserName:      userName,
 		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
+		ImageURL:      optionalImageURL(comment.ImageUrl),
 		Score:         0,
 		UserVote:      0,
 		CreatedAt:     comment.CreatedAt.Time,

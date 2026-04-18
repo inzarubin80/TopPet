@@ -56,6 +56,19 @@ func optionalUserAvatarURL(p *string) string {
 	return strings.TrimSpace(*p)
 }
 
+// optionalImageURL — то же для URL вложения к сообщению/комментарию.
+func optionalImageURL(p *string) string {
+	return optionalUserAvatarURL(p)
+}
+
+func nonEmptyStringPtr(s string) *string {
+	t := strings.TrimSpace(s)
+	if t == "" {
+		return nil
+	}
+	return &t
+}
+
 func userAvatarURLFromUser(u *model.User) string {
 	if u == nil {
 		return ""

@@ -46,15 +46,8 @@ func TestJuryAndAudienceVotingFlow(t *testing.T) {
 		t.Errorf("status: want finished, got %s", finished.Status)
 	}
 
-	if len(finished.JuryWinners) != 1 {
-		t.Fatalf("JuryWinners: want 1, got %d (%+v)", len(finished.JuryWinners), finished.JuryWinners)
-	}
-	jw := finished.JuryWinners[0]
-	if jw.ParticipantID != res.JuryWinnerParticipantID {
-		t.Errorf("jury winner participant_id: want %s, got %s", res.JuryWinnerParticipantID, jw.ParticipantID)
-	}
-	if jw.Score != res.JuryWinnerScore {
-		t.Errorf("jury winner score: want %d, got %d", res.JuryWinnerScore, jw.Score)
+	if len(finished.JuryWinners) != 0 {
+		t.Fatalf("JuryWinners: want 0 until chair assigns, got %d (%+v)", len(finished.JuryWinners), finished.JuryWinners)
 	}
 
 	if len(finished.AudienceWinners) != 1 {
@@ -79,8 +72,8 @@ func TestJuryAndAudienceVotingFlow(t *testing.T) {
 	for _, p := range list {
 		switch p.ID {
 		case res.JuryWinnerParticipantID:
-			if !p.IsJuryWinner {
-				t.Errorf("participant %s: IsJuryWinner want true", p.ID)
+			if p.IsJuryWinner {
+				t.Errorf("participant %s: IsJuryWinner want false until chair assigns", p.ID)
 			}
 			if p.IsAudienceWinner {
 				t.Errorf("participant %s: IsAudienceWinner want false", p.ID)

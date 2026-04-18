@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Button } from '../common/Button';
 import { vote, getVotes, unvote } from '../../api/votesApi';
-import { ContestID, ParticipantID, ContestStatus } from '../../types/models';
+import { ContestID, ParticipantID } from '../../types/models';
 import { buildLoginUrl } from '../../utils/navigation';
 import { setUserVotesForContest } from '../../store/slices/contestsSlice';
 import { useToast } from '../../contexts/ToastContext';
@@ -15,7 +15,6 @@ import './VoteButton.css';
 interface VoteButtonProps {
   contestId: ContestID;
   participantId: ParticipantID;
-  contestStatus: ContestStatus;
   /** Номинация заявки (слот голоса); без номинаций не передаётся */
   nominationId?: string | null;
   isOwner?: boolean;
@@ -28,12 +27,18 @@ interface VoteButtonProps {
   onVoted?: (participantId: ParticipantID) => void;
   /** По умолчанию true — на странице работы в строке с числом голосов удобнее false */
   fullWidth?: boolean;
+  /**
+   * Полоса «N Нравится» (сердце + число), как на странице работы в галерее;
+   * по умолчанию — круглая кнопка только с иконкой.
+   */
+  appearance?: 'default' | 'statStrip';
+  /** Число голосов (для statStrip); обновляется с карточкой участника / WebSocket */
+  totalVotes?: number;
 }
 
 export const VoteButton: React.FC<VoteButtonProps> = ({
   contestId,
   participantId,
-  contestStatus,
   nominationId,
   isOwner = false,
   publicVotingEnabled = true,
@@ -41,6 +46,8 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   voteCtaLabel,
   onVoted,
   fullWidth = true,
+  appearance = 'default',
+  totalVotes = 0,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,7 +96,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       return;
     }
 
-    if (contestStatus !== 'voting' || voting || !publicVotingEnabled || !canReceiveVotes) {
+    if (voting || !publicVotingEnabled || !canReceiveVotes) {
       return;
     }
 
@@ -119,7 +126,119 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     }
   };
 
-  if (contestStatus === 'voting' && !publicVotingEnabled) {
+  const count = totalVotes ?? 0;
+  const statStripLabel =
+    loading || voting ? (loading ? 'Загрузка…' : 'Сохраняем…') : `${count} Нравится`;
+  const statStripAria =
+    loading || voting
+      ? loading
+        ? 'Загрузка состояния голосования'
+        : 'Сохранение голоса'
+      : isVoted
+        ? `Убрать лайк, сейчас ${count} голосов`
+        : `Поставить лайк, сейчас ${count} голосов`;
+
+  const statStripHeart = (filled: boolean) => (
+    <svg
+      className={`vote-button-stat-strip-heart ${filled ? 'vote-button-stat-strip-heart--filled' : ''}`}
+      viewBox="0 0 24 24"
+      width={22}
+      height={22}
+      aria-hidden="true"
+    >
+      {filled ? (
+        <path
+          fill="currentColor"
+          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        />
+      ) : (
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.85"
+          strokeLinejoin="round"
+          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        />
+      )}
+    </svg>
+  );
+
+  if (appearance === 'statStrip') {
+    const readonlyStrip = (filled: boolean) => (
+      <div
+        className="vote-button-stat-strip vote-button-stat-strip--readonly"
+        role="status"
+        aria-label={`${count} ${count === 1 ? 'лайк' : 'лайков'}`}
+      >
+        {statStripHeart(filled)}
+        <span className="vote-button-stat-strip-label">
+          <span className="vote-button-stat-strip-count">{count}</span> Нравится
+        </span>
+      </div>
+    );
+
+    if (!publicVotingEnabled) {
+      return (
+        <div className="vote-button-stat-strip-block">
+          {readonlyStrip(false)}
+          <p className="vote-button-stat-strip-hint" role="status">
+            Пользовательское голосование на этом конкурсе отключено.
+          </p>
+        </div>
+      );
+    }
+
+    if (!canReceiveVotes) {
+      return (
+        <div className="vote-button-stat-strip-block">
+          {readonlyStrip(false)}
+          <p className="vote-button-stat-strip-hint" role="status">
+            Заявка на модерации — голосование за эту работу пока недоступно.
+          </p>
+        </div>
+      );
+    }
+
+    if (!isAuthenticated) {
+      return (
+        <button
+          type="button"
+          className="vote-button-stat-strip"
+          onClick={handleVote}
+          aria-label={`Войти, чтобы голосовать. Сейчас ${count} голосов`}
+        >
+          {statStripHeart(false)}
+          <span className="vote-button-stat-strip-label">
+            <span className="vote-button-stat-strip-count">{count}</span> Нравится
+          </span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className={`vote-button-stat-strip ${isVoted ? 'vote-button-stat-strip--active' : ''}`}
+        onClick={handleVote}
+        disabled={loading || voting}
+        title={isVoted ? 'Убрать лайк' : 'Поставить лайк'}
+        aria-label={statStripAria}
+      >
+        {statStripHeart(isVoted)}
+        <span className="vote-button-stat-strip-label">
+          {loading || voting ? (
+            statStripLabel
+          ) : (
+            <>
+              <span className="vote-button-stat-strip-count">{count}</span> Нравится
+            </>
+          )}
+        </span>
+      </button>
+    );
+  }
+
+  if (!publicVotingEnabled) {
     return (
       <p className="vote-button-disabled-hint" role="status">
         Пользовательское голосование на этом конкурсе отключено.
@@ -127,7 +246,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     );
   }
 
-  if (contestStatus === 'voting' && !canReceiveVotes) {
+  if (!canReceiveVotes) {
     return (
       <p className="vote-button-disabled-hint" role="status">
         Заявка на модерации — голосование за эту работу пока недоступно.
@@ -141,10 +260,6 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
         Войти для голосования
       </Button>
     );
-  }
-
-  if (contestStatus !== 'voting') {
-    return null;
   }
 
   const primaryVoteLabel = voteCtaLabel?.trim() || 'Проголосовать';

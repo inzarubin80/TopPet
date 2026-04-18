@@ -236,7 +236,14 @@ func (s *TopPetService) persistVotingResultsAfterFinished(ctx context.Context, c
 		}
 		return nomMap[*nid]
 	}, nomSortOrder)
-	return s.repository.UpdateContestVotingResults(ctx, contestID, o.audience, o.jury)
+	// Места жюри задаёт только председатель (снимок из PUT); при завершении конкурса не пересчитываем жюри автоматически.
+	return s.repository.UpdateContestVotingResults(ctx, contestID, o.audience, contest.PersistedJuryWinners)
+}
+
+func clearJuryOutcome(o *contestWinnerOutcome) {
+	o.jury = nil
+	o.jurySet = make(map[model.ParticipantID]struct{})
+	o.juryMeta = make(map[model.ParticipantID]winnerMeta)
 }
 
 func (s *TopPetService) computeContestWinnerSets(ctx context.Context, contest *model.Contest) contestWinnerSets {
@@ -271,6 +278,7 @@ func (s *TopPetService) attachParticipantWinnerFlags(ctx context.Context, contes
 			return
 		}
 		o = computeContestWinnerOutcome(contest, rows, nil, nil)
+		clearJuryOutcome(&o)
 	}
 	for _, p := range participants {
 		if _, ok := o.audienceSet[p.ID]; ok {
@@ -306,6 +314,7 @@ func (s *TopPetService) attachOneParticipantWinnerFlags(ctx context.Context, con
 			return
 		}
 		o = computeContestWinnerOutcome(contest, rows, nil, nil)
+		clearJuryOutcome(&o)
 	}
 	if _, ok := o.audienceSet[participant.ID]; ok {
 		participant.IsAudienceWinner = true
@@ -352,6 +361,7 @@ func (s *TopPetService) enrichContestWithWinners(ctx context.Context, contest *m
 		}
 		return nomMap[*nid]
 	}, nomSortOrder)
+	clearJuryOutcome(&o)
 	contest.AudienceWinners = o.audience
 	contest.JuryWinners = o.jury
 }
@@ -419,6 +429,7 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 			}
 			return nm[*nid]
 		}, ns)
+		clearJuryOutcome(&o)
 		c.AudienceWinners = o.audience
 		c.JuryWinners = o.jury
 	}

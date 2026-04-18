@@ -16,19 +16,17 @@ export type ParticipantsListSubmissionFilter =
 
 export type ParticipantListScope = 'all' | 'mine';
 
-/** Порядок списка заявок (query `sort`) */
-export type ParticipantsListSort = 'votes' | 'jury' | 'created_at';
+/** Порядок списка заявок (query `sort`): лайки, жюри, дата, комментарии */
+export type ParticipantsListSort = 'votes' | 'jury' | 'created_at' | 'comments';
 
 export type GetParticipantsByContestOptions = {
   limit?: number;
   offset?: number;
   participantScope?: ParticipantListScope;
   submissionFilter?: ParticipantsListSubmissionFilter;
-  /** Только участники, за которых проголосовал текущий пользователь (нужна авторизация) */
+  /** Только участники с отметкой «Мне нравится» у текущего пользователя (нужна авторизация) */
   votedOnly?: boolean;
-  /** Только избранные текущего пользователя (нужна авторизация) */
-  favoriteOnly?: boolean;
-  /** Сортировка: голоса зрителей, сумма баллов жюри или дата подачи */
+  /** Сортировка: голоса, жюри, дата подачи (новые сверху) или число комментариев */
   sort?: ParticipantsListSort;
 };
 
@@ -52,7 +50,6 @@ export const getParticipant = async (
 export const getParticipantsByContest = async (
   contestId: ContestID,
   nominationFilter: ParticipantsListNominationFilter = 'all',
-  juryUnscoredOnly = false,
   options?: GetParticipantsByContestOptions
 ): Promise<ParticipantsListResponse> => {
   const params = new URLSearchParams();
@@ -60,9 +57,6 @@ export const getParticipantsByContest = async (
     params.set('nomination_id', 'none');
   } else if (nominationFilter !== 'all') {
     params.set('nomination_id', nominationFilter);
-  }
-  if (juryUnscoredOnly) {
-    params.set('jury_unscored_only', '1');
   }
   if (options?.participantScope === 'mine') {
     params.set('participant_scope', 'mine');
@@ -78,9 +72,6 @@ export const getParticipantsByContest = async (
   }
   if (options?.votedOnly) {
     params.set('voted_only', '1');
-  }
-  if (options?.favoriteOnly) {
-    params.set('favorite_only', '1');
   }
   if (options?.sort) {
     params.set('sort', options.sort);

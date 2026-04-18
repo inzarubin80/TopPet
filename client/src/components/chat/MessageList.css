@@ -13,6 +13,14 @@
   position: relative;
 }
 
+/* Чат конкурса: без внутренней прокрутки — блок растёт, поле ввода уходит вниз вместе со страницей */
+.message-list--natural-flow {
+  flex: 0 1 auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
 .message-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -59,6 +67,24 @@
   color: #6b7280;
   background: var(--color-surface);
   font-weight: 500;
+}
+
+.message-inline-image-link {
+  display: block;
+  margin-bottom: 8px;
+  max-width: min(280px, 100%);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.message-inline-image {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
 }
 
 .message-item-wrapper {

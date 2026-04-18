@@ -42,6 +42,17 @@ export const voteComment = async (commentId: CommentID, value: -1 | 1): Promise<
   await axiosClient.post(`/comments/${commentId}/vote`, { value });
 };
 
+export const uploadCommentImage = async (participantId: ParticipantID, file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await axiosClient.post<{ url: string }>(
+    `/participants/${participantId}/comments/upload-image`,
+    formData,
+    { timeout: 300000 }
+  );
+  return response.data.url;
+};
+
 /** Владелец заявки: отметить комментарии организатора просмотренными (уведомления в шапке). */
 export const markStaffCommentsRead = async (participantId: ParticipantID): Promise<void> => {
   await axiosClient.post<{ ok: boolean }>(

@@ -164,7 +164,7 @@ func (m *mockRepository) UpsertParticipantFavorite(ctx context.Context, userID m
 func (m *mockRepository) DeleteParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
 	return nil
 }
-func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error {
@@ -211,7 +211,7 @@ func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID 
 func (m *mockRepository) CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) {
 	return 0, nil
 }
-func (m *mockRepository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error) {
+func (m *mockRepository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetComment(ctx context.Context, commentID model.CommentID) (*model.Comment, error) {
@@ -235,7 +235,7 @@ func (m *mockRepository) ListStaffCommentNotificationsForUser(ctx context.Contex
 func (m *mockRepository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {
 	return nil
 }
-func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID) (*model.ChatMessage, error) {
+func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error) {
 	return nil, nil
 }
 func (m *mockRepository) ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error) {
@@ -344,6 +344,11 @@ func (m *mockRepository) SumJuryScoresByParticipantIDs(ctx context.Context, part
 func (m *mockRepository) CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error) {
 	return map[model.ParticipantID]int64{}, nil
 }
+
+func (m *mockRepository) ListJuryWeightedTotalsByContest(ctx context.Context, contestID model.ContestID) ([]model.JuryChairWeightedCell, error) {
+	return nil, nil
+}
+
 func (m *mockRepository) SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error) {
 	return nil, nil
 }

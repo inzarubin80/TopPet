@@ -95,12 +95,14 @@ export interface UpdateParticipantRequest {
   pet_description?: string;
   entry_title?: string;
   entry_description?: string;
+  nomination_id?: string | null;
   registration_answers?: Record<string, unknown>;
 }
 
 export interface CreateCommentRequest {
   text: string;
   parent_id?: string;
+  image_url?: string;
 }
 
 export interface UpdateCommentRequest {

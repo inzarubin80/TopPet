@@ -145,9 +145,9 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	sortParam := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("sort")))
 	switch sortParam {
-	case "", model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt:
+	case "", model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt, model.ParticipantListSortComments:
 	default:
-		uhttp.HandleError(w, uhttp.NewBadRequestError("sort must be votes, jury or created_at (or omit for default)", nil))
+		uhttp.HandleError(w, uhttp.NewBadRequestError("sort must be votes, jury, created_at or comments (or omit for default)", nil))
 		return
 	}
 

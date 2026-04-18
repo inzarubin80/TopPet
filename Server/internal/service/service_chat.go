@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
@@ -16,12 +17,33 @@ func chatAllowed(status model.ContestStatus) bool {
 		status == model.ContestStatusFinished
 }
 
-func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID) (*model.ChatMessage, error) {
-	if text == "" {
-		return nil, errors.New("text is required")
+// EnsureContestChatImageUploadAllowed — проверка перед загрузкой картинки для сообщения чата.
+func (s *TopPetService) EnsureContestChatImageUploadAllowed(ctx context.Context, contestID model.ContestID, userID model.UserID) error {
+	contest, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return err
+	}
+	if !chatAllowed(contest.Status) {
+		return errors.New("chat is not available for this contest stage")
+	}
+	blocked, err := s.repository.IsUserBlocked(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return model.ErrorForbidden
+	}
+	return nil
+}
+
+func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error) {
+	t := strings.TrimSpace(text)
+	img := strings.TrimSpace(imageURL)
+	if t == "" && img == "" {
+		return nil, errors.New("text or image is required")
 	}
 
-	if len(text) > 2000 {
+	if len(t) > 2000 {
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 
@@ -42,7 +64,7 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 		return nil, model.ErrorForbidden
 	}
 
-	message, err := s.repository.CreateChatMessage(ctx, contestID, userID, text, false, parentID)
+	message, err := s.repository.CreateChatMessage(ctx, contestID, userID, t, false, parentID, img)
 	if err != nil {
 		return nil, err
 	}

@@ -259,6 +259,57 @@ type (
 		CriteriaScored   int32         `json:"criteria_scored"`
 	}
 
+	// JuryChairJurorColumn — колонка «член жюри» в своде председателя.
+	JuryChairJurorColumn struct {
+		UserID    UserID `json:"user_id"`
+		UserName  string `json:"user_name"`
+		SortOrder int32  `json:"sort_order"`
+	}
+
+	// JuryChairboardRow — строка свода председателя (баллы по жюри + место/приз из снимка).
+	JuryChairboardRow struct {
+		ParticipantID ParticipantID    `json:"participant_id"`
+		PetName       string           `json:"pet_name"`
+		EntryTitle    string           `json:"entry_title,omitempty"`
+		UserName      string           `json:"user_name"`
+		NominationID  *string          `json:"nomination_id,omitempty"`
+		CoverThumbURL string           `json:"cover_thumb_url,omitempty"`
+		CoverImageURL string           `json:"cover_image_url,omitempty"`
+		JurorTotals   map[string]float64 `json:"juror_totals"`
+		TotalScore    float64          `json:"total_score"`
+		Place         *int             `json:"place,omitempty"`
+		Prize         string           `json:"prize,omitempty"`
+	}
+
+	// JuryChairWeightedCell — ячейка агрегата Σ(score×weight) для пары (заявка × член жюри).
+	JuryChairWeightedCell struct {
+		ParticipantID ParticipantID
+		JurorUserID   UserID
+		WeightedTotal float64
+	}
+
+	// JuryChairboardData — ответ GET /jury-chairboard.
+	JuryChairboardData struct {
+		Jurors               []JuryChairJurorColumn `json:"jurors"`
+		Rows                 []JuryChairboardRow    `json:"rows"`
+		MaxWeightedPerJuror  float64                `json:"max_weighted_per_juror"`
+		MaxTotalWeighted     float64                `json:"max_total_weighted"`
+		CriteriaCount        int                    `json:"criteria_count"`
+		JuryMemberCount      int                    `json:"jury_member_count"`
+	}
+
+	// JuryChairAssignmentInput — элемент тела PUT жюри-мест/призов.
+	JuryChairAssignmentInput struct {
+		ParticipantID ParticipantID `json:"participant_id"`
+		Place         *int          `json:"place,omitempty"`
+		Prize         string        `json:"prize,omitempty"`
+	}
+
+	// JuryChairAssignmentsPut — тело PUT /jury-chair-assignments.
+	JuryChairAssignmentsPut struct {
+		Assignments []JuryChairAssignmentInput `json:"assignments"`
+	}
+
 	// UserSearchHit — результат поиска пользователя (имя / email).
 	UserSearchHit struct {
 		ID    UserID `json:"id"`
@@ -376,6 +427,7 @@ type (
 		UserName      string        `json:"user_name"`
 		UserAvatarURL string        `json:"user_avatar_url,omitempty"`
 		Text          string        `json:"text"`
+		ImageURL      string        `json:"image_url,omitempty"`
 		Score         int64         `json:"score"`
 		UserVote      int32         `json:"user_vote"`
 		CreatedAt     time.Time     `json:"created_at"`
@@ -402,6 +454,7 @@ type (
 		UserName      string         `json:"user_name"`
 		UserAvatarURL string         `json:"user_avatar_url,omitempty"`
 		Text          string         `json:"text"`
+		ImageURL      string         `json:"image_url,omitempty"`
 		IsSystem      bool           `json:"is_system"`
 		Score         int64          `json:"score"`
 		UserVote      int32          `json:"user_vote"`
@@ -454,6 +507,7 @@ const (
 	ParticipantListSortVotes     = "votes"
 	ParticipantListSortJury      = "jury"
 	ParticipantListSortCreatedAt = "created_at"
+	ParticipantListSortComments  = "comments"
 )
 
 // IsValidUserRole допустимые значения поля users.role.

@@ -378,9 +378,9 @@ func (q *Queries) CountVotesByParticipant(ctx context.Context, participantID pgt
 
 const createChatMessage = `-- name: CreateChatMessage :one
 
-INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id
+INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id, image_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id, image_url
 `
 
 type CreateChatMessageParams struct {
@@ -390,6 +390,7 @@ type CreateChatMessageParams struct {
 	Text      string
 	IsSystem  bool
 	ParentID  pgtype.UUID
+	ImageUrl  *string
 }
 
 // Contest Chat Messages
@@ -401,6 +402,7 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg *CreateChatMessageP
 		arg.Text,
 		arg.IsSystem,
 		arg.ParentID,
+		arg.ImageUrl,
 	)
 	var i ContestChatMessage
 	err := row.Scan(
@@ -412,15 +414,16 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg *CreateChatMessageP
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
 
 const createComment = `-- name: CreateComment :one
 
-INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id
+INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id, image_url)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id, image_url
 `
 
 type CreateCommentParams struct {
@@ -429,6 +432,7 @@ type CreateCommentParams struct {
 	UserID        int64
 	Text          string
 	ParentID      pgtype.UUID
+	ImageUrl      *string
 }
 
 // Contest Comments
@@ -439,6 +443,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg *CreateCommentParams) (
 		arg.UserID,
 		arg.Text,
 		arg.ParentID,
+		arg.ImageUrl,
 	)
 	var i ContestComment
 	err := row.Scan(
@@ -449,6 +454,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg *CreateCommentParams) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -922,7 +928,7 @@ func (q *Queries) DeleteVotesByParticipant(ctx context.Context, participantID pg
 }
 
 const getChatMessageByID = `-- name: GetChatMessageByID :one
-SELECT id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id FROM contest_chat_messages
+SELECT id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id, image_url FROM contest_chat_messages
 WHERE id = $1
 `
 
@@ -938,6 +944,7 @@ func (q *Queries) GetChatMessageByID(ctx context.Context, id pgtype.UUID) (*Cont
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -965,7 +972,7 @@ func (q *Queries) GetChatMessageVoteStats(ctx context.Context, id pgtype.UUID) (
 }
 
 const getCommentByID = `-- name: GetCommentByID :one
-SELECT id, participant_id, user_id, text, created_at, updated_at, parent_id FROM contest_comments WHERE id = $1
+SELECT id, participant_id, user_id, text, created_at, updated_at, parent_id, image_url FROM contest_comments WHERE id = $1
 `
 
 func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error) {
@@ -979,6 +986,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -1743,6 +1751,7 @@ SELECT
     ccm.parent_id,
     ccm.user_id,
     ccm.text,
+    ccm.image_url,
     ccm.is_system,
     ccm.created_at,
     ccm.updated_at,
@@ -1770,6 +1779,7 @@ type ListChatMessagesRow struct {
 	ParentID      pgtype.UUID
 	UserID        int64
 	Text          string
+	ImageUrl      *string
 	IsSystem      bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
@@ -1799,6 +1809,7 @@ func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesPar
 			&i.ParentID,
 			&i.UserID,
 			&i.Text,
+			&i.ImageUrl,
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -1824,6 +1835,7 @@ SELECT
     cc.parent_id,
     cc.user_id,
     cc.text,
+    cc.image_url,
     cc.created_at,
     cc.updated_at,
     COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
@@ -1850,6 +1862,7 @@ type ListCommentsByParticipantRow struct {
 	ParentID      pgtype.UUID
 	UserID        int64
 	Text          string
+	ImageUrl      *string
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	UserName      string
@@ -1878,6 +1891,7 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 			&i.ParentID,
 			&i.UserID,
 			&i.Text,
+			&i.ImageUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
@@ -2324,6 +2338,47 @@ func (q *Queries) ListJuryCriteriaByContest(ctx context.Context, contestID pgtyp
 	return items, nil
 }
 
+const listJuryWeightedTotalsByContest = `-- name: ListJuryWeightedTotalsByContest :many
+SELECT
+  cp.id AS participant_id,
+  jm.user_id AS juror_user_id,
+  COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision AS weighted_total
+FROM contest_participants cp
+INNER JOIN contest_jury_members jm ON jm.contest_id = cp.contest_id
+LEFT JOIN contest_jury_scores j ON j.participant_id = cp.id AND j.user_id = jm.user_id
+LEFT JOIN contest_jury_criteria c ON c.id = j.criterion_id AND c.contest_id = cp.contest_id
+WHERE cp.contest_id = $1
+GROUP BY cp.id, jm.user_id, jm.sort_order
+ORDER BY cp.created_at ASC, jm.sort_order ASC, jm.user_id ASC
+`
+
+type ListJuryWeightedTotalsByContestRow struct {
+	ParticipantID pgtype.UUID
+	JurorUserID   int64
+	WeightedTotal float64
+}
+
+// Свод председателя: взвешенная сумма по каждой паре (заявка × член жюри).
+func (q *Queries) ListJuryWeightedTotalsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListJuryWeightedTotalsByContestRow, error) {
+	rows, err := q.db.Query(ctx, listJuryWeightedTotalsByContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListJuryWeightedTotalsByContestRow
+	for rows.Next() {
+		var i ListJuryWeightedTotalsByContestRow
+		if err := rows.Scan(&i.ParticipantID, &i.JurorUserID, &i.WeightedTotal); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNominationsByContest = `-- name: ListNominationsByContest :many
 SELECT id, contest_id, title, description, sort_order, created_at, min_photo_count, logo_url, max_photo_count FROM contest_nominations
 WHERE contest_id = $1
@@ -2525,7 +2580,9 @@ WHERE cp.contest_id = $1
 ORDER BY
   CASE WHEN $11::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
   CASE WHEN $11::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
-  cp.created_at ASC
+  CASE WHEN $11::text = 'comments' THEN COALESCE(cc.comment_cnt, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN $11::text = 'created_at' THEN cp.created_at END DESC NULLS LAST,
+  cp.id ASC
 LIMIT $13::int OFFSET $12::int
 `
 
@@ -3131,7 +3188,7 @@ const updateChatMessage = `-- name: UpdateChatMessage :one
 UPDATE contest_chat_messages
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3 AND is_system = FALSE
-RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id
+RETURNING id, contest_id, user_id, text, is_system, created_at, updated_at, parent_id, image_url
 `
 
 type UpdateChatMessageParams struct {
@@ -3152,6 +3209,7 @@ func (q *Queries) UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageP
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -3160,7 +3218,7 @@ const updateComment = `-- name: UpdateComment :one
 UPDATE contest_comments
 SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
-RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id
+RETURNING id, participant_id, user_id, text, created_at, updated_at, parent_id, image_url
 `
 
 type UpdateCommentParams struct {
@@ -3180,6 +3238,7 @@ func (q *Queries) UpdateComment(ctx context.Context, arg *UpdateCommentParams) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ParentID,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -3631,7 +3690,7 @@ func (q *Queries) UpdateNominationSortOrder(ctx context.Context, arg *UpdateNomi
 
 const updateParticipant = `-- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, nomination_id = $5, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
 WHERE id = $1
 RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
 `
@@ -3641,6 +3700,7 @@ type UpdateParticipantParams struct {
 	PetName             string
 	PetDescription      string
 	RegistrationAnswers []byte
+	NominationID        pgtype.UUID
 }
 
 type UpdateParticipantRow struct {
@@ -3665,6 +3725,7 @@ func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantP
 		arg.PetName,
 		arg.PetDescription,
 		arg.RegistrationAnswers,
+		arg.NominationID,
 	)
 	var i UpdateParticipantRow
 	err := row.Scan(

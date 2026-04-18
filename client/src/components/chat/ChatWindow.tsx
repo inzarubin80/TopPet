@@ -5,7 +5,7 @@ import { RootState } from '../../store';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { ChatMessage, ContestID, ContestStatus } from '../../types/models';
 import { MessageList } from './MessageList';
-import { MessageInput } from './MessageInput';
+import { MessageInput, MessageSendPayload } from './MessageInput';
 import { ConnectionStatus } from './ConnectionStatus';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Button } from '../common/Button';
@@ -68,12 +68,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
     loadHistory();
   }, [contestId, dispatch, isChatAvailable]);
 
-  const handleSendMessage = (text: string) => {
-    if (isConnected && isAuthenticated) {
-      sendMessage(text, replyTo?.id);
+  const handleSendMessage = React.useCallback(
+    (payload: MessageSendPayload) => {
+      if (!isConnected || !isAuthenticated) {
+        return;
+      }
+      const t = payload.text.trim();
+      if (t === '' && !payload.imageUrl) {
+        return;
+      }
+      sendMessage(t, replyTo?.id, payload.imageUrl || undefined);
       setReplyTo(null);
-    }
-  };
+    },
+    [isConnected, isAuthenticated, sendMessage, replyTo?.id]
+  );
 
   const handleUpdateMessage = async (messageId: string, text: string) => {
     try {
@@ -104,7 +112,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
   };
 
   return (
-    <div className="chat-window">
+    <div className="chat-window chat-window--natural-flow">
       <div className="chat-header">
         {isAuthenticated && (
           <ConnectionStatus state={connectionState} onReconnect={reconnect} />
@@ -122,6 +130,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
         ) : (
           <MessageList
             messages={messages}
+            containedScroll={false}
             currentUserId={currentUserId}
             canVote={isAuthenticated}
             onUpdateMessage={handleUpdateMessage}
@@ -137,7 +146,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
             {replyTo && (
               <div className="chat-reply-banner">
                 <span className="chat-reply-banner-label">
-                  Вы отвечаете… <span className="chat-reply-banner-snippet">{replyTo.text.slice(0, 100)}</span>
+                  Вы отвечаете…{' '}
+                  <span className="chat-reply-banner-snippet">
+                    {(replyTo.text || 'Вложение').slice(0, 100)}
+                  </span>
                 </span>
                 <button type="button" className="chat-reply-banner-cancel" onClick={() => setReplyTo(null)}>
                   Отмена
@@ -146,6 +158,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
             )}
             <MessageInput
               onSend={handleSendMessage}
+              uploadImage={(file) => chatApi.uploadContestChatImage(contestId, file)}
               disabled={!isConnected}
               placeholder={isConnected ? 'Введите сообщение...' : 'Подключение...'}
             />

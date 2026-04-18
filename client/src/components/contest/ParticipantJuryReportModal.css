@@ -99,3 +99,7 @@
 .participant-jury-report-modal-table tbody tr:last-child td {
   border-bottom: none;
 }
+
+.participant-jury-report-modal-table--juror-focus {
+  min-width: 420px;
+}

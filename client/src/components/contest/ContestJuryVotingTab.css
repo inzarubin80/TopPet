@@ -19,19 +19,22 @@
   line-height: 1.45;
 }
 
-.contest-jury-voting-favorite-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 1rem 0.5rem;
-  font-size: 0.9rem;
-  color: #334155;
-}
-
 .contest-jury-voting-nomination-bar {
-  padding: 0 1rem 0.75rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0.65rem 1rem;
   border-bottom: 1px solid #e2e8f0;
   background: var(--color-surface);
+}
+
+.contest-jury-voting-nomination-bar .contest-page-nomination-tab-row {
+  width: 100%;
+  align-items: center;
+}
+
+.contest-page-nomination-tab-row .contest-jury-voting-likes-tab {
+  margin-left: auto;
 }
 
 .contest-jury-voting-toolbar {
@@ -43,6 +46,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.contest-jury-voting-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 .contest-jury-voting-btn-group {
@@ -126,7 +136,121 @@
 
 .contest-jury-voting-table th.contest-jury-voting-th-work {
   text-align: left;
-  min-width: 200px;
+  min-width: 320px;
+}
+
+.contest-jury-voting-table td.contest-jury-voting-td-work {
+  vertical-align: top;
+}
+
+.contest-jury-voting-work-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.contest-jury-voting-work-thumb-link {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #f1f5f9;
+  text-decoration: none;
+  color: inherit;
+}
+
+.contest-jury-voting-work-thumb-link:hover {
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+button.contest-jury-voting-work-thumb-link {
+  appearance: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.contest-jury-voting-work-thumb-link--empty {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.2;
+  padding: 8px;
+}
+
+.contest-jury-voting-work-thumb-placeholder {
+  display: block;
+  padding: 0 2px;
+}
+
+.contest-jury-voting-work-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.contest-jury-voting-work-text {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Модалка увеличения фото (жюри) */
+.contest-jury-work-lightbox-modal.modal-overlay .modal-content {
+  max-width: min(96vw, 1040px);
+  width: auto;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0f172a;
+  border-radius: 12px;
+}
+
+.contest-jury-work-lightbox-modal .modal-body {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #0f172a;
+}
+
+.contest-jury-work-lightbox-modal .modal-header.modal-header--plain {
+  background: #0f172a;
+  padding: 10px 12px;
+}
+
+.contest-jury-work-lightbox-modal .modal-close {
+  color: #e2e8f0;
+}
+
+.contest-jury-work-lightbox-modal .modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.contest-jury-work-lightbox-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 16px 20px;
+  box-sizing: border-box;
+}
+
+.contest-jury-work-lightbox-img {
+  max-width: 100%;
+  max-height: min(82vh, 920px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  vertical-align: middle;
 }
 
 .contest-jury-voting-th-sort {
@@ -143,6 +267,12 @@
 
 .contest-jury-voting-th-sort:hover {
   color: #0369a1;
+}
+
+.contest-jury-voting-th-criterion {
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .contest-jury-voting-weight-badge {
@@ -171,6 +301,10 @@
   font-family: inherit;
 }
 
+a.contest-jury-voting-work-title {
+  width: auto;
+}
+
 .contest-jury-voting-work-title:hover {
   color: #2563eb;
 }
@@ -180,6 +314,10 @@
   margin-top: 4px;
   font-size: 0.78rem;
   color: #64748b;
+}
+
+.contest-jury-voting-td-criterion {
+  text-align: center;
 }
 
 .contest-jury-voting-score-input {
@@ -209,22 +347,6 @@
   text-align: center;
   color: #854d0e;
   white-space: nowrap;
-}
-
-.contest-jury-voting-th-sync {
-  font-size: 0.78rem;
-  max-width: 120px;
-}
-
-.contest-jury-voting-sync-cell {
-  text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.contest-jury-voting-sync-cell .btn {
-  margin-top: 6px;
-  display: inline-block;
 }
 
 .contest-jury-voting-sync {
@@ -269,32 +391,6 @@
   gap: 8px;
 }
 
-.contest-jury-voting-participant-modal.modal-overlay .modal-content {
-  max-width: min(96vw, 1100px);
-  width: 100%;
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.contest-jury-voting-participant-modal .modal-body {
-  padding: 0;
-  flex: 1;
-  min-height: min(55vh, 520px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.contest-jury-voting-participant-modal .modal-body .participant-page--modal {
-  min-height: min(50vh, 480px);
-}
-
-.contest-jury-voting-participant-open-tab {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-}
-
 .contest-jury-voting-empty,
 .contest-jury-voting-loading {
   padding: 2rem 1.5rem;
@@ -309,6 +405,12 @@
   gap: 10px;
   border-top: 1px solid #e2e8f0;
   background: #fafafa;
+}
+
+@media (max-width: 768px) {
+  .contest-jury-voting-nomination-bar .contest-jury-voting-likes-tab {
+    margin-left: 0;
+  }
 }
 
 @media (max-width: 700px) {

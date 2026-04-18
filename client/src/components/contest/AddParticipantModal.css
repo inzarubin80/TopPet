@@ -1,16 +1,48 @@
+.add-participant-modal-overlay .modal-content {
+  max-width: min(720px, calc(100vw - 40px));
+}
+
+.add-participant-modal-overlay .modal-body {
+  padding: 24px;
+}
+
+.add-participant-modal-overlay .modal-header,
+.add-participant-modal-overlay .modal-footer {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
 .add-participant-modal-footer {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 
-.add-participant-nomination-hint {
-  margin: 0 0 16px;
+.add-participant-nomination-field {
+  margin-bottom: 4px;
+}
+
+.add-participant-nomination-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1f2937;
+}
+
+.add-participant-nomination-select {
+  width: 100%;
+  max-width: 100%;
   padding: 10px 12px;
-  background: #f3f4f6;
+  font-size: 15px;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 14px;
-  color: #374151;
+  background: #fff;
+}
+
+.add-participant-nomination-empty {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #b45309;
 }
 
 .add-participant-form-stack {
@@ -18,6 +50,11 @@
   flex-direction: column;
   gap: 20px;
   margin-top: 0;
+}
+
+.add-participant-entry-description {
+  min-height: 120px;
+  resize: vertical;
 }
 
 .add-participant-photos-count {

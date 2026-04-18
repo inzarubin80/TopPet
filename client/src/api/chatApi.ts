@@ -29,3 +29,12 @@ export const deleteChatMessage = async (messageId: ChatMessageID): Promise<void>
 export const voteChatMessage = async (messageId: ChatMessageID, value: -1 | 1): Promise<void> => {
   await axiosClient.post(`/chat/${messageId}/vote`, { value });
 };
+
+export const uploadContestChatImage = async (contestId: ContestID, file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await axiosClient.post<{ url: string }>(`/contests/${contestId}/chat/upload-image`, formData, {
+    timeout: 300000,
+  });
+  return response.data.url;
+};

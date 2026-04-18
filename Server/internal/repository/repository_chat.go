@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID) (*model.ChatMessage, error) {
+func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	messageUUID := uuid.New()
 	contestUUID, err := uuid.Parse(string(contestID))
@@ -37,6 +37,7 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		Text:      text,
 		IsSystem:  isSystem,
 		ParentID:  parentUUID,
+		ImageUrl:  nonEmptyStringPtr(imageURL),
 	})
 	if err != nil {
 		return nil, err
@@ -74,6 +75,7 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		UserName:      userName,
 		UserAvatarURL: userAvatarURL,
 		Text:          message.Text,
+		ImageURL:      optionalImageURL(message.ImageUrl),
 		IsSystem:  message.IsSystem,
 		Score:     0,
 		UserVote:  0,
@@ -173,6 +175,7 @@ func (r *Repository) ListChatMessages(ctx context.Context, contestID model.Conte
 			UserName:      userName,
 			UserAvatarURL: optionalUserAvatarURL(m.UserAvatarUrl),
 			Text:          m.Text,
+			ImageURL:      optionalImageURL(m.ImageUrl),
 			IsSystem:  m.IsSystem,
 			Score:     m.Score,
 			UserVote:  m.UserVote,
@@ -237,6 +240,7 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		UserName:      userName,
 		UserAvatarURL: userAvatarURL,
 		Text:          message.Text,
+		ImageURL:      optionalImageURL(message.ImageUrl),
 		IsSystem:  message.IsSystem,
 		Score:     0,
 		UserVote:  0,

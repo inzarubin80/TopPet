@@ -344,7 +344,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 	return result, total, nil
 }
 
-func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
+func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {
@@ -355,11 +355,16 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 	if err != nil {
 		return nil, err
 	}
+	nomPg, err := nominationPgFromOptional(nominationID)
+	if err != nil {
+		return nil, err
+	}
 	participant, err := reposqlc.UpdateParticipant(ctx, &sqlc_repository.UpdateParticipantParams{
 		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
 		PetName:             entryTitle,
 		PetDescription:      entryDescription,
 		RegistrationAnswers: ansBytes,
+		NominationID:        nomPg,
 	})
 	if err != nil {
 		return nil, err

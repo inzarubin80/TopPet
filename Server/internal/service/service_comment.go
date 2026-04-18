@@ -4,16 +4,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"toppet/server/internal/model"
 )
 
-func (s *TopPetService) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error) {
-	if text == "" {
-		return nil, errors.New("text is required")
+// EnsureParticipantCommentImageUploadAllowed — проверка перед загрузкой картинки для комментария к работе.
+func (s *TopPetService) EnsureParticipantCommentImageUploadAllowed(ctx context.Context, participantID model.ParticipantID, userID model.UserID) error {
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return err
+	}
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
+	if err != nil {
+		return err
+	}
+	if !s.participantVisible(ctx, participant, contest, &userID) {
+		return fmt.Errorf("%w", model.ErrorNotFound)
+	}
+	blocked, err := s.repository.IsUserBlocked(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return model.ErrorForbidden
+	}
+	return nil
+}
+
+func (s *TopPetService) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error) {
+	t := strings.TrimSpace(text)
+	img := strings.TrimSpace(imageURL)
+	if t == "" && img == "" {
+		return nil, errors.New("text or image is required")
 	}
 
-	if len(text) > 2000 {
+	if len(t) > 2000 {
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 
@@ -41,7 +67,7 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 		}
 	}
 
-	return s.repository.CreateComment(ctx, participantID, userID, text, parentID)
+	return s.repository.CreateComment(ctx, participantID, userID, t, parentID, img)
 }
 
 func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error) {

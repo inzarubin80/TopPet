@@ -216,11 +216,11 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
   }, [accessToken]);
 
   const sendMessage = useCallback(
-    (text: string, parentId?: string) => {
+    (text: string, parentId?: string, imageUrl?: string) => {
       if (!contestId || !wsClientRef.current) {
         return;
       }
-      wsClientRef.current.sendMessage(contestId, text, parentId);
+      wsClientRef.current.sendMessage(contestId, text, parentId, imageUrl);
     },
     [contestId]
   );

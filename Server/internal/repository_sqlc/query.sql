@@ -455,12 +455,14 @@ WHERE cp.contest_id = @contest_id
 ORDER BY
   CASE WHEN @list_order::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
   CASE WHEN @list_order::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
-  cp.created_at ASC
+  CASE WHEN @list_order::text = 'comments' THEN COALESCE(cc.comment_cnt, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN @list_order::text = 'created_at' THEN cp.created_at END DESC NULLS LAST,
+  cp.id ASC
 LIMIT @list_limit::int OFFSET @list_offset::int;
 
 -- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, nomination_id = $5, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
 WHERE id = $1
 RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
 
@@ -633,8 +635,8 @@ GROUP BY contest_id;
 -- Contest Comments
 
 -- name: CreateComment :one
-INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO contest_comments (id, participant_id, user_id, text, parent_id, image_url)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetCommentByID :one
@@ -647,6 +649,7 @@ SELECT
     cc.parent_id,
     cc.user_id,
     cc.text,
+    cc.image_url,
     cc.created_at,
     cc.updated_at,
     COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
@@ -733,8 +736,8 @@ WHERE participant_id = $1;
 -- Contest Chat Messages
 
 -- name: CreateChatMessage :one
-INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO contest_chat_messages (id, contest_id, user_id, text, is_system, parent_id, image_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: ListChatMessages :many
@@ -744,6 +747,7 @@ SELECT
     ccm.parent_id,
     ccm.user_id,
     ccm.text,
+    ccm.image_url,
     ccm.is_system,
     ccm.created_at,
     ccm.updated_at,
@@ -1019,6 +1023,20 @@ CROSS JOIN contest_jury_members jm
 LEFT JOIN users u ON u.user_id = jm.user_id
 WHERE cp.contest_id = $1 AND jm.contest_id = $1
 ORDER BY cp.created_at ASC, jm.user_id ASC;
+
+-- Свод председателя: взвешенная сумма по каждой паре (заявка × член жюри).
+-- name: ListJuryWeightedTotalsByContest :many
+SELECT
+  cp.id AS participant_id,
+  jm.user_id AS juror_user_id,
+  COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision AS weighted_total
+FROM contest_participants cp
+INNER JOIN contest_jury_members jm ON jm.contest_id = cp.contest_id
+LEFT JOIN contest_jury_scores j ON j.participant_id = cp.id AND j.user_id = jm.user_id
+LEFT JOIN contest_jury_criteria c ON c.id = j.criterion_id AND c.contest_id = cp.contest_id
+WHERE cp.contest_id = $1
+GROUP BY cp.id, jm.user_id, jm.sort_order
+ORDER BY cp.created_at ASC, jm.sort_order ASC, jm.user_id ASC;
 
 -- name: SumJuryScoresByParticipantID :one
 SELECT COALESCE(SUM(j.score::double precision * c.weight), 0)::double precision

@@ -11,7 +11,8 @@ type SegmentMenuProps<T extends string> = {
   items: SegmentMenuItem<T>[];
   activeKey: T;
   onChange: (nextKey: T) => void;
-  ariaLabel: string;
+  /** Если обёртка (например nav) уже даёт имя — можно не передавать */
+  ariaLabel?: string;
   className?: string;
   variant?: 'default' | 'contest';
 };
@@ -51,7 +52,7 @@ function SegmentMenu<T extends string>({
           : `segment-menu segment-menu--${variant}`
       }
       role="tablist"
-      aria-label={ariaLabel}
+      aria-label={ariaLabel || undefined}
     >
       {items.map((item, index) => {
         const isActive = item.key === activeKey;

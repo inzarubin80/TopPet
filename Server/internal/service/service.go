@@ -86,6 +86,7 @@ type (
 		SumJuryScoresByParticipantID(ctx context.Context, participantID model.ParticipantID) (float64, error)
 		SumJuryScoresByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]float64, error)
 		CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, participantIDs []model.ParticipantID) (map[model.ParticipantID]int64, error)
+		ListJuryWeightedTotalsByContest(ctx context.Context, contestID model.ContestID) ([]model.JuryChairWeightedCell, error)
 		SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error)
 
 		// Participant
@@ -96,7 +97,7 @@ type (
 		IsParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) (bool, error)
 		UpsertParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error
 		DeleteParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error
-		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error)
+		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error)
 		MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error
 		SetParticipantSubmissionStatus(ctx context.Context, participantID model.ParticipantID, status string, submissionComment *string) (*model.Participant, error)
 		DeleteParticipant(ctx context.Context, participantID model.ParticipantID) error
@@ -119,7 +120,7 @@ type (
 		ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error)
 
 		// Comments
-		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID) (*model.Comment, error)
+		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error)
 		GetComment(ctx context.Context, commentID model.CommentID) (*model.Comment, error)
 		ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID, limit, offset int) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
@@ -129,7 +130,7 @@ type (
 		UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error
 
 		// Chat
-		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID) (*model.ChatMessage, error)
+		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error)
 		ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error)
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
 		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error)

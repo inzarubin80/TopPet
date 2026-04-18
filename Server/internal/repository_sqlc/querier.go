@@ -100,6 +100,8 @@ type Querier interface {
 	ListContestsForStatusAutomation(ctx context.Context) ([]*Contest, error)
 	// Contest jury criteria (общие для всего конкурса)
 	ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error)
+	// Свод председателя: взвешенная сумма по каждой паре (заявка × член жюри).
+	ListJuryWeightedTotalsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListJuryWeightedTotalsByContestRow, error)
 	ListNominationsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestNomination, error)
 	ListNominationsForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ContestNomination, error)
 	ListParticipantIDsByUserID(ctx context.Context, userID int64) ([]pgtype.UUID, error)

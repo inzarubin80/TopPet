@@ -306,6 +306,14 @@ func (a *App) registerRoutes() {
 		appHttp.NewJuryVotingProgressHandler("/api/contests/{contestId}/jury-voting-progress", a.service),
 		a.service,
 	))
+	a.mux.Handle("GET /api/contests/{contestId}/jury-chairboard", middleware.NewAuthMiddleware(
+		appHttp.NewJuryChairboardHandler("/api/contests/{contestId}/jury-chairboard", a.service),
+		a.service,
+	))
+	a.mux.Handle("PUT /api/contests/{contestId}/jury-chair-assignments", middleware.NewAuthMiddleware(
+		appHttp.NewJuryChairAssignmentsHandler("/api/contests/{contestId}/jury-chair-assignments", a.service),
+		a.service,
+	))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/jury-scores-report", middleware.NewAuthMiddleware(
 		appHttp.NewJuryScoresReportHandler("/api/contests/{contestId}/participants/{participantId}/jury-scores-report", a.service),
 		a.service,
@@ -359,6 +367,14 @@ func (a *App) registerRoutes() {
 		))
 		a.mux.Handle("POST /api/participants/{participantId}/photos", middleware.NewAuthMiddleware(
 			appHttp.NewUploadPhotoHandler("/api/participants/{participantId}/photos", a.service, a.uploader),
+			a.service,
+		))
+		a.mux.Handle("POST /api/contests/{contestId}/chat/upload-image", middleware.NewAuthMiddleware(
+			appHttp.NewUploadChatMessageImageHandler("/api/contests/{contestId}/chat/upload-image", a.service, a.uploader),
+			a.service,
+		))
+		a.mux.Handle("POST /api/participants/{participantId}/comments/upload-image", middleware.NewAuthMiddleware(
+			appHttp.NewUploadCommentImageHandler("/api/participants/{participantId}/comments/upload-image", a.service, a.uploader),
 			a.service,
 		))
 	}

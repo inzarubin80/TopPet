@@ -52,10 +52,8 @@ export const fetchParticipantsByContest = createAsyncThunk(
       | {
           contestId: ContestID;
           nominationFilter?: ParticipantsListNominationFilter;
-          juryUnscoredOnly?: boolean;
           submissionFilter?: ParticipantsListSubmissionFilter;
           votedOnly?: boolean;
-          favoriteOnly?: boolean;
           limit?: number;
           offset?: number;
           sort?: ParticipantsListSort;
@@ -66,11 +64,9 @@ export const fetchParticipantsByContest = createAsyncThunk(
       const contestId = typeof payload === 'string' ? payload : payload.contestId;
       const nominationFilter: ParticipantsListNominationFilter =
         typeof payload === 'string' ? 'all' : payload.nominationFilter ?? 'all';
-      const juryUnscoredOnly = typeof payload === 'string' ? false : payload.juryUnscoredOnly ?? false;
       const submissionFilter: ParticipantsListSubmissionFilter =
         typeof payload === 'string' ? 'all' : payload.submissionFilter ?? 'all';
       const votedOnly = typeof payload === 'string' ? false : payload.votedOnly ?? false;
-      const favoriteOnly = typeof payload === 'string' ? false : payload.favoriteOnly ?? false;
       let listOptions: GetParticipantsByContestOptions | undefined;
       if (typeof payload === 'object') {
         const o: GetParticipantsByContestOptions = {};
@@ -86,16 +82,13 @@ export const fetchParticipantsByContest = createAsyncThunk(
         if (votedOnly) {
           o.votedOnly = true;
         }
-        if (favoriteOnly) {
-          o.favoriteOnly = true;
-        }
         if (payload.sort) {
           o.sort = payload.sort;
         }
         listOptions = Object.keys(o).length > 0 ? o : undefined;
       }
       const { items: participants, total, limit: appliedLimit, offset: appliedOffset } =
-        await participantsApi.getParticipantsByContest(contestId, nominationFilter, juryUnscoredOnly, listOptions);
+        await participantsApi.getParticipantsByContest(contestId, nominationFilter, listOptions);
       return {
         contestId,
         participants,
@@ -103,7 +96,6 @@ export const fetchParticipantsByContest = createAsyncThunk(
         limit: appliedLimit,
         offset: appliedOffset,
         nominationFilter,
-        juryUnscoredOnly,
       };
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error));
@@ -115,7 +107,7 @@ export const fetchMyParticipantsForContest = createAsyncThunk(
   'participants/fetchMyParticipantsForContest',
   async ({ contestId }: { contestId: ContestID }, { rejectWithValue }) => {
     try {
-      const { items } = await participantsApi.getParticipantsByContest(contestId, 'all', false, {
+      const { items } = await participantsApi.getParticipantsByContest(contestId, 'all', {
         participantScope: 'mine',
         limit: 100,
         offset: 0,
