@@ -503,17 +503,13 @@ const ContestPage: React.FC = () => {
     isAdmin
   );
 
-  const canAddParticipant =
-    isAuthenticated &&
-    (currentContest.status === 'registration' || currentContest.status === 'draft');
-  const participationPeriodOpen =
-    currentContest.status === 'registration' || currentContest.status === 'draft';
+  const canAddParticipant = isAuthenticated && currentContest.status === 'registration';
+  const participationPeriodOpen = currentContest.status === 'registration';
   const showGuestParticipationCta = !isAuthenticated && participationPeriodOpen;
   const showWorksParticipationChrome =
     canAddParticipant || canManageParticipants || showGuestParticipationCta;
   const showDomainParticipationNote =
-    participantEmailDomainsActive &&
-    (currentContest.status === 'registration' || currentContest.status === 'draft');
+    participantEmailDomainsActive && currentContest.status === 'registration';
   const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
   /** Блокировка по домену e-mail имеет смысл только после входа; гостю показываем кнопку ведущую на логин. */
   const participationCtaDisabledByDomain = isAuthenticated && blockedByEmailDomain;

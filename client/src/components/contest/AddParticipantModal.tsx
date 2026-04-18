@@ -820,7 +820,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           />
           <Textarea
             label="Описание"
-            hint="Расскажите о работе или питомце — текст будет на странице участника под наименованием."
             value={entryDescription}
             onChange={(e) => setEntryDescription(e.target.value)}
             disabled={loading || uploadingMedia || registrationFields === null}
