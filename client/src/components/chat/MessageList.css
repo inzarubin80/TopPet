@@ -45,6 +45,12 @@
   font-size: 14px;
 }
 
+/* Страница работы: компактнее пустое состояние, контрастнее текст */
+.message-list.message-list--participant-work-page .message-list-empty {
+  padding: 14px 12px;
+  color: #4b5563;
+}
+
 .message-inline-image-link {
   display: block;
   margin-bottom: 8px;

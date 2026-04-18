@@ -34,7 +34,6 @@ import {
 import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../../utils/seo';
 import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
 import { userIdsEqual } from '../../utils/userId';
-import type { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
 import { MessageList } from '../chat/MessageList';
 import { MessageInput, MessageSendPayload } from '../chat/MessageInput';
 import '../chat/ChatWindow.css';
@@ -42,13 +41,13 @@ import { buildLoginUrl } from '../../utils/navigation';
 import '../../pages/ParticipantPage.css';
 
 const EMPTY_COMMENTS: ParticipantComment[] = [];
-const DEFAULT_GALLERY_PAGE_SIZE = 24;
+
+/** Для сравнения с заголовком: trim и схлопывание пробелов/переносов. */
+function normalizeComparableParticipantText(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
 
 type ParticipantDescriptionBlocks = { kind: 'single'; title: string; text: string };
-
-type ParticipantLocationState = {
-  galleryNavigation?: ParticipantGalleryNavigationState;
-};
 
 function RegistrationAnswersDl({ rows }: { rows: RegistrationAnswerDisplayRow[] }) {
   return (
@@ -83,10 +82,6 @@ export type ParticipantCardBodyProps = {
   variant?: 'page' | 'modal';
   /** Кнопка «назад к конкурсу» (в модалке жюри обычно скрыта). */
   showBackButton?: boolean;
-  /** Принудительно отключить «Предыдущая работа». */
-  lockWorkNavigationPrevious?: boolean;
-  /** Принудительно отключить «Следующая работа». */
-  lockWorkNavigationNext?: boolean;
 };
 
 export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
@@ -94,8 +89,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   participantId,
   variant = 'page',
   showBackButton = variant !== 'modal',
-  lockWorkNavigationPrevious = false,
-  lockWorkNavigationNext = false,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -118,12 +111,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const comments = useSelector((state: RootState) =>
     participantId ? state.comments.items[participantId] || EMPTY_COMMENTS : EMPTY_COMMENTS
   ) as ParticipantComment[];
-  const participantIds = useSelector((state: RootState) =>
-    contestId ? state.participants.byContest[contestId] || [] : []
-  );
-  const participantsListTotal = useSelector((state: RootState) =>
-    contestId ? state.participants.listTotalByContest[contestId] ?? 0 : 0
-  );
   const { currentContest } = useSelector((state: RootState) => state.contests);
   /** Пока store не подтянул конкурс по маршруту, в currentContest может оставаться предыдущий — иначе права (организатор) считаются для чужого конкурса. */
   const contestForThisPage = currentContest?.id === contestId ? currentContest : null;
@@ -173,181 +160,11 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [replyToComment, setReplyToComment] = useState<ParticipantComment | null>(null);
   const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
-  const [participantNavPending, setParticipantNavPending] = useState(false);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>([]);
   const commentsSectionRef = useRef<HTMLDivElement | null>(null);
   const staffCommentsMarkedRef = useRef(false);
   /** Чтобы не сбрасывать «загрузка» при повторном запуске эффекта с теми же id (Strict Mode / лишние deps). */
   const participantLoadKeyRef = useRef<string | null>(null);
-
-  const locationState = location.state as ParticipantLocationState | null;
-  const galleryNavigationFromLocation = locationState?.galleryNavigation;
-
-  /** Из state после перехода с галереи или синтез из списка в Redux (прямой URL). */
-  const galleryNavigation = useMemo((): ParticipantGalleryNavigationState | undefined => {
-    const fromLoc = galleryNavigationFromLocation;
-    if (fromLoc && fromLoc.contestId === contestId && fromLoc.total > 1) {
-      return fromLoc;
-    }
-    if (!contestId || participantsListTotal <= 1) {
-      return undefined;
-    }
-    return {
-      contestId,
-      nominationFilter: 'all',
-      submissionFilter: 'all',
-      votedOnly: false,
-      sort: 'created_at',
-      page: 0,
-      pageSize: DEFAULT_GALLERY_PAGE_SIZE,
-      total: participantsListTotal,
-    };
-  }, [galleryNavigationFromLocation, contestId, participantsListTotal]);
-
-  const hasGalleryNavigation =
-    !!contestId && !!galleryNavigation && galleryNavigation.contestId === contestId && galleryNavigation.total > 1;
-
-  const currentParticipantIndex = participantId ? participantIds.indexOf(participantId) : -1;
-  const participantInLoadedGallerySlice = currentParticipantIndex >= 0;
-
-  const showGalleryWorkNav = hasGalleryNavigation && participantInLoadedGallerySlice;
-
-  const currentGalleryPage = hasGalleryNavigation ? Math.max(0, galleryNavigation!.page) : 0;
-  const currentGalleryPageSize = hasGalleryNavigation
-    ? Math.max(1, galleryNavigation!.pageSize || DEFAULT_GALLERY_PAGE_SIZE)
-    : DEFAULT_GALLERY_PAGE_SIZE;
-
-  const hasPreviousParticipant = showGalleryWorkNav
-    ? currentParticipantIndex > 0 || currentGalleryPage > 0
-    : false;
-  const hasNextParticipant = showGalleryWorkNav
-    ? currentParticipantIndex >= 0 &&
-      (currentParticipantIndex < participantIds.length - 1 ||
-        (currentGalleryPage + 1) * currentGalleryPageSize < galleryNavigation!.total)
-    : false;
-
-  const buildGalleryNavigationState = (
-    page: number,
-    total: number
-  ): ParticipantGalleryNavigationState | undefined => {
-    if (!hasGalleryNavigation || !galleryNavigation) {
-      return undefined;
-    }
-    return {
-      ...galleryNavigation,
-      page,
-      total,
-    };
-  };
-
-  const navigateToParticipantInGallery = (
-    targetParticipantId: string,
-    page: number,
-    total: number
-  ) => {
-    if (!contestId) {
-      return;
-    }
-    navigate(`/contests/${contestId}/participants/${targetParticipantId}`, {
-      state: { galleryNavigation: buildGalleryNavigationState(page, total) },
-    });
-  };
-
-  const fetchGalleryPage = async (page: number) => {
-    if (!contestId || !hasGalleryNavigation || !galleryNavigation) {
-      return null;
-    }
-    const result = await dispatch(
-      fetchParticipantsByContest({
-        contestId,
-        nominationFilter: galleryNavigation.nominationFilter,
-        submissionFilter: galleryNavigation.submissionFilter,
-        votedOnly: galleryNavigation.votedOnly,
-        sort: galleryNavigation.sort,
-        limit: currentGalleryPageSize,
-        offset: page * currentGalleryPageSize,
-      })
-    ).unwrap();
-    return result;
-  };
-
-  const handleGoToPreviousParticipant = async () => {
-    if (!hasPreviousParticipant || !contestId || !participantId || participantNavPending) {
-      return;
-    }
-    if (currentParticipantIndex > 0) {
-      navigateToParticipantInGallery(
-        participantIds[currentParticipantIndex - 1],
-        currentGalleryPage,
-        participantsListTotal || galleryNavigation?.total || 0
-      );
-      return;
-    }
-    if (currentGalleryPage <= 0) {
-      return;
-    }
-    try {
-      setParticipantNavPending(true);
-      const previousPage = currentGalleryPage - 1;
-      const payload = await fetchGalleryPage(previousPage);
-      const previousPageIds = payload?.participants?.map((p) => p.id) || [];
-      const previousParticipantId = previousPageIds[previousPageIds.length - 1];
-      if (previousParticipantId) {
-        navigateToParticipantInGallery(previousParticipantId, previousPage, payload?.total ?? 0);
-      }
-    } finally {
-      setParticipantNavPending(false);
-    }
-  };
-
-  const handleGoToNextParticipant = async () => {
-    if (!hasNextParticipant || !contestId || !participantId || participantNavPending) {
-      return;
-    }
-    if (currentParticipantIndex >= 0 && currentParticipantIndex < participantIds.length - 1) {
-      navigateToParticipantInGallery(
-        participantIds[currentParticipantIndex + 1],
-        currentGalleryPage,
-        participantsListTotal || galleryNavigation?.total || 0
-      );
-      return;
-    }
-    try {
-      setParticipantNavPending(true);
-      const nextPage = currentGalleryPage + 1;
-      const payload = await fetchGalleryPage(nextPage);
-      const nextParticipantId = payload?.participants?.[0]?.id;
-      if (nextParticipantId) {
-        navigateToParticipantInGallery(nextParticipantId, nextPage, payload?.total ?? 0);
-      }
-    } finally {
-      setParticipantNavPending(false);
-    }
-  };
-
-  /** Прямой заход на страницу работы: подгрузить первую страницу списка, чтобы работали «Назад/Далее». */
-  useEffect(() => {
-    if (variant !== 'page' || !contestId) {
-      return;
-    }
-    if (galleryNavigationFromLocation?.contestId === contestId) {
-      return;
-    }
-    if (participantIds.length > 0) {
-      return;
-    }
-    void dispatch(
-      fetchParticipantsByContest({
-        contestId,
-        nominationFilter: 'all',
-        submissionFilter: 'all',
-        votedOnly: false,
-        sort: 'created_at',
-        limit: DEFAULT_GALLERY_PAGE_SIZE,
-        offset: 0,
-      })
-    );
-  }, [variant, contestId, galleryNavigationFromLocation, participantIds.length, dispatch]);
 
   useWebSocket(contestId ?? null, participantId ?? null);
 
@@ -508,6 +325,10 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     if (!text.trim() || !canComment) {
       return;
     }
+    const target = comments.find((c) => c.id === messageId);
+    if (!target || !userIdsEqual(currentUserId, target.user_id)) {
+      return;
+    }
     await dispatch(updateComment({ commentId: messageId, data: { text: text.trim() } }));
   };
 
@@ -549,6 +370,13 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
 
   const commentsHeadingCount =
     participant.comment_count != null ? participant.comment_count : comments.length;
+
+  const entrySummaryNormalized = normalizeComparableParticipantText(participant.entry_description ?? '');
+  const showEntrySummaryInHeading =
+    entrySummaryNormalized.length > 0 &&
+    entrySummaryNormalized !== normalizeComparableParticipantText(displayTitle) &&
+    (!petNameSubtitle ||
+      entrySummaryNormalized !== normalizeComparableParticipantText(petNameSubtitle));
 
   const infoDetails = (
     <>
@@ -638,7 +466,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       }
     >
       <h1 className="participant-page-work-title">{displayTitle}</h1>
-      {entrySummaryText ? (
+      {showEntrySummaryInHeading ? (
         <div className="participant-page-entry-summary">{descriptionWithBreaks(entrySummaryText)}</div>
       ) : null}
       {petNameSubtitle ? <p className="participant-page-title-sub">{petNameSubtitle}</p> : null}
@@ -734,40 +562,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       </div>
     ) : null;
 
-  /** Всегда под превью (страница и модалка), не в шапке */
-  const galleryWorkNav =
-    showGalleryWorkNav ? (
-      <nav
-        className="participant-page-work-nav participant-page-work-nav--under-media"
-        aria-label="Переход между работами в галерее"
-      >
-        <Button
-          type="button"
-          variant="secondary"
-          size="small"
-          className="participant-page-work-nav-btn"
-          onClick={() => void handleGoToPreviousParticipant()}
-          disabled={lockWorkNavigationPrevious || !hasPreviousParticipant || participantNavPending}
-          title="Предыдущая работа в галерее"
-          aria-label="Предыдущая работа в галерее"
-        >
-          Назад
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="small"
-          className="participant-page-work-nav-btn"
-          onClick={() => void handleGoToNextParticipant()}
-          disabled={lockWorkNavigationNext || !hasNextParticipant || participantNavPending}
-          title="Следующая работа в галерее"
-          aria-label="Следующая работа в галерее"
-        >
-          Далее
-        </Button>
-      </nav>
-    ) : null;
-
   const breadcrumb =
     variant === 'page' && contestForThisPage && contestId ? (
       <nav className="participant-page-breadcrumb" aria-label="Навигация по конкурсу">
@@ -803,6 +597,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       <div className="chat-window participant-page-comments-window">
         <div className="chat-content">
           <MessageList
+            className={variant === 'page' ? 'message-list--participant-work-page' : undefined}
             messages={comments}
             containedScroll={variant !== 'page'}
             currentUserId={currentUserId}
@@ -978,7 +773,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                 <div className="participant-page-hero-stage">
                   {mediaBlock}
                 </div>
-                {galleryWorkNav}
               </div>
               <div className="participant-page-split-aside">
                 <div className="participant-page-work-meta">
@@ -1012,7 +806,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             <div className="participant-page-content">
               {workHeading}
               {mediaBlock}
-              {galleryWorkNav}
               <div className="participant-page-info">
                 {infoDetails}
               </div>

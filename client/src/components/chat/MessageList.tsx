@@ -40,6 +40,8 @@ interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onReply?: (message: MessageListRow) => void;
   onVote?: (messageId: string, value: -1 | 1) => void;
+  /** Дополнительные классы корня списка (например модификатор страницы работы). */
+  className?: string;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -55,6 +57,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   onDeleteMessage,
   onReply,
   onVote,
+  className,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -165,7 +168,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div
-      className={`message-list${containedScroll ? '' : ' message-list--natural-flow'}`}
+      className={`message-list${containedScroll ? '' : ' message-list--natural-flow'}${className ? ` ${className}` : ''}`}
       ref={containedScroll ? listRef : undefined}
       onScroll={containedScroll ? handleScroll : undefined}
     >

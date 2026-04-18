@@ -139,16 +139,16 @@
   max-height: min(82dvh, calc(100dvh - 11rem));
 }
 
-/* Двухколоночный режим: фото вписывается в левую колонку по высоте экрана */
+/* Двухколоночный режим: высота по контенту (см. align-items: start на split-сетке), без растягивания под сайдбар */
 @media (min-width: 900px) {
   .participant-page-content--split .photo-gallery {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
-    height: 100%;
+    height: auto;
   }
 
   .participant-page-content--split .photo-gallery-item {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -158,8 +158,8 @@
     border-radius: 0;
     background: #ffffff;
     min-height: 0 !important;
-    flex: 1 1 0;
-    max-height: min(96dvh, 100%);
+    flex: 0 1 auto;
+    max-height: none;
     justify-content: center;
     align-items: center;
   }
@@ -167,7 +167,7 @@
   .participant-page-content--split .photo-gallery-image {
     border-radius: 0;
     max-width: 100%;
-    max-height: min(92dvh, 100%);
+    /* высота — правила страницы работы (.participant-page--work-view …), не 100% от растянутого flex-родителя */
     width: auto;
     height: auto;
     object-fit: contain;

@@ -149,10 +149,12 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 
-	// Check comment exists and belongs to user
 	comment, err := s.repository.GetComment(ctx, commentID)
 	if err != nil {
 		return nil, err
+	}
+	if comment.UserID != userID {
+		return nil, fmt.Errorf("only comment author can update comment: %w", model.ErrForbidden)
 	}
 
 	participant, err := s.repository.GetParticipant(ctx, comment.ParticipantID)
@@ -162,9 +164,6 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
 		return nil, err
-	}
-	if comment.UserID != userID {
-		return nil, fmt.Errorf("only comment author can update comment: %w", model.ErrForbidden)
 	}
 
 	updated, err := s.repository.UpdateComment(ctx, commentID, userID, text)
