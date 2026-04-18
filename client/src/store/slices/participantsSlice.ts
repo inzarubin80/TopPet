@@ -16,6 +16,8 @@ interface ParticipantsState {
   listTotalByContest: Record<ContestID, number>;
   /** Заявки текущего пользователя в конкурсе (черновик / регистрация), для кнопок «Уже участвуете» */
   mineByContest: Record<ContestID, Participant[]>;
+  /** Последний dispatch fetchParticipantsByContest — чтобы игнорировать устаревший fulfilled при гонке запросов. */
+  latestParticipantsListRequestId: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -25,6 +27,7 @@ const initialState: ParticipantsState = {
   byContest: {},
   listTotalByContest: {},
   mineByContest: {},
+  latestParticipantsListRequestId: null,
   loading: false,
   error: null,
 };
@@ -255,11 +258,15 @@ const participantsSlice = createSlice({
         state.error = action.payload as string;
       })
       // fetchParticipantsByContest
-      .addCase(fetchParticipantsByContest.pending, (state) => {
+      .addCase(fetchParticipantsByContest.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        state.latestParticipantsListRequestId = action.meta.requestId;
       })
       .addCase(fetchParticipantsByContest.fulfilled, (state, action) => {
+        if (action.meta.requestId !== state.latestParticipantsListRequestId) {
+          return;
+        }
         state.loading = false;
         const { contestId, participants, total } = action.payload;
         const participantIds: ParticipantID[] = [];
@@ -280,6 +287,9 @@ const participantsSlice = createSlice({
         state.mineByContest[contestId] = items;
       })
       .addCase(fetchParticipantsByContest.rejected, (state, action) => {
+        if (action.meta.requestId !== state.latestParticipantsListRequestId) {
+          return;
+        }
         state.loading = false;
         state.error = action.payload as string;
       })
