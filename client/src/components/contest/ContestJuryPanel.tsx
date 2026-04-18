@@ -516,7 +516,7 @@ const JuryMemberPublicView: React.FC<{ member: JuryMember }> = ({ member }) => {
         </div>
       ) : null}
       {url ? (
-        <div className="contest-jury-public-section">
+        <div className="contest-jury-public-section contest-jury-public-footer">
           <a
             className="contest-jury-public-link"
             href={url}

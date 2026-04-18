@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import type { Contest, ContestWinnerBrief, Nomination, Participant } from '../../types/models';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { NominationTabsBar } from '../common/NominationTabsBar';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import './ParticipantCard.css';
 import {
@@ -314,27 +315,16 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
   return (
     <div className="contest-winners-section">
       {showNominationTabs ? (
-        <div className="contest-winners-section__tabs" role="tablist" aria-label="Номинации">
-          {tabKeys.map((key) => {
-            const label = labelForNominationKey(key, nominationTitleById);
-            const selected = key === activeNomKey;
-            return (
-              <button
-                key={key || '__none__'}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={
-                  selected
-                    ? 'contest-winners-section__tab contest-winners-section__tab--active'
-                    : 'contest-winners-section__tab'
-                }
-                onClick={() => setActiveKey(key)}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div className="contest-winners-section__nomination-tabs-wrap">
+          <NominationTabsBar
+            tabs={tabKeys.map((key) => ({
+              id: key,
+              label: labelForNominationKey(key, nominationTitleById),
+            }))}
+            selectedId={activeNomKey ?? ''}
+            onSelect={(id) => setActiveKey(id)}
+            ariaLabel="Номинации"
+          />
         </div>
       ) : null}
 

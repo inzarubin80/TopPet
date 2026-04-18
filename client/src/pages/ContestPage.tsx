@@ -41,6 +41,7 @@ import { ParticipantGalleryNavigationState } from '../types/participantNavigatio
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import { buildLoginUrl } from '../utils/navigation';
 import { SegmentMenu } from '../components/common/SegmentMenu';
+import { NominationTabsBar } from '../components/common/NominationTabsBar';
 import { getEffectiveContestStatus } from '../utils/contestEffectiveStatus';
 import {
   getJuryChairboardPhaseBlockedMessage,
@@ -920,43 +921,13 @@ const ContestPage: React.FC = () => {
               </div>
             </div>
             {contestNominations.length > 1 ? (
-              <div
-                className="contest-page-nomination-tabs-bar"
-                role="tablist"
-                aria-label="Фильтр по номинации"
-              >
-                <div className="contest-page-nomination-tab-row">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={participantsNominationFilter === 'all'}
-                    className={
-                      participantsNominationFilter === 'all'
-                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                        : 'contest-page-nomination-tab'
-                    }
-                    onClick={() => setParticipantsNominationFilter('all')}
-                  >
-                    Все номинации
-                  </button>
-                  {contestNominations.map((n) => (
-                    <button
-                      key={n.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={participantsNominationFilter === n.id}
-                      className={
-                        participantsNominationFilter === n.id
-                          ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                          : 'contest-page-nomination-tab'
-                      }
-                      onClick={() => setParticipantsNominationFilter(n.id)}
-                    >
-                      {n.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <NominationTabsBar
+                allTab={{ label: 'Все номинации', id: 'all' }}
+                tabs={contestNominations.map((n) => ({ id: n.id, label: n.title }))}
+                selectedId={participantsNominationFilter}
+                onSelect={(id) => setParticipantsNominationFilter(id as ParticipantsListNominationFilter)}
+                ariaLabel="Фильтр по номинации"
+              />
             ) : null}
             {showWorksParticipationChrome ? (
               <>

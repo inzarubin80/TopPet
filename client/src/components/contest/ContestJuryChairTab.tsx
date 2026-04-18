@@ -3,6 +3,7 @@ import { Button } from '../common/Button';
 import { JuryParticipantWorkCell } from './JuryParticipantWorkCell';
 import { ParticipantJuryReportModal } from './ParticipantJuryReportModal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { NominationTabsBar } from '../common/NominationTabsBar';
 import { getJuryChairboard, putJuryChairAssignments } from '../../api/juryChairApi';
 import type { ParticipantsListNominationFilter } from '../../api/participantsApi';
 import type {
@@ -375,30 +376,13 @@ export const ContestJuryChairTab: React.FC<Props> = ({
         </div>
 
         {nominations.length > 1 ? (
-          <div
-            className="contest-jury-voting-nomination-bar contest-page-nomination-tabs-bar"
-            role="tablist"
-            aria-label="Фильтр по номинации"
-          >
-            <div className="contest-page-nomination-tab-row">
-              {nominations.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={nominationFilter === n.id}
-                  className={
-                    nominationFilter === n.id
-                      ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                      : 'contest-page-nomination-tab'
-                  }
-                  onClick={() => setNominationFilter(n.id)}
-                >
-                  {n.title}
-                </button>
-              ))}
-            </div>
-          </div>
+          <NominationTabsBar
+            className="contest-jury-voting-nomination-bar"
+            tabs={nominations.map((n) => ({ id: n.id, label: n.title }))}
+            selectedId={nominationFilter}
+            onSelect={(id) => setNominationFilter(id as ParticipantsListNominationFilter)}
+            ariaLabel="Фильтр по номинации"
+          />
         ) : null}
 
         {displayRows.length === 0 ? (

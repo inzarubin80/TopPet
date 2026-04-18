@@ -199,6 +199,8 @@
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background: var(--color-surface);
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .contest-jury-panel--public .contest-jury-item-head {
@@ -219,6 +221,14 @@
 .contest-jury-panel--public .contest-jury-public {
   font-size: 0.9rem;
   color: #334155;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.contest-jury-panel--public .contest-jury-public-footer {
+  margin-top: auto;
 }
 
 .contest-jury-panel--public .contest-jury-public-bio {

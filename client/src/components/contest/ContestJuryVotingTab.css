@@ -28,12 +28,12 @@
   background: var(--color-surface);
 }
 
-.contest-jury-voting-nomination-bar .contest-page-nomination-tab-row {
+.contest-jury-voting-nomination-bar .nomination-tabs-bar__row {
   width: 100%;
   align-items: center;
 }
 
-.contest-page-nomination-tab-row .contest-jury-voting-likes-tab {
+.nomination-tabs-bar__row .contest-jury-voting-likes-tab {
   margin-left: auto;
 }
 

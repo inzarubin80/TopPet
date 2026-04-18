@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../common/Button';
 import { JuryParticipantWorkCell } from './JuryParticipantWorkCell';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { NominationTabsBar } from '../common/NominationTabsBar';
 import { listJuryCriteria } from '../../api/juryCriteriaApi';
 import { getMyJuryScores, putMyJuryScores } from '../../api/juryScoresApi';
 import {
@@ -565,51 +566,26 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
           </div>
         </div>
 
-        <div
-          className="contest-jury-voting-nomination-bar contest-page-nomination-tabs-bar"
-          role="toolbar"
-          aria-label="Фильтры списка работ"
-        >
-          <div className="contest-page-nomination-tab-row">
-            {nominations.length > 1 ? (
-              <>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={nominationFilter === 'all'}
-                  className={
-                    nominationFilter === 'all'
-                      ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                      : 'contest-page-nomination-tab'
-                  }
-                  onClick={() => setNominationFilter('all')}
-                >
-                  Все номинации
-                </button>
-                {nominations.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={nominationFilter === n.id}
-                    className={
-                      nominationFilter === n.id
-                        ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                        : 'contest-page-nomination-tab'
-                    }
-                    onClick={() => setNominationFilter(n.id)}
-                  >
-                    {n.title}
-                  </button>
-                ))}
-              </>
-            ) : null}
+        <NominationTabsBar
+          className="contest-jury-voting-nomination-bar"
+          variant="toolbar"
+          ariaLabel="Фильтры списка работ"
+          allTab={
+            nominations.length > 1 ? { label: 'Все номинации', id: 'all' } : undefined
+          }
+          tabs={
+            nominations.length > 1
+              ? nominations.map((n) => ({ id: n.id, label: n.title }))
+              : []
+          }
+          selectedId={nominationFilter}
+          onSelect={(id) => setNominationFilter(id as ParticipantsListNominationFilter)}
+          trailing={
             <button
               type="button"
               className={[
-                likesOnly
-                  ? 'contest-page-nomination-tab contest-page-nomination-tab--active'
-                  : 'contest-page-nomination-tab',
+                'nomination-tabs-bar__tab',
+                likesOnly ? 'nomination-tabs-bar__tab--active' : '',
                 nominations.length > 1 ? 'contest-jury-voting-likes-tab' : '',
               ]
                 .filter(Boolean)
@@ -624,8 +600,8 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
             >
               Мне нравится
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {participants.length === 0 ? (
           <p className="contest-jury-voting-empty">
