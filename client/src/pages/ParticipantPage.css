@@ -117,32 +117,6 @@
   min-width: 0;
 }
 
-.participant-page-contest-link {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 8px 6px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  border-radius: 8px;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
-}
-
-.participant-page-contest-link:hover {
-  color: var(--contest-accent, #1d4ed8);
-  background: rgba(2, 6, 23, 0.04);
-}
-
-.participant-page-contest-link:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
-
 .participant-page-back-button {
   display: flex;
   align-items: center;
@@ -329,17 +303,30 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
 }
 
-/* Страница работы: предыд./след. под фото в левой колонке — всегда в зоне видимости */
+/* Компактные подписи — помещаются в узкую колонку с фото */
+.participant-page-work-nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(50% - 4px);
+  font-size: 13px;
+  padding-left: 10px;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+
+/* Страница работы: предыд./след. под фото в левой колонке */
 .participant-page-work-nav--under-media {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 10px 14px 12px;
+  padding: 8px 6px 10px;
   margin: 0;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
   background: #ffffff;
@@ -347,7 +334,7 @@
 
 @media (max-width: 899px) {
   .participant-page-work-nav--under-media {
-    padding: 12px 16px 14px;
+    padding: 10px 12px 12px;
   }
 }
 
@@ -437,6 +424,26 @@
 @media (min-width: 769px) {
   .participant-page-media .photo-gallery-image-container {
     min-height: min(65dvh, 560px);
+  }
+}
+
+/* Страница работы: превью влезает по высоте окна (без искусственного min-height и без прокрутки только из-за серой рамки) */
+.participant-page--work-view .participant-page-media .photo-gallery-image-container {
+  min-height: 0;
+  max-height: min(64dvh, calc(100dvh - 11rem));
+}
+
+.participant-page--work-view .participant-page-media .photo-gallery-image {
+  max-height: min(62dvh, calc(100dvh - 11.25rem));
+}
+
+@media (max-width: 899px) {
+  .participant-page--work-view .participant-page-media .photo-gallery-image-container {
+    max-height: min(48dvh, calc(100dvh - 10rem));
+  }
+
+  .participant-page--work-view .participant-page-media .photo-gallery-image {
+    max-height: min(46dvh, calc(100dvh - 10.25rem));
   }
 }
 
@@ -751,27 +758,62 @@
   min-height: 0;
 }
 
-/* «Назад» и ссылка на конкурс — слева поверх области изображения (страница работы) */
-.participant-page-hero-stage--floating-back {
-  position: relative;
+/* Колонка «назад» слева от превью (страница работы), не оверлей */
+.participant-page-split-back {
+  flex-shrink: 0;
+  align-self: start;
+  padding: 0 12px 0 0;
+  box-sizing: border-box;
 }
 
-.participant-page-floating-back {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 12;
-  padding: 8px;
-  max-width: calc(100% - 8px);
-  pointer-events: none;
+.participant-page-back-cluster--split-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.participant-page-floating-back .participant-page-back-cluster--over-media {
-  pointer-events: auto;
-  flex-wrap: wrap;
+.participant-page-split-rail-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  width: 44px;
+  flex-shrink: 0;
 }
 
-.participant-page-back-button--over-media {
+.participant-page-icon-btn--split-rail {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
+  color: #334155;
+}
+
+.participant-page-icon-btn--split-rail:hover {
+  background: #fff;
+  border-color: rgba(37, 99, 235, 0.45);
+  color: #2563eb;
+}
+
+.participant-page-icon-btn--split-rail:active {
+  background: #f8fafc;
+}
+
+.participant-page-icon-btn--split-rail.participant-page-icon-btn-danger:hover {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.35);
+  color: #dc2626;
+}
+
+.participant-page-icon-btn--split-rail.participant-page-icon-btn-danger:active {
+  background: #fee2e2;
+}
+
+.participant-page-back-button--split-rail {
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -781,102 +823,89 @@
   color: #334155;
 }
 
-.participant-page-back-button--over-media:hover {
+.participant-page-back-button--split-rail:hover {
   background: #fff;
   border-color: rgba(37, 99, 235, 0.45);
   color: #2563eb;
   transform: none;
 }
 
-.participant-page-contest-link--over-media {
-  padding: 8px 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
+.participant-page-back-button--split-rail:active {
+  transform: none;
 }
 
-.participant-page-contest-link--over-media:hover {
-  color: var(--contest-accent, #1d4ed8);
-  background: #fff;
-}
-
-/* Ноутбук: фото слева, справа — текст + комментарии.
-   Высота ограничена окном: иначе строка грида растягивается по самой высокой колонке,
-   и на ноутбуке одновременно не видны кнопки «Предыдущая/следующая работа» и поле чата.
-   Прокрутка — внутри колонок; нижние блоки липкие к низу панели. */
+/* Десктоп: сетка фото + сайдбар; прокрутка страницы целиком, без скролла внутри колонок. */
 @media (min-width: 900px) {
+  /* Отступ сверху как на референсе; общая прокрутка страницы, без скролла внутри колонок */
   .participant-page--work-view {
-    display: flex;
-    flex-direction: column;
-    min-height: calc(100dvh - 56px);
-    max-height: calc(100dvh - 56px);
-    overflow: hidden;
-    padding-bottom: 14px;
-    /* Левая колонка с рисунком — ближе к краю экрана */
-    padding-left: 0;
-    padding-right: 12px;
+    padding: 28px 20px 40px;
   }
 
   .participant-page--work-view .participant-page-header--work-view {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .participant-page-main--work-view {
-    flex: 1;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
 
   .participant-page-article--work-view {
-    flex: 1;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
 
   .participant-page-content--split {
-    flex: 1;
-    min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(320px, 520px);
-    grid-template-rows: minmax(0, 1fr);
-    align-items: stretch;
+    grid-template-rows: auto;
+    align-items: start;
     width: 100%;
-    overflow: hidden;
+  }
+
+  .participant-page-content--split.participant-page-content--split-with-back {
+    grid-template-columns: auto minmax(0, 1.15fr) minmax(320px, 520px);
+  }
+
+  .participant-page-content--split-with-back .participant-page-split-back {
+    align-self: start;
+    padding-top: 0;
+    padding-right: 20px;
+  }
+
+  /* Чуть сместить блок с фото вправо относительно стрелки */
+  .participant-page-content--split-with-back .participant-page-split-media {
+    padding-left: 8px;
+    padding-top: 0;
   }
 
   .participant-page-split-media {
     min-width: 0;
-    min-height: 0;
-    height: 100%;
-    align-self: stretch;
+    align-self: start;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
     background: #ffffff;
     padding-bottom: 12px;
     box-sizing: border-box;
   }
 
   .participant-page-split-media .participant-page-media {
-    flex: 1 1 0;
+    flex: 0 0 auto;
+    align-items: flex-start;
     min-height: 0;
     width: 100%;
     max-width: none;
     margin: 0;
   }
 
+  /* Картинка прижата к верху серой области, как правая колонка — без вертикального центрирования */
+  .participant-page-split-media .photo-gallery-image-container {
+    align-items: flex-start;
+    justify-content: center;
+  }
+
   .participant-page-split-media .participant-page-hero-stage {
-    flex: 1;
+    flex: 0 0 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -884,27 +913,27 @@
 
   .participant-page-split-aside {
     min-width: 0;
-    min-height: 0;
-    height: 100%;
+    align-self: start;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
     background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
   }
 
   /* flex-shrink: 0 — иначе при flex: 1 у комментариев блок сжимается ниже высоты «Поля заявки»
      и контент визуально накладывается на «Нравится» (overflow по умолчанию visible). */
-  .participant-page-work-meta {
+  .participant-page-split-aside .participant-page-work-meta {
     flex: 0 0 auto;
-    padding: 14px 16px 12px;
+    padding: 0 16px 12px;
     box-sizing: border-box;
   }
 
+  .participant-page-split-aside .participant-page-like-row {
+    padding-top: 0;
+  }
+
   .participant-page-comments-section--split {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -913,7 +942,6 @@
     margin-right: 0 !important;
     max-width: none !important;
     padding: 0 10px 10px !important;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
   }
 
   .participant-page-comments-section--split.participant-page-comments-surface--work-view {
@@ -929,29 +957,25 @@
   }
 
   .participant-page-comments-section--split .participant-page-comments-window {
-    flex: 1;
-    min-height: min(160px, 28vh) !important;
+    flex: 0 0 auto;
     height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
   }
 
   .participant-page-comments-section--split .chat-window {
     min-height: 0;
+    height: auto;
   }
 
   .participant-page-work-nav--under-media {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.07);
+    position: relative;
+    box-shadow: none;
   }
 
   .participant-page-comments-section--split .chat-footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 4;
-    box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.07);
-    background: var(--color-surface, #ffffff);
+    position: relative;
+    box-shadow: none;
   }
 }
 
@@ -969,8 +993,8 @@
     font-size: 20px;
   }
 
-  .participant-page-work-meta {
-    padding: 10px 14px 8px;
+  .participant-page-split-aside .participant-page-work-meta {
+    padding: 0 14px 8px;
   }
 
   .participant-page-comments-section--split .participant-page-comments-section-title {
@@ -979,16 +1003,19 @@
   }
 }
 
-/* Узкий экран и телефон: колонки стопкой */
+/* Узкий экран и телефон: колонки стопкой (стрелка — над превью) */
 @media (max-width: 899px) {
   .participant-page-content--split {
     display: flex;
     flex-direction: column;
   }
 
+  .participant-page-split-back {
+    padding: 0 0 8px;
+    width: 100%;
+  }
+
   .participant-page-split-aside {
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-top: none;
     background: #ffffff;
   }
 
@@ -1123,7 +1150,18 @@
   background: transparent;
   padding: 28px 4px 0;
   margin-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Комментарии на странице работы: без отдельного скролла и фиксированной высоты окна */
+.participant-page-comments-section--split .participant-page-comments-window.chat-window {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.participant-page-comments-section--split .chat-content {
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  min-height: 0 !important;
 }
 
 .participant-page-comments-section-title .participant-page-comments-count {
@@ -1157,6 +1195,11 @@
   .participant-page-comments-window {
     min-height: 320px;
     height: min(70vh, 440px);
+  }
+
+  .participant-page-comments-section--split .participant-page-comments-window {
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   .participant-page-registration-row {

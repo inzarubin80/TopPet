@@ -33,6 +33,7 @@ import {
 } from '../../utils/registrationAnswersDisplay';
 import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../../utils/seo';
 import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
+import { userIdsEqual } from '../../utils/userId';
 import type { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
 import { MessageList } from '../chat/MessageList';
 import { MessageInput, MessageSendPayload } from '../chat/MessageInput';
@@ -124,6 +125,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     contestId ? state.participants.listTotalByContest[contestId] ?? 0 : 0
   );
   const { currentContest } = useSelector((state: RootState) => state.contests);
+  /** Пока store не подтянул конкурс по маршруту, в currentContest может оставаться предыдущий — иначе права (организатор) считаются для чужого конкурса. */
+  const contestForThisPage = currentContest?.id === contestId ? currentContest : null;
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const currentUserId = currentUser?.id;
   const myContestParticipants = useSelector((state: RootState) =>
@@ -150,8 +153,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     if (!contestId || !currentUserId) return;
     void dispatch(fetchMyParticipantsForContest({ contestId }));
   }, [contestId, currentUserId, dispatch]);
-  const contestPhase = currentContest
-    ? getEffectiveContestStatus(currentContest)
+  const contestPhase = contestForThisPage
+    ? getEffectiveContestStatus(contestForThisPage)
     : 'draft';
   const phaseAllowsLikes =
     contestPhase === 'registration' || contestPhase === 'voting';
@@ -159,11 +162,11 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   /** Только автор заявки в фазе приёма/черновика; удаление на сервере разрешено только автору. */
   const showOwnerParticipantActions = isOwner && canEdit;
   /** После загрузки конкурса в store; этап конкурса не ограничивает комментарии. */
-  const canComment = !!currentContest;
+  const canComment = !!contestForThisPage;
   const isContestOwner =
-    !!currentContest &&
+    !!contestForThisPage &&
     !!currentUserId &&
-    userCanManageContest(currentContest, currentUserId, currentUser ?? undefined);
+    userCanManageContest(contestForThisPage, currentUserId, currentUser ?? undefined);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -178,18 +181,42 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const participantLoadKeyRef = useRef<string | null>(null);
 
   const locationState = location.state as ParticipantLocationState | null;
-  const galleryNavigation = locationState?.galleryNavigation;
+  const galleryNavigationFromLocation = locationState?.galleryNavigation;
+
+  /** Из state после перехода с галереи или синтез из списка в Redux (прямой URL). */
+  const galleryNavigation = useMemo((): ParticipantGalleryNavigationState | undefined => {
+    const fromLoc = galleryNavigationFromLocation;
+    if (fromLoc && fromLoc.contestId === contestId && fromLoc.total > 1) {
+      return fromLoc;
+    }
+    if (!contestId || participantsListTotal <= 1) {
+      return undefined;
+    }
+    return {
+      contestId,
+      nominationFilter: 'all',
+      submissionFilter: 'all',
+      votedOnly: false,
+      sort: 'created_at',
+      page: 0,
+      pageSize: DEFAULT_GALLERY_PAGE_SIZE,
+      total: participantsListTotal,
+    };
+  }, [galleryNavigationFromLocation, contestId, participantsListTotal]);
+
   const hasGalleryNavigation =
-    !!contestId &&
-    !!galleryNavigation &&
-    galleryNavigation.contestId === contestId &&
-    galleryNavigation.total > 1;
-  const showGalleryWorkNav = hasGalleryNavigation;
-  const currentGalleryPage = hasGalleryNavigation ? Math.max(0, galleryNavigation.page) : 0;
-  const currentGalleryPageSize = hasGalleryNavigation
-    ? Math.max(1, galleryNavigation.pageSize || DEFAULT_GALLERY_PAGE_SIZE)
-    : DEFAULT_GALLERY_PAGE_SIZE;
+    !!contestId && !!galleryNavigation && galleryNavigation.contestId === contestId && galleryNavigation.total > 1;
+
   const currentParticipantIndex = participantId ? participantIds.indexOf(participantId) : -1;
+  const participantInLoadedGallerySlice = currentParticipantIndex >= 0;
+
+  const showGalleryWorkNav = hasGalleryNavigation && participantInLoadedGallerySlice;
+
+  const currentGalleryPage = hasGalleryNavigation ? Math.max(0, galleryNavigation!.page) : 0;
+  const currentGalleryPageSize = hasGalleryNavigation
+    ? Math.max(1, galleryNavigation!.pageSize || DEFAULT_GALLERY_PAGE_SIZE)
+    : DEFAULT_GALLERY_PAGE_SIZE;
+
   const hasPreviousParticipant = showGalleryWorkNav
     ? currentParticipantIndex > 0 || currentGalleryPage > 0
     : false;
@@ -297,6 +324,30 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       setParticipantNavPending(false);
     }
   };
+
+  /** Прямой заход на страницу работы: подгрузить первую страницу списка, чтобы работали «Назад/Далее». */
+  useEffect(() => {
+    if (variant !== 'page' || !contestId) {
+      return;
+    }
+    if (galleryNavigationFromLocation?.contestId === contestId) {
+      return;
+    }
+    if (participantIds.length > 0) {
+      return;
+    }
+    void dispatch(
+      fetchParticipantsByContest({
+        contestId,
+        nominationFilter: 'all',
+        submissionFilter: 'all',
+        votedOnly: false,
+        sort: 'created_at',
+        limit: DEFAULT_GALLERY_PAGE_SIZE,
+        offset: 0,
+      })
+    );
+  }, [variant, contestId, galleryNavigationFromLocation, participantIds.length, dispatch]);
 
   useWebSocket(contestId ?? null, participantId ?? null);
 
@@ -627,12 +678,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       }
     >
       {participant.photos && participant.photos.length > 0 && (
-        <PhotoGallery
-          photos={participant.photos}
-          showOwnerActions={variant === 'page' && showOwnerParticipantActions}
-          onEdit={() => setIsEditModalOpen(true)}
-          onDelete={() => setIsDeleteModalOpen(true)}
-        />
+        <PhotoGallery photos={participant.photos} />
       )}
       {!participant.photos?.length && !isOwner && (
         <div className="participant-page-media-empty">Нет медиа</div>
@@ -640,43 +686,97 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     </div>
   );
 
-  const showFloatingBack = variant === 'page' && showBackButton;
+  const showSplitBackRail = variant === 'page' && showBackButton;
 
-  const floatingBackCluster = showFloatingBack ? (
-    <div className="participant-page-floating-back" role="navigation" aria-label="Навигация">
-      <div className="participant-page-back-cluster participant-page-back-cluster--over-media">
-        <button
-          type="button"
-          className="participant-page-back-button participant-page-back-button--over-media"
-          onClick={() => contestId && navigate(`/contests/${contestId}#gallery`)}
-          aria-label="В галерею конкурса"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-        {contestId ? (
+  const splitBackRail =
+    showSplitBackRail ? (
+      <div className="participant-page-split-back" role="navigation" aria-label="Навигация">
+        <div className="participant-page-back-cluster participant-page-back-cluster--split-rail">
           <button
             type="button"
-            className="participant-page-contest-link participant-page-contest-link--over-media"
-            onClick={() => navigate(`/contests/${contestId}#gallery`)}
+            className="participant-page-back-button participant-page-back-button--split-rail"
+            onClick={() => contestId && navigate(`/contests/${contestId}#gallery`)}
+            aria-label="В галерею конкурса"
           >
-            В галерею
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
           </button>
-        ) : null}
+          {showOwnerParticipantActions && participant.photos?.length ? (
+            <div className="participant-page-split-rail-actions" role="toolbar" aria-label="Действия с заявкой">
+              <button
+                type="button"
+                className="participant-page-icon-btn participant-page-icon-btn--split-rail"
+                onClick={() => setIsEditModalOpen(true)}
+                title="Редактировать заявку"
+                aria-label="Редактировать заявку"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="participant-page-icon-btn participant-page-icon-btn-danger participant-page-icon-btn--split-rail"
+                onClick={() => setIsDeleteModalOpen(true)}
+                title="Удалить"
+                aria-label="Удалить"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
+
+  /** Всегда под превью (страница и модалка), не в шапке */
+  const galleryWorkNav =
+    showGalleryWorkNav ? (
+      <nav
+        className="participant-page-work-nav participant-page-work-nav--under-media"
+        aria-label="Переход между работами в галерее"
+      >
+        <Button
+          type="button"
+          variant="secondary"
+          size="small"
+          className="participant-page-work-nav-btn"
+          onClick={() => void handleGoToPreviousParticipant()}
+          disabled={lockWorkNavigationPrevious || !hasPreviousParticipant || participantNavPending}
+          title="Предыдущая работа в галерее"
+          aria-label="Предыдущая работа в галерее"
+        >
+          Назад
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="small"
+          className="participant-page-work-nav-btn"
+          onClick={() => void handleGoToNextParticipant()}
+          disabled={lockWorkNavigationNext || !hasNextParticipant || participantNavPending}
+          title="Следующая работа в галерее"
+          aria-label="Следующая работа в галерее"
+        >
+          Далее
+        </Button>
+      </nav>
+    ) : null;
 
   const breadcrumb =
-    variant === 'page' && currentContest && contestId ? (
+    variant === 'page' && contestForThisPage && contestId ? (
       <nav className="participant-page-breadcrumb" aria-label="Навигация по конкурсу">
         <button
           type="button"
           className="participant-page-breadcrumb-link"
           onClick={() => navigate(`/contests/${contestId}#gallery`)}
         >
-          {currentContest.title}
+          {contestForThisPage.title}
         </button>
         <span className="participant-page-breadcrumb-sep" aria-hidden="true">
           /
@@ -704,13 +804,14 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         <div className="chat-content">
           <MessageList
             messages={comments}
+            containedScroll={variant !== 'page'}
             currentUserId={currentUserId}
             canVote={isAuthenticated}
             canReply={!!currentUserId && canComment}
             emptyLabel="Нет комментариев"
-            canEditMessage={(m) => currentUserId === m.user_id}
+            canEditMessage={(m) => userIdsEqual(currentUserId, m.user_id)}
             canDeleteMessage={(m) =>
-              currentUserId === m.user_id || (!!currentUserId && isContestOwner)
+              userIdsEqual(currentUserId, m.user_id) || (!!currentUserId && isContestOwner)
             }
             onUpdateMessage={(messageId, text) => void handleCommentUpdateFromList(messageId, text)}
             onDeleteMessage={(messageId) => void handleDeleteComment(messageId)}
@@ -788,10 +889,10 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         .filter(Boolean)
         .join(' ')}
     >
-      {participant && currentContest && contestId && participantId && variant === 'page' && (
+      {participant && contestForThisPage && contestId && participantId && variant === 'page' && (
         <ParticipantMetaTags
           participant={participant}
-          contest={currentContest}
+          contest={contestForThisPage}
           contestId={contestId}
           participantId={participantId}
         />
@@ -816,41 +917,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                 <path d="M19 12H5M12 19l-7-7 7-7" />
               </svg>
             </button>
-            {contestId ? (
-              <button
-                type="button"
-                className="participant-page-contest-link"
-                onClick={() => navigate(`/contests/${contestId}#gallery`)}
-              >
-                В галерею
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        {showGalleryWorkNav && variant !== 'page' ? (
-          <div className="participant-page-title-block">
-            <div className="participant-page-work-nav">
-              <Button
-                type="button"
-                variant="secondary"
-                size="small"
-                onClick={() => void handleGoToPreviousParticipant()}
-                disabled={
-                  lockWorkNavigationPrevious || !hasPreviousParticipant || participantNavPending
-                }
-              >
-                Предыдущая работа
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="small"
-                onClick={() => void handleGoToNextParticipant()}
-                disabled={lockWorkNavigationNext || !hasNextParticipant || participantNavPending}
-              >
-                Следующая работа
-              </Button>
-            </div>
           </div>
         ) : null}
         {showOwnerParticipantActions && (variant !== 'page' || !participant.photos?.length) && (
@@ -899,45 +965,20 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
           }
         >
           {variant === 'page' ? (
-            <div className="participant-page-content participant-page-content--work-view participant-page-content--split">
+            <div
+              className={[
+                'participant-page-content participant-page-content--work-view participant-page-content--split',
+                showSplitBackRail ? 'participant-page-content--split-with-back' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {splitBackRail}
               <div className="participant-page-split-media">
-                <div
-                  className={
-                    showFloatingBack
-                      ? 'participant-page-hero-stage participant-page-hero-stage--floating-back'
-                      : 'participant-page-hero-stage'
-                  }
-                >
-                  {floatingBackCluster}
+                <div className="participant-page-hero-stage">
                   {mediaBlock}
                 </div>
-                {showGalleryWorkNav ? (
-                  <nav
-                    className="participant-page-work-nav participant-page-work-nav--under-media"
-                    aria-label="Переход между работами в галерее"
-                  >
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="small"
-                      onClick={() => void handleGoToPreviousParticipant()}
-                      disabled={
-                        lockWorkNavigationPrevious || !hasPreviousParticipant || participantNavPending
-                      }
-                    >
-                      Предыдущая работа
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="small"
-                      onClick={() => void handleGoToNextParticipant()}
-                      disabled={lockWorkNavigationNext || !hasNextParticipant || participantNavPending}
-                    >
-                      Следующая работа
-                    </Button>
-                  </nav>
-                ) : null}
+                {galleryWorkNav}
               </div>
               <div className="participant-page-split-aside">
                 <div className="participant-page-work-meta">
@@ -947,7 +988,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                     {infoDetails}
                   </div>
                 </div>
-                {currentContest ? (
+                {contestForThisPage ? (
                   <div className="participant-page-like-row">
                     <VoteButton
                       contestId={contestId}
@@ -971,10 +1012,11 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             <div className="participant-page-content">
               {workHeading}
               {mediaBlock}
+              {galleryWorkNav}
               <div className="participant-page-info">
                 {infoDetails}
               </div>
-              {currentContest ? (
+              {contestForThisPage ? (
                 <div className="participant-page-like-row">
                   <VoteButton
                     contestId={contestId}
@@ -1006,8 +1048,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             participant={participant}
             nominations={editModalNominations}
             myContestParticipants={myContestParticipants}
-            contestMinPhotoCount={currentContest?.min_photo_count}
-            contestMaxPhotoCount={currentContest?.max_photo_count}
+            contestMinPhotoCount={contestForThisPage?.min_photo_count}
+            contestMaxPhotoCount={contestForThisPage?.max_photo_count}
           />
           <DeleteParticipantModal
             isOpen={isDeleteModalOpen}
