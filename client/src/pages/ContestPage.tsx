@@ -41,6 +41,11 @@ import { ParticipantGalleryNavigationState } from '../types/participantNavigatio
 import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import { buildLoginUrl } from '../utils/navigation';
 import { SegmentMenu } from '../components/common/SegmentMenu';
+import { getEffectiveContestStatus } from '../utils/contestEffectiveStatus';
+import {
+  getJuryChairboardPhaseBlockedMessage,
+} from '../utils/juryChairboardAccess';
+import '../components/contest/ContestJuryVotingTab.css';
 import './ContestPage.css';
 
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -323,15 +328,28 @@ const ContestPage: React.FC = () => {
     }
     return getContestScheduleDisplayLines(currentContest);
   }, [currentContest]);
-  const juryPrizePlaces = [...(currentContest?.jury_prize_places ?? [])].sort((a, b) => a.place - b.place);
-  const audiencePrizePlaces = [...(currentContest?.audience_prize_places ?? [])].sort(
-    (a, b) => a.place - b.place
+  const juryPrizePlaces = useMemo(
+    () => [...(currentContest?.jury_prize_places ?? [])].sort((a, b) => a.place - b.place),
+    [currentContest?.jury_prize_places]
+  );
+  const audiencePrizePlaces = useMemo(
+    () => [...(currentContest?.audience_prize_places ?? [])].sort((a, b) => a.place - b.place),
+    [currentContest?.audience_prize_places]
   );
   const activeTab = parseContestTabFromHash(location.hash);
   const canAccessJuryVotingTab =
     Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuror);
   const canAccessJuryChairTab =
     Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuryChair);
+
+  const effectiveContestStatus = useMemo(
+    () => (currentContest ? getEffectiveContestStatus(currentContest) : undefined),
+    [currentContest]
+  );
+  const juryChairPhaseBlockedMessage = useMemo(
+    () => (currentContest ? getJuryChairboardPhaseBlockedMessage(currentContest) : null),
+    [currentContest]
+  );
 
   const contestMenuItems = useMemo(() => {
     const items: { key: ContestTab; label: string }[] = [
@@ -1103,13 +1121,23 @@ const ContestPage: React.FC = () => {
         ) : null}
         {activeTab === 'jury_chair' && canAccessJuryChairTab && currentContest ? (
           <section className="contest-page-jury-voting" aria-label="Председатель жюри">
-            <ContestJuryChairTab
-              contestId={currentContest.id}
-              contestStatus={currentContest.status}
-              nominationTitleById={nominationTitleById}
-              nominations={contestNominations}
-              juryPrizePlaces={juryPrizePlaces}
-            />
+            {juryChairPhaseBlockedMessage ? (
+              <div className="contest-jury-voting">
+                <div className="contest-jury-voting-card">
+                  <p className="contest-jury-voting-empty" role="status">
+                    {juryChairPhaseBlockedMessage}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ContestJuryChairTab
+                contestId={currentContest.id}
+                contestStatus={effectiveContestStatus ?? currentContest.status}
+                nominationTitleById={nominationTitleById}
+                nominations={contestNominations}
+                juryPrizePlaces={juryPrizePlaces}
+              />
+            )}
           </section>
         ) : null}
       </div>

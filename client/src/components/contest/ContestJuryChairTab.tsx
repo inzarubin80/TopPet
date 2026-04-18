@@ -18,7 +18,8 @@ import type {
 import { getParticipantDisplayTitle } from '../../utils/seo';
 import { formatJuryTotalScore } from '../../utils/juryLabels';
 import { useToast } from '../../contexts/ToastContext';
-import { getApiErrorMessage } from '../../types/api';
+import { getApiErrorMessage, isApiError } from '../../types/api';
+import { juryChairboardForbiddenHintMessage } from '../../utils/juryChairboardAccess';
 import './ContestJuryVotingTab.css';
 import './ContestJuryChairTab.css';
 
@@ -164,7 +165,11 @@ export const ContestJuryChairTab: React.FC<Props> = ({
       setDraft(nextDraft);
       setSyncStatus('synced');
     } catch (e: unknown) {
-      showError(getApiErrorMessage(e));
+      showError(
+        isApiError(e) && e.response?.status === 403
+          ? juryChairboardForbiddenHintMessage()
+          : getApiErrorMessage(e)
+      );
       setBoard(null);
     } finally {
       setLoading(false);
@@ -218,7 +223,11 @@ export const ContestJuryChairTab: React.FC<Props> = ({
       setSyncStatus('synced');
     } catch (e: unknown) {
       setSyncStatus('error');
-      showError(getApiErrorMessage(e));
+      showError(
+        isApiError(e) && e.response?.status === 403
+          ? juryChairboardForbiddenHintMessage()
+          : getApiErrorMessage(e)
+      );
     }
   }, [canEdit, contestId, showError]);
 

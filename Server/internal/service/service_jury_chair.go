@@ -38,6 +38,24 @@ func juryChairContestAllowsWrite(c *model.Contest) bool {
 	}
 }
 
+// juryChairboardContestAllowsRead — фазы, в которых председатель/организатор могут открыть GET jury-chairboard.
+// В draft/publication свод доступен для подготовки (после проверки canAccessJuryChair); те же фазы для остальных
+// эндпоинтов чтения баллов по-прежнему закрыты (juryScoresContestAllowsRead).
+func juryChairboardContestAllowsRead(c *model.Contest) bool {
+	if c == nil {
+		return false
+	}
+	if juryScoresContestAllowsRead(c) {
+		return true
+	}
+	switch c.Status {
+	case model.ContestStatusDraft, model.ContestStatusPublication:
+		return true
+	default:
+		return false
+	}
+}
+
 // GetJuryChairboard — свод баллов по членам жюри и текущие места/призы из снимка (председатель или админ конкурса).
 func (s *TopPetService) GetJuryChairboard(ctx context.Context, contestID model.ContestID, actorID model.UserID, nominationFilter *model.ParticipantListNominationFilter) (*model.JuryChairboardData, error) {
 	contest, err := s.getContestForBusiness(ctx, contestID)
@@ -47,10 +65,10 @@ func (s *TopPetService) GetJuryChairboard(ctx context.Context, contestID model.C
 	if !contest.JuryVotingEnabled {
 		return nil, model.ErrorForbidden
 	}
-	if !juryScoresContestAllowsRead(contest) {
+	if !s.canAccessJuryChair(ctx, contest, actorID) {
 		return nil, model.ErrorForbidden
 	}
-	if !s.canAccessJuryChair(ctx, contest, actorID) {
+	if !juryChairboardContestAllowsRead(contest) {
 		return nil, model.ErrorForbidden
 	}
 
