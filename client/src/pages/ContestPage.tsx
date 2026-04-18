@@ -45,7 +45,6 @@ import './ContestPage.css';
 const PARTICIPANTS_PAGE_SIZE = 24;
 const EMPTY_STRING_ARRAY: string[] = [];
 const EMPTY_PARTICIPANTS_ARRAY: Participant[] = [];
-const EMPTY_VOTE_SLOTS: Record<string, boolean> = {};
 
 type ContestTab = 'about' | 'chat' | 'gallery' | 'winners' | 'jury_voting' | 'jury_chair';
 
@@ -122,9 +121,6 @@ const ContestPage: React.FC = () => {
   const [isDeleteParticipantModalOpen, setIsDeleteParticipantModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
-  const userVoteSlots = useSelector((state: RootState) =>
-    id ? state.contests.userVoteSlots[id] ?? EMPTY_VOTE_SLOTS : EMPTY_VOTE_SLOTS
-  );
 
   // Note: Removed userParticipant check - users can now have unlimited participants
 
@@ -480,7 +476,6 @@ const ContestPage: React.FC = () => {
   const sponsorLogoRaw = (currentContest.sponsor_logo_url || '').trim();
   const sponsorUrlRaw = (currentContest.sponsor_url || '').trim();
   const hasSponsorBlock = Boolean(sponsorUrlRaw || sponsorNameRaw || sponsorLogoRaw);
-  const voteCtaLabel = (currentContest.cta_label_override || '').trim() || undefined;
 
   const contestPageStyle =
     hasThemedAccent
@@ -1084,10 +1079,8 @@ const ContestPage: React.FC = () => {
                     }
                     contestStatus={currentContest.status}
                     publicVotingEnabled={currentContest.public_voting_enabled ?? true}
-                    voteCtaLabel={voteCtaLabel}
                     juryVotingEnabled={currentContest.jury_voting_enabled ?? false}
                     isContestAdmin={isAdmin}
-                    isVoted={Boolean(userVoteSlots[participant.id])}
                     galleryNavigationState={participantGalleryNavigationState ?? undefined}
                     onEdit={(p) => {
                       setEditingParticipant(p);

@@ -1,36 +1,29 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { Participant, ContestStatus } from '../../types/models';
 import { Button } from '../common/Button';
-import { buildLoginUrl } from '../../utils/navigation';
-import { getVotes, vote, unvote } from '../../api/votesApi';
-import { setUserVotesForContest } from '../../store/slices/contestsSlice';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
-import { patchParticipantSubmission, updateParticipantVotes } from '../../store/slices/participantsSlice';
+import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
 import { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
-import { formatJuryTotalScore } from '../../utils/juryLabels';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
   participant: Participant;
   contestId: string;
   contestStatus: ContestStatus;
-  /** Показывать сумму баллов жюри, если она пришла с сервера */
+  /** Учитывать призовые места жюри на обложке */
   juryVotingEnabled?: boolean;
   /** Подпись номинации (если заявка привязана к категории) */
   nominationTitle?: string;
-  /** По умолчанию true — если false, кнопка голосования скрыта */
+  /** По умолчанию true — если false, приз зрительского голосования на обложке скрыт */
   publicVotingEnabled?: boolean;
-  /** Подпись на кнопке голосования вместо «Голосовать» */
-  voteCtaLabel?: string;
   onEdit?: (participant: Participant) => void;
   onDelete?: (participant: Participant) => void;
   isContestAdmin?: boolean;
-  isVoted?: boolean;
   galleryNavigationState?: ParticipantGalleryNavigationState;
 }
 
@@ -40,25 +33,20 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   contestStatus,
   nominationTitle,
   publicVotingEnabled = true,
-  voteCtaLabel,
   onEdit,
   onDelete,
   isContestAdmin,
-  isVoted,
   juryVotingEnabled,
   galleryNavigationState,
 }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const { showError } = useToast();
-  const [isVoting, setIsVoting] = useState(false);
   const [moderationBusy, setModerationBusy] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
-  const { isOwner, canEdit, canVote } = useParticipantPermissions(
+  const { isOwner, canEdit } = useParticipantPermissions(
     participant,
     currentUserId,
     contestStatus,
@@ -151,46 +139,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     }
   };
 
-  const handleVoteClick = async (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (!canVote || isVoting) {
-      return;
-    }
-    if (!isAuthenticated) {
-      const returnUrl = location.pathname + location.search;
-      navigate(buildLoginUrl(returnUrl));
-      return;
-    }
-
-    try {
-      setIsVoting(true);
-      if (isVoted) {
-        await unvote(contestId, participant.id);
-        dispatch(
-          updateParticipantVotes({
-            participantId: participant.id,
-            totalVotes: Math.max(0, (participant.total_votes ?? 0) - 1),
-          })
-        );
-      } else {
-        await vote(contestId, { participant_id: participant.id });
-        dispatch(
-          updateParticipantVotes({
-            participantId: participant.id,
-            totalVotes: (participant.total_votes ?? 0) + 1,
-          })
-        );
-      }
-      const actualVotes = await getVotes(contestId);
-      dispatch(setUserVotesForContest({ contestId, votes: actualVotes }));
-    } catch (error) {
-      const errorMessage = isVoted ? 'Не удалось отменить голос' : 'Не удалось проголосовать';
-      errorHandler.handleError(error, () => showError(errorMessage));
-    } finally {
-      setIsVoting(false);
-    }
-  };
-
   const renderWinnerOverlay = (kind: 'audience' | 'jury', place: number) => (
     <div className={`participant-card-winner-overlay participant-card-winner-overlay-${kind}`}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -204,10 +152,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
 
   return (
     <>
-    <div
-      className={`participant-card ${isVoted ? 'participant-card-voted' : ''}`}
-      onClick={handleClick}
-    >
+    <div className="participant-card" onClick={handleClick}>
       <div className="participant-card-image-wrap">
         <div className="participant-card-image">
           {photos.length > 0 ? (
@@ -260,34 +205,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           ) : null}
         </div>
       </div>
-      <div className="participant-card-footer">
-        {juryVotingEnabled && participant.total_jury_score !== undefined ? (
-          <span className="participant-card-jury-total">
-            Сумма оценок жюри: {formatJuryTotalScore(participant.total_jury_score)}
-          </span>
-        ) : null}
-        {canVote && isAuthenticated && (
-          <div className="participant-card-vote" onClick={(event) => event.stopPropagation()}>
-            <Button
-              size="small"
-              variant={isVoted ? 'secondary' : 'primary'}
-              onClick={handleVoteClick}
-              disabled={isVoting}
-              className="participant-card-like-icon-btn"
-              title={isVoted ? 'Убрать лайк' : voteCtaLabel?.trim() || 'Поставить лайк'}
-              aria-label={isVoted ? 'Убрать лайк' : voteCtaLabel?.trim() || 'Поставить лайк'}
-            >
-              <svg
-                className={`participant-card-like-icon ${isVoted ? 'participant-card-like-icon-filled' : ''}`}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
-              </svg>
-            </Button>
-          </div>
-        )}
-        {(isContestAdmin || canEdit) && (
+      {(isContestAdmin || canEdit) && (
+        <div className="participant-card-footer">
           <div className="participant-card-icon-actions" onClick={(e) => e.stopPropagation()}>
             {canModerateSubmission ? (
               <div className="participant-card-moderation-row">
@@ -342,8 +261,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
     {rejectModalOpen ? (
       <div className="participant-card-reject-overlay" role="presentation" onClick={() => closeRejectModal()}>

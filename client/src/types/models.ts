@@ -280,6 +280,7 @@ export interface Comment {
   parent_id?: CommentID | null;
   user_id: UserID;
   user_name?: string;
+  user_avatar_url?: string;
   text: string;
   score: number;
   user_vote: number;
@@ -304,6 +305,7 @@ export interface ChatMessage {
   parent_id?: ChatMessageID | null;
   user_id: UserID;
   user_name?: string;
+  user_avatar_url?: string;
   text: string;
   is_system: boolean;
   score: number;
