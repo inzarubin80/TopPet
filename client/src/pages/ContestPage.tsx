@@ -130,6 +130,7 @@ const ContestPage: React.FC = () => {
 
   // Note: Removed userParticipant check - users can now have unlimited participants
 
+  const galleryParticipantsEffectRunRef = useRef(0);
   const participantsListContestIdRef = useRef<string | undefined>(undefined);
   const participantsListFiltersRef = useRef({
     nomination: participantsNominationFilter as string,
@@ -148,7 +149,15 @@ const ContestPage: React.FC = () => {
   }, [dispatch, id]);
 
   useEffect(() => {
+    galleryParticipantsEffectRunRef.current += 1;
+    const run = galleryParticipantsEffectRunRef.current;
     if (!id || !currentContest || currentContest.id !== id) {
+      console.log('[TopPet participants]', 'gallery effect', {
+        run,
+        branch: 'skip_no_contest',
+        id,
+        currentContestId: currentContest?.id,
+      });
       return;
     }
     if (participantsListContestIdRef.current !== id) {
@@ -167,6 +176,14 @@ const ContestPage: React.FC = () => {
         votedOnly: false,
         sort: initialSort,
       };
+      console.log('[TopPet participants]', 'gallery effect', {
+        run,
+        branch: 'reset_contest_filters_only',
+        contestId: id,
+        initialSort,
+        contestStatus: currentContest.status,
+        publicVoting: currentContest.public_voting_enabled,
+      });
       return;
     }
     const filtersChanged =
@@ -182,6 +199,11 @@ const ContestPage: React.FC = () => {
         sort: participantsSort,
       };
       if (participantsPage !== 0) {
+        console.log('[TopPet participants]', 'gallery effect', {
+          run,
+          branch: 'filters_changed_reset_page',
+          participantsPage,
+        });
         setParticipantsPage(0);
         return;
       }
@@ -192,6 +214,20 @@ const ContestPage: React.FC = () => {
       currentContest.status === 'registration';
     const limit = paginated ? PARTICIPANTS_PAGE_SIZE : 10000;
     const offset = paginated ? participantsPage * PARTICIPANTS_PAGE_SIZE : 0;
+    console.log('[TopPet participants]', 'gallery effect', {
+      run,
+      branch: 'dispatch_fetchParticipantsByContest',
+      contestId: id,
+      paginated,
+      limit,
+      offset,
+      participantsPage,
+      sort: participantsSort,
+      submissionFilter: participantsSubmissionFilter,
+      nominationFilter: participantsNominationFilter,
+      votedOnly: participantsVotedOnly,
+      filtersChanged,
+    });
     dispatch(
       fetchParticipantsByContest({
         contestId: id,

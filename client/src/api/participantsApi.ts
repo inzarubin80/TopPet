@@ -28,6 +28,8 @@ export type GetParticipantsByContestOptions = {
   votedOnly?: boolean;
   /** Сортировка: голоса, жюри, дата подачи (новые сверху) или число комментариев */
   sort?: ParticipantsListSort;
+  /** Отмена устаревшего запроса при новом dispatch списка (см. fetchParticipantsByContest). */
+  signal?: AbortSignal;
 };
 
 export type ParticipantsListResponse = {
@@ -78,7 +80,8 @@ export const getParticipantsByContest = async (
   }
   const qs = params.toString();
   const response = await axiosClient.get<ParticipantsListResponse>(
-    `/contests/${contestId}/participants${qs ? `?${qs}` : ''}`
+    `/contests/${contestId}/participants${qs ? `?${qs}` : ''}`,
+    options?.signal ? { signal: options.signal } : undefined
   );
   const data = response.data;
   return {
