@@ -45,6 +45,7 @@ import { getEffectiveContestStatus } from '../utils/contestEffectiveStatus';
 import {
   getJuryChairboardPhaseBlockedMessage,
 } from '../utils/juryChairboardAccess';
+import { useWebSocket } from '../hooks/useWebSocket';
 import '../components/contest/ContestJuryVotingTab.css';
 import './ContestPage.css';
 
@@ -97,6 +98,8 @@ const ContestPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
+  /** WS для обновления галереи/заявок без вкладки «Чат» (ChatWindow тоже держит то же соединение). */
+  useWebSocket(id ?? null, null);
   const { showError } = useToast();
   const { currentContest, loading } = useSelector((state: RootState) => state.contests);
   const { items: participants, loading: participantsLoading } = useSelector(
