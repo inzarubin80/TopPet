@@ -69,7 +69,7 @@ export const fetchParticipantsByContest = createAsyncThunk(
           offset?: number;
           sort?: ParticipantsListSort;
         },
-    { rejectWithValue, requestId }
+    { rejectWithValue }
   ) => {
     try {
       const contestId = typeof payload === 'string' ? payload : payload.contestId;
@@ -98,34 +98,14 @@ export const fetchParticipantsByContest = createAsyncThunk(
         }
         listOptions = Object.keys(o).length > 0 ? o : undefined;
       }
-      const hadPrevious = participantsListFetchAbort != null;
       participantsListFetchAbort?.abort();
       participantsListFetchAbort = new AbortController();
-      console.log('[TopPet participants]', 'list fetch start', {
-        requestId,
-        contestId,
-        nominationFilter,
-        submissionFilter,
-        votedOnly,
-        listOptions: listOptions ?? null,
-        abortedPreviousController: hadPrevious,
-      });
       const apiOptions: GetParticipantsByContestOptions = {
         ...(listOptions ?? {}),
         signal: participantsListFetchAbort.signal,
       };
       const { items: participants, total, limit: appliedLimit, offset: appliedOffset } =
         await participantsApi.getParticipantsByContest(contestId, nominationFilter, apiOptions);
-      const ids = participants?.map((p) => p.id) ?? [];
-      console.log('[TopPet participants]', 'list fetch HTTP ok', {
-        requestId,
-        contestId,
-        total,
-        itemsLen: participants?.length ?? 0,
-        participantIds: ids,
-        limit: appliedLimit,
-        offset: appliedOffset,
-      });
       return {
         contestId,
         participants,
@@ -136,13 +116,8 @@ export const fetchParticipantsByContest = createAsyncThunk(
       };
     } catch (error: unknown) {
       if (isParticipantsListRequestCancelled(error)) {
-        console.log('[TopPet participants]', 'list fetch cancelled (abort)', { requestId });
         return rejectWithValue({ _listFetchCancelled: true });
       }
-      console.log('[TopPet participants]', 'list fetch error', {
-        requestId,
-        message: getApiErrorMessage(error),
-      });
       return rejectWithValue(getApiErrorMessage(error));
     }
   }
@@ -304,26 +279,13 @@ const participantsSlice = createSlice({
         state.loading = true;
         state.error = null;
         state.latestParticipantsListRequestId = action.meta.requestId;
-        console.log('[TopPet participants]', 'redux pending', {
-          requestId: action.meta.requestId,
-        });
       })
       .addCase(fetchParticipantsByContest.fulfilled, (state, action) => {
-        const stale = action.meta.requestId !== state.latestParticipantsListRequestId;
-        const { contestId, participants, total } = action.payload;
-        const incomingIds = Array.isArray(participants) ? participants.map((p) => p.id) : [];
-        console.log('[TopPet participants]', 'redux fulfilled', {
-          requestId: action.meta.requestId,
-          latestId: state.latestParticipantsListRequestId,
-          stale,
-          contestId,
-          total,
-          participantIds: incomingIds,
-        });
-        if (stale) {
+        if (action.meta.requestId !== state.latestParticipantsListRequestId) {
           return;
         }
         state.loading = false;
+        const { contestId, participants, total } = action.payload;
         const participantIds: ParticipantID[] = [];
         if (Array.isArray(participants)) {
           participants.forEach((p) => {
@@ -349,19 +311,9 @@ const participantsSlice = createSlice({
           '_listFetchCancelled' in p &&
           (p as { _listFetchCancelled?: boolean })._listFetchCancelled === true
         ) {
-          console.log('[TopPet participants]', 'redux rejected (ignored cancel)', {
-            requestId: action.meta.requestId,
-          });
           return;
         }
-        const stale = action.meta.requestId !== state.latestParticipantsListRequestId;
-        console.log('[TopPet participants]', 'redux rejected', {
-          requestId: action.meta.requestId,
-          latestId: state.latestParticipantsListRequestId,
-          stale,
-          message: action.payload,
-        });
-        if (stale) {
+        if (action.meta.requestId !== state.latestParticipantsListRequestId) {
           return;
         }
         state.loading = false;
