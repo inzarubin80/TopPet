@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../store';
@@ -11,6 +11,8 @@ import { getProfileReferrer, clearProfileReferrer } from '../utils/navigation';
 import * as authApi from '../api/authApi';
 import { getApiErrorMessage } from '../types/api';
 import { fetchCurrentUser } from '../store/slices/authSlice';
+import { resolvePublicAssetUrl } from '../utils/seo';
+import { AvatarCropModal } from '../components/profile/AvatarCropModal';
 import './ProfilePage.css';
 
 const SYSTEM_ROLE_LABEL: Record<string, string> = {
@@ -29,13 +31,16 @@ const ProfilePage: React.FC = () => {
   const [dateOfBirth, setDateOfBirth] = useState(
     user?.date_of_birth ? user.date_of_birth.slice(0, 10) : ''
   );
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     dispatch(fetchCurrentUser());
@@ -47,12 +52,12 @@ const ProfilePage: React.FC = () => {
     setEmail(user.email || '');
     setPhone(user.phone || '');
     setDateOfBirth(user.date_of_birth ? user.date_of_birth.slice(0, 10) : '');
-    setAvatarUrl(user.avatar_url || '');
   }, [user]);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setAvatarError(null);
     setSuccess(false);
 
     const trimmedName = name.trim();
@@ -68,7 +73,6 @@ const ProfilePage: React.FC = () => {
         email: email.trim(),
         phone: phone.trim(),
         date_of_birth: dateOfBirth.trim(),
-        avatar_url: avatarUrl.trim(),
       });
       dispatch(setUser(updatedUser));
       setSuccess(true);
@@ -107,6 +111,48 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const closeAvatarCrop = () => {
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    if (avatarFileInputRef.current) {
+      avatarFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      return;
+    }
+    if (file.type.includes('svg')) {
+      setAvatarError('Выберите растровое изображение (не SVG)');
+      event.target.value = '';
+      return;
+    }
+    setAvatarError(null);
+    const url = URL.createObjectURL(file);
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+  };
+
+  const handleAvatarCroppedUpload = async (blob: Blob) => {
+    setAvatarUploading(true);
+    try {
+      const updatedUser = await authApi.uploadCurrentUserAvatar(blob);
+      dispatch(setUser(updatedUser));
+      setSuccess(true);
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err) || 'Не удалось загрузить аватар';
+      throw new Error(msg);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const handleLogout = () => {
     // Сначала определяем, куда редиректить (до logout, чтобы ProtectedRoute не перехватил)
     const referrer = getProfileReferrer();
@@ -130,7 +176,8 @@ const ProfilePage: React.FC = () => {
     navigate(targetUrl, { replace: true });
   };
 
-  const displayAvatarUrl = avatarUrl.trim() || user?.avatar_url;
+  const rawAvatarForDisplay = (user?.avatar_url || '').trim();
+  const displayAvatarUrl = rawAvatarForDisplay ? resolvePublicAssetUrl(rawAvatarForDisplay) : '';
 
   return (
     <div className="profile-page">
@@ -150,7 +197,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="profile-title">
             <h1>Профиль</h1>
-            <p>Имя, контакты и ссылка на аватар</p>
+            <p>Имя, контакты и фото профиля</p>
             <p className="profile-system-role">
               Роль в системе: {SYSTEM_ROLE_LABEL[user?.role || 'user'] || user?.role || 'Пользователь'}
             </p>
@@ -187,13 +234,31 @@ const ProfilePage: React.FC = () => {
             value={dateOfBirth}
             onChange={(event) => setDateOfBirth(event.target.value)}
           />
-          <Input
-            label="URL аватарки"
-            type="url"
-            value={avatarUrl}
-            onChange={(event) => setAvatarUrl(event.target.value)}
-            placeholder="https://…"
-          />
+          <div className="profile-avatar-upload">
+            <span className="profile-avatar-upload-label">Фото профиля</span>
+            <input
+              ref={avatarFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="profile-avatar-upload-input"
+              onChange={handleAvatarFileChange}
+              disabled={saving || avatarUploading}
+              tabIndex={-1}
+              aria-label="Выбрать файл фото профиля"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={saving || avatarUploading}
+              onClick={() => avatarFileInputRef.current?.click()}
+            >
+              {avatarUploading ? 'Загрузка…' : 'Загрузить фото'}
+            </Button>
+            <p className="profile-avatar-upload-hint">
+              Перед загрузкой можно обрезать фото и выбрать область лица.
+            </p>
+            {avatarError && <div className="profile-avatar-upload-error">{avatarError}</div>}
+          </div>
           {success && <div className="profile-success">Изменения сохранены</div>}
           <div className="profile-actions">
             <Button type="submit" disabled={saving}>
@@ -220,6 +285,15 @@ const ProfilePage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {avatarCropSrc && (
+        <AvatarCropModal
+          isOpen
+          imageSrc={avatarCropSrc}
+          onClose={closeAvatarCrop}
+          onApply={handleAvatarCroppedUpload}
+        />
+      )}
 
       <Modal
         isOpen={showDeleteConfirm}

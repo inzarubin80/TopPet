@@ -120,46 +120,6 @@
   }
 }
 
-.message-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: white;
-  flex-shrink: 0;
-  box-shadow: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.message-avatar--photo {
-  background-color: transparent;
-  padding: 0;
-  overflow: hidden;
-}
-
-.message-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  display: block;
-}
-
-.message-avatar-own {
-  order: 2;
-}
-
-.message-avatar-hidden {
-  opacity: 0;
-  width: 0;
-  margin: 0;
-  overflow: hidden;
-}
-
 .message-item {
   position: relative;
   width: 100%;
@@ -447,7 +407,7 @@
     max-width: 100%;
   }
 
-  .message-avatar {
+  .message-item-wrapper .messenger-user-avatar--md {
     width: 32px;
     height: 32px;
     font-size: 12px;

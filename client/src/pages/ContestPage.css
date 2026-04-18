@@ -58,10 +58,12 @@
 
 .contest-page-overview-body {
   padding: 8px 0 22px;
+  /* Единый шаг между блоками: призы жюри / призы зрителей / расписание / номинации / состав жюри */
+  --contest-overview-section-gap: 1.5rem;
 }
 
 .contest-page-overview-body > .contest-organizer-criteria {
-  margin-bottom: 0;
+  margin-bottom: var(--contest-overview-section-gap);
   padding-bottom: 0;
 }
 
@@ -178,7 +180,7 @@
 }
 
 .contest-page-schedule-block {
-  margin: 1.5rem 0 0;
+  margin: var(--contest-overview-section-gap) 0;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -211,7 +213,12 @@
 }
 
 .contest-page-jury-block {
-  margin: 1.5rem 0 0;
+  margin: 0;
+}
+
+/* Отступ до блока задаётся margin-bottom у номинаций; убираем дубли с .contest-jury-panel */
+.contest-page-jury-block .contest-jury-panel {
+  margin: 0;
 }
 
 .contest-page-icon-on-hero {
@@ -434,8 +441,8 @@
 
 .contest-page-prize-places {
   display: grid;
-  gap: 12px;
-  margin: 0 0 20px;
+  gap: var(--contest-overview-section-gap);
+  margin: 0 0 var(--contest-overview-section-gap);
 }
 
 .contest-page-prize-places-group {

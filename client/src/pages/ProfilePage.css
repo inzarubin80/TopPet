@@ -65,6 +65,48 @@
   gap: 16px;
 }
 
+.profile-avatar-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.profile-avatar-upload-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.profile-avatar-upload-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+  max-width: 520px;
+}
+
+.profile-avatar-upload-error {
+  font-size: 14px;
+  color: #b91c1c;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.profile-avatar-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .profile-actions {
   display: flex;
   gap: 12px;

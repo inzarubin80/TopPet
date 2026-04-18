@@ -9,6 +9,7 @@ import {
 } from '../../api/juryApi';
 import { searchUsers } from '../../api/usersApi';
 import { Button } from '../common/Button';
+import { MessengerUserAvatar } from '../common/MessengerUserPresentation';
 import '../common/ReorderIconButtons.css';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
@@ -329,8 +330,17 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
               {items.map((j, idx) => (
                 <li key={j.id} className="contest-jury-item">
                   <div className="contest-jury-item-head">
-                    <span className="contest-jury-name">{j.user_name || `Пользователь ${j.user_id}`}</span>
-                    {canEdit ? <span className="contest-jury-id">id: {j.user_id}</span> : null}
+                    <div className="contest-jury-item-lead">
+                      <MessengerUserAvatar
+                        userId={j.user_id}
+                        userName={j.user_name || `Пользователь ${j.user_id}`}
+                        userAvatarUrl={j.user_avatar_url}
+                        size="md"
+                        className="contest-jury-avatar"
+                      />
+                      <span className="contest-jury-name">{j.user_name || `Пользователь ${j.user_id}`}</span>
+                      {canEdit ? <span className="contest-jury-id">id: {j.user_id}</span> : null}
+                    </div>
                     {canEdit && (
                       <div className="reorder-icon-actions reorder-icon-actions--end">
                         <button

@@ -199,15 +199,16 @@ type (
 
 	// JuryMember — член жюри конкурса.
 	JuryMember struct {
-		ID           string    `json:"id"`
-		ContestID    ContestID `json:"contest_id"`
-		UserID       UserID    `json:"user_id"`
-		UserName     string    `json:"user_name,omitempty"`
-		SortOrder    int32     `json:"sort_order"`
-		IsChair      bool      `json:"is_chair"`
-		PortfolioURL string    `json:"portfolio_url,omitempty"`
-		BioShort     string    `json:"bio_short,omitempty"`
-		CreatedAt    time.Time `json:"created_at"`
+		ID            string    `json:"id"`
+		ContestID     ContestID `json:"contest_id"`
+		UserID        UserID    `json:"user_id"`
+		UserName      string    `json:"user_name,omitempty"`
+		UserAvatarURL string    `json:"user_avatar_url,omitempty"`
+		SortOrder     int32     `json:"sort_order"`
+		IsChair       bool      `json:"is_chair"`
+		PortfolioURL  string    `json:"portfolio_url,omitempty"`
+		BioShort      string    `json:"bio_short,omitempty"`
+		CreatedAt     time.Time `json:"created_at"`
 	}
 
 	// JuryMemberPatch — частичное обновление карточки члена жюри (организатор).
@@ -268,17 +269,17 @@ type (
 
 	// JuryChairboardRow — строка свода председателя (баллы по жюри + место/приз из снимка).
 	JuryChairboardRow struct {
-		ParticipantID ParticipantID    `json:"participant_id"`
-		PetName       string           `json:"pet_name"`
-		EntryTitle    string           `json:"entry_title,omitempty"`
-		UserName      string           `json:"user_name"`
-		NominationID  *string          `json:"nomination_id,omitempty"`
-		CoverThumbURL string           `json:"cover_thumb_url,omitempty"`
-		CoverImageURL string           `json:"cover_image_url,omitempty"`
+		ParticipantID ParticipantID      `json:"participant_id"`
+		PetName       string             `json:"pet_name"`
+		EntryTitle    string             `json:"entry_title,omitempty"`
+		UserName      string             `json:"user_name"`
+		NominationID  *string            `json:"nomination_id,omitempty"`
+		CoverThumbURL string             `json:"cover_thumb_url,omitempty"`
+		CoverImageURL string             `json:"cover_image_url,omitempty"`
 		JurorTotals   map[string]float64 `json:"juror_totals"`
-		TotalScore    float64          `json:"total_score"`
-		Place         *int             `json:"place,omitempty"`
-		Prize         string           `json:"prize,omitempty"`
+		TotalScore    float64            `json:"total_score"`
+		Place         *int               `json:"place,omitempty"`
+		Prize         string             `json:"prize,omitempty"`
 	}
 
 	// JuryChairWeightedCell — ячейка агрегата Σ(score×weight) для пары (заявка × член жюри).
@@ -290,12 +291,12 @@ type (
 
 	// JuryChairboardData — ответ GET /jury-chairboard.
 	JuryChairboardData struct {
-		Jurors               []JuryChairJurorColumn `json:"jurors"`
-		Rows                 []JuryChairboardRow    `json:"rows"`
-		MaxWeightedPerJuror  float64                `json:"max_weighted_per_juror"`
-		MaxTotalWeighted     float64                `json:"max_total_weighted"`
-		CriteriaCount        int                    `json:"criteria_count"`
-		JuryMemberCount      int                    `json:"jury_member_count"`
+		Jurors              []JuryChairJurorColumn `json:"jurors"`
+		Rows                []JuryChairboardRow    `json:"rows"`
+		MaxWeightedPerJuror float64                `json:"max_weighted_per_juror"`
+		MaxTotalWeighted    float64                `json:"max_total_weighted"`
+		CriteriaCount       int                    `json:"criteria_count"`
+		JuryMemberCount     int                    `json:"jury_member_count"`
 	}
 
 	// JuryChairAssignmentInput — элемент тела PUT жюри-мест/призов.

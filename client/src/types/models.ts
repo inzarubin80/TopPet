@@ -232,6 +232,7 @@ export interface JuryMember {
   contest_id: ContestID;
   user_id: UserID;
   user_name?: string;
+  user_avatar_url?: string;
   /** Порядок отображения (0 — первый). */
   sort_order: number;
   /** Председатель жюри (максимум один на конкурс). */

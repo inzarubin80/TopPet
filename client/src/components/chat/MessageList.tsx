@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ChatMessage } from '../../types/models';
 import { buildThreadList } from '../../utils/messageTree';
-import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
+import { MessengerUserAvatar } from '../common/MessengerUserPresentation';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import '../common/MessengerActionBar.css';
 import './MessageList.css';
@@ -20,38 +20,6 @@ export type MessageListRow = Pick<
   | 'user_vote'
   | 'created_at'
 > & { is_system?: boolean };
-
-const MessageAuthorAvatar: React.FC<{
-  userId: number;
-  userName: string;
-  userAvatarUrl?: string;
-}> = ({ userId, userName, userAvatarUrl }) => {
-  const [imgFailed, setImgFailed] = useState(false);
-  const raw = userAvatarUrl?.trim();
-  const resolved = raw ? resolvePublicAssetUrl(raw) : '';
-  const avatarColor = getMessengerAvatarColor(userId);
-  const initials = getMessengerInitials(userName);
-
-  if (resolved && !imgFailed) {
-    return (
-      <div className="message-avatar message-avatar--photo" title={userName}>
-        <img
-          className="message-avatar-img"
-          src={resolved}
-          alt=""
-          decoding="async"
-          onError={() => setImgFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="message-avatar" style={{ backgroundColor: avatarColor }} title={userName}>
-      {initials}
-    </div>
-  );
-};
 
 interface MessageListProps {
   messages: MessageListRow[];
@@ -262,10 +230,11 @@ export const MessageList: React.FC<MessageListProps> = ({
                 style={{ marginLeft: `${safeDepth * 14}px` }}
               >
               {message.is_system !== true && (
-                <MessageAuthorAvatar
+                <MessengerUserAvatar
                   userId={message.user_id}
                   userName={userName}
                   userAvatarUrl={message.user_avatar_url}
+                  size="md"
                 />
               )}
               <div

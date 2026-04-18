@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,7 @@ func juryMemberFromJoinRow(
 	sortOrder int32,
 	isChair bool,
 	portfolioURL, bioShort, userName string,
+	userAvatarURL *string,
 ) *model.JuryMember {
 	var idStr, cidStr string
 	if id.Valid {
@@ -29,16 +31,21 @@ func juryMemberFromJoinRow(
 	if contestID.Valid {
 		cidStr = uuid.UUID(contestID.Bytes).String()
 	}
+	avatar := ""
+	if userAvatarURL != nil {
+		avatar = strings.TrimSpace(*userAvatarURL)
+	}
 	return &model.JuryMember{
-		ID:             idStr,
-		ContestID:      model.ContestID(cidStr),
-		UserID:         model.UserID(userID),
-		UserName:       userName,
-		SortOrder:      sortOrder,
-		IsChair:        isChair,
-		PortfolioURL:   portfolioURL,
-		BioShort:       bioShort,
-		CreatedAt:      createdAt.Time,
+		ID:            idStr,
+		ContestID:     model.ContestID(cidStr),
+		UserID:        model.UserID(userID),
+		UserName:      userName,
+		UserAvatarURL: avatar,
+		SortOrder:     sortOrder,
+		IsChair:       isChair,
+		PortfolioURL:  portfolioURL,
+		BioShort:      bioShort,
+		CreatedAt:     createdAt.Time,
 	}
 }
 
@@ -46,6 +53,7 @@ func juryMemberFromListRow(row *sqlc_repository.ListContestJuryMembersWithNamesR
 	return juryMemberFromJoinRow(
 		row.ID, row.ContestID, row.UserID, row.CreatedAt,
 		row.SortOrder, row.IsChair, row.PortfolioUrl, row.BioShort, row.UserName,
+		row.UserAvatarUrl,
 	)
 }
 
@@ -53,6 +61,7 @@ func juryMemberFromGetRow(row *sqlc_repository.GetContestJuryMemberWithNameRow) 
 	return juryMemberFromJoinRow(
 		row.ID, row.ContestID, row.UserID, row.CreatedAt,
 		row.SortOrder, row.IsChair, row.PortfolioUrl, row.BioShort, row.UserName,
+		row.UserAvatarUrl,
 	)
 }
 

@@ -888,7 +888,8 @@ SELECT
     jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
-    u.name AS user_name
+    u.name AS user_name,
+    u.avatar_url AS user_avatar_url
 FROM contest_jury_members jm
 INNER JOIN users u ON u.user_id = jm.user_id
 WHERE jm.contest_id = $1
@@ -914,7 +915,8 @@ SELECT
     jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
-    u.name AS user_name
+    u.name AS user_name,
+    u.avatar_url AS user_avatar_url
 FROM contest_jury_members jm
 INNER JOIN users u ON u.user_id = jm.user_id
 WHERE jm.contest_id = $1 AND jm.user_id = $2;

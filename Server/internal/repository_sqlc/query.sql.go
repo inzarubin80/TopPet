@@ -1048,7 +1048,8 @@ SELECT
     jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
-    u.name AS user_name
+    u.name AS user_name,
+    u.avatar_url AS user_avatar_url
 FROM contest_jury_members jm
 INNER JOIN users u ON u.user_id = jm.user_id
 WHERE jm.contest_id = $1 AND jm.user_id = $2
@@ -1060,15 +1061,16 @@ type GetContestJuryMemberWithNameParams struct {
 }
 
 type GetContestJuryMemberWithNameRow struct {
-	ID           pgtype.UUID
-	ContestID    pgtype.UUID
-	UserID       int64
-	CreatedAt    pgtype.Timestamptz
-	SortOrder    int32
-	IsChair      bool
-	PortfolioUrl string
-	BioShort     string
-	UserName     string
+	ID            pgtype.UUID
+	ContestID     pgtype.UUID
+	UserID        int64
+	CreatedAt     pgtype.Timestamptz
+	SortOrder     int32
+	IsChair       bool
+	PortfolioUrl  string
+	BioShort      string
+	UserName      string
+	UserAvatarUrl *string
 }
 
 func (q *Queries) GetContestJuryMemberWithName(ctx context.Context, arg *GetContestJuryMemberWithNameParams) (*GetContestJuryMemberWithNameRow, error) {
@@ -1084,6 +1086,7 @@ func (q *Queries) GetContestJuryMemberWithName(ctx context.Context, arg *GetCont
 		&i.PortfolioUrl,
 		&i.BioShort,
 		&i.UserName,
+		&i.UserAvatarUrl,
 	)
 	return &i, err
 }
@@ -1920,7 +1923,8 @@ SELECT
     jm.is_chair,
     jm.portfolio_url,
     jm.bio_short,
-    u.name AS user_name
+    u.name AS user_name,
+    u.avatar_url AS user_avatar_url
 FROM contest_jury_members jm
 INNER JOIN users u ON u.user_id = jm.user_id
 WHERE jm.contest_id = $1
@@ -1928,15 +1932,16 @@ ORDER BY jm.sort_order ASC, jm.created_at ASC
 `
 
 type ListContestJuryMembersWithNamesRow struct {
-	ID           pgtype.UUID
-	ContestID    pgtype.UUID
-	UserID       int64
-	CreatedAt    pgtype.Timestamptz
-	SortOrder    int32
-	IsChair      bool
-	PortfolioUrl string
-	BioShort     string
-	UserName     string
+	ID            pgtype.UUID
+	ContestID     pgtype.UUID
+	UserID        int64
+	CreatedAt     pgtype.Timestamptz
+	SortOrder     int32
+	IsChair       bool
+	PortfolioUrl  string
+	BioShort      string
+	UserName      string
+	UserAvatarUrl *string
 }
 
 // Contest jury members
@@ -1959,6 +1964,7 @@ func (q *Queries) ListContestJuryMembersWithNames(ctx context.Context, contestID
 			&i.PortfolioUrl,
 			&i.BioShort,
 			&i.UserName,
+			&i.UserAvatarUrl,
 		); err != nil {
 			return nil, err
 		}

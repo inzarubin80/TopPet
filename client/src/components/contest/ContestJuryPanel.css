@@ -68,6 +68,19 @@
   gap: 0.5rem 1rem;
 }
 
+.contest-jury-item-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.contest-jury-avatar {
+  flex-shrink: 0;
+}
+
 .contest-jury-item:last-child {
   border-bottom: none;
 }

@@ -133,6 +133,15 @@ func (s *TopPetService) PatchCurrentUser(ctx context.Context, userID model.UserI
 	return s.repository.UpdateUserProfile(ctx, userID, &out)
 }
 
+// SetCurrentUserAvatarURL задаёт URL аватара после загрузки файла в object storage.
+func (s *TopPetService) SetCurrentUserAvatarURL(ctx context.Context, userID model.UserID, avatarURL string) (*model.User, error) {
+	u := strings.TrimSpace(avatarURL)
+	if u == "" {
+		return nil, fmt.Errorf("%w: avatar url is empty", model.ErrBadRequest)
+	}
+	return s.PatchCurrentUser(ctx, userID, model.CurrentUserPatch{AvatarURL: &u})
+}
+
 // DeleteCurrentUserAccount удаляет аккаунт текущего пользователя и связанные данные (провайдеры OAuth, заявки, сообщения чата и т.д.).
 func (s *TopPetService) DeleteCurrentUserAccount(ctx context.Context, userID model.UserID) error {
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)

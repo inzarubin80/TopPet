@@ -32,6 +32,13 @@ export const updateCurrentUser = async (data: PatchCurrentUserBody): Promise<Use
   return response.data;
 };
 
+export const uploadCurrentUserAvatar = async (file: Blob): Promise<User> => {
+  const form = new FormData();
+  form.append('file', file, 'avatar.jpg');
+  const response = await axiosClient.post<User>('/auth/me/upload-avatar', form);
+  return response.data;
+};
+
 export const deleteCurrentUser = async (): Promise<void> => {
   await axiosClient.delete('/auth/me');
 };

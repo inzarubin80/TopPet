@@ -349,6 +349,10 @@ func (a *App) registerRoutes() {
 		a.service,
 	))
 	if a.uploader != nil {
+		a.mux.Handle("POST /api/auth/me/upload-avatar", middleware.NewAuthMiddleware(
+			appHttp.NewUploadUserAvatarHandler("/api/auth/me/upload-avatar", a.service, a.uploader),
+			a.service,
+		))
 		a.mux.Handle("POST /api/contests/{contestId}/assets/{kind}", middleware.NewAuthMiddleware(
 			appHttp.NewUploadContestAssetHandler("/api/contests/{contestId}/assets/{kind}", a.service, a.uploader),
 			a.service,
