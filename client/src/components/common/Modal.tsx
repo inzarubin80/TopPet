@@ -7,6 +7,10 @@ interface ModalProps {
   title?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Дополнительный класс на корневой overlay (например, для ширины контента). */
+  className?: string;
+  /** Только кнопка закрытия без заголовка (контент с заголовком внутри тела). */
+  closeOnlyHeader?: boolean;
   /** Линия под заголовком (по умолчанию включена). */
   showHeaderDivider?: boolean;
   /** Линия над футером (по умолчанию включена). */
@@ -19,6 +23,8 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
+  className,
+  closeOnlyHeader = false,
   showHeaderDivider = true,
   showFooterDivider = true,
 }) => {
@@ -38,17 +44,23 @@ export const Modal: React.FC<ModalProps> = ({
   }
 
   return (
-    <div className="modal-overlay">
+    <div className={className ? `modal-overlay ${className}` : 'modal-overlay'}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        {title && (
-          <div className={showHeaderDivider ? 'modal-header' : 'modal-header modal-header--plain'}>
-            <h2 className="modal-title">{title}</h2>
+        {(title || closeOnlyHeader) && (
+          <div
+            className={
+              (showHeaderDivider ? 'modal-header' : 'modal-header modal-header--plain') +
+              (closeOnlyHeader && !title ? ' modal-header--close-only' : '')
+            }
+          >
+            {title ? <h2 className="modal-title">{title}</h2> : null}
             <button
+              type="button"
               className="modal-close"
               onClick={() => {
-                console.log('[Modal] Close button click', { title });
                 onClose();
               }}
+              aria-label="Закрыть"
             >
               ×
             </button>

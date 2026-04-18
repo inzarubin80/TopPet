@@ -3,7 +3,7 @@
   gap: 10px;
   padding: 14px 16px;
   border-top: 1px solid #e5e7eb;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
 }
 
 .message-input-field {
@@ -17,19 +17,19 @@
   line-height: 1.5;
   max-height: 160px;
   overflow-y: auto;
-  background-color: #f9fafb;
+  background-color: var(--color-surface);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
 }
 
 .message-input-field:focus {
   border-color: #2f6df6;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   box-shadow: 0 0 0 4px rgba(47, 109, 246, 0.1);
 }
 
 .message-input-field:disabled {
-  background-color: #f3f4f6;
+  background-color: rgba(15, 23, 42, 0.04);
   cursor: not-allowed;
   opacity: 0.6;
 }

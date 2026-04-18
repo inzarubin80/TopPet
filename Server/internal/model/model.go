@@ -322,6 +322,8 @@ type (
 		JuryWinnerPrize     string    `json:"jury_winner_prize,omitempty"`
 		CreatedAt           time.Time `json:"created_at"`
 		UpdatedAt           time.Time `json:"updated_at"`
+		// ViewerFavorite — только для авторизованного запросившего пользователя (GET одной заявки / опционально список).
+		ViewerFavorite *bool `json:"viewer_favorite,omitempty"`
 	}
 
 	// ParticipantScoreForWinners — данные для расчёта победителей (принятые заявки).
@@ -372,6 +374,7 @@ type (
 		ParentID      *CommentID    `json:"parent_id,omitempty"`
 		UserID        UserID        `json:"user_id"`
 		UserName      string        `json:"user_name"`
+		UserAvatarURL string        `json:"user_avatar_url,omitempty"`
 		Text          string        `json:"text"`
 		Score         int64         `json:"score"`
 		UserVote      int32         `json:"user_vote"`
@@ -392,17 +395,18 @@ type (
 	}
 
 	ChatMessage struct {
-		ID        ChatMessageID  `json:"id"`
-		ContestID ContestID      `json:"contest_id"`
-		ParentID  *ChatMessageID `json:"parent_id,omitempty"`
-		UserID    UserID         `json:"user_id"`
-		UserName  string         `json:"user_name"`
-		Text      string         `json:"text"`
-		IsSystem  bool           `json:"is_system"`
-		Score     int64          `json:"score"`
-		UserVote  int32          `json:"user_vote"`
-		CreatedAt time.Time      `json:"created_at"`
-		UpdatedAt time.Time      `json:"updated_at"`
+		ID            ChatMessageID  `json:"id"`
+		ContestID     ContestID      `json:"contest_id"`
+		ParentID      *ChatMessageID `json:"parent_id,omitempty"`
+		UserID        UserID         `json:"user_id"`
+		UserName      string         `json:"user_name"`
+		UserAvatarURL string         `json:"user_avatar_url,omitempty"`
+		Text          string         `json:"text"`
+		IsSystem      bool           `json:"is_system"`
+		Score         int64          `json:"score"`
+		UserVote      int32          `json:"user_vote"`
+		CreatedAt     time.Time      `json:"created_at"`
+		UpdatedAt     time.Time      `json:"updated_at"`
 	}
 
 	AuthData struct {

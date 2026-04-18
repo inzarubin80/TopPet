@@ -193,6 +193,7 @@ interface AddParticipantModalProps {
   participantsListSubmissionFilter?: ParticipantsListSubmissionFilter;
   participantsListVotedOnly?: boolean;
   participantsListJuryUnscoredOnly?: boolean;
+  participantsListFavoriteOnly?: boolean;
   /** Пагинация списка на странице конкурса */
   participantsListLimit?: number;
   participantsListOffset?: number;
@@ -215,6 +216,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   participantsListSubmissionFilter = 'all',
   participantsListVotedOnly = false,
   participantsListJuryUnscoredOnly = false,
+  participantsListFavoriteOnly = false,
   participantsListLimit = 10000,
   participantsListOffset = 0,
   participantsListSort,
@@ -635,6 +637,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           submissionFilter: participantsListSubmissionFilter,
           votedOnly: participantsListVotedOnly,
           juryUnscoredOnly: participantsListJuryUnscoredOnly,
+          favoriteOnly: participantsListFavoriteOnly,
           limit: participantsListLimit,
           offset: participantsListOffset,
           sort: participantsListSort,

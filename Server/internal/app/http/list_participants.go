@@ -29,7 +29,7 @@ func parseTruthyQuery(v string) bool {
 
 type (
 	serviceListParticipants interface {
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
 	}
 
 	ListParticipantsHandler struct {
@@ -137,6 +137,11 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		uhttp.HandleError(w, uhttp.NewUnauthorizedError("voted_only requires authentication", nil))
 		return
 	}
+	favoriteOnly := parseTruthyQuery(r.URL.Query().Get("favorite_only"))
+	if favoriteOnly && viewer == nil {
+		uhttp.HandleError(w, uhttp.NewUnauthorizedError("favorite_only requires authentication", nil))
+		return
+	}
 
 	sortParam := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("sort")))
 	switch sortParam {
@@ -146,7 +151,7 @@ func (h *ListParticipantsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, submissionFilter, votedOnly, limit, offset, sortParam)
+	participants, total, err := h.service.ListParticipantsByContest(r.Context(), contestID, viewer, nominationFilter, juryUnscoredOnly, participantScope, submissionFilter, votedOnly, favoriteOnly, limit, offset, sortParam)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

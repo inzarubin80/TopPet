@@ -48,6 +48,21 @@ func userRowToModel(
 	return out
 }
 
+// optionalUserAvatarURL maps a nullable DB column to a trimmed string for JSON omitempty.
+func optionalUserAvatarURL(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return strings.TrimSpace(*p)
+}
+
+func userAvatarURLFromUser(u *model.User) string {
+	if u == nil {
+		return ""
+	}
+	return strings.TrimSpace(u.AvatarURL)
+}
+
 func sqlcUserToModelFromCreateUserRow(u *sqlc_repository.CreateUserRow) *model.User {
 	if u == nil {
 		return nil

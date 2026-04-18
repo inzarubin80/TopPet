@@ -1,6 +1,7 @@
 import { WSConnectionState, WSIncomingMessage } from '../types/ws';
 import { tokenStorage } from '../utils/tokenStorage';
 import { ChatMessage, ContestStatus } from '../types/models';
+import { logger } from '../utils/logger';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api';
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -35,6 +36,8 @@ export class WebSocketClient {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private connectionState: WSConnectionState = 'DISCONNECTED';
   private subscribedContests: Set<string> = new Set();
+  /** Сколько хуков useWebSocket держат соединение (один клиент на вкладку). */
+  private connectionConsumers = 0;
 
   private onMessageHandler: MessageHandler | null = null;
   private onMessageUpdateHandler: MessageUpdateHandler | null = null;
@@ -124,6 +127,37 @@ export class WebSocketClient {
       return;
     }
 
+    const sameContestAlready =
+      this.contestId === contestId &&
+      this.ws !== null &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING);
+
+    if (sameContestAlready) {
+      this.connectionConsumers += 1;
+      this.subscribedContests.add(contestId);
+      return;
+    }
+
+    this.connectionConsumers += 1;
+    this.contestId = contestId;
+    this.reconnectAttempts = 0;
+    this.doConnect();
+  }
+
+  /** Вызывать из cleanup useWebSocket вместо disconnect(), если соединением могут пользоваться несколько экранов (чат + карточка участника). */
+  releaseConnection(): void {
+    this.connectionConsumers = Math.max(0, this.connectionConsumers - 1);
+    if (this.connectionConsumers === 0) {
+      this.disconnect();
+    }
+  }
+
+  /** Переподключение по кнопке без увеличения connectionConsumers (хуки уже учтены). */
+  reconnectPreservingConsumers(contestId: string, accessToken: string): void {
+    this.accessToken = accessToken;
+    if (!this.accessToken) {
+      return;
+    }
     this.contestId = contestId;
     this.reconnectAttempts = 0;
     this.doConnect();
@@ -173,7 +207,8 @@ export class WebSocketClient {
       };
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket: Error', error);
+        // Браузер почти не даёт деталей; 401 до upgrade тоже приходит как error — не шумим уровнем error.
+        logger.debug('WebSocket: socket error event', error);
         if (this.onErrorHandler) {
           this.onErrorHandler(error);
         }
@@ -343,6 +378,7 @@ export class WebSocketClient {
     this.subscribedContests.clear();
     this.contestId = null;
     this.reconnectAttempts = 0;
+    this.connectionConsumers = 0;
     this.setConnectionState('DISCONNECTED');
   }
 

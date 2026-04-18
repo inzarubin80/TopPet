@@ -5,7 +5,7 @@
   padding: 8px 12px;
   font-size: 14px;
   border-radius: 8px;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface);
 }
 
 .status-indicator {

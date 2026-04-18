@@ -65,7 +65,7 @@
 .participant-jury-report-modal-table th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--color-surface);
   z-index: 1;
   font-weight: 600;
   color: #334155;

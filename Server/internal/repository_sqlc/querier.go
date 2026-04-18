@@ -55,6 +55,8 @@ type Querier interface {
 	DeleteNomination(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipant(ctx context.Context, id pgtype.UUID) error
 	DeleteParticipantConsentAuditsForUser(ctx context.Context, userID int64) error
+	DeleteParticipantFavorite(ctx context.Context, arg *DeleteParticipantFavoriteParams) error
+	DeleteParticipantFavoritesByParticipantID(ctx context.Context, participantID pgtype.UUID) error
 	DeleteParticipantPhoto(ctx context.Context, id pgtype.UUID) error
 	DeletePaymentsByUserID(ctx context.Context, userID int64) error
 	DeleteRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) error
@@ -80,6 +82,7 @@ type Querier interface {
 	InsertParticipantConsentAudit(ctx context.Context, arg *InsertParticipantConsentAuditParams) error
 	InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*InsertRegistrationFieldRow, error)
 	IsContestJuryMember(ctx context.Context, arg *IsContestJuryMemberParams) (bool, error)
+	IsParticipantFavorite(ctx context.Context, arg *IsParticipantFavoriteParams) (bool, error)
 	IsUserBlocked(ctx context.Context, userID int64) (bool, error)
 	ListAcceptedParticipantScoresForContest(ctx context.Context, contestID pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestRow, error)
 	ListAcceptedParticipantScoresForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestsRow, error)
@@ -140,6 +143,7 @@ type Querier interface {
 	UpsertContestJuryScore(ctx context.Context, arg *UpsertContestJuryScoreParams) (*ContestJuryScore, error)
 	// Contest Votes
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)
+	UpsertParticipantFavorite(ctx context.Context, arg *UpsertParticipantFavoriteParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -26,6 +26,8 @@ export type GetParticipantsByContestOptions = {
   submissionFilter?: ParticipantsListSubmissionFilter;
   /** Только участники, за которых проголосовал текущий пользователь (нужна авторизация) */
   votedOnly?: boolean;
+  /** Только избранные текущего пользователя (нужна авторизация) */
+  favoriteOnly?: boolean;
   /** Сортировка: голоса зрителей, сумма баллов жюри или дата подачи */
   sort?: ParticipantsListSort;
 };
@@ -76,6 +78,9 @@ export const getParticipantsByContest = async (
   }
   if (options?.votedOnly) {
     params.set('voted_only', '1');
+  }
+  if (options?.favoriteOnly) {
+    params.set('favorite_only', '1');
   }
   if (options?.sort) {
     params.set('sort', options.sort);
@@ -151,6 +156,14 @@ export const deleteParticipant = async (participantId: ParticipantID): Promise<v
 
 export const deletePhoto = async (participantId: ParticipantID, photoId: string): Promise<void> => {
   await axiosClient.delete(`/participants/${participantId}/photos/${photoId}`);
+};
+
+export const putParticipantFavorite = async (
+  contestId: ContestID,
+  participantId: ParticipantID,
+  favorite: boolean
+): Promise<void> => {
+  await axiosClient.put(`/contests/${contestId}/participants/${participantId}/favorite`, { favorite });
 };
 
 export const updatePhotoOrder = async (participantId: ParticipantID, photoIds: string[]): Promise<void> => {

@@ -53,7 +53,7 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
 
   return (
     <div
-      className={`contest-card${hasThemedAccent ? ' contest-card--themed' : ''}${coverRaw ? ' contest-card--has-cover' : ''}`}
+      className={`contest-card${coverRaw ? ' contest-card--has-cover' : ''}`}
       style={cardStyle}
       onClick={goToContest}
       role="link"

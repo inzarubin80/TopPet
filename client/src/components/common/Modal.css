@@ -34,6 +34,10 @@
   border-bottom: none;
 }
 
+.modal-header--close-only {
+  justify-content: flex-end;
+}
+
 .modal-title {
   margin: 0;
   font-size: var(--font-size-xl);

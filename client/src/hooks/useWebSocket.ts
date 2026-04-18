@@ -92,9 +92,6 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload) => {
       if (contestId && contestIdFromPayload === contestId) {
         if (!participantIdFromPayload) {
-          // #region agent log
-          fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H5',location:'client/src/hooks/useWebSocket.ts:onUserVoteUpdated',message:'WS vote update for unlike (empty participant)',data:{contestId},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           getVotes(contestId)
             .then((votes) => dispatch(setUserVotesForContest({ contestId, votes })))
             .catch(() => {
@@ -102,9 +99,6 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
             });
           return;
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d3c4b1'},body:JSON.stringify({sessionId:'d3c4b1',runId:'run1',hypothesisId:'H5',location:'client/src/hooks/useWebSocket.ts:onUserVoteUpdated',message:'WS vote update for participant',data:{contestId,participantId:participantIdFromPayload},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         dispatch(
           setUserVoteSlot({
             contestId,
@@ -151,6 +145,9 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       return;
     }
 
+    let cancelled = false;
+    let didAcquireSocket = false;
+
     const connectWithToken = async () => {
       const client = wsClientRef.current;
       if (!client) return;
@@ -164,7 +161,7 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
 
       logger.debug('[useWebSocket] Refreshing token before WebSocket connection...');
       let token: string | null = null;
-      
+
       try {
         const result = await dispatch(refreshTokenAsync(refreshTokenValue));
         if (refreshTokenAsync.fulfilled.match(result)) {
@@ -190,21 +187,23 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
         return;
       }
 
+      if (cancelled) {
+        return;
+      }
+
       dispatch(setCurrentContestId(contestId));
       client.connect(contestId, token);
+      didAcquireSocket = true;
       client.subscribe(contestId);
     };
 
-    connectWithToken();
+    void connectWithToken();
 
     return () => {
+      cancelled = true;
       const client = wsClientRef.current;
-      if (client) {
-        client.unsubscribe(contestId);
-        // Only disconnect if no other contests are subscribed
-        // For now, we'll disconnect when component unmounts
-        // In a more complex scenario, we might want to keep connection alive
-        client.disconnect();
+      if (client && didAcquireSocket) {
+        client.releaseConnection();
       }
     };
   }, [contestId, dispatch]);
@@ -247,8 +246,7 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
         const token = payload?.token;
         if (token) {
           logger.info('[useWebSocket] Reconnect: Token refreshed successfully, reconnecting...');
-          wsClientRef.current.connect(contestId, token);
-          wsClientRef.current.subscribe(contestId);
+          wsClientRef.current.reconnectPreservingConsumers(contestId, token);
         } else {
           logger.error('[useWebSocket] Reconnect: Token refresh returned no token');
         }

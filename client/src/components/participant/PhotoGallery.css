@@ -123,3 +123,60 @@
     padding: 4px 8px;
   }
 }
+
+/* Страница работы: вертикальная вёрстка (мобильный / узкий экран) */
+.participant-page--work-view .photo-gallery-image-container {
+  border-radius: 0;
+  background: #ffffff;
+  min-height: min(62vh, 480px);
+  /* Иначе при «узком» кадре фото визуально уезжает вправо, слева пустое поле */
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.participant-page--work-view .photo-gallery-image {
+  border-radius: 0;
+  max-height: min(76vh, 680px);
+}
+
+/* Двухколоночный режим: фото вписывается в левую колонку по высоте экрана */
+@media (min-width: 900px) {
+  .participant-page-content--split .photo-gallery {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .participant-page-content--split .photo-gallery-item {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .participant-page-content--split .photo-gallery-image-container {
+    border-radius: 0;
+    background: #ffffff;
+    min-height: 0 !important;
+    flex: 1;
+    max-height: none;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .participant-page-content--split .photo-gallery-image {
+    border-radius: 0;
+    max-height: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .participant-page--work-view .photo-gallery-image-container {
+    min-height: 280px;
+  }
+
+  .participant-page--work-view .photo-gallery-image {
+    max-height: 58vh;
+  }
+}

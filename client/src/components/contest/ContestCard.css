@@ -3,11 +3,11 @@
   flex-direction: column;
   height: 100%;
   padding: 0;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  background-color: white;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+  background-color: var(--color-surface);
   overflow: hidden;
 }
 
@@ -16,13 +16,8 @@
   outline-offset: 2px;
 }
 
-.contest-card--themed {
-  border-left: 4px solid var(--contest-card-accent, #2563eb);
-}
-
 .contest-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  border-color: rgba(15, 23, 42, 0.18);
 }
 
 .contest-card-cover {

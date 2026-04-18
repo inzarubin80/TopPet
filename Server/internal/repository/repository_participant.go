@@ -256,7 +256,7 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 	return out, nil
 }
 
-func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error) {
+func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	contestUUID, err := uuid.Parse(string(contestID))
 	if err != nil {
@@ -286,6 +286,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		ParticipantScope:     participantScope,
 		SubmissionFilter:     submissionFilter,
 		VotedByViewerOnly:    votedByViewerOnly,
+		FavoriteOnly:         favoriteOnly,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -301,6 +302,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 		ParticipantScope:     participantScope,
 		SubmissionFilter:     submissionFilter,
 		VotedByViewerOnly:    votedByViewerOnly,
+		FavoriteOnly:         favoriteOnly,
 		ListOrder:            listOrder,
 		ListOffset:           offset,
 		ListLimit:            limit,
@@ -498,6 +500,10 @@ func (r *Repository) deleteParticipant(ctx context.Context, conn DBTX, participa
 		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete votes: %v", err)
 	}
 
+	if err := reposqlc.DeleteParticipantFavoritesByParticipantID(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true}); err != nil {
+		log.Printf("[Repository] DeleteParticipant: WARNING - Failed to delete favorites: %v", err)
+	}
+
 	// Delete participant
 	log.Printf("[Repository] DeleteParticipant: Deleting participant %s", participantID)
 	err = reposqlc.DeleteParticipant(ctx, pgtype.UUID{Bytes: participantUUID, Valid: true})
@@ -508,6 +514,42 @@ func (r *Repository) deleteParticipant(ctx context.Context, conn DBTX, participa
 
 	log.Printf("[Repository] DeleteParticipant: Successfully deleted participant %s", participantID)
 	return nil
+}
+
+func (r *Repository) IsParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) (bool, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return false, err
+	}
+	return reposqlc.IsParticipantFavorite(ctx, &sqlc_repository.IsParticipantFavoriteParams{
+		UserID:        int64(userID),
+		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+	})
+}
+
+func (r *Repository) UpsertParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.UpsertParticipantFavorite(ctx, &sqlc_repository.UpsertParticipantFavoriteParams{
+		UserID:        int64(userID),
+		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+	})
+}
+
+func (r *Repository) DeleteParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	participantUUID, err := uuid.Parse(string(participantID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.DeleteParticipantFavorite(ctx, &sqlc_repository.DeleteParticipantFavoriteParams{
+		UserID:        int64(userID),
+		ParticipantID: pgtype.UUID{Bytes: participantUUID, Valid: true},
+	})
 }
 
 func (r *Repository) AddParticipantPhoto(ctx context.Context, participantID model.ParticipantID, url string, thumbURL *string) (*model.Photo, error) {

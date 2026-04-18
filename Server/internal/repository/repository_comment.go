@@ -52,8 +52,10 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 
 	user, err := r.GetUser(ctx, model.UserID(comment.UserID))
 	userName := ""
+	userAvatarURL := ""
 	if err == nil && user != nil {
 		userName = user.Name
+		userAvatarURL = userAvatarURLFromUser(user)
 	} else {
 		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
 	}
@@ -70,6 +72,7 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
 		UserName:      userName,
+		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
 		Score:         0,
 		UserVote:      0,
@@ -103,8 +106,10 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 
 	user, err := r.GetUser(ctx, model.UserID(comment.UserID))
 	userName := ""
+	userAvatarURL := ""
 	if err == nil && user != nil {
 		userName = user.Name
+		userAvatarURL = userAvatarURLFromUser(user)
 	} else {
 		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
 	}
@@ -121,6 +126,7 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
 		UserName:      userName,
+		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
 		Score:         0,
 		UserVote:      0,
@@ -180,6 +186,7 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 			ParentID:      parentCommentID,
 			UserID:        model.UserID(c.UserID),
 			UserName:      c.UserName,
+			UserAvatarURL: optionalUserAvatarURL(c.UserAvatarUrl),
 			Text:          c.Text,
 			Score:         c.Score,
 			UserVote:      c.UserVote,
@@ -221,11 +228,23 @@ func (r *Repository) UpdateComment(ctx context.Context, commentID model.CommentI
 		parentCommentID = &parentIDVal
 	}
 
+	user, err := r.GetUser(ctx, model.UserID(comment.UserID))
+	userName := ""
+	userAvatarURL := ""
+	if err == nil && user != nil {
+		userName = user.Name
+		userAvatarURL = userAvatarURLFromUser(user)
+	} else {
+		userName = fmt.Sprintf("Пользователь %d", comment.UserID)
+	}
+
 	return &model.Comment{
 		ID:            model.CommentID(commentIDStr),
 		ParticipantID: model.ParticipantID(participantIDStr),
 		ParentID:      parentCommentID,
 		UserID:        model.UserID(comment.UserID),
+		UserName:      userName,
+		UserAvatarURL: userAvatarURL,
 		Text:          comment.Text,
 		Score:         0,
 		UserVote:      0,

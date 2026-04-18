@@ -337,6 +337,17 @@ WHERE cp.contest_id = @contest_id
         AND v.participant_id = cp.id
         AND v.user_id = sqlc.narg('viewer_user_id')::bigint
     )
+  )
+  AND (
+    NOT @favorite_only::boolean
+    OR (
+      sqlc.narg('viewer_user_id')::bigint IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM contest_user_participant_favorites f
+        WHERE f.participant_id = cp.id
+          AND f.user_id = sqlc.narg('viewer_user_id')::bigint
+      )
+    )
   );
 
 -- name: ListParticipantsByContest :many
@@ -430,6 +441,17 @@ WHERE cp.contest_id = @contest_id
         AND v.user_id = sqlc.narg('viewer_user_id')::bigint
     )
   )
+  AND (
+    NOT @favorite_only::boolean
+    OR (
+      sqlc.narg('viewer_user_id')::bigint IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM contest_user_participant_favorites f
+        WHERE f.participant_id = cp.id
+          AND f.user_id = sqlc.narg('viewer_user_id')::bigint
+      )
+    )
+  )
 ORDER BY
   CASE WHEN @list_order::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
   CASE WHEN @list_order::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
@@ -458,6 +480,24 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
+
+-- name: UpsertParticipantFavorite :exec
+INSERT INTO contest_user_participant_favorites (user_id, participant_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, participant_id) DO NOTHING;
+
+-- name: DeleteParticipantFavorite :exec
+DELETE FROM contest_user_participant_favorites
+WHERE user_id = $1 AND participant_id = $2;
+
+-- name: IsParticipantFavorite :one
+SELECT EXISTS (
+  SELECT 1 FROM contest_user_participant_favorites
+  WHERE user_id = $1 AND participant_id = $2
+);
+
+-- name: DeleteParticipantFavoritesByParticipantID :exec
+DELETE FROM contest_user_participant_favorites WHERE participant_id = $1;
 
 -- name: DeleteParticipant :exec
 DELETE FROM contest_participants
@@ -610,6 +650,7 @@ SELECT
     cc.created_at,
     cc.updated_at,
     COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
+    u.avatar_url AS user_avatar_url,
     COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score,
     COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote
 FROM contest_comments cc
@@ -707,6 +748,7 @@ SELECT
     ccm.created_at,
     ccm.updated_at,
     COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name,
+    u.avatar_url AS user_avatar_url,
     COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score,
     COALESCE((SELECT v2.value::int FROM contest_chat_message_votes v2 WHERE v2.message_id = ccm.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote
 FROM contest_chat_messages ccm

@@ -4,7 +4,7 @@
   height: 100%;
   border: none;
   border-radius: 16px;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface);
   box-shadow: none;
   overflow: hidden;
 }
@@ -15,7 +15,7 @@
   align-items: center;
   padding: 14px 18px;
   border-bottom: none;
-  background: #f3f4f6;
+  background: var(--color-surface);
   box-shadow: none;
 }
 
@@ -43,7 +43,7 @@
 
 .chat-footer {
   border-top: none;
-  background: #f3f4f6;
+  background: var(--color-surface);
 }
 
 .chat-reply-banner {
@@ -52,7 +52,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 8px 14px;
-  background: #eef2f7;
+  background: var(--color-surface);
   border-bottom: 1px solid #e5e7eb;
   font-size: 13px;
   color: #6b7280;

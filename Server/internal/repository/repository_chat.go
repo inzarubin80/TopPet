@@ -50,11 +50,13 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		contestIDStr = uuid.UUID(message.ContestID.Bytes).String()
 	}
 
-	// Get user name for the newly created message
+	// Get user name and avatar for the newly created message
 	user, err := r.GetUser(ctx, model.UserID(message.UserID))
 	userName := ""
+	userAvatarURL := ""
 	if err == nil && user != nil {
 		userName = user.Name
+		userAvatarURL = userAvatarURLFromUser(user)
 	} else {
 		userName = fmt.Sprintf("Пользователь %d", message.UserID)
 	}
@@ -65,12 +67,13 @@ func (r *Repository) CreateChatMessage(ctx context.Context, contestID model.Cont
 		parentMessageID = &parentIDVal
 	}
 	return &model.ChatMessage{
-		ID:        model.ChatMessageID(messageIDStr),
-		ContestID: model.ContestID(contestIDStr),
-		ParentID:  parentMessageID,
-		UserID:    model.UserID(message.UserID),
-		UserName:  userName,
-		Text:      message.Text,
+		ID:            model.ChatMessageID(messageIDStr),
+		ContestID:     model.ContestID(contestIDStr),
+		ParentID:      parentMessageID,
+		UserID:        model.UserID(message.UserID),
+		UserName:      userName,
+		UserAvatarURL: userAvatarURL,
+		Text:          message.Text,
 		IsSystem:  message.IsSystem,
 		Score:     0,
 		UserVote:  0,
@@ -163,12 +166,13 @@ func (r *Repository) ListChatMessages(ctx context.Context, contestID model.Conte
 		}
 
 		chatMessage := &model.ChatMessage{
-			ID:        model.ChatMessageID(messageIDStr),
-			ContestID: model.ContestID(contestIDStr),
-			ParentID:  parentMessageID,
-			UserID:    model.UserID(m.UserID),
-			UserName:  userName,
-			Text:      m.Text,
+			ID:            model.ChatMessageID(messageIDStr),
+			ContestID:     model.ContestID(contestIDStr),
+			ParentID:      parentMessageID,
+			UserID:        model.UserID(m.UserID),
+			UserName:      userName,
+			UserAvatarURL: optionalUserAvatarURL(m.UserAvatarUrl),
+			Text:          m.Text,
 			IsSystem:  m.IsSystem,
 			Score:     m.Score,
 			UserVote:  m.UserVote,
@@ -209,11 +213,13 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		contestIDStr = uuid.UUID(message.ContestID.Bytes).String()
 	}
 
-	// Get user name for the updated message
+	// Get user name and avatar for the updated message
 	user, err := r.GetUser(ctx, model.UserID(message.UserID))
 	userName := ""
+	userAvatarURL := ""
 	if err == nil && user != nil {
 		userName = user.Name
+		userAvatarURL = userAvatarURLFromUser(user)
 	} else {
 		userName = fmt.Sprintf("Пользователь %d", message.UserID)
 	}
@@ -224,12 +230,13 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		parentMessageID = &parentIDVal
 	}
 	return &model.ChatMessage{
-		ID:        model.ChatMessageID(messageIDStr),
-		ContestID: model.ContestID(contestIDStr),
-		ParentID:  parentMessageID,
-		UserID:    model.UserID(message.UserID),
-		UserName:  userName,
-		Text:      message.Text,
+		ID:            model.ChatMessageID(messageIDStr),
+		ContestID:     model.ContestID(contestIDStr),
+		ParentID:      parentMessageID,
+		UserID:        model.UserID(message.UserID),
+		UserName:      userName,
+		UserAvatarURL: userAvatarURL,
+		Text:          message.Text,
 		IsSystem:  message.IsSystem,
 		Score:     0,
 		UserVote:  0,

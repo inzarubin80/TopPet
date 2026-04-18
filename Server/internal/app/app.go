@@ -318,6 +318,10 @@ func (a *App) registerRoutes() {
 		appHttp.NewMyJuryScoresHandler("/api/contests/{contestId}/participants/{participantId}/my-jury-scores", a.service),
 		a.service,
 	))
+	a.mux.Handle("PUT /api/contests/{contestId}/participants/{participantId}/favorite", middleware.NewAuthMiddleware(
+		appHttp.NewPutParticipantFavoriteHandler("/api/contests/{contestId}/participants/{participantId}/favorite", a.service),
+		a.service,
+	))
 
 	// Participants (auth required)
 	a.mux.Handle("POST /api/contests/{contestId}/participants", middleware.NewAuthMiddleware(

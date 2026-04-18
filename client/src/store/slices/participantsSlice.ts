@@ -55,6 +55,7 @@ export const fetchParticipantsByContest = createAsyncThunk(
           juryUnscoredOnly?: boolean;
           submissionFilter?: ParticipantsListSubmissionFilter;
           votedOnly?: boolean;
+          favoriteOnly?: boolean;
           limit?: number;
           offset?: number;
           sort?: ParticipantsListSort;
@@ -69,6 +70,7 @@ export const fetchParticipantsByContest = createAsyncThunk(
       const submissionFilter: ParticipantsListSubmissionFilter =
         typeof payload === 'string' ? 'all' : payload.submissionFilter ?? 'all';
       const votedOnly = typeof payload === 'string' ? false : payload.votedOnly ?? false;
+      const favoriteOnly = typeof payload === 'string' ? false : payload.favoriteOnly ?? false;
       let listOptions: GetParticipantsByContestOptions | undefined;
       if (typeof payload === 'object') {
         const o: GetParticipantsByContestOptions = {};
@@ -83,6 +85,9 @@ export const fetchParticipantsByContest = createAsyncThunk(
         }
         if (votedOnly) {
           o.votedOnly = true;
+        }
+        if (favoriteOnly) {
+          o.favoriteOnly = true;
         }
         if (payload.sort) {
           o.sort = payload.sort;

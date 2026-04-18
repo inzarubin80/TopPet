@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #f3f4f6;
+  background: var(--color-surface);
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
   position: relative;
@@ -57,7 +57,7 @@
   padding: 0 12px;
   font-size: 12px;
   color: #6b7280;
-  background: #f3f4f6;
+  background: var(--color-surface);
   font-weight: 500;
 }
 
@@ -126,14 +126,14 @@
   min-width: 0;
   padding: 8px 0 0;
   border-radius: 0;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface);
   border: none;
   box-shadow: none;
 }
 
 .message-item.message-system {
   align-self: center;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface);
   color: #6b7280;
   font-style: italic;
   max-width: 100%;
@@ -185,10 +185,9 @@
   z-index: 5;
 }
 
-.message-actions {
+.message-menu-in-action-bar {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
+  z-index: 6;
 }
 
 .message-menu-inline {
@@ -204,36 +203,60 @@
   opacity: 1;
 }
 
-.message-menu-trigger {
-  border: none;
-  background: transparent;
-  color: inherit;
-  width: 26px;
-  height: 22px;
-  border-radius: 6px;
+/* Кнопка «шестерёнка + стрелка» в одной линии с «Ответить» (как в 1С) */
+.message-menu-trigger--gear {
+  box-sizing: border-box;
+  margin: 0;
+  height: 26px;
+  padding: 0 6px;
+  gap: 4px;
+  border: 1px solid #d8d8d8;
+  border-radius: 3px;
+  background: #fff;
+  color: #6b6b6b;
   cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font: inherit;
+  line-height: 1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.message-menu-trigger:hover {
-  background: rgba(15, 23, 42, 0.06);
+.message-menu-trigger--gear:hover {
+  background: #fafafa;
+  border-color: #cfcfcf;
+  color: #4a4a4a;
+}
+
+.message-menu-trigger--gear:active {
+  background: #f3f3f3;
+}
+
+.message-menu-trigger-gear {
+  flex-shrink: 0;
+  display: block;
+}
+
+.message-menu-trigger-caret {
+  flex-shrink: 0;
+  opacity: 0.88;
 }
 
 .message-menu-dropdown {
   position: absolute;
   right: 0;
-  top: 26px;
-  background: #f7f7f8;
+  top: calc(100% + 4px);
+  background: var(--color-surface);
   color: #333;
-  border: none;
+  border: 1px solid var(--color-border, #eaeaea);
   border-radius: 10px;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
   min-width: 140px;
-  z-index: 20;
+  z-index: 30;
   padding: 6px;
   display: flex;
   flex-direction: column;
@@ -264,7 +287,7 @@
 }
 
 .message-menu-item:hover {
-  background: #eceef1;
+  background: rgba(15, 23, 42, 0.05);
 }
 
 .message-menu-item.danger {
@@ -296,7 +319,7 @@
 
 .message-edit-btn {
   border: 1px solid #d1d5db;
-  background: #fff;
+  background: var(--color-surface);
   padding: 6px 10px;
   border-radius: 8px;
   cursor: pointer;
@@ -349,8 +372,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: none;
-  background: #fff;
+  border: 1px solid var(--color-border, #eaeaea);
+  background: var(--color-surface);
   color: #4b5563;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
   cursor: pointer;
@@ -364,13 +387,13 @@
 }
 
 .message-scroll-button:hover {
-  background: #f9fafb;
+  background: var(--color-surface);
   color: #111827;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
 }
 
 .message-scroll-button:active {
-  background: #f3f4f6;
+  background: var(--color-surface);
 }
 
 /* Mobile adaptations */
@@ -429,10 +452,14 @@
     right: 16px;
   }
 
-  .message-menu-trigger {
-    width: 28px;
-    height: 24px;
-    font-size: 14px;
+  .message-menu-trigger--gear {
+    height: 28px;
+    padding: 0 7px;
+  }
+
+  .message-menu-trigger-gear {
+    width: 13px;
+    height: 13px;
   }
 
   .message-menu-dropdown {

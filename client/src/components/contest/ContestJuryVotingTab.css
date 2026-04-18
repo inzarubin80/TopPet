@@ -3,9 +3,9 @@
 }
 
 .contest-jury-voting-card {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 28px;
-  box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   /* overflow: visible — иначе position:sticky у шапки таблицы не работает при прокрутке страницы */
   overflow: visible;
 }
@@ -19,15 +19,24 @@
   line-height: 1.45;
 }
 
+.contest-jury-voting-favorite-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 1rem 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
 .contest-jury-voting-nomination-bar {
   padding: 0 1rem 0.75rem;
   border-bottom: 1px solid #e2e8f0;
-  background: #fafbfc;
+  background: var(--color-surface);
 }
 
 .contest-jury-voting-toolbar {
   padding: 1rem 1.5rem;
-  background: #f8fafc;
+  background: var(--color-surface);
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   flex-wrap: wrap;
@@ -50,7 +59,7 @@
   font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
-  background: #fff;
+  background: var(--color-surface);
   color: #1e293b;
 }
 
@@ -260,13 +269,30 @@
   gap: 8px;
 }
 
-.contest-jury-voting-modal-img {
-  max-width: 100%;
-  max-height: min(70vh, 720px);
-  height: auto;
-  display: block;
-  margin: 0 auto;
-  border-radius: 12px;
+.contest-jury-voting-participant-modal.modal-overlay .modal-content {
+  max-width: min(96vw, 1100px);
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.contest-jury-voting-participant-modal .modal-body {
+  padding: 0;
+  flex: 1;
+  min-height: min(55vh, 520px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.contest-jury-voting-participant-modal .modal-body .participant-page--modal {
+  min-height: min(50vh, 480px);
+}
+
+.contest-jury-voting-participant-open-tab {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
 }
 
 .contest-jury-voting-empty,

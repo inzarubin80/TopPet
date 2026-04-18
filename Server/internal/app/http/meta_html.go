@@ -19,7 +19,7 @@ type (
 	serviceMetaHTML interface {
 		GetContest(ctx context.Context, contestID model.ContestID) (*model.Contest, error)
 		ListNominations(ctx context.Context, contestID model.ContestID) ([]*model.Nomination, error)
-		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
+		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
 		ListContestRegistrationFields(ctx context.Context, contestID model.ContestID) ([]*model.RegistrationField, error)
 	}
@@ -610,7 +610,7 @@ func (h *metaHTMLHandler) ServeContest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, 8, 0, "")
+	participants, _, _ := h.service.ListParticipantsByContest(r.Context(), contestID, nil, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, false, 8, 0, "")
 	imageURL := strings.TrimSpace(contest.CoverUrl)
 	if imageURL != "" {
 		imageURL = h.absoluteImageURL(imageURL)

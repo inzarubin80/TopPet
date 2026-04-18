@@ -69,7 +69,7 @@ func TestJuryAndAudienceVotingFlow(t *testing.T) {
 	}
 
 	viewer := org
-	list, _, err := svc.ListParticipantsByContest(ctx, contestID, &viewer, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, 100, 0, "")
+	list, _, err := svc.ListParticipantsByContest(ctx, contestID, &viewer, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, false, 100, 0, "")
 	if err != nil {
 		t.Fatalf("ListParticipantsByContest: %v", err)
 	}

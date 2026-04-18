@@ -26,6 +26,8 @@ interface VoteButtonProps {
   /** Текст кнопки вместо «Голосовать» */
   voteCtaLabel?: string;
   onVoted?: (participantId: ParticipantID) => void;
+  /** По умолчанию true — на странице работы в строке с числом голосов удобнее false */
+  fullWidth?: boolean;
 }
 
 export const VoteButton: React.FC<VoteButtonProps> = ({
@@ -38,6 +40,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   canReceiveVotes = true,
   voteCtaLabel,
   onVoted,
+  fullWidth = true,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -134,7 +137,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <Button variant="primary" size="large" fullWidth={true} onClick={handleVote}>
+      <Button variant="primary" size="large" fullWidth={fullWidth} onClick={handleVote}>
         Войти для голосования
       </Button>
     );
@@ -153,7 +156,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       onClick={handleVote}
       disabled={loading || voting}
       size="large"
-      fullWidth={true}
+      fullWidth={fullWidth}
       className={`vote-button-main ${isVoted ? 'vote-button-main-active' : ''}`}
       title={iconTitle}
       aria-label={iconTitle}

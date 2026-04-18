@@ -82,7 +82,7 @@ func TestLargeContestFlow300x3x3x3(t *testing.T) {
 	}
 
 	viewer := org
-	list, total, err := svc.ListParticipantsByContest(ctx, contestID, &viewer, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, 10000, 0, "")
+	list, total, err := svc.ListParticipantsByContest(ctx, contestID, &viewer, nil, false, model.ParticipantListScopeAll, model.ParticipantListSubmissionAccepted, false, false, 10000, 0, "")
 	if err != nil {
 		t.Fatalf("ListParticipantsByContest: %v", err)
 	}

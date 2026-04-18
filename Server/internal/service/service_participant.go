@@ -209,10 +209,18 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 	s.attachOneParticipantJuryScoreTotal(ctx, contest, viewer, participant)
 	s.attachOneParticipantWinnerFlags(ctx, contest, participant)
 
+	if viewer != nil {
+		ok, err := s.repository.IsParticipantFavorite(ctx, *viewer, participantID)
+		if err == nil {
+			v := ok
+			participant.ViewerFavorite = &v
+		}
+	}
+
 	return participant, nil
 }
 
-func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error) {
+func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, sort string) ([]*model.Participant, int64, error) {
 	if participantScope != model.ParticipantListScopeAll && participantScope != model.ParticipantListScopeMine {
 		return nil, 0, fmt.Errorf("%w: invalid participant_scope", model.ErrBadRequest)
 	}
@@ -229,6 +237,9 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	}
 	if votedByViewerOnly && viewer == nil {
 		return nil, 0, fmt.Errorf("%w: voted_only requires authentication", model.ErrBadRequest)
+	}
+	if favoriteOnly && viewer == nil {
+		return nil, 0, fmt.Errorf("%w: favorite_only requires authentication", model.ErrBadRequest)
 	}
 	if juryUnscoredOnly {
 		if viewer == nil {
@@ -277,7 +288,7 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	default:
 		return nil, 0, fmt.Errorf("%w: sort must be votes, jury or created_at", model.ErrBadRequest)
 	}
-	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, limit, offset, listOrder)
+	participants, total, err := s.repository.ListParticipantsByContest(ctx, contestID, viewer, includeAll, nominationFilter, juryUnscoredOnly, participantScope, sf, votedByViewerOnly, favoriteOnly, limit, offset, listOrder)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -547,4 +558,25 @@ func (s *TopPetService) UpdateParticipantPhotoOrder(ctx context.Context, partici
 
 	log.Printf("[Service] UpdateParticipantPhotoOrder: Order updated successfully")
 	return nil
+}
+
+func (s *TopPetService) SetParticipantFavorite(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, favorite bool) error {
+	p, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return err
+	}
+	if p.ContestID != contestID {
+		return fmt.Errorf("%w", model.ErrNotFound)
+	}
+	contest, err := s.getContestForBusiness(ctx, contestID)
+	if err != nil {
+		return err
+	}
+	if !s.participantVisible(ctx, p, contest, &userID) {
+		return fmt.Errorf("%w", model.ErrNotFound)
+	}
+	if favorite {
+		return s.repository.UpsertParticipantFavorite(ctx, userID, participantID)
+	}
+	return s.repository.DeleteParticipantFavorite(ctx, userID, participantID)
 }

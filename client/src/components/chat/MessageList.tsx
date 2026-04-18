@@ -5,14 +5,28 @@ import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messe
 import '../common/MessengerActionBar.css';
 import './MessageList.css';
 
+/** Чат или комментарии к работе — общий список для MessageList. */
+export type MessageListRow = Pick<
+  ChatMessage,
+  'id' | 'user_id' | 'user_name' | 'text' | 'parent_id' | 'score' | 'user_vote' | 'created_at'
+> & { is_system?: boolean };
+
 interface MessageListProps {
-  messages: ChatMessage[];
+  messages: MessageListRow[];
   currentUserId?: number;
   /** When false, +/- are disabled (e.g. not signed in). */
   canVote?: boolean;
+  /** Когда false — кнопка «Ответить» неактивна (например, нет прав на комментарии). */
+  canReply?: boolean;
+  /** Пустой список: подпись (по умолчанию как в чате). */
+  emptyLabel?: string;
+  /** Редактирование: по умолчанию только своё сообщение. */
+  canEditMessage?: (message: MessageListRow) => boolean;
+  /** Удаление: по умолчанию только своё сообщение. */
+  canDeleteMessage?: (message: MessageListRow) => boolean;
   onUpdateMessage?: (messageId: string, text: string) => void;
   onDeleteMessage?: (messageId: string) => void;
-  onReply?: (message: ChatMessage) => void;
+  onReply?: (message: MessageListRow) => void;
   onVote?: (messageId: string, value: -1 | 1) => void;
 }
 
@@ -20,6 +34,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
   canVote = true,
+  canReply = true,
+  emptyLabel = 'Нет сообщений',
+  canEditMessage,
+  canDeleteMessage,
   onUpdateMessage,
   onDeleteMessage,
   onReply,
@@ -143,25 +161,40 @@ export const MessageList: React.FC<MessageListProps> = ({
     setOpenMenuId((prev) => (prev === messageId ? null : messageId));
   };
 
+  React.useEffect(() => {
+    if (!openMenuId) return;
+    const close = (e: MouseEvent) => {
+      const el = document.querySelector(`[data-message-menu="${openMenuId}"]`);
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [openMenuId]);
+
   const threadedMessages = buildThreadList(messages);
   const byId = new Map(messages.map((msg) => [msg.id, msg]));
 
   return (
     <div className="message-list" ref={listRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
-        <div className="message-list-empty">Нет сообщений</div>
+        <div className="message-list-empty">{emptyLabel}</div>
       ) : (
         threadedMessages.map(({ item: message, depth }, index) => {
           const safeDepth = Math.min(depth, 5);
           // Show date separator if this is the first message or if the previous message is from a different day
           const prevMessage = index > 0 ? threadedMessages[index - 1].item : null;
-          const showDateSeparator = 
-            !message.is_system && 
-            (!prevMessage || 
-             !isSameDay(new Date(message.created_at), new Date(prevMessage.created_at)) ||
-             prevMessage.is_system);
+          const showDateSeparator =
+            message.is_system !== true &&
+            (!prevMessage ||
+              !isSameDay(new Date(message.created_at), new Date(prevMessage.created_at)) ||
+              prevMessage.is_system === true);
           
           const isOwn = currentUserId === message.user_id;
+          const allowEdit = canEditMessage ? canEditMessage(message) : isOwn;
+          const allowDelete = canDeleteMessage ? canDeleteMessage(message) : isOwn;
+          const showMessageMenu = allowEdit || allowDelete;
           const userName = message.user_name || `Пользователь ${message.user_id}`;
           const parentMessage = message.parent_id ? byId.get(message.parent_id) : undefined;
           const replyToName = parentMessage
@@ -178,10 +211,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                 </div>
               )}
               <div
-                className={`message-item-wrapper ${message.is_system ? 'message-system-wrapper' : ''}`}
+                className={`message-item-wrapper ${message.is_system === true ? 'message-system-wrapper' : ''}`}
                 style={{ marginLeft: `${safeDepth * 14}px` }}
               >
-              {!message.is_system && (
+              {message.is_system !== true && (
                 <div
                   className="message-avatar"
                   style={{ backgroundColor: avatarColor }}
@@ -191,9 +224,9 @@ export const MessageList: React.FC<MessageListProps> = ({
                 </div>
               )}
               <div
-                className={`message-item ${message.is_system ? 'message-system' : ''}`}
+                className={`message-item ${message.is_system === true ? 'message-system' : ''}`}
               >
-                {!message.is_system && (
+                {message.is_system !== true && (
                   <div className="message-header">
                     <div className="message-header-titles">
                       <span className="message-user">{userName}</span>
@@ -201,44 +234,6 @@ export const MessageList: React.FC<MessageListProps> = ({
                         <span className="message-reply-target">↪ {replyToName}</span>
                       ) : null}
                     </div>
-                    {isOwn && (
-                      <div className="message-actions">
-                        <div className="message-menu">
-                          <button
-                            type="button"
-                            className="message-menu-trigger"
-                            onClick={() => toggleMenu(message.id)}
-                            aria-label="Открыть меню"
-                          >
-                            ⋯
-                          </button>
-                          {openMenuId === message.id && (
-                            <div className="message-menu-dropdown">
-                              <button
-                                type="button"
-                                className="message-menu-item"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleStartEdit(message.id, message.text);
-                                }}
-                              >
-                                Редактировать
-                              </button>
-                              <button
-                                type="button"
-                                className="message-menu-item danger"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleDelete(message.id);
-                                }}
-                              >
-                                Удалить
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
                 {editingMessageId === message.id ? (
@@ -253,7 +248,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                       <button type="button" className="message-edit-btn" onClick={handleCancelEdit}>
                         Отмена
                       </button>
-                      {isOwn && (
+                      {allowDelete ? (
                         <button
                           type="button"
                           className="message-edit-btn danger"
@@ -264,7 +259,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                         >
                           Удалить
                         </button>
-                      )}
+                      ) : null}
                       <button type="button" className="message-edit-btn primary" onClick={() => handleSaveEdit(message.id)}>
                         Сохранить
                       </button>
@@ -273,12 +268,14 @@ export const MessageList: React.FC<MessageListProps> = ({
                 ) : (
                   <>
                     <div className="message-text">{message.text}</div>
-                    {!message.is_system && (
+                    {message.is_system !== true && (
                       <div className="message-footer-row">
                         <div className="messenger-action-bar">
                           <button
                             type="button"
-                            className={`messenger-action-btn ${message.user_vote === 1 ? 'active-positive' : ''}`}
+                            className={`messenger-action-btn messenger-action-up ${
+                              message.user_vote === 1 ? 'active-positive' : ''
+                            }`}
                             disabled={!canVote || !onVote}
                             onClick={() => onVote?.(message.id, 1)}
                             aria-label="Плюс"
@@ -287,20 +284,99 @@ export const MessageList: React.FC<MessageListProps> = ({
                           </button>
                           <button
                             type="button"
-                            className={`messenger-action-btn ${message.user_vote === -1 ? 'active-negative' : ''}`}
+                            className={`messenger-action-btn messenger-action-down ${
+                              message.user_vote === -1 ? 'active-negative' : ''
+                            }`}
                             disabled={!canVote || !onVote}
                             onClick={() => onVote?.(message.id, -1)}
                             aria-label="Минус"
                           >
-                            {message.score < 0 ? `- ${Math.abs(message.score)}` : '-'}
+                            {message.score < 0 ? `− ${Math.abs(message.score)}` : '−'}
                           </button>
                           <button
                             type="button"
                             className="messenger-action-btn messenger-action-reply"
+                            disabled={!canReply}
                             onClick={() => onReply?.(message)}
                           >
                             Ответить
                           </button>
+                          {showMessageMenu ? (
+                            <div
+                              className="message-menu message-menu-in-action-bar"
+                              data-message-menu={message.id}
+                            >
+                              <button
+                                type="button"
+                                className="message-menu-trigger--gear"
+                                onClick={() => toggleMenu(message.id)}
+                                aria-label="Действия с сообщением"
+                                aria-expanded={openMenuId === message.id}
+                              >
+                                <svg
+                                  className="message-menu-trigger-gear"
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  aria-hidden
+                                >
+                                  <path
+                                    d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                <svg
+                                  className="message-menu-trigger-caret"
+                                  width="8"
+                                  height="5"
+                                  viewBox="0 0 8 5"
+                                  aria-hidden
+                                >
+                                  <path d="M0 0h8L4 5z" fill="currentColor" />
+                                </svg>
+                              </button>
+                              {openMenuId === message.id && (
+                                <div className="message-menu-dropdown">
+                                  {allowEdit ? (
+                                    <button
+                                      type="button"
+                                      className="message-menu-item"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleStartEdit(message.id, message.text);
+                                      }}
+                                    >
+                                      Редактировать
+                                    </button>
+                                  ) : null}
+                                  {allowDelete ? (
+                                    <button
+                                      type="button"
+                                      className="message-menu-item danger"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleDelete(message.id);
+                                      }}
+                                    >
+                                      Удалить
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                         <span
                           className="message-time"

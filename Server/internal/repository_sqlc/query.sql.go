@@ -255,6 +255,17 @@ WHERE cp.contest_id = $1
         AND v.user_id = $3::bigint
     )
   )
+  AND (
+    NOT $10::boolean
+    OR (
+      $3::bigint IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM contest_user_participant_favorites f
+        WHERE f.participant_id = cp.id
+          AND f.user_id = $3::bigint
+      )
+    )
+  )
 `
 
 type CountParticipantsByContestParams struct {
@@ -267,6 +278,7 @@ type CountParticipantsByContestParams struct {
 	ParticipantScope     string
 	SubmissionFilter     string
 	VotedByViewerOnly    bool
+	FavoriteOnly         bool
 }
 
 func (q *Queries) CountParticipantsByContest(ctx context.Context, arg *CountParticipantsByContestParams) (int64, error) {
@@ -280,6 +292,7 @@ func (q *Queries) CountParticipantsByContest(ctx context.Context, arg *CountPart
 		arg.ParticipantScope,
 		arg.SubmissionFilter,
 		arg.VotedByViewerOnly,
+		arg.FavoriteOnly,
 	)
 	var column_1 int64
 	err := row.Scan(&column_1)
@@ -825,6 +838,30 @@ WHERE pca.user_id = $1
 
 func (q *Queries) DeleteParticipantConsentAuditsForUser(ctx context.Context, userID int64) error {
 	_, err := q.db.Exec(ctx, deleteParticipantConsentAuditsForUser, userID)
+	return err
+}
+
+const deleteParticipantFavorite = `-- name: DeleteParticipantFavorite :exec
+DELETE FROM contest_user_participant_favorites
+WHERE user_id = $1 AND participant_id = $2
+`
+
+type DeleteParticipantFavoriteParams struct {
+	UserID        int64
+	ParticipantID pgtype.UUID
+}
+
+func (q *Queries) DeleteParticipantFavorite(ctx context.Context, arg *DeleteParticipantFavoriteParams) error {
+	_, err := q.db.Exec(ctx, deleteParticipantFavorite, arg.UserID, arg.ParticipantID)
+	return err
+}
+
+const deleteParticipantFavoritesByParticipantID = `-- name: DeleteParticipantFavoritesByParticipantID :exec
+DELETE FROM contest_user_participant_favorites WHERE participant_id = $1
+`
+
+func (q *Queries) DeleteParticipantFavoritesByParticipantID(ctx context.Context, participantID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteParticipantFavoritesByParticipantID, participantID)
 	return err
 }
 
@@ -1556,6 +1593,25 @@ func (q *Queries) IsContestJuryMember(ctx context.Context, arg *IsContestJuryMem
 	return exists, err
 }
 
+const isParticipantFavorite = `-- name: IsParticipantFavorite :one
+SELECT EXISTS (
+  SELECT 1 FROM contest_user_participant_favorites
+  WHERE user_id = $1 AND participant_id = $2
+)
+`
+
+type IsParticipantFavoriteParams struct {
+	UserID        int64
+	ParticipantID pgtype.UUID
+}
+
+func (q *Queries) IsParticipantFavorite(ctx context.Context, arg *IsParticipantFavoriteParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isParticipantFavorite, arg.UserID, arg.ParticipantID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const isUserBlocked = `-- name: IsUserBlocked :one
 SELECT is_blocked FROM users WHERE user_id = $1
 `
@@ -1691,6 +1747,7 @@ SELECT
     ccm.created_at,
     ccm.updated_at,
     COALESCE(u.name, 'Пользователь ' || ccm.user_id::text) as user_name,
+    u.avatar_url AS user_avatar_url,
     COALESCE((SELECT SUM(v.value)::bigint FROM contest_chat_message_votes v WHERE v.message_id = ccm.id), 0)::bigint AS score,
     COALESCE((SELECT v2.value::int FROM contest_chat_message_votes v2 WHERE v2.message_id = ccm.id AND v2.user_id = $4::bigint), 0)::int AS user_vote
 FROM contest_chat_messages ccm
@@ -1708,17 +1765,18 @@ type ListChatMessagesParams struct {
 }
 
 type ListChatMessagesRow struct {
-	ID        pgtype.UUID
-	ContestID pgtype.UUID
-	ParentID  pgtype.UUID
-	UserID    int64
-	Text      string
-	IsSystem  bool
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	UserName  string
-	Score     int64
-	UserVote  int32
+	ID            pgtype.UUID
+	ContestID     pgtype.UUID
+	ParentID      pgtype.UUID
+	UserID        int64
+	Text          string
+	IsSystem      bool
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	UserName      string
+	UserAvatarUrl *string
+	Score         int64
+	UserVote      int32
 }
 
 func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error) {
@@ -1745,6 +1803,7 @@ func (q *Queries) ListChatMessages(ctx context.Context, arg *ListChatMessagesPar
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
+			&i.UserAvatarUrl,
 			&i.Score,
 			&i.UserVote,
 		); err != nil {
@@ -1768,6 +1827,7 @@ SELECT
     cc.created_at,
     cc.updated_at,
     COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
+    u.avatar_url AS user_avatar_url,
     COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score,
     COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = $4::bigint), 0)::int AS user_vote
 FROM contest_comments cc
@@ -1793,6 +1853,7 @@ type ListCommentsByParticipantRow struct {
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	UserName      string
+	UserAvatarUrl *string
 	Score         int64
 	UserVote      int32
 }
@@ -1820,6 +1881,7 @@ func (q *Queries) ListCommentsByParticipant(ctx context.Context, arg *ListCommen
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
+			&i.UserAvatarUrl,
 			&i.Score,
 			&i.UserVote,
 		); err != nil {
@@ -2449,11 +2511,22 @@ WHERE cp.contest_id = $1
         AND v.user_id = $3::bigint
     )
   )
+  AND (
+    NOT $10::boolean
+    OR (
+      $3::bigint IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM contest_user_participant_favorites f
+        WHERE f.participant_id = cp.id
+          AND f.user_id = $3::bigint
+      )
+    )
+  )
 ORDER BY
-  CASE WHEN $10::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
-  CASE WHEN $10::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN $11::text = 'votes' THEN COALESCE(vc.vote_cnt, 0::bigint) END DESC NULLS LAST,
+  CASE WHEN $11::text = 'jury' THEN COALESCE(js.jury_sum, 0::bigint) END DESC NULLS LAST,
   cp.created_at ASC
-LIMIT $12::int OFFSET $11::int
+LIMIT $13::int OFFSET $12::int
 `
 
 type ListParticipantsByContestParams struct {
@@ -2466,6 +2539,7 @@ type ListParticipantsByContestParams struct {
 	ParticipantScope     string
 	SubmissionFilter     string
 	VotedByViewerOnly    bool
+	FavoriteOnly         bool
 	ListOrder            string
 	ListOffset           int32
 	ListLimit            int32
@@ -2500,6 +2574,7 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 		arg.ParticipantScope,
 		arg.SubmissionFilter,
 		arg.VotedByViewerOnly,
+		arg.FavoriteOnly,
 		arg.ListOrder,
 		arg.ListOffset,
 		arg.ListLimit,
@@ -3949,4 +4024,20 @@ func (q *Queries) UpsertContestVote(ctx context.Context, arg *UpsertContestVoteP
 		&i.NominationSlot,
 	)
 	return &i, err
+}
+
+const upsertParticipantFavorite = `-- name: UpsertParticipantFavorite :exec
+INSERT INTO contest_user_participant_favorites (user_id, participant_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, participant_id) DO NOTHING
+`
+
+type UpsertParticipantFavoriteParams struct {
+	UserID        int64
+	ParticipantID pgtype.UUID
+}
+
+func (q *Queries) UpsertParticipantFavorite(ctx context.Context, arg *UpsertParticipantFavoriteParams) error {
+	_, err := q.db.Exec(ctx, upsertParticipantFavorite, arg.UserID, arg.ParticipantID)
+	return err
 }

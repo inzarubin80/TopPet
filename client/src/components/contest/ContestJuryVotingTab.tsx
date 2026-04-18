@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Modal } from '../common/Modal';
+import { ParticipantCardBody } from '../participant/ParticipantCardBody';
 import { Button } from '../common/Button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { listJuryCriteria } from '../../api/juryCriteriaApi';
@@ -9,7 +11,7 @@ import {
   type ParticipantsListNominationFilter,
 } from '../../api/participantsApi';
 import type { ContestID, ContestStatus, JuryCriterion, Nomination, Participant, ParticipantID } from '../../types/models';
-import { resolvePublicAssetUrl, getParticipantDisplayTitle } from '../../utils/seo';
+import { getParticipantDisplayTitle } from '../../utils/seo';
 import { formatJuryTotalScore } from '../../utils/juryLabels';
 import { useToast } from '../../contexts/ToastContext';
 import { getApiErrorMessage } from '../../types/api';
@@ -95,6 +97,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
 }) => {
   const { showError } = useToast();
   const [nominationFilter, setNominationFilter] = useState<ParticipantsListNominationFilter>('all');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [criteria, setCriteria] = useState<JuryCriterion[]>([]);
@@ -102,7 +105,11 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
   const [scores, setScores] = useState<Record<string, Record<string, number>>>({});
   const [syncByParticipant, setSyncByParticipant] = useState<Record<string, SyncStatus>>({});
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [imageModal, setImageModal] = useState<{ url: string; title: string } | null>(null);
+  const [participantModal, setParticipantModal] = useState<{
+    participantId: string;
+    title: string;
+  } | null>(null);
+
   const [isOnline, setIsOnline] = useState(
     () => (typeof navigator !== 'undefined' ? navigator.onLine : true)
   );
@@ -255,6 +262,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
           limit: 10000,
           offset: 0,
           sort: 'created_at',
+          favoriteOnly: favoritesOnly,
         }),
       ]);
       critRes.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
@@ -300,7 +308,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, [contestId, isJuror, showError, nominationFilter]);
+  }, [contestId, isJuror, showError, nominationFilter, favoritesOnly]);
 
   useEffect(() => {
     void load();
@@ -313,7 +321,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     debMap.clear();
     retryMap.forEach((t) => clearTimeout(t));
     retryMap.clear();
-  }, [nominationFilter]);
+  }, [nominationFilter, favoritesOnly]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -406,11 +414,9 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
     void flushParticipant(participantId);
   };
 
-  const openWorkImage = (p: Participant) => {
-    const url = p.photos?.[0]?.url?.trim();
-    if (!url) return;
-    setImageModal({
-      url: resolvePublicAssetUrl(url),
+  const openParticipantPage = (p: Participant) => {
+    setParticipantModal({
+      participantId: p.id,
       title: getParticipantDisplayTitle(p),
     });
   };
@@ -496,6 +502,15 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
           </div>
         </div>
 
+        <label className="contest-jury-voting-favorite-filter contest-page-participants-jury-filter">
+          <input
+            type="checkbox"
+            checked={favoritesOnly}
+            onChange={(e) => setFavoritesOnly(e.target.checked)}
+          />
+          <span>Только избранное</span>
+        </label>
+
         {nominations.length > 0 ? (
           <div
             className="contest-jury-voting-nomination-bar contest-page-nomination-tabs-bar"
@@ -551,9 +566,11 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
 
         {participants.length === 0 ? (
           <p className="contest-jury-voting-empty">
-            {nominations.length > 0 && nominationFilter !== 'all'
-              ? 'В выбранной номинации пока нет заявок.'
-              : 'Пока нет заявок для отображения.'}
+            {favoritesOnly
+              ? 'Нет избранных работ (с учётом выбранного фильтра по номинации).'
+              : nominations.length > 0 && nominationFilter !== 'all'
+                ? 'В выбранной номинации пока нет заявок.'
+                : 'Пока нет заявок для отображения.'}
           </p>
         ) : (
           <>
@@ -595,9 +612,8 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                           <button
                             type="button"
                             className="contest-jury-voting-work-title"
-                            onClick={() => openWorkImage(p)}
-                            disabled={!p.photos?.[0]?.url}
-                            title={p.photos?.[0]?.url ? 'Показать фото' : 'Нет фото'}
+                            onClick={() => openParticipantPage(p)}
+                            title="Открыть страницу участника"
                           >
                             {getParticipantDisplayTitle(p)}
                           </button>
@@ -681,12 +697,31 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
       </div>
 
       <Modal
-        isOpen={imageModal !== null}
-        onClose={() => setImageModal(null)}
-        title={imageModal?.title}
+        className="contest-jury-voting-participant-modal"
+        isOpen={participantModal !== null}
+        onClose={() => setParticipantModal(null)}
+        closeOnlyHeader
+        footer={
+          participantModal ? (
+            <Link
+              to={`/contests/${contestId}/participants/${participantModal.participantId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="contest-jury-voting-participant-open-tab"
+            >
+              Открыть в отдельной вкладке
+            </Link>
+          ) : undefined
+        }
       >
-        {imageModal ? (
-          <img className="contest-jury-voting-modal-img" src={imageModal.url} alt="" />
+        {participantModal ? (
+          <ParticipantCardBody
+            contestId={contestId}
+            participantId={participantModal.participantId}
+            variant="modal"
+            lockWorkNavigationPrevious
+            lockWorkNavigationNext
+          />
         ) : null}
       </Modal>
     </div>

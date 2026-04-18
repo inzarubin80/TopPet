@@ -249,6 +249,8 @@ export interface Participant {
   audience_winner_prize?: string;
   jury_winner_place?: number;
   jury_winner_prize?: string;
+  /** Только для авторизованного пользователя: в избранном ли работа у него. */
+  viewer_favorite?: boolean;
   created_at: string;
   updated_at: string;
 }

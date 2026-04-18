@@ -108,6 +108,7 @@ const ContestPage: React.FC = () => {
   const [participantsSubmissionFilter, setParticipantsSubmissionFilter] =
     useState<ParticipantsListSubmissionFilter>('all');
   const [participantsVotedOnly, setParticipantsVotedOnly] = useState(false);
+  const [participantsFavoritesOnly, setParticipantsFavoritesOnly] = useState(false);
   const [participantsSort, setParticipantsSort] = useState<ParticipantsListSort>('created_at');
   const [participantsPage, setParticipantsPage] = useState(0);
   const [isCurrentUserJuror, setIsCurrentUserJuror] = useState(false);
@@ -133,6 +134,7 @@ const ContestPage: React.FC = () => {
     juryUnscored: participantsJuryUnscoredOnly,
     submission: participantsSubmissionFilter,
     votedOnly: participantsVotedOnly,
+    favoritesOnly: participantsFavoritesOnly,
     sort: participantsSort,
   });
 
@@ -152,6 +154,7 @@ const ContestPage: React.FC = () => {
       setParticipantsJuryUnscoredOnly(false);
       setParticipantsSubmissionFilter('all');
       setParticipantsVotedOnly(false);
+      setParticipantsFavoritesOnly(false);
       const initialSort: ParticipantsListSort = currentContest.public_voting_enabled
         ? 'votes'
         : currentContest.jury_voting_enabled
@@ -164,6 +167,7 @@ const ContestPage: React.FC = () => {
         juryUnscored: false,
         submission: 'all',
         votedOnly: false,
+        favoritesOnly: false,
         sort: initialSort,
       };
       return;
@@ -173,6 +177,7 @@ const ContestPage: React.FC = () => {
       participantsListFiltersRef.current.juryUnscored !== participantsJuryUnscoredOnly ||
       participantsListFiltersRef.current.submission !== participantsSubmissionFilter ||
       participantsListFiltersRef.current.votedOnly !== participantsVotedOnly ||
+      participantsListFiltersRef.current.favoritesOnly !== participantsFavoritesOnly ||
       participantsListFiltersRef.current.sort !== participantsSort;
     if (filtersChanged) {
       participantsListFiltersRef.current = {
@@ -180,6 +185,7 @@ const ContestPage: React.FC = () => {
         juryUnscored: participantsJuryUnscoredOnly,
         submission: participantsSubmissionFilter,
         votedOnly: participantsVotedOnly,
+        favoritesOnly: participantsFavoritesOnly,
         sort: participantsSort,
       };
       if (participantsPage !== 0) {
@@ -200,6 +206,7 @@ const ContestPage: React.FC = () => {
         submissionFilter: participantsSubmissionFilter,
         juryUnscoredOnly: participantsJuryUnscoredOnly,
         votedOnly: participantsVotedOnly,
+        favoriteOnly: participantsFavoritesOnly,
         sort: participantsSort,
         limit,
         offset,
@@ -213,6 +220,7 @@ const ContestPage: React.FC = () => {
     participantsJuryUnscoredOnly,
     participantsSubmissionFilter,
     participantsVotedOnly,
+    participantsFavoritesOnly,
     participantsSort,
     participantsPage,
   ]);
@@ -383,6 +391,7 @@ const ContestPage: React.FC = () => {
         submissionFilter: participantsSubmissionFilter,
         juryUnscoredOnly: participantsJuryUnscoredOnly,
         votedOnly: participantsVotedOnly,
+        favoritesOnly: participantsFavoritesOnly,
         sort: participantsSort,
         page: participantsListPaginated ? participantsPage : 0,
         pageSize: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
@@ -917,6 +926,16 @@ const ContestPage: React.FC = () => {
                     <span>Только за кого я проголосовал</span>
                   </label>
                 ) : null}
+                {isAuthenticated ? (
+                  <label className="contest-page-participants-jury-filter">
+                    <input
+                      type="checkbox"
+                      checked={participantsFavoritesOnly}
+                      onChange={(e) => setParticipantsFavoritesOnly(e.target.checked)}
+                    />
+                    <span>Только избранное</span>
+                  </label>
+                ) : null}
                 {showWorksParticipationChrome &&
                 !hasContestNominations &&
                 !alreadyInContestWithoutNominations ? (
@@ -1031,7 +1050,9 @@ const ContestPage: React.FC = () => {
             <div className="contest-page-participants-empty">
               {participantsJuryUnscoredOnly
                 ? 'Среди видимых работ нет таких, где вам не хватает оценок по критериям (или вы оценили все).'
-                : participantsVotedOnly
+                : participantsFavoritesOnly
+                  ? 'Нет работ в избранном (с учётом выбранных фильтров).'
+                  : participantsVotedOnly
                   ? 'Нет работ, за которые вы проголосовали (с учётом выбранных фильтров).'
                   : participantsSubmissionFilter !== 'all'
                   ? participantsSubmissionFilter === 'pending'
@@ -1151,6 +1172,7 @@ const ContestPage: React.FC = () => {
           participantsListSubmissionFilter={participantsSubmissionFilter}
           participantsListVotedOnly={participantsVotedOnly}
           participantsListJuryUnscoredOnly={participantsJuryUnscoredOnly}
+          participantsListFavoriteOnly={participantsFavoritesOnly}
           participantsListLimit={
             participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000
           }
@@ -1196,6 +1218,7 @@ const ContestPage: React.FC = () => {
                   submissionFilter: participantsSubmissionFilter,
                   juryUnscoredOnly: participantsJuryUnscoredOnly,
                   votedOnly: participantsVotedOnly,
+                  favoriteOnly: participantsFavoritesOnly,
                   sort: participantsSort,
                   limit: participantsListPaginated ? PARTICIPANTS_PAGE_SIZE : 10000,
                   offset: participantsListPaginated

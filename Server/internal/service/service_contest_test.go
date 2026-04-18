@@ -152,8 +152,17 @@ func (m *mockRepository) GetParticipant(ctx context.Context, participantID model
 func (m *mockRepository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
 	return nil, model.ErrorNotFound
 }
-func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error) {
+func (m *mockRepository) ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error) {
 	return nil, 0, nil
+}
+func (m *mockRepository) IsParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) (bool, error) {
+	return false, nil
+}
+func (m *mockRepository) UpsertParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
+	return nil
+}
+func (m *mockRepository) DeleteParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
+	return nil
 }
 func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}) (*model.Participant, error) {
 	return nil, nil
