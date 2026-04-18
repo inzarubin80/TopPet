@@ -176,14 +176,33 @@ const ContestPage: React.FC = () => {
         votedOnly: false,
         sort: initialSort,
       };
+      const paginatedOnReset =
+        currentContest.status === 'draft' ||
+        currentContest.status === 'publication' ||
+        currentContest.status === 'registration';
+      const limitOnReset = paginatedOnReset ? PARTICIPANTS_PAGE_SIZE : 10000;
+      const offsetOnReset = 0;
       console.log('[TopPet participants]', 'gallery effect', {
         run,
-        branch: 'reset_contest_filters_only',
+        branch: 'reset_contest_filters_and_dispatch',
         contestId: id,
         initialSort,
         contestStatus: currentContest.status,
         publicVoting: currentContest.public_voting_enabled,
+        limit: limitOnReset,
+        offset: offsetOnReset,
       });
+      dispatch(
+        fetchParticipantsByContest({
+          contestId: id,
+          nominationFilter: 'all',
+          submissionFilter: 'all',
+          votedOnly: false,
+          sort: initialSort,
+          limit: limitOnReset,
+          offset: offsetOnReset,
+        })
+      );
       return;
     }
     const filtersChanged =
