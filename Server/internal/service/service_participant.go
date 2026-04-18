@@ -16,6 +16,13 @@ func normalizeParticipantListSubmissionFilter(includeAll bool, raw string) (stri
 		s = model.ParticipantListSubmissionAll
 	}
 	if !includeAll {
+		// Дефолтный режим списка для неорганизаторов в SQL — «accepted ∨ своя заявка».
+		// Явный фильтр accepted строже: только принятые. Его нужно сохранять, иначе жюри
+		// (в т.ч. председатель), запрашивающие только accepted, всё равно видели свои
+		// заявки в pending/rejected — например во вкладке голосования и в своде председателя.
+		if s == model.ParticipantListSubmissionAccepted {
+			return model.ParticipantListSubmissionAccepted, nil
+		}
 		return model.ParticipantListSubmissionAll, nil
 	}
 	switch s {
