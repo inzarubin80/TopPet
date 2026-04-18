@@ -15,7 +15,7 @@ interface ParticipantCardProps {
   participant: Participant;
   contestId: string;
   contestStatus: ContestStatus;
-  /** Подпись номинации (если заявка привязана к категории) */
+  /** Подпись номинации для подсказки на превью (при наведении) */
   nominationTitle?: string;
   isContestAdmin?: boolean;
   galleryNavigationState?: ParticipantGalleryNavigationState;
@@ -39,7 +39,9 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const { isOwner } = useParticipantPermissions(participant, currentUserId, contestStatus);
   const authorLabel = isOwner ? 'Вы' : participant.user_name || `Пользователь ${participant.user_id}`;
   const workTitle = participant.entry_title?.trim() || participant.pet_name;
+  const avatarInitial = (authorLabel.trim()[0] || 'У').toUpperCase();
   const photos = participant.photos ?? [];
+  const nominationLabel = nominationTitle?.trim() || '';
 
   const submissionStatus = participant.submission_status;
   const showSubmissionBadge =
@@ -108,8 +110,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
     });
   };
 
-  const avatarInitial = (authorLabel.trim()[0] || 'У').toUpperCase();
-
   return (
     <>
     <div className="participant-card" onClick={handleClick}>
@@ -124,22 +124,30 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           ) : (
             <div className="participant-card-placeholder">Нет фото</div>
           )}
+          <div className="participant-card-image-overlay" aria-hidden="true">
+            {nominationLabel ? (
+              <span className="participant-card-overlay-nomination">{nominationLabel}</span>
+            ) : null}
+            <div className="participant-card-overlay-bottom">
+              <span className="participant-card-overlay-title">{workTitle}</span>
+            </div>
+          </div>
         </div>
         <div className="participant-card-summary">
-          <h4 className="participant-card-name">{workTitle}</h4>
-          <div className="participant-card-meta-row">
+          <div className="participant-card-title-row">
             <span className="participant-card-avatar" aria-hidden="true">
               {avatarInitial}
             </span>
-            <span className="participant-card-author">{authorLabel}</span>
+            <span className="participant-card-author participant-card-title-row__author">{authorLabel}</span>
             <span className="participant-card-dot" aria-hidden="true">•</span>
-            <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
-            <span className="participant-card-dot" aria-hidden="true">•</span>
-            <span className="participant-card-likes" aria-label={`Лайков: ${participant.total_votes ?? 0}`}>
-              ♥ {participant.total_votes ?? 0}
-            </span>
+            <div className="participant-card-meta-row">
+              <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
+              <span className="participant-card-dot" aria-hidden="true">•</span>
+              <span className="participant-card-likes" aria-label={`Лайков: ${participant.total_votes ?? 0}`}>
+                ♥ {participant.total_votes ?? 0}
+              </span>
+            </div>
           </div>
-          {nominationTitle ? <span className="participant-card-nomination">{nominationTitle}</span> : null}
           {showSubmissionBadge ? (
             <span
               className={

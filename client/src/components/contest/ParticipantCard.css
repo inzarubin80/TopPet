@@ -129,15 +129,15 @@
   flex-direction: column;
   gap: 10px;
   padding: 14px 14px 8px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: none;
   border-radius: 16px;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: box-shadow 0.2s ease;
   background-color: var(--color-surface);
 }
 
 .participant-card:hover {
-  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
 }
 
 .participant-card-image-wrap {
@@ -152,7 +152,9 @@
   aspect-ratio: 1 / 1;
   border-radius: 12px;
   overflow: hidden;
-  background-color: #f1f5f9;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
   display: block;
   position: relative;
 }
@@ -162,6 +164,64 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  border: none;
+}
+
+.participant-card-image-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  /* Верх — лёгкое затемнение под чип; низ — плотный градиент под название */
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, transparent 42%),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.35) 40%, transparent 68%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.participant-card-image:hover .participant-card-image-overlay {
+  opacity: 1;
+}
+
+.participant-card-overlay-nomination {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  color: #0f172a;
+  background: rgba(248, 250, 252, 0.94);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participant-card-overlay-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.participant-card-overlay-title {
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
 }
 
 .participant-card-placeholder {
@@ -181,16 +241,39 @@
   min-width: 0;
 }
 
+.participant-card-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .participant-card-name {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   color: #111827;
   line-height: 1.3;
+}
+
+/* Карточки победителей: заголовок отдельной строкой, до двух строк */
+.participant-card-summary > .participant-card-name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.participant-card-title-row__author {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .participant-card-meta-row {
@@ -202,6 +285,11 @@
   color: #6b7280;
   font-size: 13px;
   min-width: 0;
+}
+
+.participant-card-title-row .participant-card-meta-row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .participant-card-avatar {
@@ -243,17 +331,6 @@
   gap: 4px;
   font-weight: 600;
   color: #475569;
-}
-
-.participant-card-nomination {
-  display: inline-block;
-  width: fit-content;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  background: #f1f5f9;
-  border-radius: 6px;
 }
 
 .participant-card-footer {
