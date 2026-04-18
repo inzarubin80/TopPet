@@ -159,8 +159,9 @@
   margin-top: 18px;
 }
 
-.contest-page-participate-cta--overview {
-  margin-top: 16px;
+.contest-page-participate-cta--after-description {
+  margin-top: 4px;
+  margin-bottom: var(--contest-overview-section-gap);
 }
 
 .contest-page-participate-cta .contest-page-add-participant-button {

@@ -539,24 +539,6 @@ const ContestPage: React.FC = () => {
     </p>
   ) : null;
 
-  const participatePlusIcon = (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: '8px', verticalAlign: 'middle' }}
-      aria-hidden
-    >
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-
   const participateNominationCtaLabel = isAuthenticated
     ? 'Участвовать'
     : 'Зарегистрироваться для участия';
@@ -675,26 +657,6 @@ const ContestPage: React.FC = () => {
                 )}
               </div>
               {taglineRaw ? <p className="contest-page-hero-tagline">{taglineRaw}</p> : null}
-              {showParticipateCtaButton ? (
-                <div className="contest-page-participate-cta contest-page-participate-cta--hero">
-                  <Button
-                    type="button"
-                    size="large"
-                    disabled={participationCtaDisabledByDomain}
-                    className="contest-page-add-participant-button"
-                    onClick={handleParticipateClick}
-                  >
-                    {isAuthenticated ? (
-                      <>
-                        {participatePlusIcon}
-                        {participateNominationCtaLabel}
-                      </>
-                    ) : (
-                      participateNominationCtaLabel
-                    )}
-                  </Button>
-                </div>
-              ) : null}
             </div>
           </div>
         ) : (
@@ -732,26 +694,6 @@ const ContestPage: React.FC = () => {
               )}
             </div>
             {taglineRaw ? <p className="contest-page-tagline">{taglineRaw}</p> : null}
-            {showParticipateCtaButton ? (
-              <div className="contest-page-participate-cta contest-page-participate-cta--overview">
-                <Button
-                  type="button"
-                  size="large"
-                  disabled={participationCtaDisabledByDomain}
-                  className="contest-page-add-participant-button"
-                  onClick={handleParticipateClick}
-                >
-                  {isAuthenticated ? (
-                    <>
-                      {participatePlusIcon}
-                      {participateNominationCtaLabel}
-                    </>
-                  ) : (
-                    participateNominationCtaLabel
-                  )}
-                </Button>
-              </div>
-            ) : null}
           </div>
         )}
 
@@ -808,6 +750,20 @@ const ContestPage: React.FC = () => {
         <div className="contest-page-description">
           <p>{currentContest.description || 'Нет описания'}</p>
         </div>
+
+        {showParticipateCtaButton ? (
+          <div className="contest-page-participate-cta contest-page-participate-cta--after-description">
+            <Button
+              type="button"
+              size="large"
+              disabled={participationCtaDisabledByDomain}
+              className="contest-page-add-participant-button"
+              onClick={handleParticipateClick}
+            >
+              {participateNominationCtaLabel}
+            </Button>
+          </div>
+        ) : null}
 
         {juryPrizePlaces.length > 0 || audiencePrizePlaces.length > 0 ? (
           <section className="contest-page-prize-places" aria-label="Призовые места конкурса">
@@ -944,14 +900,7 @@ const ContestPage: React.FC = () => {
                       className="contest-page-add-participant-button"
                       onClick={handleParticipateClick}
                     >
-                      {isAuthenticated ? (
-                        <>
-                          {participatePlusIcon}
-                          {participateNominationCtaLabel}
-                        </>
-                      ) : (
-                        participateNominationCtaLabel
-                      )}
+                      {participateNominationCtaLabel}
                     </Button>
                   </div>
                 ) : null}
