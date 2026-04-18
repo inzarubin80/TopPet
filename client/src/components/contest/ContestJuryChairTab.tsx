@@ -443,6 +443,7 @@ export const ContestJuryChairTab: React.FC<Props> = ({
                       pet_name: row.pet_name,
                       pet_description: '',
                       entry_title: row.entry_title,
+                      author_name: row.author_name,
                       user_name: row.user_name,
                       nomination_id: row.nomination_id ?? undefined,
                       created_at: new Date().toISOString(),
@@ -459,7 +460,7 @@ export const ContestJuryChairTab: React.FC<Props> = ({
                             lightboxUrlRaw={row.cover_image_url || row.cover_thumb_url}
                             subLine={
                               <>
-                                {row.user_name?.trim() || 'Участник'}
+                                {(row.author_name?.trim() || row.user_name?.trim()) || 'Участник'}
                                 {row.nomination_id && nominationTitleById[row.nomination_id]
                                   ? ` · ${nominationTitleById[row.nomination_id]}`
                                   : ''}

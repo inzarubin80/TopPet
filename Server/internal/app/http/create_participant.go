@@ -15,7 +15,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, ipAddress, userAgent string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, ipAddress, userAgent string) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -56,6 +56,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	var req struct {
 		EntryTitle          string                 `json:"entry_title"`
 		EntryDescription    string                 `json:"entry_description"`
+		AuthorName          string                 `json:"author_name"`
 		PetName             string                 `json:"pet_name"`
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
@@ -87,6 +88,10 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		uhttp.HandleError(w, uhttp.NewBadRequestError("policy_version is required", nil))
 		return
 	}
+	if strings.TrimSpace(req.AuthorName) == "" {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("author_name is required", nil))
+		return
+	}
 	clientIP := requestClientIP(r)
 	userAgent := strings.TrimSpace(r.Header.Get("User-Agent"))
 	logger.Debug("Request data", "handler", "CreateParticipantHandler", "entry_title", entryTitle, "entry_description", entryDescription)
@@ -97,6 +102,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		userID,
 		entryTitle,
 		entryDescription,
+		req.AuthorName,
 		req.RegistrationAnswers,
 		req.NominationID,
 		policyVersion,

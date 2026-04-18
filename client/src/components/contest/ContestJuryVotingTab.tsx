@@ -11,6 +11,7 @@ import {
 } from '../../api/participantsApi';
 import type { ContestID, ContestStatus, JuryCriterion, Nomination, Participant, ParticipantID } from '../../types/models';
 import { getParticipantDisplayTitle } from '../../utils/seo';
+import { participantAuthorDisplayName } from '../../utils/participantDisplay';
 import { formatJuryTotalScore } from '../../utils/juryLabels';
 import { useToast } from '../../contexts/ToastContext';
 import { getApiErrorMessage } from '../../types/api';
@@ -661,7 +662,7 @@ export const ContestJuryVotingTab: React.FC<Props> = ({
                             lightboxUrlRaw={p.photos?.[0]?.url || p.photos?.[0]?.thumb_url || undefined}
                             subLine={
                               <>
-                                {p.user_name?.trim() || 'Участник'}
+                                {participantAuthorDisplayName(p) || 'Участник'}
                                 {p.nomination_id && nominationTitleById[p.nomination_id]
                                   ? ` · ${nominationTitleById[p.nomination_id]}`
                                   : ''}

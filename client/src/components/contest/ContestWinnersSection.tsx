@@ -6,6 +6,7 @@ import type { Contest, ContestWinnerBrief, Nomination, Participant } from '../..
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { NominationTabsBar } from '../common/NominationTabsBar';
 import { resolvePublicAssetUrl } from '../../utils/seo';
+import { participantAuthorDisplayName } from '../../utils/participantDisplay';
 import './ParticipantCard.css';
 import {
   buildAudienceByParticipantId,
@@ -194,10 +195,8 @@ function authorLabelFor(p: Participant | undefined, currentUserId: number | unde
   if (!p) {
     return '';
   }
-  if (currentUserId !== undefined && currentUserId === p.user_id) {
-    return 'Вы';
-  }
-  return (p.user_name?.trim() || `Пользователь ${p.user_id}`) || '';
+  const isOwner = currentUserId !== undefined && currentUserId === p.user_id;
+  return participantAuthorDisplayName(p, { isOwner });
 }
 
 function briefFromParticipant(p: Participant): ContestWinnerBrief {

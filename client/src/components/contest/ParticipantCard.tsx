@@ -9,6 +9,7 @@ import { errorHandler } from '../../utils/errorHandler';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
 import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
 import { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
+import { participantAuthorDisplayName } from '../../utils/participantDisplay';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -37,9 +38,8 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const { isOwner } = useParticipantPermissions(participant, currentUserId, contestStatus);
-  const authorLabel = isOwner ? 'Вы' : participant.user_name || `Пользователь ${participant.user_id}`;
+  const authorLabel = participantAuthorDisplayName(participant, { isOwner });
   const workTitle = participant.entry_title?.trim() || participant.pet_name;
-  const avatarInitial = (authorLabel.trim()[0] || 'У').toUpperCase();
   const photos = participant.photos ?? [];
   const nominationLabel = nominationTitle?.trim() || '';
 
@@ -135,9 +135,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         </div>
         <div className="participant-card-summary">
           <div className="participant-card-title-row">
-            <span className="participant-card-avatar" aria-hidden="true">
-              {avatarInitial}
-            </span>
             <span className="participant-card-author participant-card-title-row__author">{authorLabel}</span>
             <span className="participant-card-dot" aria-hidden="true">•</span>
             <div className="participant-card-meta-row">

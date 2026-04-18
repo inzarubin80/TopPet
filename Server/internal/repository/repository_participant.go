@@ -74,7 +74,7 @@ func listParticipantsNominationFilterParams(filter *model.ParticipantListNominat
 	return "id", pgtype.UUID{Bytes: u, Valid: true}, nil
 }
 
-func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
+func (r *Repository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	log.Printf("[Repository] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	reposqlc := sqlc_repository.New(r.conn)
@@ -103,6 +103,7 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		UserID:              int64(userID),
 		PetName:             entryTitle,
 		PetDescription:      entryDescription,
+		AuthorName:          authorName,
 		RegistrationAnswers: ansBytes,
 		NominationID:        nomPg,
 	})
@@ -145,6 +146,7 @@ func (r *Repository) CreateParticipant(ctx context.Context, contestID model.Cont
 		PetDescription:      participant.PetDescription,
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
+		AuthorName:          participant.AuthorName,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
@@ -195,6 +197,7 @@ func (r *Repository) GetParticipant(ctx context.Context, participantID model.Par
 		PetDescription:      participant.PetDescription,
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
+		AuthorName:          participant.AuthorName,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CommentCount:        participant.CommentCount,
 		CreatedAt:           participant.CreatedAt.Time,
@@ -247,6 +250,7 @@ func (r *Repository) GetParticipantByContestUserAndNomination(ctx context.Contex
 		PetDescription:      participant.PetDescription,
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
+		AuthorName:          participant.AuthorName,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CommentCount:        participant.CommentCount,
 		CreatedAt:           participant.CreatedAt.Time,
@@ -333,6 +337,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 			PetDescription:      p.PetDescription,
 			EntryTitle:          p.EntryTitle,
 			EntryDescription:    p.EntryDescription,
+			AuthorName:          p.AuthorName,
 			RegistrationAnswers: parseRegistrationAnswers(p.RegistrationAnswers),
 			CommentCount:        p.CommentCount,
 			CreatedAt:           p.CreatedAt.Time,
@@ -344,7 +349,7 @@ func (r *Repository) ListParticipantsByContest(ctx context.Context, contestID mo
 	return result, total, nil
 }
 
-func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	participantUUID, err := uuid.Parse(string(participantID))
 	if err != nil {
@@ -363,6 +368,7 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		ID:                  pgtype.UUID{Bytes: participantUUID, Valid: true},
 		PetName:             entryTitle,
 		PetDescription:      entryDescription,
+		AuthorName:          authorName,
 		RegistrationAnswers: ansBytes,
 		NominationID:        nomPg,
 	})
@@ -389,6 +395,7 @@ func (r *Repository) UpdateParticipant(ctx context.Context, participantID model.
 		PetDescription:      participant.PetDescription,
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
+		AuthorName:          participant.AuthorName,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,
@@ -453,6 +460,7 @@ func (r *Repository) SetParticipantSubmissionStatus(ctx context.Context, partici
 		PetDescription:      participant.PetDescription,
 		EntryTitle:          participant.EntryTitle,
 		EntryDescription:    participant.EntryDescription,
+		AuthorName:          participant.AuthorName,
 		RegistrationAnswers: parseRegistrationAnswers(participant.RegistrationAnswers),
 		CreatedAt:           participant.CreatedAt.Time,
 		UpdatedAt:           participant.UpdatedAt.Time,

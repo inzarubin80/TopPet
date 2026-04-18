@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"toppet/server/internal/app/defenitions"
 	"toppet/server/internal/app/uhttp"
@@ -15,7 +16,7 @@ import (
 type (
 	serviceUpdateParticipant interface {
 		GetParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID) (*model.Participant, error)
-		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers *map[string]interface{}, nominationFromRequest *string, nominationKeyPresent bool) (*model.Participant, error)
+		UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, authorNamePatch *string, registrationAnswers *map[string]interface{}, nominationFromRequest *string, nominationKeyPresent bool) (*model.Participant, error)
 	}
 
 	UpdateParticipantHandler struct {
@@ -74,6 +75,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	var req struct {
 		EntryTitle          *string                 `json:"entry_title"`
 		EntryDescription    *string                 `json:"entry_description"`
+		AuthorName          *string                 `json:"author_name"`
 		PetName             *string                 `json:"pet_name"`
 		PetDescription      *string                 `json:"pet_description"`
 		RegistrationAnswers *map[string]interface{} `json:"registration_answers"`
@@ -85,7 +87,7 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.EntryTitle == nil && req.EntryDescription == nil && req.PetName == nil && req.PetDescription == nil && req.RegistrationAnswers == nil && !nominationKeyPresent {
+	if req.EntryTitle == nil && req.EntryDescription == nil && req.AuthorName == nil && req.PetName == nil && req.PetDescription == nil && req.RegistrationAnswers == nil && !nominationKeyPresent {
 		log.Printf("[UpdateParticipantHandler] ERROR: At least one field must be provided")
 		uhttp.HandleError(w, uhttp.NewBadRequestError("at least one field must be provided", nil))
 		return
@@ -118,9 +120,19 @@ func (h *UpdateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		entryDescription = *req.PetDescription
 	}
 
+	var authorNamePatch *string
+	if _, ok := raw["author_name"]; ok {
+		s := ""
+		if req.AuthorName != nil {
+			s = *req.AuthorName
+		}
+		s = strings.TrimSpace(s)
+		authorNamePatch = &s
+	}
+
 	log.Printf("[UpdateParticipantHandler] Request data: entry_title=%s, entry_description=%s", entryTitle, entryDescription)
 
-	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, entryTitle, entryDescription, req.RegistrationAnswers, nominationFromRequest, nominationKeyPresent)
+	participant, err := h.service.UpdateParticipant(r.Context(), participantID, userID, entryTitle, entryDescription, authorNamePatch, req.RegistrationAnswers, nominationFromRequest, nominationKeyPresent)
 	if err != nil {
 		log.Printf("[UpdateParticipantHandler] ERROR: Failed to update participant: %v", err)
 		uhttp.HandleError(w, err)

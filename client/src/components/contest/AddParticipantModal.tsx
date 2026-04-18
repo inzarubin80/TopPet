@@ -265,6 +265,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [entryTitle, setEntryTitle] = useState('');
   const [entryDescription, setEntryDescription] = useState('');
+  const [authorName, setAuthorName] = useState('');
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[] | null>(null);
   const [registrationAnswersDraft, setRegistrationAnswersDraft] = useState<Record<string, string>>({});
   const [registrationImagePicks, setRegistrationImagePicks] = useState<
@@ -337,9 +338,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       const t = (participant.entry_title ?? '').trim();
       setEntryTitle(t || participant.pet_name || '');
       setEntryDescription((participant.entry_description ?? '').trim());
+      setAuthorName((participant.author_name ?? '').trim());
     } else {
       setEntryTitle('');
       setEntryDescription('');
+      setAuthorName('');
     }
     setPrivacyConsent(!!participant);
   }, [isOpen, participant]);
@@ -509,7 +512,16 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError('Укажите наименование заявки');
       return;
     }
+    const trimmedAuthor = authorName.trim();
+    if (!trimmedAuthor) {
+      setError('Укажите автора');
+      return;
+    }
     const trimmedDescription = entryDescription.trim();
+    if (!trimmedDescription) {
+      setError('Укажите описание');
+      return;
+    }
     if (Array.from(trimmedDescription).length > REGISTRATION_TEXTAREA_MAX_RUNES) {
       setError(`Описание: не более ${REGISTRATION_TEXTAREA_MAX_RUNES} символов`);
       return;
@@ -578,6 +590,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             data: {
               entry_title: trimmedTitle,
               entry_description: trimmedDescription,
+              author_name: trimmedAuthor,
               registration_answers: built.answers,
               ...(nominationRows.length > 0 ? { nomination_id: selectedNominationId } : {}),
             },
@@ -647,6 +660,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             data: {
               entry_title: trimmedTitle,
               entry_description: trimmedDescription,
+              author_name: trimmedAuthor,
               ...(nominationRows.length > 0 ? { nomination_id: selectedNominationId } : {}),
               ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
               privacy_consent: true,
@@ -779,7 +793,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         {nominationRows.length > 0 ? (
           <div className="add-participant-nomination-field">
             <label className="add-participant-nomination-label" htmlFor="add-participant-nomination">
-              Номинация
+              Номинация *
             </label>
             <select
               id="add-participant-nomination"
@@ -810,7 +824,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
         <div className="add-participant-form-stack">
           <Input
-            label="Наименование"
+            label="Наименование *"
             hint={entryNameHint}
             type="text"
             value={entryTitle}
@@ -818,8 +832,16 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             disabled={loading || uploadingMedia || registrationFields === null}
             autoComplete="off"
           />
+          <Input
+            label="Автор *"
+            type="text"
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            disabled={loading || uploadingMedia || registrationFields === null}
+            autoComplete="name"
+          />
           <Textarea
-            label="Описание"
+            label="Описание *"
             value={entryDescription}
             onChange={(e) => setEntryDescription(e.target.value)}
             disabled={loading || uploadingMedia || registrationFields === null}

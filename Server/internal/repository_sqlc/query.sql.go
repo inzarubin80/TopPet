@@ -569,9 +569,9 @@ func (q *Queries) CreateNomination(ctx context.Context, arg *CreateNominationPar
 
 const createParticipant = `-- name: CreateParticipant :one
 
-INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, registration_answers, nomination_id)
-VALUES ($1, $2, $3, $4, $5, $4, $5, $6, $7)
-RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
+INSERT INTO contest_participants (id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, author_name, registration_answers, nomination_id)
+VALUES ($1, $2, $3, $4, $5, $4, $5, $6, $7, $8)
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, author_name, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
 `
 
 type CreateParticipantParams struct {
@@ -580,6 +580,7 @@ type CreateParticipantParams struct {
 	UserID              int64
 	PetName             string
 	PetDescription      string
+	AuthorName          string
 	RegistrationAnswers []byte
 	NominationID        pgtype.UUID
 }
@@ -592,6 +593,7 @@ type CreateParticipantRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	RegistrationAnswers []byte
@@ -608,6 +610,7 @@ func (q *Queries) CreateParticipant(ctx context.Context, arg *CreateParticipantP
 		arg.UserID,
 		arg.PetName,
 		arg.PetDescription,
+		arg.AuthorName,
 		arg.RegistrationAnswers,
 		arg.NominationID,
 	)
@@ -620,6 +623,7 @@ func (q *Queries) CreateParticipant(ctx context.Context, arg *CreateParticipantP
 		&i.PetDescription,
 		&i.EntryTitle,
 		&i.EntryDescription,
+		&i.AuthorName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RegistrationAnswers,
@@ -1141,6 +1145,7 @@ SELECT
     cp.pet_description,
     cp.entry_title,
     cp.entry_description,
+    cp.author_name,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -1173,6 +1178,7 @@ type GetParticipantByContestUserAndNominationRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	RegistrationAnswers []byte
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
@@ -1194,6 +1200,7 @@ func (q *Queries) GetParticipantByContestUserAndNomination(ctx context.Context, 
 		&i.PetDescription,
 		&i.EntryTitle,
 		&i.EntryDescription,
+		&i.AuthorName,
 		&i.RegistrationAnswers,
 		&i.NominationID,
 		&i.SubmissionStatus,
@@ -1215,6 +1222,7 @@ SELECT
     cp.pet_description,
     cp.entry_title,
     cp.entry_description,
+    cp.author_name,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -1240,6 +1248,7 @@ type GetParticipantByIDRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	RegistrationAnswers []byte
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
@@ -1261,6 +1270,7 @@ func (q *Queries) GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetP
 		&i.PetDescription,
 		&i.EntryTitle,
 		&i.EntryDescription,
+		&i.AuthorName,
 		&i.RegistrationAnswers,
 		&i.NominationID,
 		&i.SubmissionStatus,
@@ -2501,6 +2511,7 @@ SELECT
     cp.pet_description,
     cp.entry_title,
     cp.entry_description,
+    cp.author_name,
     cp.registration_answers,
     cp.nomination_id,
     cp.submission_status,
@@ -2627,6 +2638,7 @@ type ListParticipantsByContestRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	RegistrationAnswers []byte
 	NominationID        pgtype.UUID
 	SubmissionStatus    string
@@ -2668,6 +2680,7 @@ func (q *Queries) ListParticipantsByContest(ctx context.Context, arg *ListPartic
 			&i.PetDescription,
 			&i.EntryTitle,
 			&i.EntryDescription,
+			&i.AuthorName,
 			&i.RegistrationAnswers,
 			&i.NominationID,
 			&i.SubmissionStatus,
@@ -3020,7 +3033,7 @@ SET
     END,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, author_name, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
 `
 
 type SetParticipantSubmissionStatusParams struct {
@@ -3037,6 +3050,7 @@ type SetParticipantSubmissionStatusRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	RegistrationAnswers []byte
@@ -3056,6 +3070,7 @@ func (q *Queries) SetParticipantSubmissionStatus(ctx context.Context, arg *SetPa
 		&i.PetDescription,
 		&i.EntryTitle,
 		&i.EntryDescription,
+		&i.AuthorName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RegistrationAnswers,
@@ -3706,15 +3721,16 @@ func (q *Queries) UpdateNominationSortOrder(ctx context.Context, arg *UpdateNomi
 
 const updateParticipant = `-- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, nomination_id = $5, submission_status = 'pending', updated_at = NOW()
+SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, author_name = $4, registration_answers = $5, nomination_id = $6, submission_status = 'pending', updated_at = NOW()
 WHERE id = $1
-RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
+RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, author_name, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment
 `
 
 type UpdateParticipantParams struct {
 	ID                  pgtype.UUID
 	PetName             string
 	PetDescription      string
+	AuthorName          string
 	RegistrationAnswers []byte
 	NominationID        pgtype.UUID
 }
@@ -3727,6 +3743,7 @@ type UpdateParticipantRow struct {
 	PetDescription      string
 	EntryTitle          string
 	EntryDescription    string
+	AuthorName          string
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	RegistrationAnswers []byte
@@ -3740,6 +3757,7 @@ func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantP
 		arg.ID,
 		arg.PetName,
 		arg.PetDescription,
+		arg.AuthorName,
 		arg.RegistrationAnswers,
 		arg.NominationID,
 	)
@@ -3752,6 +3770,7 @@ func (q *Queries) UpdateParticipant(ctx context.Context, arg *UpdateParticipantP
 		&i.PetDescription,
 		&i.EntryTitle,
 		&i.EntryDescription,
+		&i.AuthorName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RegistrationAnswers,

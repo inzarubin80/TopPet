@@ -147,6 +147,7 @@ func (s *TopPetService) GetJuryChairboard(ctx context.Context, contestID model.C
 			ParticipantID: p.ID,
 			PetName:       p.PetName,
 			EntryTitle:    p.EntryTitle,
+			AuthorName:    strings.TrimSpace(p.AuthorName),
 			UserName:      p.UserName,
 			NominationID:  p.NominationID,
 			CoverThumbURL: coverThumb,

@@ -76,7 +76,7 @@ func (s *TopPetService) resolveParticipantEntryTitle(ctx context.Context, userID
 	return "Участник", nil
 }
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	// Check contest exists and is not finished
@@ -160,6 +160,10 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	}
 	entryTitle = resolvedName
 	entryDescription = strings.TrimSpace(entryDescription)
+	authorName = strings.TrimSpace(authorName)
+	if authorName == "" {
+		return nil, fmt.Errorf("%w: author_name is required", model.ErrBadRequest)
+	}
 	consentIP = strings.TrimSpace(consentIP)
 	consentUserAgent = strings.TrimSpace(consentUserAgent)
 
@@ -171,6 +175,7 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		userID,
 		entryTitle,
 		entryDescription,
+		authorName,
 		ans,
 		effectiveNom,
 		policyVersion,
@@ -333,7 +338,7 @@ func nominationIDPtrEqual(a, b *string) bool {
 	return *na == *nb
 }
 
-func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers *map[string]interface{}, nominationFromRequest *string, nominationKeyPresent bool) (*model.Participant, error) {
+func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, userID model.UserID, entryTitle, entryDescription string, authorNamePatch *string, registrationAnswers *map[string]interface{}, nominationFromRequest *string, nominationKeyPresent bool) (*model.Participant, error) {
 	log.Printf("[Service] UpdateParticipant: participantID=%s, userID=%d", participantID, userID)
 
 	participant, err := s.repository.GetParticipant(ctx, participantID)
@@ -354,6 +359,14 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		return nil, err
 	}
 	entryTitle = resolvedName
+
+	authorName := strings.TrimSpace(participant.AuthorName)
+	if authorNamePatch != nil {
+		authorName = strings.TrimSpace(*authorNamePatch)
+		if authorName == "" {
+			return nil, fmt.Errorf("%w: author_name must not be empty", model.ErrBadRequest)
+		}
+	}
 
 	// Get contest to check status
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
@@ -431,7 +444,7 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 	}
 
 	log.Printf("[Service] UpdateParticipant: Updating participant in repository")
-	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, merged, effectiveNom)
+	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, authorName, merged, effectiveNom)
 	if err != nil {
 		log.Printf("[Service] UpdateParticipant: ERROR - Failed to update participant: %v", err)
 		return nil, err

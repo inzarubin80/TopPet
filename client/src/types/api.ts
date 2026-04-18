@@ -84,6 +84,8 @@ export interface CreateParticipantRequest {
   /** Наименование заявки (предпочтительно явно задать в форме). */
   entry_title?: string;
   entry_description?: string;
+  /** Автор работы (обязательно при создании заявки). */
+  author_name: string;
   nomination_id?: string;
   registration_answers?: Record<string, unknown>;
   privacy_consent?: boolean;
@@ -95,6 +97,7 @@ export interface UpdateParticipantRequest {
   pet_description?: string;
   entry_title?: string;
   entry_description?: string;
+  author_name?: string;
   nomination_id?: string | null;
   registration_answers?: Record<string, unknown>;
 }

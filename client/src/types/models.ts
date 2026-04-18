@@ -182,6 +182,7 @@ export interface JuryChairboardRow {
   participant_id: ParticipantID;
   pet_name: string;
   entry_title?: string;
+  author_name?: string;
   user_name: string;
   nomination_id?: string | null;
   /** Первое фото (превью) для ссылки в таблице */
@@ -265,6 +266,8 @@ export interface Participant {
   entry_title?: string;
   /** Описание работы; при пустом на сервере подставляется pet_description. */
   entry_description?: string;
+  /** Имя автора работы для отображения (например ребёнок при подаче от родителя). */
+  author_name?: string;
   registration_answers?: Record<string, unknown>;
   photos?: Photo[];
   comment_count?: number;

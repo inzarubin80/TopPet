@@ -146,7 +146,7 @@ func (m *mockRepository) SetUserDateOfBirthIfEmpty(ctx context.Context, userID m
 }
 
 // ListContests, UpdateContest, UpdateContestStatus, DeleteContest реализованы ниже с поддержкой моков
-func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
+func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
@@ -170,7 +170,7 @@ func (m *mockRepository) UpsertParticipantFavorite(ctx context.Context, userID m
 func (m *mockRepository) DeleteParticipantFavorite(ctx context.Context, userID model.UserID, participantID model.ParticipantID) error {
 	return nil
 }
-func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
+func (m *mockRepository) UpdateParticipant(ctx context.Context, participantID model.ParticipantID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) MarkParticipantSubmissionPending(ctx context.Context, participantID model.ParticipantID) error {

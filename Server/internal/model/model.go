@@ -272,6 +272,7 @@ type (
 		ParticipantID ParticipantID      `json:"participant_id"`
 		PetName       string             `json:"pet_name"`
 		EntryTitle    string             `json:"entry_title,omitempty"`
+		AuthorName    string             `json:"author_name,omitempty"`
 		UserName      string             `json:"user_name"`
 		NominationID  *string            `json:"nomination_id,omitempty"`
 		CoverThumbURL string             `json:"cover_thumb_url,omitempty"`
@@ -353,6 +354,7 @@ type (
 		PetDescription      string                 `json:"pet_description"`
 		EntryTitle          string                 `json:"entry_title,omitempty"`
 		EntryDescription    string                 `json:"entry_description,omitempty"`
+		AuthorName          string                 `json:"author_name,omitempty"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers,omitempty"`
 		Photos              []*Photo               `json:"photos,omitempty"`
 		CommentCount        int64                  `json:"comment_count,omitempty"`

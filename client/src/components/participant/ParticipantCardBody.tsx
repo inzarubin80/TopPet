@@ -33,6 +33,7 @@ import {
 } from '../../utils/registrationAnswersDisplay';
 import { getParticipantDisplayTitle, getParticipantPetNameSubtitle, resolvePublicAssetUrl } from '../../utils/seo';
 import { getMessengerAvatarColor, getMessengerInitials } from '../../utils/messengerAvatar';
+import { participantAuthorDisplayName } from '../../utils/participantDisplay';
 import { userIdsEqual } from '../../utils/userId';
 import { MessageList } from '../chat/MessageList';
 import { MessageInput, MessageSendPayload } from '../chat/MessageInput';
@@ -457,6 +458,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     </>
   );
 
+  const authorDisplayLabel = participantAuthorDisplayName(participant, { isOwner });
+
   const workHeading = (
     <header
       className={
@@ -470,11 +473,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         <div className="participant-page-entry-summary">{descriptionWithBreaks(entrySummaryText)}</div>
       ) : null}
       {petNameSubtitle ? <p className="participant-page-title-sub">{petNameSubtitle}</p> : null}
-      {participant.user_name?.trim() ? (
-        <div
-          className="participant-page-author"
-          aria-label={`Автор: ${participant.user_name.trim()}`}
-        >
+      {authorDisplayLabel.trim() ? (
+        <div className="participant-page-author" aria-label={`Автор: ${authorDisplayLabel}`}>
           {participant.user_avatar_url ? (
             <img
               className="participant-page-author-avatar"
@@ -490,10 +490,10 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
               style={{ backgroundColor: getMessengerAvatarColor(participant.user_id) }}
               aria-hidden
             >
-              {getMessengerInitials(participant.user_name)}
+              {getMessengerInitials(authorDisplayLabel)}
             </div>
           )}
-          <span className="participant-page-author-name">{participant.user_name.trim()}</span>
+          <span className="participant-page-author-name">{authorDisplayLabel}</span>
         </div>
       ) : null}
     </header>

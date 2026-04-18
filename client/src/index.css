@@ -17,6 +17,8 @@
   /* Спокойный сине-индиго акцент (кнопки, ссылки, фокус) — без красно-оранжевого тона */
   --color-accent: #2563eb;
   --color-accent-hover: #1d4ed8;
+  /** Интерактивный текст (hover подписей на карточках и т.п.) — тот же акцент, что у ссылок */
+  --color-interactive-activation: var(--color-accent);
   --color-accent-soft: rgba(37, 99, 235, 0.12);
   --color-accent-shadow: rgba(37, 99, 235, 0.35);
   --color-accent-shadow-soft: rgba(37, 99, 235, 0.22);
