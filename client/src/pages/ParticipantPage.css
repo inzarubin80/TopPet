@@ -436,7 +436,7 @@
 
 @media (min-width: 769px) {
   .participant-page-media .photo-gallery-image-container {
-    min-height: min(70vh, 560px);
+    min-height: min(65dvh, 560px);
   }
 }
 
@@ -842,19 +842,30 @@
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(320px, 520px);
-    align-items: start;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
     width: 100%;
   }
 
   .participant-page-split-media {
     min-width: 0;
     min-height: 0;
+    height: 100%;
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #ffffff;
     padding-bottom: 12px;
     box-sizing: border-box;
+  }
+
+  .participant-page-split-media .participant-page-media {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
   .participant-page-split-media .participant-page-hero-stage {
