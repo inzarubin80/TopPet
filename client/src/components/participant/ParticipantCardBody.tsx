@@ -509,19 +509,17 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const infoDetails = (
     <>
       {participant.submission_status === 'pending' && (isOwner || isContestOwner) && (
-        <p className="participant-page-moderation-notice" role="status">
-          Заявка на модерации. До решения организатора карточка не отображается другим участникам конкурса.
-          {isOwner ? (
-            <>
-              {' '}
-              Замечания организатора и ответы ведутся в блоке{' '}
-              <a className="participant-page-moderation-comments-link" href="#participant-comments">
-                «Комментарии»
-              </a>
-              ; новые сообщения от организатора дублируются в колокольчике в шапке сайта.
-            </>
+        <div className="participant-page-moderation-notice" role="status">
+          <p>
+            Заявка на модерации. До решения организатора карточка не отображается другим участникам конкурса.
+            {isOwner ? <> Для отправки на повторную модерацию отредактируйте заявку.</> : null}
+          </p>
+          {participant.submission_comment?.trim() ? (
+            <blockquote className="participant-page-submission-comment participant-page-submission-comment--prior">
+              {participant.submission_comment}
+            </blockquote>
           ) : null}
-        </p>
+        </div>
       )}
       {participant.submission_status === 'rejected' && (isOwner || isContestOwner) && (
         <div
@@ -709,12 +707,6 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         Комментарии{' '}
         <span className="participant-page-comments-count">{commentsHeadingCount}</span>
       </h2>
-      {isOwner ? (
-        <p className="participant-page-comments-owner-hint">
-          Переписка с организатором — здесь же. Ответьте новым комментарием или через «Ответить» к сообщению
-          с меткой «Организатор».
-        </p>
-      ) : null}
       <div className="chat-window participant-page-comments-window">
         <div className="chat-content">
           <MessageList

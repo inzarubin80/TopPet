@@ -52,5 +52,8 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	updated.Photos = photos
 	totalVotes, _ := s.repository.CountVotesByParticipant(ctx, participantID)
 	updated.TotalVotes = totalVotes
+	if status == model.ParticipantSubmissionRejected && commentArg != nil {
+		s.postSubmissionRejectionToContestChat(ctx, contest, updated, actorID, *commentArg)
+	}
 	return updated, nil
 }

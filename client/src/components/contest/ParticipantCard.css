@@ -111,6 +111,19 @@
   white-space: pre-wrap;
 }
 
+/* Прежнее замечание при повторной модерации (pending, текст сохранён после отклонения) */
+.participant-card-prior-remark {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #92400e;
+  background: #fffbeb;
+  border-radius: 8px;
+  border-left: 3px solid #f59e0b;
+  white-space: pre-wrap;
+}
+
 .participant-card {
   display: flex;
   flex-direction: column;

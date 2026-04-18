@@ -462,13 +462,13 @@ LIMIT @list_limit::int OFFSET @list_offset::int;
 
 -- name: UpdateParticipant :one
 UPDATE contest_participants
-SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, nomination_id = $5, submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
+SET pet_name = $2, pet_description = $3, entry_title = $2, entry_description = $3, registration_answers = $4, nomination_id = $5, submission_status = 'pending', updated_at = NOW()
 WHERE id = $1
 RETURNING id, contest_id, user_id, pet_name, pet_description, entry_title, entry_description, created_at, updated_at, registration_answers, nomination_id, submission_status, submission_comment;
 
 -- name: MarkParticipantSubmissionPending :exec
 UPDATE contest_participants
-SET submission_status = 'pending', submission_comment = NULL, updated_at = NOW()
+SET submission_status = 'pending', updated_at = NOW()
 WHERE id = $1;
 
 -- name: SetParticipantSubmissionStatus :one

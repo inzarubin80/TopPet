@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"unicode/utf8"
 
 	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
@@ -36,6 +37,41 @@ func (s *TopPetService) EnsureContestChatImageUploadAllowed(ctx context.Context,
 	return nil
 }
 
+func submissionRejectionChatText(p *model.Participant, comment string) string {
+	label := strings.TrimSpace(p.EntryTitle)
+	if label == "" {
+		label = strings.TrimSpace(p.PetName)
+	}
+	if label == "" {
+		return comment
+	}
+	prefix := "Заявка «" + label + "» отклонена.\n\n"
+	combined := prefix + comment
+	if utf8.RuneCountInString(combined) > maxSubmissionCommentRunes {
+		return comment
+	}
+	return combined
+}
+
+// postSubmissionRejectionToContestChat публикует в общий чат конкурса тот же текст, что сохранён в submission_comment (с коротким контекстом по работе).
+func (s *TopPetService) postSubmissionRejectionToContestChat(ctx context.Context, contest *model.Contest, participant *model.Participant, actorID model.UserID, comment string) {
+	if contest == nil || participant == nil {
+		return
+	}
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		return
+	}
+	if !chatAllowed(contest.Status) {
+		log.Printf("[Moderation] skip posting rejection to chat: contest %s status %s", participant.ContestID, contest.Status)
+		return
+	}
+	text := submissionRejectionChatText(participant, comment)
+	if _, err := s.CreateChatMessage(ctx, participant.ContestID, actorID, text, nil, ""); err != nil {
+		log.Printf("[Moderation] failed to post rejection to contest chat: %v", err)
+	}
+}
+
 func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error) {
 	t := strings.TrimSpace(text)
 	img := strings.TrimSpace(imageURL)
@@ -43,7 +79,7 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 		return nil, errors.New("text or image is required")
 	}
 
-	if len(t) > 2000 {
+	if utf8.RuneCountInString(t) > 2000 {
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 
@@ -141,7 +177,7 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 		return nil, errors.New("text is required")
 	}
 
-	if len(text) > 2000 {
+	if utf8.RuneCountInString(text) > 2000 {
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 

@@ -155,10 +155,18 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
               {submissionStatus === 'rejected' ? 'Отклонено' : 'На модерации'}
             </span>
           ) : null}
-          {submissionStatus === 'rejected' &&
+          {(submissionStatus === 'rejected' || submissionStatus === 'pending') &&
           (isContestAdmin || isOwner) &&
           participant.submission_comment?.trim() ? (
-            <p className="participant-card-reject-reason">{participant.submission_comment}</p>
+            <p
+              className={
+                submissionStatus === 'rejected'
+                  ? 'participant-card-reject-reason'
+                  : 'participant-card-prior-remark'
+              }
+            >
+              {participant.submission_comment}
+            </p>
           ) : null}
         </div>
       </div>
