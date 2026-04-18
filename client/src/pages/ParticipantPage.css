@@ -805,13 +805,16 @@
 }
 
 /* Ноутбук: фото слева, справа — текст + комментарии.
-   Без фиксированной высоты и overflow:hidden — иначе при длинном блоке (раскрытые «Поля заявки»)
-   нижний контент обрезается и нет прокрутки страницы. */
+   Высота ограничена окном: иначе строка грида растягивается по самой высокой колонке,
+   и на ноутбуке одновременно не видны кнопки «Предыдущая/следующая работа» и поле чата.
+   Прокрутка — внутри колонок; нижние блоки липкие к низу панели. */
 @media (min-width: 900px) {
   .participant-page--work-view {
     display: flex;
     flex-direction: column;
     min-height: calc(100dvh - 56px);
+    max-height: calc(100dvh - 56px);
+    overflow: hidden;
     padding-bottom: 14px;
     /* Левая колонка с рисунком — ближе к краю экрана */
     padding-left: 0;
@@ -828,6 +831,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .participant-page-article--work-view {
@@ -835,6 +839,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .participant-page-content--split {
@@ -845,6 +850,7 @@
     grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
     width: 100%;
+    overflow: hidden;
   }
 
   .participant-page-split-media {
@@ -854,7 +860,8 @@
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     background: #ffffff;
     padding-bottom: 12px;
     box-sizing: border-box;
@@ -878,8 +885,12 @@
   .participant-page-split-aside {
     min-width: 0;
     min-height: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.06);
   }
@@ -894,7 +905,7 @@
 
   .participant-page-comments-section--split {
     flex: 1 1 auto;
-    min-height: 180px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     margin-top: 0 !important;
@@ -919,13 +930,52 @@
 
   .participant-page-comments-section--split .participant-page-comments-window {
     flex: 1;
-    min-height: 0 !important;
+    min-height: min(160px, 28vh) !important;
     height: auto !important;
     max-height: none !important;
   }
 
   .participant-page-comments-section--split .chat-window {
     min-height: 0;
+  }
+
+  .participant-page-work-nav--under-media {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.07);
+  }
+
+  .participant-page-comments-section--split .chat-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.07);
+    background: var(--color-surface, #ffffff);
+  }
+}
+
+@media (min-width: 900px) and (max-height: 820px) {
+  .participant-page-work-nav--under-media {
+    padding: 6px 12px 8px;
+    gap: 8px;
+  }
+
+  .participant-page-work-heading--work-view {
+    margin-bottom: 12px;
+  }
+
+  .participant-page-work-heading--work-view .participant-page-work-title {
+    font-size: 20px;
+  }
+
+  .participant-page-work-meta {
+    padding: 10px 14px 8px;
+  }
+
+  .participant-page-comments-section--split .participant-page-comments-section-title {
+    margin: 6px 0 6px;
+    font-size: 16px;
   }
 }
 
