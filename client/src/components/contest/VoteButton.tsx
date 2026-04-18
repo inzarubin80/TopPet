@@ -18,7 +18,9 @@ interface VoteButtonProps {
   /** Номинация заявки (слот голоса); без номинаций не передаётся */
   nominationId?: string | null;
   isOwner?: boolean;
-  /** Если false — голосование посетителей недоступно */
+  /**
+   * Если false — призовые места зрителей по лайкам не учитываются; сами лайки доступны на тех же этапах.
+   */
   publicVotingEnabled?: boolean;
   /** false — заявка не принята (модерация), голосовать нельзя */
   canReceiveVotes?: boolean;
@@ -93,7 +95,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       return;
     }
 
-    if (voting || !publicVotingEnabled || !canReceiveVotes || !phaseAllowsLikes) {
+    if (voting || !canReceiveVotes || !phaseAllowsLikes) {
       return;
     }
 
@@ -168,17 +170,6 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
       </div>
     );
 
-    if (!publicVotingEnabled) {
-      return (
-        <div className="vote-button-stat-strip-block">
-          {readonlyStrip(false)}
-          <p className="vote-button-stat-strip-hint" role="status">
-            Пользовательское голосование на этом конкурсе отключено.
-          </p>
-        </div>
-      );
-    }
-
     if (!canReceiveVotes) {
       return (
         <div className="vote-button-stat-strip-block">
@@ -203,48 +194,54 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
 
     if (!isAuthenticated) {
       return (
-        <button
-          type="button"
-          className="vote-button-stat-strip"
-          onClick={handleVote}
-          aria-label={`Войти, чтобы голосовать. Сейчас ${count} голосов`}
-        >
-          {statStripHeart(false)}
-          <span className="vote-button-stat-strip-label">
-            <span className="vote-button-stat-strip-count">{count}</span> Нравится
-          </span>
-        </button>
+        <div className="vote-button-stat-strip-block">
+          <button
+            type="button"
+            className="vote-button-stat-strip"
+            onClick={handleVote}
+            aria-label={`Войти, чтобы голосовать. Сейчас ${count} голосов`}
+          >
+            {statStripHeart(false)}
+            <span className="vote-button-stat-strip-label">
+              <span className="vote-button-stat-strip-count">{count}</span> Нравится
+            </span>
+          </button>
+          {!publicVotingEnabled ? (
+            <p className="vote-button-stat-strip-hint" role="status">
+              Лайки не определяют призовые места зрителей.
+            </p>
+          ) : null}
+        </div>
       );
     }
 
     return (
-      <button
-        type="button"
-        className={`vote-button-stat-strip ${isVoted ? 'vote-button-stat-strip--active' : ''}`}
-        onClick={handleVote}
-        disabled={loading || voting}
-        title={isVoted ? 'Убрать лайк' : 'Поставить лайк'}
-        aria-label={statStripAria}
-      >
-        {statStripHeart(isVoted)}
-        <span className="vote-button-stat-strip-label">
-          {loading || voting ? (
-            statStripLabel
-          ) : (
-            <>
-              <span className="vote-button-stat-strip-count">{count}</span> Нравится
-            </>
-          )}
-        </span>
-      </button>
-    );
-  }
-
-  if (!publicVotingEnabled) {
-    return (
-      <p className="vote-button-disabled-hint" role="status">
-        Пользовательское голосование на этом конкурсе отключено.
-      </p>
+      <div className="vote-button-stat-strip-block">
+        <button
+          type="button"
+          className={`vote-button-stat-strip ${isVoted ? 'vote-button-stat-strip--active' : ''}`}
+          onClick={handleVote}
+          disabled={loading || voting}
+          title={isVoted ? 'Убрать лайк' : 'Поставить лайк'}
+          aria-label={statStripAria}
+        >
+          {statStripHeart(isVoted)}
+          <span className="vote-button-stat-strip-label">
+            {loading || voting ? (
+              statStripLabel
+            ) : (
+              <>
+                <span className="vote-button-stat-strip-count">{count}</span> Нравится
+              </>
+            )}
+          </span>
+        </button>
+        {!publicVotingEnabled ? (
+          <p className="vote-button-stat-strip-hint" role="status">
+            Лайки не определяют призовые места зрителей.
+          </p>
+        ) : null}
+      </div>
     );
   }
 
@@ -266,9 +263,16 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <Button variant="primary" size="large" fullWidth={fullWidth} onClick={handleVote}>
-        Войти для голосования
-      </Button>
+      <>
+        <Button variant="primary" size="large" fullWidth={fullWidth} onClick={handleVote}>
+          Войти для голосования
+        </Button>
+        {!publicVotingEnabled ? (
+          <p className="vote-button-disabled-hint" role="status">
+            Лайки не определяют призовые места зрителей.
+          </p>
+        ) : null}
+      </>
     );
   }
 
@@ -276,28 +280,35 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   const iconTitle = isVoted ? 'Убрать лайк' : primaryVoteLabel === 'Проголосовать' ? 'Поставить лайк' : primaryVoteLabel;
 
   return (
-    <Button
-      variant={isVoted ? 'secondary' : 'primary'}
-      onClick={handleVote}
-      disabled={loading || voting}
-      size="large"
-      fullWidth={fullWidth}
-      className={`vote-button-main ${isVoted ? 'vote-button-main-active' : ''}`}
-      title={iconTitle}
-      aria-label={iconTitle}
-    >
-      <span className="vote-button-main-content">
-        <svg
-          className={`vote-button-main-icon ${isVoted ? 'vote-button-main-icon-filled' : ''}`}
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
-        </svg>
-        {loading || voting ? (
-          <span>{loading ? 'Загрузка...' : 'Сохраняем...'}</span>
-        ) : null}
-      </span>
-    </Button>
+    <>
+      <Button
+        variant={isVoted ? 'secondary' : 'primary'}
+        onClick={handleVote}
+        disabled={loading || voting}
+        size="large"
+        fullWidth={fullWidth}
+        className={`vote-button-main ${isVoted ? 'vote-button-main-active' : ''}`}
+        title={iconTitle}
+        aria-label={iconTitle}
+      >
+        <span className="vote-button-main-content">
+          <svg
+            className={`vote-button-main-icon ${isVoted ? 'vote-button-main-icon-filled' : ''}`}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M12 21L10.5 19.7C5 14.8 2 12.1 2 8.8C2 6.1 4.1 4 6.8 4C8.3 4 9.7 4.7 10.6 5.9L12 7.7L13.4 5.9C14.3 4.7 15.7 4 17.2 4C19.9 4 22 6.1 22 8.8C22 12.1 19 14.8 13.5 19.7L12 21Z" />
+          </svg>
+          {loading || voting ? (
+            <span>{loading ? 'Загрузка...' : 'Сохраняем...'}</span>
+          ) : null}
+        </span>
+      </Button>
+      {!publicVotingEnabled ? (
+        <p className="vote-button-disabled-hint" role="status">
+          Лайки не определяют призовые места зрителей.
+        </p>
+      ) : null}
+    </>
   );
 };

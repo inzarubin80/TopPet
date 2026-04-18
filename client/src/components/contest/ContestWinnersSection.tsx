@@ -346,12 +346,7 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
               const p = participantById.get(w.participant_id);
               const place = w.place ?? 0;
               const medalPlace = place >= 1 && place <= 3 ? place : null;
-              const votes = voteCountForParticipant(
-                contest.public_voting_enabled,
-                w.participant_id,
-                p,
-                audienceByPid
-              );
+              const votes = voteCountForParticipant(w.participant_id, p, audienceByPid);
               return (
                 <WinnerGalleryCard
                   key={w.participant_id}

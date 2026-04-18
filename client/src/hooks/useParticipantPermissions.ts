@@ -8,13 +8,13 @@ interface UseParticipantPermissionsResult {
 }
 
 /**
- * Hook to determine user permissions for a participant
+ * Hook to determine user permissions for a participant.
+ * canVote — можно ставить лайк (этап приёма/голосования и принятая заявка); не зависит от public_voting_enabled.
  */
 export const useParticipantPermissions = (
   participant: Participant | null | undefined,
   currentUserId: UserID | undefined,
-  contestStatus: ContestStatus,
-  publicVotingEnabled: boolean = true
+  contestStatus: ContestStatus
 ): UseParticipantPermissionsResult => {
   return useMemo(() => {
     if (!participant || !currentUserId) {
@@ -31,12 +31,12 @@ export const useParticipantPermissions = (
       !participant.submission_status || participant.submission_status === 'accepted';
     const phaseAllowsPublicLikes =
       contestStatus === 'registration' || contestStatus === 'voting';
-    const canVote = phaseAllowsPublicLikes && publicVotingEnabled && submissionOk;
+    const canVote = phaseAllowsPublicLikes && submissionOk;
 
     return {
       isOwner,
       canEdit,
       canVote,
     };
-  }, [participant, currentUserId, contestStatus, publicVotingEnabled]);
+  }, [participant, currentUserId, contestStatus]);
 };

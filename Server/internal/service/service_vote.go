@@ -21,7 +21,8 @@ func voteNominationSlotFromParticipant(participant *model.Participant) *string {
 	return &s
 }
 
-// publicVoteAllowedForContestPhase — пользовательские голоса (лайки) на этапах приёма заявок и голосования.
+// publicVoteAllowedForContestPhase — лайки (contest_votes) на этапах приёма заявок и голосования.
+// Призовые места зрителей по числу лайков считаются только при contest.PublicVotingEnabled (см. computeContestWinnerOutcome).
 func publicVoteAllowedForContestPhase(st model.ContestStatus) bool {
 	return st == model.ContestStatusRegistration || st == model.ContestStatusVoting
 }
@@ -32,9 +33,6 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 		return nil, err
 	}
 
-	if !contest.PublicVotingEnabled {
-		return nil, fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
-	}
 	if !publicVoteAllowedForContestPhase(contest.Status) {
 		return nil, fmt.Errorf("%w: public voting is only available during registration or voting phase", model.ErrBadRequest)
 	}
@@ -94,9 +92,6 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 		return "", err
 	}
 
-	if !contest.PublicVotingEnabled {
-		return "", fmt.Errorf("%w: public voting is disabled for this contest", model.ErrorForbidden)
-	}
 	if !publicVoteAllowedForContestPhase(contest.Status) {
 		return "", fmt.Errorf("%w: public voting is only available during registration or voting phase", model.ErrBadRequest)
 	}

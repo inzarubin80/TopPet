@@ -135,14 +135,10 @@ export function participantDisplayName(p: Participant | undefined, brief: Contes
 }
 
 export function voteCountForParticipant(
-  publicVotingEnabled: boolean | undefined,
   participantId: string,
   p: Participant | undefined,
   audienceByPid: Map<string, ContestWinnerBrief>
 ): number | null {
-  if (!publicVotingEnabled) {
-    return null;
-  }
   if (p && p.total_votes !== undefined && p.total_votes !== null) {
     return p.total_votes;
   }

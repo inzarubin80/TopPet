@@ -284,13 +284,8 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 	listOrder := strings.TrimSpace(strings.ToLower(sort))
 	switch listOrder {
 	case "":
-		if contest.PublicVotingEnabled {
-			listOrder = model.ParticipantListSortVotes
-		} else if contest.JuryVotingEnabled {
-			listOrder = model.ParticipantListSortJury
-		} else {
-			listOrder = model.ParticipantListSortCreatedAt
-		}
+		// По умолчанию — по лайкам (contest_votes); призовые места зрителей зависят от PublicVotingEnabled в расчёте победителей.
+		listOrder = model.ParticipantListSortVotes
 	case model.ParticipantListSortVotes, model.ParticipantListSortJury, model.ParticipantListSortCreatedAt, model.ParticipantListSortComments:
 	default:
 		return nil, 0, fmt.Errorf("%w: sort must be votes, jury, created_at or comments", model.ErrBadRequest)

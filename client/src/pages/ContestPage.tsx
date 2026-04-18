@@ -156,9 +156,7 @@ const ContestPage: React.FC = () => {
       setParticipantsNominationFilter('all');
       setParticipantsSubmissionFilter('all');
       setParticipantsVotedOnly(false);
-      const initialSort: ParticipantsListSort = currentContest.public_voting_enabled
-        ? 'votes'
-        : 'created_at';
+      const initialSort: ParticipantsListSort = 'votes';
       setParticipantsSort(initialSort);
       setParticipantsPage(0);
       participantsListFiltersRef.current = {
@@ -509,8 +507,9 @@ const ContestPage: React.FC = () => {
 
   const showMyVotesFilter =
     isAuthenticated &&
-    (currentContest.public_voting_enabled ?? true) &&
-    (currentContest.status === 'voting' || currentContest.status === 'finished');
+    (currentContest.status === 'registration' ||
+      currentContest.status === 'voting' ||
+      currentContest.status === 'finished');
 
   const participantEmailDomains = currentContest.participant_allowed_email_domains ?? [];
   const participantEmailDomainsActive = participantEmailDomains.length > 0;
@@ -1016,7 +1015,6 @@ const ContestPage: React.FC = () => {
                         : undefined
                     }
                     contestStatus={currentContest.status}
-                    publicVotingEnabled={currentContest.public_voting_enabled ?? true}
                     isContestAdmin={isAdmin}
                     galleryNavigationState={participantGalleryNavigationState ?? undefined}
                   />

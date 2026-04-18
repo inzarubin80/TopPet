@@ -155,12 +155,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
     : 'draft';
   const phaseAllowsLikes =
     contestPhase === 'registration' || contestPhase === 'voting';
-  const { isOwner, canEdit } = useParticipantPermissions(
-    participant,
-    currentUserId,
-    contestPhase,
-    currentContest?.public_voting_enabled ?? true
-  );
+  const { isOwner, canEdit } = useParticipantPermissions(participant, currentUserId, contestPhase);
   /** После загрузки конкурса в store; этап конкурса не ограничивает комментарии. */
   const canComment = !!currentContest;
   const isContestOwner =

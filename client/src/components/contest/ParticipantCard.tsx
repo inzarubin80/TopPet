@@ -17,8 +17,6 @@ interface ParticipantCardProps {
   contestStatus: ContestStatus;
   /** Подпись номинации (если заявка привязана к категории) */
   nominationTitle?: string;
-  /** По умолчанию true — если false, участник не может получать голоса (права редактирования и т.д.) */
-  publicVotingEnabled?: boolean;
   isContestAdmin?: boolean;
   galleryNavigationState?: ParticipantGalleryNavigationState;
 }
@@ -28,7 +26,6 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   contestId, 
   contestStatus,
   nominationTitle,
-  publicVotingEnabled = true,
   isContestAdmin,
   galleryNavigationState,
 }) => {
@@ -39,12 +36,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const [moderationBusy, setModerationBusy] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
-  const { isOwner } = useParticipantPermissions(
-    participant,
-    currentUserId,
-    contestStatus,
-    publicVotingEnabled
-  );
+  const { isOwner } = useParticipantPermissions(participant, currentUserId, contestStatus);
   const authorLabel = isOwner ? 'Вы' : participant.user_name || `Пользователь ${participant.user_id}`;
   const workTitle = participant.entry_title?.trim() || participant.pet_name;
   const photos = participant.photos ?? [];

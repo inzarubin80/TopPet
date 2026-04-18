@@ -214,9 +214,10 @@ func TestVote_AllowsRegistrationPhase(t *testing.T) {
 	}
 }
 
-func TestVote_RejectsWhenPublicVotingDisabled(t *testing.T) {
+func TestVote_AllowsWhenPublicVotingDisabled(t *testing.T) {
 	t.Parallel()
 	contestID := model.ContestID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	partID := model.ParticipantID("pppppppp-pppp-pppp-pppp-pppppppppppp")
 	contest := &model.Contest{
 		ID:                  contestID,
 		Status:              model.ContestStatusVoting,
@@ -225,18 +226,15 @@ func TestVote_RejectsWhenPublicVotingDisabled(t *testing.T) {
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
 		contest:        contest,
-		participant:    &model.Participant{ID: "p", ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
 	}
 	svc := &TopPetService{repository: repo}
 
-	_, err := svc.Vote(context.Background(), contestID, "pppppppp-pppp-pppp-pppp-pppppppppppp", 1)
-	if err == nil {
-		t.Fatal("expected error")
+	_, err := svc.Vote(context.Background(), contestID, partID, 1)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !errors.Is(err, model.ErrorForbidden) {
-		t.Fatalf("expected forbidden, got %v", err)
-	}
-	if len(repo.upsertNoms) != 0 {
-		t.Fatal("should not upsert when public voting disabled")
+	if len(repo.upsertNoms) != 1 {
+		t.Fatalf("expected 1 upsert when public voting disabled (likes still allowed), got %d", len(repo.upsertNoms))
 	}
 }
