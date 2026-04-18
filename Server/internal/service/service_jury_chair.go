@@ -214,7 +214,7 @@ func (s *TopPetService) PutJuryChairAssignments(ctx context.Context, contestID m
 		nomTitle[n.ID] = n.Title
 	}
 
-	var winners []model.ContestWinnerBrief
+	var winnersFromBody []model.ContestWinnerBrief
 	for _, a := range body.Assignments {
 		prize := strings.TrimSpace(a.Prize)
 		if a.Place == nil && prize == "" {
@@ -252,11 +252,46 @@ func (s *TopPetService) PutJuryChairAssignments(ctx context.Context, contestID m
 		if a.Place != nil {
 			w.Place = *a.Place
 		}
-		winners = append(winners, w)
+		winnersFromBody = append(winnersFromBody, w)
 	}
 
-	sort.Slice(winners, func(i, j int) bool {
-		pi, pj := winners[i].Place, winners[j].Place
+	cur, err := s.repository.GetContest(ctx, contestID)
+	if err != nil {
+		return nil, err
+	}
+	existingJury := cur.PersistedJuryWinners
+	if existingJury == nil {
+		existingJury = []model.ContestWinnerBrief{}
+	}
+	merged := mergeJuryChairWinnersFromPartialPut(existingJury, body.Assignments, winnersFromBody)
+
+	aud := cur.PersistedAudienceWinners
+	if aud == nil {
+		aud = []model.ContestWinnerBrief{}
+	}
+	return s.repository.UpdateContestVotingResults(ctx, contestID, aud, merged)
+}
+
+// mergeJuryChairWinnersFromPartialPut объединяет снимок победителей жюри с частичным PUT (одна номинация в UI).
+// Записи по participant_id из assignments заменяются результатом разбора тела; остальные сохраняются.
+func mergeJuryChairWinnersFromPartialPut(
+	existing []model.ContestWinnerBrief,
+	assignments []model.JuryChairAssignmentInput,
+	winnersFromBody []model.ContestWinnerBrief,
+) []model.ContestWinnerBrief {
+	touched := make(map[model.ParticipantID]struct{}, len(assignments))
+	for _, a := range assignments {
+		touched[a.ParticipantID] = struct{}{}
+	}
+	out := make([]model.ContestWinnerBrief, 0, len(existing)+len(winnersFromBody))
+	for _, w := range existing {
+		if _, ok := touched[w.ParticipantID]; !ok {
+			out = append(out, w)
+		}
+	}
+	out = append(out, winnersFromBody...)
+	sort.Slice(out, func(i, j int) bool {
+		pi, pj := out[i].Place, out[j].Place
 		if pi == 0 {
 			pi = 1 << 30
 		}
@@ -266,18 +301,9 @@ func (s *TopPetService) PutJuryChairAssignments(ctx context.Context, contestID m
 		if pi != pj {
 			return pi < pj
 		}
-		return winners[i].ParticipantID < winners[j].ParticipantID
+		return out[i].ParticipantID < out[j].ParticipantID
 	})
-
-	cur, err := s.repository.GetContest(ctx, contestID)
-	if err != nil {
-		return nil, err
-	}
-	aud := cur.PersistedAudienceWinners
-	if aud == nil {
-		aud = []model.ContestWinnerBrief{}
-	}
-	return s.repository.UpdateContestVotingResults(ctx, contestID, aud, winners)
+	return out
 }
 
 func nominationTitleFromMap(nomID *string, nomTitle map[string]string) string {
