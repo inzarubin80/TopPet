@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"unicode/utf8"
@@ -181,6 +182,17 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 		return nil, errors.New("text is too long (max 2000 characters)")
 	}
 
+	existing, err := s.repository.GetChatMessage(ctx, messageID)
+	if err != nil {
+		return nil, err
+	}
+	if existing.UserID != userID {
+		return nil, fmt.Errorf("only message author can update chat message: %w", model.ErrForbidden)
+	}
+	if existing.IsSystem {
+		return nil, fmt.Errorf("%w: system messages cannot be edited", model.ErrBadRequest)
+	}
+
 	message, err := s.repository.UpdateChatMessage(ctx, messageID, userID, text)
 	if err != nil {
 		return nil, err
@@ -200,6 +212,14 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 }
 
 func (s *TopPetService) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) error {
+	existing, err := s.repository.GetChatMessage(ctx, messageID)
+	if err != nil {
+		return err
+	}
+	if existing.UserID != userID {
+		return fmt.Errorf("only message author can delete chat message: %w", model.ErrForbidden)
+	}
+
 	contestID, err := s.repository.DeleteChatMessage(ctx, messageID, userID)
 	if err != nil {
 		return err

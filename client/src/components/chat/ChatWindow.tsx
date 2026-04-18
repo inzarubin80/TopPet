@@ -6,7 +6,6 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { ChatMessage, ContestID, ContestStatus } from '../../types/models';
 import { MessageList } from './MessageList';
 import { MessageInput, MessageSendPayload } from './MessageInput';
-import { ConnectionStatus } from './ConnectionStatus';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Button } from '../common/Button';
 import { buildLoginUrl } from '../../utils/navigation';
@@ -40,7 +39,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
 
   // Only connect to WebSocket if authenticated and chat is available
   const wsContestId = isAuthenticated && isChatAvailable ? contestId : null;
-  const { connectionState, sendMessage, reconnect, isConnected } = useWebSocket(
+  const { connectionState, sendMessage, isConnected } = useWebSocket(
     wsContestId,
     null
   );
@@ -113,11 +112,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
 
   return (
     <div className="chat-window chat-window--natural-flow">
-      <div className="chat-header">
-        {isAuthenticated && (
-          <ConnectionStatus state={connectionState} onReconnect={reconnect} />
-        )}
-      </div>
       <div className="chat-content">
         {isAuthenticated && connectionState === 'CONNECTING' && messages.length === 0 ? (
           <div className="chat-loading">

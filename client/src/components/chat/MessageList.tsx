@@ -119,33 +119,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  const isSameDay = (date1: Date, date2: Date): boolean => {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
-    );
-  };
-
-  const formatDateSeparator = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (isSameDay(date, now)) {
-      return 'Сегодня';
-    } else if (isSameDay(date, yesterday)) {
-      return 'Вчера';
-    } else {
-      return date.toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'long',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-      });
-    }
-  };
-
   const handleStartEdit = (messageId: string, text: string) => {
     setEditingMessageId(messageId);
     setEditingText(text);
@@ -199,16 +172,8 @@ export const MessageList: React.FC<MessageListProps> = ({
       {messages.length === 0 ? (
         <div className="message-list-empty">{emptyLabel}</div>
       ) : (
-        threadedMessages.map(({ item: message, depth }, index) => {
+        threadedMessages.map(({ item: message, depth }) => {
           const safeDepth = Math.min(depth, 5);
-          // Show date separator if this is the first message or if the previous message is from a different day
-          const prevMessage = index > 0 ? threadedMessages[index - 1].item : null;
-          const showDateSeparator =
-            message.is_system !== true &&
-            (!prevMessage ||
-              !isSameDay(new Date(message.created_at), new Date(prevMessage.created_at)) ||
-              prevMessage.is_system === true);
-          
           const isOwn = currentUserId === message.user_id;
           const allowEdit = canEditMessage ? canEditMessage(message) : isOwn;
           const allowDelete = canDeleteMessage ? canDeleteMessage(message) : isOwn;
@@ -220,11 +185,6 @@ export const MessageList: React.FC<MessageListProps> = ({
             : null;
           return (
             <React.Fragment key={message.id}>
-              {showDateSeparator && (
-                <div className="message-date-separator">
-                  <span>{formatDateSeparator(message.created_at)}</span>
-                </div>
-              )}
               <div
                 className={`message-item-wrapper ${message.is_system === true ? 'message-system-wrapper' : ''}`}
                 style={{ marginLeft: `${safeDepth * 14}px` }}

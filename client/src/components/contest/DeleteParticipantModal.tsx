@@ -5,13 +5,16 @@ import { deleteParticipant } from '../../store/slices/participantsSlice';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
-import { Participant } from '../../types/models';
+import { Participant, UserID } from '../../types/models';
+import { userIdsEqual } from '../../utils/userId';
 import './DeleteParticipantModal.css';
 
 interface DeleteParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   participant: Participant | null;
+  /** Только владелец заявки может удалить; без совпадения подтверждение не выполняется. */
+  currentUserId: UserID | undefined;
   onDeleted?: () => void;
 }
 
@@ -19,6 +22,7 @@ export const DeleteParticipantModal: React.FC<DeleteParticipantModalProps> = ({
   isOpen,
   onClose,
   participant,
+  currentUserId,
   onDeleted,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -26,7 +30,7 @@ export const DeleteParticipantModal: React.FC<DeleteParticipantModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
-    if (!participant) {
+    if (!participant || currentUserId == null || !userIdsEqual(participant.user_id, currentUserId)) {
       return;
     }
 
@@ -83,7 +87,12 @@ export const DeleteParticipantModal: React.FC<DeleteParticipantModalProps> = ({
             type="button"
             variant="danger"
             onClick={handleConfirm}
-            disabled={loading}
+            disabled={
+              loading ||
+              !participant ||
+              currentUserId == null ||
+              !userIdsEqual(participant.user_id, currentUserId)
+            }
           >
             {loading ? <LoadingSpinner size="small" /> : 'Удалить'}
           </Button>

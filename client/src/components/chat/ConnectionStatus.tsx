@@ -9,12 +9,16 @@ interface ConnectionStatusProps {
 }
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ state, onReconnect, isAuthenticated = false }) => {
+  if (!isAuthenticated) {
+    return null;
+  }
+
   const getStatusText = () => {
     switch (state) {
       case 'CONNECTING':
         return 'Подключение...';
       case 'CONNECTED':
-        return 'Подключено';
+        return 'Соединение';
       case 'RECONNECTING':
         return 'Переподключение...';
       case 'DISCONNECTED':
@@ -42,7 +46,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ state, onRec
     <div className={`connection-status ${getStatusClass()}`}>
       <span className="status-indicator"></span>
       <span className="status-text">{getStatusText()}</span>
-      {state === 'DISCONNECTED' && onReconnect && isAuthenticated && (
+      {state === 'DISCONNECTED' && onReconnect && (
         <button className="reconnect-button" onClick={onReconnect}>
           Переподключить
         </button>

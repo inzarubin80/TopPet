@@ -17,6 +17,7 @@ import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
+import { ConnectionStatus } from '../components/chat/ConnectionStatus';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { getVotes } from '../api/votesApi';
@@ -99,8 +100,8 @@ const ContestPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  /** WS для обновления галереи/заявок без вкладки «Чат» (ChatWindow тоже держит то же соединение). */
-  useWebSocket(id ?? null, null);
+  /** WS для карточки конкурса (галерея, заявки, чат — одно соединение). */
+  const { connectionState, reconnect } = useWebSocket(id ?? null, null);
   const { showError } = useToast();
   const { currentContest, loading } = useSelector((state: RootState) => state.contests);
   const { items: participants, loading: participantsLoading } = useSelector(
@@ -622,12 +623,25 @@ const ContestPage: React.FC = () => {
       )}
       <div className="contest-page-main">
         <nav className="contest-page-menu" aria-label="Меню конкурса">
-          <SegmentMenu<ContestTab>
-            variant="contest"
-            items={contestMenuItems}
-            activeKey={activeTab}
-            onChange={handleContestMenuChange}
-          />
+          <div className="contest-page-menu-row">
+            <div className="contest-page-menu-tabs">
+              <SegmentMenu<ContestTab>
+                variant="contest"
+                items={contestMenuItems}
+                activeKey={activeTab}
+                onChange={handleContestMenuChange}
+              />
+            </div>
+            {isAuthenticated ? (
+              <div className="contest-page-menu-ws">
+                <ConnectionStatus
+                  state={connectionState}
+                  onReconnect={reconnect}
+                  isAuthenticated={isAuthenticated}
+                />
+              </div>
+            ) : null}
+          </div>
         </nav>
 
         {activeTab === 'about' ? (

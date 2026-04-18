@@ -28,6 +28,9 @@ type mockRepository struct {
 	getUserRoleFunc                 func(ctx context.Context, userID model.UserID) (string, error)
 	listUsersForAdminFunc           func(ctx context.Context, limit, offset int32) ([]*model.User, error)
 	countUsersFunc                  func(ctx context.Context) (int64, error)
+	getChatMessageFunc              func(ctx context.Context, messageID model.ChatMessageID) (*model.ChatMessage, error)
+	getCommentFunc                  func(ctx context.Context, commentID model.CommentID) (*model.Comment, error)
+	getParticipantFunc              func(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 }
 
 func (m *mockRepository) CreateContest(ctx context.Context, userID model.UserID, title, description string) (*model.Contest, error) {
@@ -147,6 +150,9 @@ func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.
 	return nil, nil
 }
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
+	if m.getParticipantFunc != nil {
+		return m.getParticipantFunc(ctx, participantID)
+	}
 	return nil, nil
 }
 func (m *mockRepository) GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error) {
@@ -215,6 +221,9 @@ func (m *mockRepository) CreateComment(ctx context.Context, participantID model.
 	return nil, nil
 }
 func (m *mockRepository) GetComment(ctx context.Context, commentID model.CommentID) (*model.Comment, error) {
+	if m.getCommentFunc != nil {
+		return m.getCommentFunc(ctx, commentID)
+	}
 	return nil, nil
 }
 func (m *mockRepository) ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID, limit, offset int) ([]*model.Comment, int64, error) {
@@ -240,6 +249,12 @@ func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.
 }
 func (m *mockRepository) ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error) {
 	return nil, 0, nil
+}
+func (m *mockRepository) GetChatMessage(ctx context.Context, messageID model.ChatMessageID) (*model.ChatMessage, error) {
+	if m.getChatMessageFunc != nil {
+		return m.getChatMessageFunc(ctx, messageID)
+	}
+	return nil, model.ErrorNotFound
 }
 func (m *mockRepository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) {
 	return nil, nil

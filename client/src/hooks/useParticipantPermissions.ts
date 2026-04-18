@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Participant, UserID, ContestStatus } from '../types/models';
+import { userIdsEqual } from '../utils/userId';
 
 interface UseParticipantPermissionsResult {
   isOwner: boolean;
@@ -17,7 +18,7 @@ export const useParticipantPermissions = (
   contestStatus: ContestStatus
 ): UseParticipantPermissionsResult => {
   return useMemo(() => {
-    if (!participant || !currentUserId) {
+    if (!participant || currentUserId == null) {
       return {
         isOwner: false,
         canEdit: false,
@@ -25,7 +26,7 @@ export const useParticipantPermissions = (
       };
     }
 
-    const isOwner = participant.user_id === currentUserId;
+    const isOwner = userIdsEqual(participant.user_id, currentUserId);
     const canEdit = isOwner && (contestStatus === 'draft' || contestStatus === 'registration');
     const submissionOk =
       !participant.submission_status || participant.submission_status === 'accepted';

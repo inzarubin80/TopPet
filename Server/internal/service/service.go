@@ -132,6 +132,7 @@ type (
 		// Chat
 		CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error)
 		ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error)
+		GetChatMessage(ctx context.Context, messageID model.ChatMessageID) (*model.ChatMessage, error)
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
 		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error)
 		UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error)

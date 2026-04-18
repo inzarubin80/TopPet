@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -163,11 +164,14 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 		return nil, err
 	}
 	if comment.UserID != userID {
-		return nil, errors.New("only comment author can update comment")
+		return nil, fmt.Errorf("only comment author can update comment: %w", model.ErrForbidden)
 	}
 
 	updated, err := s.repository.UpdateComment(ctx, commentID, userID, text)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("only comment author can update comment: %w", model.ErrForbidden)
+		}
 		return nil, err
 	}
 	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
@@ -193,7 +197,7 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 	}
 	if comment.UserID != userID {
 		if !s.userCanManageContest(ctx, contest, userID) {
-			return errors.New("only comment author or contest owner can delete comment")
+			return fmt.Errorf("only comment author or contest organizer can delete comment: %w", model.ErrForbidden)
 		}
 	}
 

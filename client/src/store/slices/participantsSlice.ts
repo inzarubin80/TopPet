@@ -259,6 +259,9 @@ const participantsSlice = createSlice({
       if (prev?.viewer_favorite !== undefined && next.viewer_favorite === undefined) {
         next.viewer_favorite = prev.viewer_favorite;
       }
+      if (prev?.user_id != null && next.user_id == null) {
+        next.user_id = prev.user_id;
+      }
       state.items[participant.id] = next;
       const existing = state.byContest[contestId];
       if (existing && !existing.includes(participant.id)) {

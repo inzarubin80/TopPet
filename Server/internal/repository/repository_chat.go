@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -192,22 +193,7 @@ func (r *Repository) ListChatMessages(ctx context.Context, contestID model.Conte
 	return result, total, nil
 }
 
-func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) {
-	reposqlc := sqlc_repository.New(r.conn)
-	messageUUID, err := uuid.Parse(string(messageID))
-	if err != nil {
-		return nil, err
-	}
-
-	message, err := reposqlc.UpdateChatMessage(ctx, &sqlc_repository.UpdateChatMessageParams{
-		Text:   text,
-		ID:     pgtype.UUID{Bytes: messageUUID, Valid: true},
-		UserID: int64(userID),
-	})
-	if err != nil {
-		return nil, err
-	}
-
+func (r *Repository) chatMessageFromContestRow(ctx context.Context, message *sqlc_repository.ContestChatMessage) (*model.ChatMessage, error) {
 	var messageIDStr, contestIDStr string
 	if message.ID.Valid {
 		messageIDStr = uuid.UUID(message.ID.Bytes).String()
@@ -216,7 +202,6 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		contestIDStr = uuid.UUID(message.ContestID.Bytes).String()
 	}
 
-	// Get user name and avatar for the updated message
 	user, err := r.GetUser(ctx, model.UserID(message.UserID))
 	userName := ""
 	userAvatarURL := ""
@@ -241,12 +226,48 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 		UserAvatarURL: userAvatarURL,
 		Text:          message.Text,
 		ImageURL:      optionalImageURL(message.ImageUrl),
-		IsSystem:  message.IsSystem,
-		Score:     0,
-		UserVote:  0,
-		CreatedAt: message.CreatedAt.Time,
-		UpdatedAt: message.UpdatedAt.Time,
+		IsSystem:      message.IsSystem,
+		Score:         0,
+		UserVote:      0,
+		CreatedAt:     message.CreatedAt.Time,
+		UpdatedAt:     message.UpdatedAt.Time,
 	}, nil
+}
+
+func (r *Repository) GetChatMessage(ctx context.Context, messageID model.ChatMessageID) (*model.ChatMessage, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	messageUUID, err := uuid.Parse(string(messageID))
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := reposqlc.GetChatMessageByID(ctx, pgtype.UUID{Bytes: messageUUID, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %v", model.ErrorNotFound, err)
+		}
+		return nil, err
+	}
+	return r.chatMessageFromContestRow(ctx, message)
+}
+
+func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	messageUUID, err := uuid.Parse(string(messageID))
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := reposqlc.UpdateChatMessage(ctx, &sqlc_repository.UpdateChatMessageParams{
+		Text:   text,
+		ID:     pgtype.UUID{Bytes: messageUUID, Valid: true},
+		UserID: int64(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return r.chatMessageFromContestRow(ctx, message)
 }
 
 func (r *Repository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error) {

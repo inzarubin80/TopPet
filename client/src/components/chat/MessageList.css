@@ -45,30 +45,6 @@
   font-size: 14px;
 }
 
-.message-date-separator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 16px 0;
-  position: relative;
-}
-
-.message-date-separator::before,
-.message-date-separator::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #e6e7ea;
-}
-
-.message-date-separator span {
-  padding: 0 12px;
-  font-size: 12px;
-  color: #6b7280;
-  background: var(--color-surface);
-  font-weight: 500;
-}
-
 .message-inline-image-link {
   display: block;
   margin-bottom: 8px;
@@ -483,14 +459,5 @@
   .message-menu-item {
     padding: 10px 12px;
     font-size: 12px;
-  }
-
-  .message-date-separator {
-    margin: 12px 0;
-  }
-
-  .message-date-separator span {
-    font-size: 11px;
-    padding: 0 10px;
   }
 }

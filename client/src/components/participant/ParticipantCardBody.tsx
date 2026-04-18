@@ -156,6 +156,8 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
   const phaseAllowsLikes =
     contestPhase === 'registration' || contestPhase === 'voting';
   const { isOwner, canEdit } = useParticipantPermissions(participant, currentUserId, contestPhase);
+  /** Только автор заявки в фазе приёма/черновика; удаление на сервере разрешено только автору. */
+  const showOwnerParticipantActions = isOwner && canEdit;
   /** После загрузки конкурса в store; этап конкурса не ограничивает комментарии. */
   const canComment = !!currentContest;
   const isContestOwner =
@@ -627,7 +629,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       {participant.photos && participant.photos.length > 0 && (
         <PhotoGallery
           photos={participant.photos}
-          showOwnerActions={variant === 'page' && canEdit}
+          showOwnerActions={variant === 'page' && showOwnerParticipantActions}
           onEdit={() => setIsEditModalOpen(true)}
           onDelete={() => setIsDeleteModalOpen(true)}
         />
@@ -752,7 +754,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                   participantId ? (file) => uploadCommentImage(participantId, file) : undefined
                 }
                 disabled={!participantId}
-                placeholder={isOwner ? 'Напишите комментарий или ответ организатору…' : 'Напишите комментарий...'}
+                placeholder="Написать сообщение"
               />
             </>
           ) : currentUserId && !canComment ? (
@@ -851,7 +853,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             </div>
           </div>
         ) : null}
-        {canEdit && (variant !== 'page' || !participant.photos?.length) && (
+        {showOwnerParticipantActions && (variant !== 'page' || !participant.photos?.length) && (
           <div className="participant-page-icon-actions">
             <button
               type="button"
@@ -1011,6 +1013,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             isOpen={isDeleteModalOpen}
             onClose={() => setIsDeleteModalOpen(false)}
             participant={participant}
+            currentUserId={currentUserId}
             onDeleted={() => {
               // Refresh participants list and navigate back to contest
               if (contestId) {

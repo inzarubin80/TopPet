@@ -18,16 +18,66 @@
   margin: 0 0 18px;
 }
 
-.contest-page-menu > .segment-menu--contest {
+.contest-page-menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  /* Линия на всю ширину колонки (как правый край шапки), а не только под вкладками */
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-sizing: border-box;
+}
+
+.contest-page-menu-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Вровень с пунктами меню: у .segment-menu--contest padding-top: 4px; центр по вертикали не брать — нижний отступ меню смещал индикатор */
+.contest-page-menu-ws {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-top: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.contest-page-menu-ws .connection-status {
+  padding: 10px 12px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.contest-page-menu-tabs > .segment-menu--contest {
   margin-bottom: 0;
 }
 
 /* Как у блока «О конкурсе»: полная ширина колонки (inline-flex иначе сжимается по контенту) */
-.contest-page-menu .segment-menu.segment-menu--contest {
+.contest-page-menu-tabs .segment-menu.segment-menu--contest {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
   box-sizing: border-box;
+  border-bottom: none;
+  margin-bottom: 0;
+  padding: 4px 0 0;
+}
+
+@media (max-width: 768px) {
+  .contest-page-menu-row {
+    padding-bottom: 14px;
+  }
+
+  .contest-page-menu-tabs .segment-menu.segment-menu--contest {
+    padding-bottom: 0;
+  }
+
+  .contest-page-menu-ws .connection-status {
+    padding: 9px 10px;
+    font-size: 14px;
+  }
 }
 
 .contest-page-chat {
