@@ -537,10 +537,23 @@ const ContestPage: React.FC = () => {
     ? 'Участвовать'
     : 'Зарегистрироваться для участия';
 
-  /** Регистрация: CTA для всех (гость → логин); черновик: только у организатора. */
+  const hideParticipateCta =
+    isAuthenticated &&
+    !blockedByEmailDomain &&
+    hasContestNominations &&
+    nominationsOpenToUser.length === 0 &&
+    contestNominations.length > 0;
+
+  const hideParticipateCtaNoNominations =
+    isAuthenticated &&
+    !blockedByEmailDomain &&
+    !hasContestNominations &&
+    alreadyInContestWithoutNominations;
+
+  /** Только регистрация; в черновике CTA нет — API не принимает заявки. */
   const showParticipateCtaButton =
-    currentContest.status === 'registration' ||
-    (canManageParticipants && currentContest.status === 'draft');
+    currentContest.status === 'registration' &&
+    (!isAuthenticated || (!hideParticipateCta && !hideParticipateCtaNoNominations));
 
   const handleParticipateClick = () => {
     if (!isAuthenticated) {
