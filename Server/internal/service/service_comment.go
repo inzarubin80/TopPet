@@ -67,7 +67,14 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 		}
 	}
 
-	return s.repository.CreateComment(ctx, participantID, userID, t, parentID, img)
+	comment, err := s.repository.CreateComment(ctx, participantID, userID, t, parentID, img)
+	if err != nil {
+		return nil, err
+	}
+	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
+		comment.IsStaffComment = contest.CreatedByUserID == userID || model.IsGlobalContestManagerRole(u.Role)
+	}
+	return comment, nil
 }
 
 func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error) {
@@ -150,14 +157,22 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.getContestForBusiness(ctx, participant.ContestID); err != nil {
+	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
+	if err != nil {
 		return nil, err
 	}
 	if comment.UserID != userID {
 		return nil, errors.New("only comment author can update comment")
 	}
 
-	return s.repository.UpdateComment(ctx, commentID, userID, text)
+	updated, err := s.repository.UpdateComment(ctx, commentID, userID, text)
+	if err != nil {
+		return nil, err
+	}
+	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
+		updated.IsStaffComment = contest.CreatedByUserID == userID || model.IsGlobalContestManagerRole(u.Role)
+	}
+	return updated, nil
 }
 
 func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error {

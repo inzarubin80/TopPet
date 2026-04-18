@@ -321,6 +321,8 @@ export interface Comment {
   image_url?: string;
   score: number;
   user_vote: number;
+  /** Сообщение от организатора конкурса или администратора площадки. */
+  is_staff_comment?: boolean;
   created_at: string;
   updated_at: string;
 }

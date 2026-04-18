@@ -19,7 +19,7 @@ export type MessageListRow = Pick<
   | 'score'
   | 'user_vote'
   | 'created_at'
-> & { is_system?: boolean };
+> & { is_system?: boolean; is_staff_comment?: boolean };
 
 interface MessageListProps {
   messages: MessageListRow[];
@@ -244,6 +244,11 @@ export const MessageList: React.FC<MessageListProps> = ({
                   <div className="message-header">
                     <div className="message-header-titles">
                       <span className="message-user">{userName}</span>
+                      {message.is_staff_comment ? (
+                        <span className="message-staff-badge" title="Организатор конкурса или администратор">
+                          Организатор
+                        </span>
+                      ) : null}
                       {replyToName ? (
                         <span className="message-reply-target">↪ {replyToName}</span>
                       ) : null}

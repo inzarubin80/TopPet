@@ -511,6 +511,16 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
       {participant.submission_status === 'pending' && (isOwner || isContestOwner) && (
         <p className="participant-page-moderation-notice" role="status">
           Заявка на модерации. До решения организатора карточка не отображается другим участникам конкурса.
+          {isOwner ? (
+            <>
+              {' '}
+              Замечания организатора и ответы ведутся в блоке{' '}
+              <a className="participant-page-moderation-comments-link" href="#participant-comments">
+                «Комментарии»
+              </a>
+              ; новые сообщения от организатора дублируются в колокольчике в шапке сайта.
+            </>
+          ) : null}
         </p>
       )}
       {participant.submission_status === 'rejected' && (isOwner || isContestOwner) && (
@@ -523,6 +533,15 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
             <blockquote className="participant-page-submission-comment">
               {participant.submission_comment}
             </blockquote>
+          ) : null}
+          {isOwner ? (
+            <p className="participant-page-moderation-reply-hint">
+              Ответить организатору можно в блоке{' '}
+              <a className="participant-page-moderation-comments-link" href="#participant-comments">
+                «Комментарии»
+              </a>{' '}
+              ниже.
+            </p>
           ) : null}
         </div>
       )}
@@ -690,6 +709,12 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
         Комментарии{' '}
         <span className="participant-page-comments-count">{commentsHeadingCount}</span>
       </h2>
+      {isOwner ? (
+        <p className="participant-page-comments-owner-hint">
+          Переписка с организатором — здесь же. Ответьте новым комментарием или через «Ответить» к сообщению
+          с меткой «Организатор».
+        </p>
+      ) : null}
       <div className="chat-window participant-page-comments-window">
         <div className="chat-content">
           <MessageList
@@ -744,7 +769,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                   participantId ? (file) => uploadCommentImage(participantId, file) : undefined
                 }
                 disabled={!participantId}
-                placeholder="Напишите комментарий..."
+                placeholder={isOwner ? 'Напишите комментарий или ответ организатору…' : 'Напишите комментарий...'}
               />
             </>
           ) : currentUserId && !canComment ? (

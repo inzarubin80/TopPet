@@ -655,9 +655,15 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cc.user_id::text) AS user_name,
     u.avatar_url AS user_avatar_url,
     COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score,
-    COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote
+    COALESCE((SELECT v2.value::int FROM contest_comment_votes v2 WHERE v2.comment_id = cc.id AND v2.user_id = sqlc.narg('viewer_user_id')::bigint), 0)::int AS user_vote,
+    (
+        c.created_by_user_id = cc.user_id
+        OR u.role IN ('contest_admin', 'system_admin')
+    ) AS is_staff_comment
 FROM contest_comments cc
 LEFT JOIN users u ON u.user_id = cc.user_id
+INNER JOIN contest_participants cp ON cp.id = cc.participant_id
+INNER JOIN contests c ON c.id = cp.contest_id
 WHERE cc.participant_id = $1
 ORDER BY cc.created_at ASC
 LIMIT $2 OFFSET $3;

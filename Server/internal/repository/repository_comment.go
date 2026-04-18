@@ -68,18 +68,19 @@ func (r *Repository) CreateComment(ctx context.Context, participantID model.Part
 	}
 
 	return &model.Comment{
-		ID:            model.CommentID(commentIDStr),
-		ParticipantID: model.ParticipantID(participantIDStr),
-		ParentID:      parentCommentID,
-		UserID:        model.UserID(comment.UserID),
-		UserName:      userName,
-		UserAvatarURL: userAvatarURL,
-		Text:          comment.Text,
-		ImageURL:      optionalImageURL(comment.ImageUrl),
-		Score:         0,
-		UserVote:      0,
-		CreatedAt:     comment.CreatedAt.Time,
-		UpdatedAt:     comment.UpdatedAt.Time,
+		ID:             model.CommentID(commentIDStr),
+		ParticipantID:  model.ParticipantID(participantIDStr),
+		ParentID:       parentCommentID,
+		UserID:         model.UserID(comment.UserID),
+		UserName:       userName,
+		UserAvatarURL:  userAvatarURL,
+		Text:           comment.Text,
+		ImageURL:       optionalImageURL(comment.ImageUrl),
+		Score:          0,
+		UserVote:       0,
+		IsStaffComment: false,
+		CreatedAt:      comment.CreatedAt.Time,
+		UpdatedAt:      comment.UpdatedAt.Time,
 	}, nil
 }
 
@@ -123,18 +124,19 @@ func (r *Repository) GetComment(ctx context.Context, commentID model.CommentID) 
 	}
 
 	return &model.Comment{
-		ID:            model.CommentID(commentIDStr),
-		ParticipantID: model.ParticipantID(participantIDStr),
-		ParentID:      parentCommentID,
-		UserID:        model.UserID(comment.UserID),
-		UserName:      userName,
-		UserAvatarURL: userAvatarURL,
-		Text:          comment.Text,
-		ImageURL:      optionalImageURL(comment.ImageUrl),
-		Score:         0,
-		UserVote:      0,
-		CreatedAt:     comment.CreatedAt.Time,
-		UpdatedAt:     comment.UpdatedAt.Time,
+		ID:             model.CommentID(commentIDStr),
+		ParticipantID:  model.ParticipantID(participantIDStr),
+		ParentID:       parentCommentID,
+		UserID:         model.UserID(comment.UserID),
+		UserName:       userName,
+		UserAvatarURL:  userAvatarURL,
+		Text:           comment.Text,
+		ImageURL:       optionalImageURL(comment.ImageUrl),
+		Score:          0,
+		UserVote:       0,
+		IsStaffComment: false,
+		CreatedAt:      comment.CreatedAt.Time,
+		UpdatedAt:      comment.UpdatedAt.Time,
 	}, nil
 }
 
@@ -183,19 +185,24 @@ func (r *Repository) ListCommentsByParticipant(ctx context.Context, participantI
 			parentCommentID = &parentIDVal
 		}
 
+		staff := false
+		if c.IsStaffComment != nil {
+			staff = *c.IsStaffComment
+		}
 		result[i] = &model.Comment{
-			ID:            model.CommentID(commentIDStr),
-			ParticipantID: model.ParticipantID(participantIDStr),
-			ParentID:      parentCommentID,
-			UserID:        model.UserID(c.UserID),
-			UserName:      c.UserName,
-			UserAvatarURL: optionalUserAvatarURL(c.UserAvatarUrl),
-			Text:          c.Text,
-			ImageURL:      optionalImageURL(c.ImageUrl),
-			Score:         c.Score,
-			UserVote:      c.UserVote,
-			CreatedAt:     c.CreatedAt.Time,
-			UpdatedAt:     c.UpdatedAt.Time,
+			ID:             model.CommentID(commentIDStr),
+			ParticipantID:  model.ParticipantID(participantIDStr),
+			ParentID:       parentCommentID,
+			UserID:         model.UserID(c.UserID),
+			UserName:       c.UserName,
+			UserAvatarURL:  optionalUserAvatarURL(c.UserAvatarUrl),
+			Text:           c.Text,
+			ImageURL:       optionalImageURL(c.ImageUrl),
+			Score:          c.Score,
+			UserVote:       c.UserVote,
+			IsStaffComment: staff,
+			CreatedAt:      c.CreatedAt.Time,
+			UpdatedAt:      c.UpdatedAt.Time,
 		}
 	}
 
@@ -243,18 +250,19 @@ func (r *Repository) UpdateComment(ctx context.Context, commentID model.CommentI
 	}
 
 	return &model.Comment{
-		ID:            model.CommentID(commentIDStr),
-		ParticipantID: model.ParticipantID(participantIDStr),
-		ParentID:      parentCommentID,
-		UserID:        model.UserID(comment.UserID),
-		UserName:      userName,
-		UserAvatarURL: userAvatarURL,
-		Text:          comment.Text,
-		ImageURL:      optionalImageURL(comment.ImageUrl),
-		Score:         0,
-		UserVote:      0,
-		CreatedAt:     comment.CreatedAt.Time,
-		UpdatedAt:     comment.UpdatedAt.Time,
+		ID:             model.CommentID(commentIDStr),
+		ParticipantID:  model.ParticipantID(participantIDStr),
+		ParentID:       parentCommentID,
+		UserID:         model.UserID(comment.UserID),
+		UserName:       userName,
+		UserAvatarURL:  userAvatarURL,
+		Text:           comment.Text,
+		ImageURL:       optionalImageURL(comment.ImageUrl),
+		Score:          0,
+		UserVote:       0,
+		IsStaffComment: false,
+		CreatedAt:      comment.CreatedAt.Time,
+		UpdatedAt:      comment.UpdatedAt.Time,
 	}, nil
 }
 

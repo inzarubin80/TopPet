@@ -431,8 +431,10 @@ type (
 		ImageURL      string        `json:"image_url,omitempty"`
 		Score         int64         `json:"score"`
 		UserVote      int32         `json:"user_vote"`
-		CreatedAt     time.Time     `json:"created_at"`
-		UpdatedAt     time.Time     `json:"updated_at"`
+		// IsStaffComment — автор комментария: организатор конкурса или администратор платформы (как в уведомлениях).
+		IsStaffComment bool      `json:"is_staff_comment"`
+		CreatedAt      time.Time `json:"created_at"`
+		UpdatedAt      time.Time `json:"updated_at"`
 	}
 
 	// StaffCommentNotification — заявки участника с непрочитанными комментариями организатора конкурса.

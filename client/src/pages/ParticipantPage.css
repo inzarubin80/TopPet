@@ -68,6 +68,26 @@
   margin: 0 0 10px;
 }
 
+.participant-page-moderation-comments-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.participant-page-moderation-reply-hint {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.participant-page-comments-owner-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
 .participant-page-submission-comment {
   margin: 0;
   padding: 12px 14px;
