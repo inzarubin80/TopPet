@@ -71,7 +71,7 @@ export const ParticipantVotersModal: React.FC<ParticipantVotersModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Голоса зрителей: ${participantName}`}
+      title={`Кто поставил лайк: ${participantName}`}
     >
       <div className="participant-voters-modal-body">
         {loading && (
