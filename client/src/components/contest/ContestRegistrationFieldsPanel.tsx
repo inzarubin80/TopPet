@@ -68,18 +68,64 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
       setLoading(true);
       try {
         const rows = await listRegistrationFields(contest.id);
-        setDraft(serverToDraft(rows));
+        const nextDraft = serverToDraft(rows);
+        // #region agent log
+        fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '425e02' },
+          body: JSON.stringify({
+            sessionId: '425e02',
+            location: 'ContestRegistrationFieldsPanel.tsx:load',
+            message: 'registration fields loaded',
+            data: {
+              serverRowCount: rows.length,
+              draftLengthAfterServerToDraft: nextDraft.length,
+              rowActionsUIRenders: !readOnly && isAdmin,
+              legacyLengthGateHidDelete: nextDraft.length <= 1,
+            },
+            timestamp: Date.now(),
+            runId: 'post-fix',
+            hypothesisId: 'H1',
+          }),
+        }).catch(() => {});
+        // #endregion
+        setDraft(nextDraft);
       } catch (e) {
         errorHandler.handleError(e, showError, false);
         showError('Не удалось загрузить поля заявки');
       } finally {
         setLoading(false);
       }
-    }, [contest.id, showError]);
+    }, [contest.id, showError, isAdmin, readOnly]);
 
     useEffect(() => {
       load();
     }, [load]);
+
+    useEffect(() => {
+      // #region agent log
+      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '425e02' },
+        body: JSON.stringify({
+          sessionId: '425e02',
+          location: 'ContestRegistrationFieldsPanel.tsx:draftState',
+          message: 'draft/canEdit gating for row actions',
+          data: {
+            draftLength: draft.length,
+            canEdit,
+            readOnly,
+            isAdmin,
+            rowActionsRendered: canEdit,
+            legacyLengthGateWouldHide: draft.length === 1,
+          },
+          timestamp: Date.now(),
+          runId: 'post-fix',
+          hypothesisId: 'H1',
+        }),
+      }).catch(() => {});
+      // #endregion
+    }, [draft.length, canEdit, readOnly, isAdmin]);
 
     const persist = useCallback(
       async (opts?: { quietSuccess?: boolean }): Promise<boolean> => {
@@ -250,7 +296,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
                   setDraft(next);
                 }}
               />
-              {canEdit && draft.length > 1 && (
+              {canEdit && (
                 <div className="contest-registration-fields-row-actions">
                   <span className="reorder-icon-actions">
                     <button
