@@ -1,0 +1,36 @@
+.app-footer {
+  margin-top: auto;
+  padding: 20px 16px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+
+.app-footer__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.app-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.app-footer__link {
+  color: #4b5563;
+  text-decoration: none;
+}
+
+.app-footer__link:hover {
+  color: #111827;
+  text-decoration: underline;
+}
+
+.app-footer__sep {
+  color: #d1d5db;
+  user-select: none;
+}

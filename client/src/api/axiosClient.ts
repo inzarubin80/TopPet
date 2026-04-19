@@ -77,7 +77,7 @@ const redirectToLogin = (originalRequest?: InternalAxiosRequestConfig) => {
   // Don't redirect for public endpoints (to avoid infinite loop)
   // Chat messages endpoint is public - unauthorized users should be able to read messages
   // Не добавлять сюда префикс '/contests/' — он совпадает с PATCH/POST/... к конкурсу и ломает refresh при 401.
-  const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/chat'];
+  const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/chat', '/legal/'];
   if (originalRequest?.url && publicEndpoints.some((endpoint) => originalRequest.url?.includes(endpoint))) {
     return;
   }
@@ -127,7 +127,7 @@ axiosClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Check if this is a public endpoint - don't try refresh for those
       // Chat messages endpoint is public - unauthorized users should be able to read messages
-      const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/chat'];
+      const publicEndpoints = ['/auth/refresh', '/auth/providers', '/auth/login', '/auth/callback', '/chat', '/legal/'];
       const isPublicEndpoint =
         originalRequest?.url && publicEndpoints.some((endpoint) => originalRequest.url?.includes(endpoint));
       

@@ -15,6 +15,7 @@ import (
 	"toppet/server/internal/app/http/middleware"
 	tokenservice "toppet/server/internal/app/token_service"
 	"toppet/server/internal/app/ws"
+	"toppet/server/internal/legal"
 	"toppet/server/internal/repository"
 	"toppet/server/internal/service"
 	"toppet/server/internal/storage/objectstorage"
@@ -47,6 +48,7 @@ type (
 		store             *sessions.CookieStore
 		loginStateStore   map[string]appHttp.StateData
 		loginStateStoreMu sync.Mutex
+		legalDocs         *legal.Store
 	}
 )
 
@@ -88,8 +90,13 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 		}
 	}
 
+	legalStore, err := legal.Load()
+	if err != nil {
+		return nil, err
+	}
+
 	// Build service
-	topPetService := service.NewTopPetService(repo, hub, userHub, accessTokenService, refreshTokenService, providersMap)
+	topPetService := service.NewTopPetService(repo, hub, userHub, accessTokenService, refreshTokenService, providersMap, legalStore)
 
 	// Build object storage uploader
 	var uploader *objectstorage.Uploader
@@ -154,6 +161,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 		store:             store,
 		loginStateStore:   make(map[string]appHttp.StateData),
 		loginStateStoreMu: sync.Mutex{},
+		legalDocs:         legalStore,
 	}
 
 	app.registerRoutes()
@@ -183,6 +191,10 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 func (a *App) registerRoutes() {
 	// Ping
 	a.mux.Handle("GET /api/ping", appHttp.NewPingHandler("/api/ping"))
+
+	// Legal documents (public markdown)
+	a.mux.Handle("GET /api/legal/documents", appHttp.NewListLegalDocumentsHandler("/api/legal/documents", a.legalDocs))
+	a.mux.Handle("GET /api/legal/documents/{documentId}", appHttp.NewGetLegalDocumentHandler("/api/legal/documents/{documentId}", a.legalDocs))
 
 	// Auth
 	a.mux.Handle("POST /api/auth/refresh", appHttp.NewRefreshTokenHandler(a.service, "/api/auth/refresh"))

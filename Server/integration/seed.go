@@ -105,7 +105,7 @@ func SetContestTierPro(ctx context.Context, pool *pgxpool.Pool, contestID model.
 func NewIntegrationService(repo *repository.Repository) *service.TopPetService {
 	access := tokenservice.NewTokenService([]byte("integration-access-secret-key-32bytes!!"), time.Hour, "access")
 	refresh := tokenservice.NewTokenService([]byte("integration-refresh-secret-key-32bytes!"), time.Hour, "refresh")
-	return service.NewTopPetService(repo, nil, nil, access, refresh, nil)
+	return service.NewTopPetService(repo, nil, nil, access, refresh, nil, nil)
 }
 
 // SeedLargeContestFlow создаёт конкурс с номинациями, критериями жюри, участниками и оценками.
@@ -243,6 +243,10 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		if err != nil {
 			return nil, fmt.Errorf("CreateUser participant owner %d: %w", i, err)
 		}
+		seedAdultDOB := time.Date(1990, 6, 15, 0, 0, 0, 0, time.UTC)
+		if _, err := repo.UpdateUserProfile(ctx, owner.ID, &model.User{Name: owner.Name, Email: owner.Email, DateOfBirth: &seedAdultDOB}); err != nil {
+			return nil, fmt.Errorf("UpdateUserProfile DOB participant owner %d: %w", i, err)
+		}
 		nomIdx := 0
 		switch {
 		case nomCurrentCounts[0] < perNomCounts[0]:
@@ -257,7 +261,7 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		nid := nomIDs[nomIdx]
 		petName := fmt.Sprintf("Питомец %d", i)
 		authorLabel := fmt.Sprintf("Автор %d", i)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nid, "seed-v1", "127.0.0.1", "integration-seed")
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nid, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed")
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}
@@ -463,9 +467,13 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 		if err != nil {
 			return nil, fmt.Errorf("CreateUser participant owner %d: %w", i, err)
 		}
+		seedAdultDOB := time.Date(1990, 6, 15, 0, 0, 0, 0, time.UTC)
+		if _, err := repo.UpdateUserProfile(ctx, owner.ID, &model.User{Name: owner.Name, Email: owner.Email, DateOfBirth: &seedAdultDOB}); err != nil {
+			return nil, fmt.Errorf("UpdateUserProfile DOB ja participant owner %d: %w", i, err)
+		}
 		petName := fmt.Sprintf("Участник %d", i+1)
 		authorLabel := fmt.Sprintf("Автор %d", i)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nomID, "seed-v1", "127.0.0.1", "integration-seed")
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nomID, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed")
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}

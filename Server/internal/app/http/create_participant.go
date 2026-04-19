@@ -15,7 +15,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, ipAddress, userAgent string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, publicationConsent bool, privacyPolicyVersion, publicationPolicyVersion, ipAddress, userAgent string) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -61,8 +61,10 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		PetDescription      string                 `json:"pet_description"`
 		RegistrationAnswers map[string]interface{} `json:"registration_answers"`
 		NominationID        *string                `json:"nomination_id"`
-		PrivacyConsent      bool                   `json:"privacy_consent"`
-		PolicyVersion       string                 `json:"policy_version"`
+		PrivacyConsent          bool   `json:"privacy_consent"`
+		PolicyVersion           string `json:"policy_version"`
+		PublicationConsent      bool   `json:"publication_consent"`
+		PublicationTermsVersion string `json:"publication_terms_version"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -88,6 +90,15 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		uhttp.HandleError(w, uhttp.NewBadRequestError("policy_version is required", nil))
 		return
 	}
+	if !req.PublicationConsent {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("publication_consent must be true", nil))
+		return
+	}
+	publicationTermsVersion := strings.TrimSpace(req.PublicationTermsVersion)
+	if publicationTermsVersion == "" {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("publication_terms_version is required", nil))
+		return
+	}
 	if strings.TrimSpace(req.AuthorName) == "" {
 		uhttp.HandleError(w, uhttp.NewBadRequestError("author_name is required", nil))
 		return
@@ -105,7 +116,9 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		req.AuthorName,
 		req.RegistrationAnswers,
 		req.NominationID,
+		req.PublicationConsent,
 		policyVersion,
+		publicationTermsVersion,
 		clientIP,
 		userAgent,
 	)

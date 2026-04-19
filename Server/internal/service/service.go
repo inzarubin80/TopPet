@@ -8,6 +8,11 @@ import (
 	"toppet/server/internal/model"
 )
 
+// LegalDocumentVersions актуальные версии юридических документов с сервера (embed).
+type LegalDocumentVersions interface {
+	Version(documentID string) (string, error)
+}
+
 type (
 	TopPetService struct {
 		repository          Repository
@@ -16,6 +21,7 @@ type (
 		hub                 Hub
 		userNotificationHub UserNotificationHub
 		providersUserData   map[string]ProviderUserData
+		legalDocs           LegalDocumentVersions
 	}
 
 	ProviderUserData interface {
@@ -92,7 +98,7 @@ type (
 		SearchUsersByQuery(ctx context.Context, q string, limit int32) ([]*model.UserSearchHit, error)
 
 		// Participant
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, privacyPolicyVersion, publicationPolicyVersion, consentIP, consentUserAgent string) (*model.Participant, error)
 		GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error)
 		GetParticipantByContestUserAndNomination(ctx context.Context, contestID model.ContestID, userID model.UserID, nominationID *string) (*model.Participant, error)
 		ListParticipantsByContest(ctx context.Context, contestID model.ContestID, viewer *model.UserID, includeAll bool, nominationFilter *model.ParticipantListNominationFilter, juryUnscoredOnly bool, participantScope string, submissionFilter string, votedByViewerOnly bool, favoriteOnly bool, limit, offset int32, listOrder string) ([]*model.Participant, int64, error)
@@ -165,8 +171,9 @@ type (
 	}
 )
 
-// NewTopPetService создает новый экземпляр TopPetService с указанными зависимостями
-func NewTopPetService(repository Repository, hub Hub, userNotificationHub UserNotificationHub, accessTokenService TokenService, refreshTokenService TokenService, providersUserData map[string]ProviderUserData) *TopPetService {
+// NewTopPetService создает новый экземпляр TopPetService с указанными зависимостями.
+// legalDocs может быть nil (тесты): проверка совпадения версий документов не выполняется.
+func NewTopPetService(repository Repository, hub Hub, userNotificationHub UserNotificationHub, accessTokenService TokenService, refreshTokenService TokenService, providersUserData map[string]ProviderUserData, legalDocs LegalDocumentVersions) *TopPetService {
 	return &TopPetService{
 		repository:          repository,
 		hub:                 hub,
@@ -174,5 +181,6 @@ func NewTopPetService(repository Repository, hub Hub, userNotificationHub UserNo
 		accessTokenService:  accessTokenService,
 		refreshTokenService: refreshTokenService,
 		providersUserData:   providersUserData,
+		legalDocs:           legalDocs,
 	}
 }

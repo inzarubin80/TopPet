@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../store';
 import {
   createParticipant,
@@ -25,6 +25,7 @@ import type {
   ParticipantsListSubmissionFilter,
 } from '../../api/participantsApi';
 import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
+import { listLegalDocuments } from '../../api/legalApi';
 import { buildLoginUrl } from '../../utils/navigation';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import './AddParticipantModal.css';
@@ -45,7 +46,9 @@ function revokeRegistrationImagePicks(picks: Record<string, RegistrationImagePic
 }
 
 const REGISTRATION_TEXTAREA_MAX_RUNES = 10000;
-const PRIVACY_POLICY_VERSION = '2026-04-14';
+/** Fallback, если не удалось загрузить /api/legal/documents (синхронно с Server/internal/legal/embed/manifest.json). */
+const PRIVACY_POLICY_VERSION_FALLBACK = '2026-04-14';
+const USER_AGREEMENT_VERSION_FALLBACK = '2026-04-19';
 
 /** Текст пояснения для участника или undefined, если строка пустая. */
 function registrationFieldHelpText(raw: string | undefined): string | undefined {
@@ -262,6 +265,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [publicationConsent, setPublicationConsent] = useState(false);
+  const [legalDocVersions, setLegalDocVersions] = useState<{ privacy?: string; terms?: string }>({});
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [entryTitle, setEntryTitle] = useState('');
   const [entryDescription, setEntryDescription] = useState('');
@@ -345,7 +350,31 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setAuthorName('');
     }
     setPrivacyConsent(!!participant);
+    setPublicationConsent(!!participant);
   }, [isOpen, participant]);
+
+  useEffect(() => {
+    if (!isOpen || isEditMode) {
+      return;
+    }
+    let cancelled = false;
+    listLegalDocuments()
+      .then((list) => {
+        if (cancelled) return;
+        const privacy = list.find((d) => d.id === 'privacy');
+        const terms = list.find((d) => d.id === 'terms');
+        setLegalDocVersions({
+          privacy: privacy?.version,
+          terms: terms?.version,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setLegalDocVersions({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isEditMode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -530,6 +559,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError('Для отправки заявки необходимо согласие на обработку персональных данных');
       return;
     }
+    if (!isEditMode && !publicationConsent) {
+      setError('Для отправки заявки необходимо согласие на публикацию материалов');
+      return;
+    }
 
     const fields = registrationFields ?? [];
     if (currentPhotoTotal < minPhotosRequired) {
@@ -664,7 +697,9 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               ...(nominationRows.length > 0 ? { nomination_id: selectedNominationId } : {}),
               ...(Object.keys(built.answers).length > 0 ? { registration_answers: built.answers } : {}),
               privacy_consent: true,
-              policy_version: PRIVACY_POLICY_VERSION,
+              policy_version: legalDocVersions.privacy ?? PRIVACY_POLICY_VERSION_FALLBACK,
+              publication_consent: true,
+              publication_terms_version: legalDocVersions.terms ?? USER_AGREEMENT_VERSION_FALLBACK,
             },
           })
         );
@@ -1110,21 +1145,44 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         </div>
 
         {!isEditMode ? (
-          <label className="add-participant-privacy-consent">
-            <input
-              type="checkbox"
-              checked={privacyConsent}
-              onChange={(e) => setPrivacyConsent(e.target.checked)}
-              disabled={loading || uploadingMedia}
-            />
-            <span>
-              Я согласен(а) на обработку персональных данных и ознакомлен(а) с{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                Политикой обработки персональных данных
-              </a>
-              .
-            </span>
-          </label>
+          <div className="add-participant-consent-stack">
+            {!currentUser?.date_of_birth ? (
+              <p className="add-participant-dob-hint" role="note">
+                Для участия укажите{' '}
+                <Link to="/profile">дату рождения в профиле</Link> — необходимо для подтверждения возраста 18+.
+              </p>
+            ) : null}
+            <label className="add-participant-privacy-consent">
+              <input
+                type="checkbox"
+                checked={privacyConsent}
+                onChange={(e) => setPrivacyConsent(e.target.checked)}
+                disabled={loading || uploadingMedia}
+              />
+              <span>
+                Я согласен(а) на обработку персональных данных и ознакомлен(а) с{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                  Политикой обработки персональных данных
+                </a>
+                .
+              </span>
+            </label>
+            <label className="add-participant-privacy-consent">
+              <input
+                type="checkbox"
+                checked={publicationConsent}
+                onChange={(e) => setPublicationConsent(e.target.checked)}
+                disabled={loading || uploadingMedia}
+              />
+              <span>
+                Я согласен(а) на публикацию моих материалов в рамках конкурса и ознакомлен(а) с{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer">
+                  Пользовательским соглашением
+                </a>
+                .
+              </span>
+            </label>
+          </div>
         ) : null}
 
         {error && <ErrorMessage message={error} />}

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"toppet/server/internal/legal"
 	"toppet/server/internal/model"
 )
 
@@ -76,7 +78,7 @@ func (s *TopPetService) resolveParticipantEntryTitle(ctx context.Context, userID
 	return "Участник", nil
 }
 
-func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
+func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, publicationConsent bool, privacyPolicyVersion, publicationPolicyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	log.Printf("[Service] CreateParticipant: contestID=%s, userID=%d, entryTitle=%s", contestID, userID, entryTitle)
 
 	// Check contest exists and is not finished
@@ -139,12 +141,13 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		return nil, model.ErrAlreadyParticipatingInContest
 	}
 
+	participantUser, err := s.repository.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(contest.ParticipantAllowedEmailDomains) > 0 && !s.userCanManageContest(ctx, contest, userID) {
-		u, uerr := s.repository.GetUser(ctx, userID)
-		if uerr != nil {
-			return nil, uerr
-		}
-		em := strings.TrimSpace(u.Email)
+		em := strings.TrimSpace(participantUser.Email)
 		if em == "" || !model.EmailDomainMatchesAllowlist(em, contest.ParticipantAllowedEmailDomains) {
 			return nil, model.ErrParticipantEmailDomainNotAllowed
 		}
@@ -154,10 +157,46 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 	if err != nil {
 		return nil, err
 	}
-	policyVersion = strings.TrimSpace(policyVersion)
-	if policyVersion == "" {
+	privacyPolicyVersion = strings.TrimSpace(privacyPolicyVersion)
+	if privacyPolicyVersion == "" {
 		return nil, fmt.Errorf("%w: policy_version is required", model.ErrBadRequest)
 	}
+	publicationPolicyVersion = strings.TrimSpace(publicationPolicyVersion)
+	if publicationPolicyVersion == "" {
+		return nil, fmt.Errorf("%w: publication_terms_version is required", model.ErrBadRequest)
+	}
+	if !publicationConsent {
+		return nil, fmt.Errorf("%w: publication_consent must be true", model.ErrBadRequest)
+	}
+
+	if participantUser.DateOfBirth == nil {
+		return nil, fmt.Errorf("%w: укажите дату рождения в профиле", model.ErrBadRequest)
+	}
+	moscowLoc, locErr := time.LoadLocation("Europe/Moscow")
+	if locErr != nil {
+		moscowLoc = time.UTC
+	}
+	if !userAtLeastAgeYears(*participantUser.DateOfBirth, 18, time.Now(), moscowLoc) {
+		return nil, fmt.Errorf("%w: участие возможно только с 18 лет", model.ErrBadRequest)
+	}
+
+	if s.legalDocs != nil {
+		wantPrivacy, err := s.legalDocs.Version(legal.IDPrivacy)
+		if err != nil {
+			return nil, fmt.Errorf("%w: privacy policy is not available", model.ErrBadRequest)
+		}
+		if privacyPolicyVersion != strings.TrimSpace(wantPrivacy) {
+			return nil, fmt.Errorf("%w: policy_version does not match the current privacy policy", model.ErrBadRequest)
+		}
+		wantTerms, err := s.legalDocs.Version(legal.IDTerms)
+		if err != nil {
+			return nil, fmt.Errorf("%w: user agreement is not available", model.ErrBadRequest)
+		}
+		if publicationPolicyVersion != strings.TrimSpace(wantTerms) {
+			return nil, fmt.Errorf("%w: publication_terms_version does not match the current user agreement", model.ErrBadRequest)
+		}
+	}
+
 	entryTitle = resolvedName
 	entryDescription = strings.TrimSpace(entryDescription)
 	authorName = strings.TrimSpace(authorName)
@@ -178,7 +217,8 @@ func (s *TopPetService) CreateParticipant(ctx context.Context, contestID model.C
 		authorName,
 		ans,
 		effectiveNom,
-		policyVersion,
+		privacyPolicyVersion,
+		publicationPolicyVersion,
 		consentIP,
 		consentUserAgent,
 	)

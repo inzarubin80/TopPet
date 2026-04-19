@@ -90,6 +90,8 @@ export interface CreateParticipantRequest {
   registration_answers?: Record<string, unknown>;
   privacy_consent?: boolean;
   policy_version?: string;
+  publication_consent?: boolean;
+  publication_terms_version?: string;
 }
 
 export interface UpdateParticipantRequest {

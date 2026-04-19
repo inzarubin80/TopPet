@@ -147,7 +147,7 @@ func (m *mockRepository) SetUserDateOfBirthIfEmpty(ctx context.Context, userID m
 }
 
 // ListContests, UpdateContest, UpdateContestStatus, DeleteContest реализованы ниже с поддержкой моков
-func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, policyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
+func (m *mockRepository) CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, privacyPolicyVersion, publicationPolicyVersion, consentIP, consentUserAgent string) (*model.Participant, error) {
 	return nil, nil
 }
 func (m *mockRepository) GetParticipant(ctx context.Context, participantID model.ParticipantID) (*model.Participant, error) {
