@@ -60,6 +60,9 @@ func (s *TopPetService) tickContestStatuses(ctx context.Context) {
 		if next == model.ContestStatusFinished {
 			if _, err := s.persistVotingResultsAfterFinished(dbCtx, c.ID); err != nil {
 				log.Printf("[ContestScheduler] persist voting results contest %s: %v", c.ID, err)
+			} else {
+				// Второй broadcast после записи снимка — клиенты подтянут audience/jury winners без гонки с первым fetch.
+				s.broadcastContestStatus(c.ID, model.ContestStatusFinished)
 			}
 		}
 	}

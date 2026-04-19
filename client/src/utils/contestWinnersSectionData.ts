@@ -149,32 +149,6 @@ export function voteCountForParticipant(
   return null;
 }
 
-/** Топ-3 по голосам среди всех участников (для блока «народный выбор»). */
-export function topParticipantsByVotes(
-  participants: Participant[],
-  nominationTitleById: Record<string, string>,
-  limit: number
-): Array<{ participant: Participant; votes: number; nominationLabel: string }> {
-  const sorted = [...participants].sort((a, b) => {
-    const va = a.total_votes ?? 0;
-    const vb = b.total_votes ?? 0;
-    if (vb !== va) {
-      return vb - va;
-    }
-    return a.id.localeCompare(b.id);
-  });
-  const slice = sorted.slice(0, limit);
-  return slice.map((participant) => {
-    const nid = participant.nomination_id;
-    const nominationLabel = nid ? nominationTitleById[nid]?.trim() || 'Номинация' : 'Без номинации';
-    return {
-      participant,
-      votes: participant.total_votes ?? 0,
-      nominationLabel,
-    };
-  });
-}
-
 export type PrimaryTrack = 'jury' | 'audience';
 
 export function pickPrimaryTrack(

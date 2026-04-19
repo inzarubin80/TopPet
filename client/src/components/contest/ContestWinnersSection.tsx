@@ -16,7 +16,6 @@ import {
   orderNominationKeysForTabs,
   participantDisplayName,
   sortWinnersBySnapshotPlace,
-  topParticipantsByVotes,
   voteCountForParticipant,
 } from '../../utils/contestWinnersSectionData';
 import './ContestWinnersSection.css';
@@ -199,15 +198,6 @@ function authorLabelFor(p: Participant | undefined, currentUserId: number | unde
   return participantAuthorDisplayName(p, { isOwner });
 }
 
-function briefFromParticipant(p: Participant): ContestWinnerBrief {
-  return {
-    participant_id: p.id,
-    pet_name: p.pet_name,
-    score: 0,
-    entry_title: p.entry_title,
-  };
-}
-
 export interface ContestWinnersSectionProps {
   contest: Contest;
   nominations: Nomination[];
@@ -260,13 +250,6 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
     });
   }, [tabKeys]);
 
-  const peopleTop = useMemo(() => {
-    if (!contest.public_voting_enabled) {
-      return [];
-    }
-    return topParticipantsByVotes(participants, nominationTitleById, 3);
-  }, [contest.public_voting_enabled, participants, nominationTitleById]);
-
   if (contest.status !== 'finished') {
     return (
       <div className="contest-winners-section contest-winners-section--message">
@@ -278,20 +261,13 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
   }
 
   const hasAnyWinnerData = jury.length > 0 || audience.length > 0;
-  const hasPeopleBlock = contest.public_voting_enabled && peopleTop.length > 0;
 
-  if (!hasAnyWinnerData && !hasPeopleBlock && !participantsLoading) {
+  if (!hasAnyWinnerData) {
     return (
       <div className="contest-winners-section contest-winners-section--message">
-        <p className="contest-winners-section__lead">Победители будут объявлены позже.</p>
-      </div>
-    );
-  }
-
-  if (participantsLoading && !hasAnyWinnerData) {
-    return (
-      <div className="contest-winners-section contest-winners-section--loading">
-        <LoadingSpinner size="medium" />
+        <p className="contest-winners-section__lead">
+          Победители будут объявлены позже. Обновите страницу, если итоги уже подсчитаны на сервере.
+        </p>
       </div>
     );
   }
@@ -301,15 +277,17 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
   const audienceList = activeNomKey !== null ? audienceByNom.get(activeNomKey) ?? [] : [];
 
   const jurySorted = sortWinnersBySnapshotPlace(juryList);
-  const audienceSorted = sortWinnersBySnapshotPlace(audienceList);
+  const audienceSorted = sortWinnersBySnapshotPlace(audienceList).filter((w) => {
+    const p = participantById.get(w.participant_id);
+    return !p || p.submission_status === 'accepted';
+  });
 
   const showNominationTabs = tabKeys.length > 1;
 
   const showJuryBlock =
     activeNomKey !== null && contest.jury_voting_enabled && jurySorted.length > 0;
 
-  const showPopularBlock =
-    audienceSorted.length > 0 || (contest.public_voting_enabled && peopleTop.length > 0);
+  const showPopularBlock = audienceSorted.length > 0;
 
   return (
     <div className="contest-winners-section">
@@ -360,55 +338,31 @@ export const ContestWinnersSection: React.FC<ContestWinnersSectionProps> = ({
         <section className="contest-winners-section__subsection" aria-label="Народное голосование">
           <h3 className="contest-winners-section__block-heading">Народное голосование</h3>
           <div className="contest-winners-section__podium-grid">
-            {audienceSorted.length > 0
-              ? audienceSorted.map((w) => {
-                  const p = participantById.get(w.participant_id);
-                  const place = w.place ?? 0;
-                  const medalPlace = place >= 1 && place <= 3 ? place : null;
-                  const votesDisplay = contest.public_voting_enabled ? w.score : null;
-                  const juryM =
-                    p?.total_jury_score !== undefined && p?.total_jury_score !== null
-                      ? p.total_jury_score
-                      : null;
-                  return (
-                    <WinnerGalleryCard
-                      key={`aud-${w.participant_id}`}
-                      contestId={contest.id}
-                      participant={p}
-                      participantId={w.participant_id}
-                      workTitle={participantWorkTitle(p, w)}
-                      petLabel={podiumPetLabel(p, w)}
-                      coverSrc={resolveCoverSrc(p)}
-                      medalPlace={medalPlace}
-                      authorLabel={authorLabelFor(p, currentUserId)}
-                      votesDisplay={votesDisplay}
-                      juryMetaDisplay={juryM}
-                    />
-                  );
-                })
-              : peopleTop.map((row, idx) => {
-                  const p = participantById.get(row.participant.id) ?? row.participant;
-                  const b = briefFromParticipant(p);
-                  return (
-                    <WinnerGalleryCard
-                      key={`pop-${p.id}`}
-                      contestId={contest.id}
-                      participant={p}
-                      participantId={p.id}
-                      workTitle={participantWorkTitle(p, b)}
-                      petLabel={podiumPetLabel(p, b)}
-                      coverSrc={resolveCoverSrc(p)}
-                      medalPlace={idx + 1}
-                      authorLabel={authorLabelFor(p, currentUserId)}
-                      votesDisplay={row.votes}
-                      juryMetaDisplay={
-                        p.total_jury_score !== undefined && p.total_jury_score !== null
-                          ? p.total_jury_score
-                          : null
-                      }
-                    />
-                  );
-                })}
+            {audienceSorted.map((w) => {
+              const p = participantById.get(w.participant_id);
+              const place = w.place ?? 0;
+              const medalPlace = place >= 1 && place <= 3 ? place : null;
+              const votesDisplay = contest.public_voting_enabled ? w.score : null;
+              const juryM =
+                p?.total_jury_score !== undefined && p?.total_jury_score !== null
+                  ? p.total_jury_score
+                  : null;
+              return (
+                <WinnerGalleryCard
+                  key={`aud-${w.participant_id}`}
+                  contestId={contest.id}
+                  participant={p}
+                  participantId={w.participant_id}
+                  workTitle={participantWorkTitle(p, w)}
+                  petLabel={podiumPetLabel(p, w)}
+                  coverSrc={resolveCoverSrc(p)}
+                  medalPlace={medalPlace}
+                  authorLabel={authorLabelFor(p, currentUserId)}
+                  votesDisplay={votesDisplay}
+                  juryMetaDisplay={juryM}
+                />
+              );
+            })}
           </div>
         </section>
       ) : null}

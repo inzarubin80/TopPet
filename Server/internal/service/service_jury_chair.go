@@ -270,7 +270,12 @@ func (s *TopPetService) PutJuryChairAssignments(ctx context.Context, contestID m
 	if aud == nil {
 		aud = []model.ContestWinnerBrief{}
 	}
-	return s.repository.UpdateContestVotingResults(ctx, contestID, aud, merged)
+	updated, err := s.repository.UpdateContestVotingResults(ctx, contestID, aud, merged)
+	if err != nil {
+		return nil, err
+	}
+	s.broadcastContestStatus(contestID, updated.Status)
+	return updated, nil
 }
 
 // mergeJuryChairWinnersFromPartialPut объединяет снимок победителей жюри с частичным PUT (одна номинация в UI).

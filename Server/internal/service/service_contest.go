@@ -374,6 +374,8 @@ func (s *TopPetService) RecalculateContestVotingResults(ctx context.Context, con
 	if _, err := s.persistVotingResultsAfterFinished(ctx, contestID); err != nil {
 		return nil, fmt.Errorf("persist voting results: %w", err)
 	}
+	// Повторно «finished», чтобы клиенты с открытой карточкой подтянули снимок audience_winners (как после первого завершения).
+	s.broadcastContestStatus(contestID, model.ContestStatusFinished)
 	return s.GetContest(ctx, contestID)
 }
 
