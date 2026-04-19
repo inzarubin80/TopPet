@@ -22,8 +22,11 @@ export const updateChatMessage = async (messageId: ChatMessageID, text: string):
   return response.data;
 };
 
-export const deleteChatMessage = async (messageId: ChatMessageID): Promise<void> => {
-  await axiosClient.delete(`/chat/${messageId}`);
+export const deleteChatMessage = async (messageId: ChatMessageID): Promise<ChatMessageID[]> => {
+  const response = await axiosClient.delete<{ ok: boolean; deleted_message_ids: ChatMessageID[] }>(
+    `/chat/${messageId}`
+  );
+  return response.data.deleted_message_ids ?? [messageId];
 };
 
 export const voteChatMessage = async (messageId: ChatMessageID, value: -1 | 1): Promise<void> => {

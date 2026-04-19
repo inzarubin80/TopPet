@@ -702,6 +702,19 @@ RETURNING comment_id, user_id, value;
 DELETE FROM contest_comments
 WHERE id = $1;
 
+-- name: DeleteContestCommentsSubtree :many
+WITH RECURSIVE tree AS (
+    SELECT cc.id, cc.participant_id FROM contest_comments cc WHERE cc.id = $1
+    UNION ALL
+    SELECT cc.id, cc.participant_id
+    FROM contest_comments cc
+    INNER JOIN tree t ON cc.parent_id = t.id AND cc.participant_id = t.participant_id
+),
+removed AS (
+    DELETE FROM contest_comments AS cdel WHERE cdel.id IN (SELECT t.id FROM tree t) RETURNING cdel.id AS id
+)
+SELECT id FROM removed;
+
 -- name: DeleteCommentsByParticipant :exec
 DELETE FROM contest_comments
 WHERE participant_id = $1;
@@ -813,6 +826,21 @@ RETURNING message_id, user_id, value;
 DELETE FROM contest_chat_messages
 WHERE id = $1 AND user_id = $2 AND is_system = FALSE
 RETURNING contest_id;
+
+-- name: DeleteContestChatMessagesSubtree :many
+WITH RECURSIVE tree AS (
+    SELECT m.id, m.contest_id FROM contest_chat_messages m WHERE m.id = $1
+    UNION ALL
+    SELECT c.id, c.contest_id
+    FROM contest_chat_messages c
+    INNER JOIN tree t ON c.parent_id = t.id AND c.contest_id = t.contest_id
+),
+removed AS (
+    DELETE FROM contest_chat_messages AS mdel
+    WHERE mdel.id IN (SELECT t.id FROM tree t)
+    RETURNING mdel.id AS id, mdel.contest_id AS contest_id
+)
+SELECT id, contest_id FROM removed;
 
 -- name: DeleteChatMessagesByUserID :exec
 DELETE FROM contest_chat_messages WHERE user_id = $1;

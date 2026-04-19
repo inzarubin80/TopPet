@@ -92,8 +92,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ contestId, contestStatus
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
-      await chatApi.deleteChatMessage(messageId);
-      dispatch(removeMessage({ contestId, messageId }));
+      const deletedIds = await chatApi.deleteChatMessage(messageId);
+      for (const id of deletedIds) {
+        dispatch(removeMessage({ contestId, messageId: id }));
+      }
     } catch (error) {
       errorHandler.handleError(error, () => showError('Не удалось удалить сообщение'));
     }

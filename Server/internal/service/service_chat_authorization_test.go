@@ -50,7 +50,7 @@ func TestDeleteChatMessage_NonAuthorGetsForbidden(t *testing.T) {
 			},
 		},
 	}
-	err := svc.DeleteChatMessage(context.Background(), msgID, 99)
+	_, _, err := svc.DeleteChatMessage(context.Background(), msgID, 99)
 	if !errors.Is(err, model.ErrForbidden) {
 		t.Fatalf("DeleteChatMessage: want ErrForbidden, got %v", err)
 	}

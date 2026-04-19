@@ -239,28 +239,33 @@ func (s *TopPetService) UpdateChatMessage(ctx context.Context, messageID model.C
 	return message, nil
 }
 
-func (s *TopPetService) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) error {
+func (s *TopPetService) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, []model.ChatMessageID, error) {
 	existing, err := s.repository.GetChatMessage(ctx, messageID)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	if existing.UserID != userID {
-		return fmt.Errorf("only message author can delete chat message: %w", model.ErrForbidden)
+		return "", nil, fmt.Errorf("only message author can delete chat message: %w", model.ErrForbidden)
+	}
+	if existing.IsSystem {
+		return "", nil, fmt.Errorf("%w: system messages cannot be deleted", model.ErrBadRequest)
 	}
 
-	contestID, err := s.repository.DeleteChatMessage(ctx, messageID, userID)
+	contestID, deletedIDs, err := s.repository.DeleteChatMessage(ctx, messageID, userID)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
 	if s.hub != nil {
-		payload := wsapp.MessageDeletedPayload{
-			Type:      wsapp.MessageTypeMessageDeleted,
-			ContestID: contestID,
-			MessageID: messageID,
+		for _, mid := range deletedIDs {
+			payload := wsapp.MessageDeletedPayload{
+				Type:      wsapp.MessageTypeMessageDeleted,
+				ContestID: contestID,
+				MessageID: mid,
+			}
+			_ = s.hub.BroadcastContestMessage(contestID, payload)
 		}
-		_ = s.hub.BroadcastContestMessage(contestID, payload)
 	}
 
-	return nil
+	return contestID, deletedIDs, nil
 }

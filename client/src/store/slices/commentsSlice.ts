@@ -61,8 +61,8 @@ export const deleteComment = createAsyncThunk(
   'comments/deleteComment',
   async (commentId: CommentID, { rejectWithValue }) => {
     try {
-      await commentsApi.deleteComment(commentId);
-      return commentId;
+      const deletedIds = await commentsApi.deleteComment(commentId);
+      return { deletedIds };
     } catch (error: unknown) {
       return rejectWithValue(getApiErrorMessage(error));
     }
@@ -208,11 +208,13 @@ const commentsSlice = createSlice({
       })
       // deleteComment
       .addCase(deleteComment.fulfilled, (state, action) => {
-        const commentId = action.payload;
-        // Remove comment from all participants
+        const deletedIds = new Set(action.payload.deletedIds);
         Object.keys(state.items).forEach((participantId) => {
-          state.items[participantId] = state.items[participantId].filter((c) => c.id !== commentId);
-          state.totals[participantId] = Math.max(0, (state.totals[participantId] || 0) - 1);
+          const list = state.items[participantId];
+          const before = list.length;
+          state.items[participantId] = list.filter((c) => !deletedIds.has(c.id));
+          const removed = before - state.items[participantId].length;
+          state.totals[participantId] = Math.max(0, (state.totals[participantId] || 0) - removed);
         });
       })
       .addCase(voteComment.fulfilled, () => {});

@@ -262,41 +262,44 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 	return updated, nil
 }
 
-func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error {
+func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) ([]model.CommentID, error) {
 	// Check comment exists and belongs to user
 	comment, err := s.repository.GetComment(ctx, commentID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	participant, err := s.repository.GetParticipant(ctx, comment.ParticipantID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	contest, err := s.getContestForBusiness(ctx, participant.ContestID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if comment.UserID != userID {
 		if !s.userCanManageContest(ctx, contest, userID) {
-			return fmt.Errorf("only comment author or contest organizer can delete comment: %w", model.ErrForbidden)
+			return nil, fmt.Errorf("only comment author or contest organizer can delete comment: %w", model.ErrForbidden)
 		}
 	}
 
 	contestID := participant.ContestID
 	participantID := comment.ParticipantID
-	if err := s.repository.DeleteComment(ctx, commentID, userID); err != nil {
-		return err
+	deletedIDs, err := s.repository.DeleteComment(ctx, commentID, userID)
+	if err != nil {
+		return nil, err
 	}
 	if s.hub != nil {
-		payload := wsapp.ParticipantCommentDeletedPayload{
-			Type:          wsapp.MessageTypeParticipantCommentDeleted,
-			ContestID:     contestID,
-			ParticipantID: participantID,
-			CommentID:     commentID,
+		for _, cid := range deletedIDs {
+			payload := wsapp.ParticipantCommentDeletedPayload{
+				Type:          wsapp.MessageTypeParticipantCommentDeleted,
+				ContestID:     contestID,
+				ParticipantID: participantID,
+				CommentID:     cid,
+			}
+			_ = s.hub.BroadcastContestMessage(contestID, payload)
 		}
-		_ = s.hub.BroadcastContestMessage(contestID, payload)
 	}
 	s.broadcastParticipantUpdated(ctx, participantID)
-	return nil
+	return deletedIDs, nil
 }

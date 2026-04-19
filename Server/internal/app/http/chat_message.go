@@ -13,7 +13,7 @@ import (
 type (
 	serviceChatMessage interface {
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
-		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) error
+		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, []model.ChatMessageID, error)
 		VoteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) error
 	}
 
@@ -55,15 +55,17 @@ func (h *ChatMessageHandler) DeleteChatMessage(w http.ResponseWriter, r *http.Re
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	messageID := model.ChatMessageID(r.PathValue("messageId"))
 
-	if err := h.service.DeleteChatMessage(r.Context(), messageID, userID); err != nil {
+	_, deletedIDs, err := h.service.DeleteChatMessage(r.Context(), messageID, userID)
+	if err != nil {
 		uhttp.HandleError(w, err)
 		return
 	}
 
 	type response struct {
-		OK bool `json:"ok"`
+		OK                bool                  `json:"ok"`
+		DeletedMessageIDs []model.ChatMessageID `json:"deleted_message_ids"`
 	}
-	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
+	if err := uhttp.SendSuccess(w, response{OK: true, DeletedMessageIDs: deletedIDs}); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}

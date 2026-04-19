@@ -34,8 +34,11 @@ export const updateComment = async (
   return response.data;
 };
 
-export const deleteComment = async (commentId: CommentID): Promise<void> => {
-  await axiosClient.delete(`/comments/${commentId}`);
+export const deleteComment = async (commentId: CommentID): Promise<CommentID[]> => {
+  const response = await axiosClient.delete<{ ok: boolean; deleted_comment_ids: CommentID[] }>(
+    `/comments/${commentId}`
+  );
+  return response.data.deleted_comment_ids ?? [commentId];
 };
 
 export const voteComment = async (commentId: CommentID, value: -1 | 1): Promise<void> => {

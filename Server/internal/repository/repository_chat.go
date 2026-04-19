@@ -270,24 +270,36 @@ func (r *Repository) UpdateChatMessage(ctx context.Context, messageID model.Chat
 	return r.chatMessageFromContestRow(ctx, message)
 }
 
-func (r *Repository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error) {
+func (r *Repository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, []model.ChatMessageID, error) {
+	_ = userID
 	reposqlc := sqlc_repository.New(r.conn)
 	messageUUID, err := uuid.Parse(string(messageID))
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	contestID, err := reposqlc.DeleteChatMessage(ctx, &sqlc_repository.DeleteChatMessageParams{
-		ID:     pgtype.UUID{Bytes: messageUUID, Valid: true},
-		UserID: int64(userID),
-	})
+	rows, err := reposqlc.DeleteContestChatMessagesSubtree(ctx, pgtype.UUID{Bytes: messageUUID, Valid: true})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	if !contestID.Valid {
-		return "", errors.New("contest_id not found for deleted chat message")
+	if len(rows) == 0 {
+		return "", nil, fmt.Errorf("%w: chat message not found", model.ErrorNotFound)
 	}
-	return model.ContestID(uuid.UUID(contestID.Bytes).String()), nil
+	out := make([]model.ChatMessageID, 0, len(rows))
+	var contestID model.ContestID
+	for _, row := range rows {
+		if row == nil || !row.ID.Valid {
+			continue
+		}
+		out = append(out, model.ChatMessageID(uuid.UUID(row.ID.Bytes).String()))
+	}
+	if len(out) == 0 {
+		return "", nil, fmt.Errorf("%w: chat message not found", model.ErrorNotFound)
+	}
+	if rows[0] != nil && rows[0].ContestID.Valid {
+		contestID = model.ContestID(uuid.UUID(rows[0].ContestID.Bytes).String())
+	}
+	return contestID, out, nil
 }
 
 func (r *Repository) UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error) {

@@ -266,14 +266,32 @@ func (r *Repository) UpdateComment(ctx context.Context, commentID model.CommentI
 	}, nil
 }
 
-func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error {
+func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) ([]model.CommentID, error) {
+	_ = userID
 	reposqlc := sqlc_repository.New(r.conn)
 	commentUUID, err := uuid.Parse(string(commentID))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return reposqlc.DeleteComment(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
+	ids, err := reposqlc.DeleteContestCommentsSubtree(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("%w: comment not found", model.ErrorNotFound)
+	}
+	out := make([]model.CommentID, 0, len(ids))
+	for _, id := range ids {
+		if !id.Valid {
+			continue
+		}
+		out = append(out, model.CommentID(uuid.UUID(id.Bytes).String()))
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: comment not found", model.ErrorNotFound)
+	}
+	return out, nil
 }
 
 func (r *Repository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) (model.ContestID, model.ParticipantID, int64, error) {

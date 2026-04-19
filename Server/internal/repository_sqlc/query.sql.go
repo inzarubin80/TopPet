@@ -749,6 +749,47 @@ func (q *Queries) DeleteContest(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteContestChatMessagesSubtree = `-- name: DeleteContestChatMessagesSubtree :many
+WITH RECURSIVE tree AS (
+    SELECT m.id, m.contest_id FROM contest_chat_messages m WHERE m.id = $1
+    UNION ALL
+    SELECT c.id, c.contest_id
+    FROM contest_chat_messages c
+    INNER JOIN tree t ON c.parent_id = t.id AND c.contest_id = t.contest_id
+),
+removed AS (
+    DELETE FROM contest_chat_messages AS mdel
+    WHERE mdel.id IN (SELECT t.id FROM tree t)
+    RETURNING mdel.id AS id, mdel.contest_id AS contest_id
+)
+SELECT id, contest_id FROM removed
+`
+
+type DeleteContestChatMessagesSubtreeRow struct {
+	ID        pgtype.UUID
+	ContestID pgtype.UUID
+}
+
+func (q *Queries) DeleteContestChatMessagesSubtree(ctx context.Context, id pgtype.UUID) ([]*DeleteContestChatMessagesSubtreeRow, error) {
+	rows, err := q.db.Query(ctx, deleteContestChatMessagesSubtree, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*DeleteContestChatMessagesSubtreeRow
+	for rows.Next() {
+		var i DeleteContestChatMessagesSubtreeRow
+		if err := rows.Scan(&i.ID, &i.ContestID); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteContestCommentsByUserID = `-- name: DeleteContestCommentsByUserID :exec
 DELETE FROM contest_comments WHERE user_id = $1
 `
@@ -756,6 +797,40 @@ DELETE FROM contest_comments WHERE user_id = $1
 func (q *Queries) DeleteContestCommentsByUserID(ctx context.Context, userID int64) error {
 	_, err := q.db.Exec(ctx, deleteContestCommentsByUserID, userID)
 	return err
+}
+
+const deleteContestCommentsSubtree = `-- name: DeleteContestCommentsSubtree :many
+WITH RECURSIVE tree AS (
+    SELECT cc.id, cc.participant_id FROM contest_comments cc WHERE cc.id = $1
+    UNION ALL
+    SELECT cc.id, cc.participant_id
+    FROM contest_comments cc
+    INNER JOIN tree t ON cc.parent_id = t.id AND cc.participant_id = t.participant_id
+),
+removed AS (
+    DELETE FROM contest_comments AS cdel WHERE cdel.id IN (SELECT t.id FROM tree t) RETURNING cdel.id AS id
+)
+SELECT id FROM removed
+`
+
+func (q *Queries) DeleteContestCommentsSubtree(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteContestCommentsSubtree, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteContestJuryMember = `-- name: DeleteContestJuryMember :exec

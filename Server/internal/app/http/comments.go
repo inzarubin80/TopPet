@@ -16,7 +16,7 @@ type (
 		CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error)
 		ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
-		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
+		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) ([]model.CommentID, error)
 		VoteComment(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error
 	}
 
@@ -154,15 +154,17 @@ func (h *CommentsHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	userID := r.Context().Value(defenitions.UserID).(model.UserID)
 	commentID := model.CommentID(r.PathValue("commentId"))
 
-	if err := h.service.DeleteComment(r.Context(), commentID, userID); err != nil {
+	deletedIDs, err := h.service.DeleteComment(r.Context(), commentID, userID)
+	if err != nil {
 		uhttp.HandleError(w, err)
 		return
 	}
 
 	type response struct {
-		OK bool `json:"ok"`
+		OK                 bool               `json:"ok"`
+		DeletedCommentIDs  []model.CommentID  `json:"deleted_comment_ids"`
 	}
-	if err := uhttp.SendSuccess(w, response{OK: true}); err != nil {
+	if err := uhttp.SendSuccess(w, response{OK: true, DeletedCommentIDs: deletedIDs}); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
 		return
 	}

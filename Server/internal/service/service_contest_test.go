@@ -233,8 +233,8 @@ func (m *mockRepository) ListCommentsByParticipant(ctx context.Context, particip
 func (m *mockRepository) UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error) {
 	return nil, nil
 }
-func (m *mockRepository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error {
-	return nil
+func (m *mockRepository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) ([]model.CommentID, error) {
+	return []model.CommentID{commentID}, nil
 }
 func (m *mockRepository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) (model.ContestID, model.ParticipantID, int64, error) {
 	return "", "", 0, nil
@@ -275,8 +275,8 @@ func (m *mockRepository) GetChatMessage(ctx context.Context, messageID model.Cha
 func (m *mockRepository) UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error) {
 	return nil, nil
 }
-func (m *mockRepository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error) {
-	return "", nil
+func (m *mockRepository) DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, []model.ChatMessageID, error) {
+	return "", []model.ChatMessageID{messageID}, nil
 }
 func (m *mockRepository) UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error) {
 	return "", 0, nil

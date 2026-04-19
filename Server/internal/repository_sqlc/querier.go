@@ -46,7 +46,9 @@ type Querier interface {
 	DeleteComment(ctx context.Context, id pgtype.UUID) error
 	DeleteCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) error
 	DeleteContest(ctx context.Context, id pgtype.UUID) error
+	DeleteContestChatMessagesSubtree(ctx context.Context, id pgtype.UUID) ([]*DeleteContestChatMessagesSubtreeRow, error)
 	DeleteContestCommentsByUserID(ctx context.Context, userID int64) error
+	DeleteContestCommentsSubtree(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error)
 	DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error
 	DeleteContestJuryMembersByUserID(ctx context.Context, userID int64) error
 	DeleteContestVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestVoteByUserAndParticipantParams) (pgtype.UUID, error)
