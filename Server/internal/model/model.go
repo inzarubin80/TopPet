@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -13,6 +14,7 @@ type (
 	ParticipantID string
 	CommentID     string
 	ChatMessageID string
+	UserNotificationID string
 
 	ContestStatus string
 
@@ -451,6 +453,16 @@ type (
 		LatestCommentPreview string        `json:"latest_comment_preview,omitempty"`
 	}
 
+	// UserNotification — персистентное in-app уведомление (доставка по WebSocket при открытой сессии).
+	UserNotification struct {
+		ID        UserNotificationID `json:"id"`
+		UserID    UserID             `json:"user_id"`
+		Kind      string             `json:"kind"`
+		Payload   json.RawMessage    `json:"payload"`
+		ReadAt    *time.Time         `json:"read_at,omitempty"`
+		CreatedAt time.Time          `json:"created_at"`
+	}
+
 	ChatMessage struct {
 		ID            ChatMessageID  `json:"id"`
 		ContestID     ContestID      `json:"contest_id"`
@@ -497,6 +509,9 @@ const (
 	ParticipantSubmissionPending  = "pending"
 	ParticipantSubmissionAccepted = "accepted"
 	ParticipantSubmissionRejected = "rejected"
+
+	NotificationKindSubmissionAccepted = "submission_accepted"
+	NotificationKindSubmissionRejected = "submission_rejected"
 
 	ParticipantListScopeAll  = "all"
 	ParticipantListScopeMine = "mine"

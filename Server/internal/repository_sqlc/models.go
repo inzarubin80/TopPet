@@ -149,3 +149,14 @@ type UserAuthProvider struct {
 	Provider    string
 	Name        *string
 }
+
+// In-app notifications per user (no FK to users by project convention).
+type UserNotification struct {
+	ID     pgtype.UUID
+	UserID int64
+	// Stable kind: submission_accepted, submission_rejected, chat_reply, ...
+	Kind      string
+	Payload   []byte
+	ReadAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}

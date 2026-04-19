@@ -42,6 +42,7 @@ type (
 		service           *service.TopPetService
 		config            Config
 		hub               *ws.Hub
+		userHub           *ws.UserHub
 		uploader          *objectstorage.Uploader
 		store             *sessions.CookieStore
 		loginStateStore   map[string]appHttp.StateData
@@ -52,6 +53,7 @@ type (
 func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, error) {
 	mux := http.NewServeMux()
 	hub := ws.NewHub()
+	userHub := ws.NewUserHub()
 
 	// Build cookie store
 	store := sessions.NewCookieStore([]byte(config.StoreSecret))
@@ -87,7 +89,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 	}
 
 	// Build service
-	topPetService := service.NewTopPetService(repo, hub, accessTokenService, refreshTokenService, providersMap)
+	topPetService := service.NewTopPetService(repo, hub, userHub, accessTokenService, refreshTokenService, providersMap)
 
 	// Build object storage uploader
 	var uploader *objectstorage.Uploader
@@ -147,6 +149,7 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 		service:           topPetService,
 		config:            config,
 		hub:               hub,
+		userHub:           userHub,
 		uploader:          uploader,
 		store:             store,
 		loginStateStore:   make(map[string]appHttp.StateData),
@@ -426,6 +429,19 @@ func (a *App) registerRoutes() {
 		appHttp.NewStaffCommentNotificationsHandler("/api/me/staff-comment-notifications", a.service),
 		a.service,
 	))
+	a.mux.Handle("GET /api/me/notifications", middleware.NewAuthMiddleware(
+		appHttp.NewUserNotificationsListHandler("/api/me/notifications", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/me/notifications/{notificationId}", middleware.NewAuthMiddleware(
+		appHttp.NewUserNotificationPatchHandler("/api/me/notifications/{notificationId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("POST /api/me/notifications/read-all", middleware.NewAuthMiddleware(
+		appHttp.NewUserNotificationsReadAllHandler("/api/me/notifications/read-all", a.service),
+		a.service,
+	))
+	a.mux.Handle("GET /api/me/notifications/ws", appHttp.NewUserNotificationsWSHandler("/api/me/notifications/ws", a.service, a.service, a.userHub))
 
 	// Chat (public)
 	a.mux.Handle("GET /api/contests/{contestId}/chat", appHttp.NewChatHandler("/api/contests/{contestId}/chat", a.service))
@@ -447,6 +463,7 @@ func (a *App) registerRoutes() {
 
 func (a *App) ListenAndServe() error {
 	go a.hub.Run()
+	go a.userHub.Run()
 	if a.config.ContestSchedulerIntervalSec > 0 {
 		iv := time.Duration(a.config.ContestSchedulerIntervalSec) * time.Second
 		go a.service.RunContestStatusScheduler(context.Background(), iv)

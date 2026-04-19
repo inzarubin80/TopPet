@@ -1083,3 +1083,38 @@ INSERT INTO contest_registration_fields (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at;
+
+
+-- User notifications (per-user, not tied to contest WebSocket room)
+
+-- name: InsertUserNotification :one
+INSERT INTO user_notifications (user_id, kind, payload)
+VALUES ($1, $2, $3)
+RETURNING id, user_id, kind, payload, read_at, created_at;
+
+-- name: CountUnreadUserNotifications :one
+SELECT COUNT(*)::bigint AS cnt
+FROM user_notifications
+WHERE user_id = $1 AND read_at IS NULL;
+
+-- name: ListUserNotificationsForUser :many
+SELECT id, user_id, kind, payload, read_at, created_at
+FROM user_notifications
+WHERE user_id = $1
+  AND (
+    sqlc.narg('cursor_created_at')::timestamptz IS NULL
+    OR (created_at, id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $2;
+
+-- name: MarkUserNotificationReadByOwner :one
+UPDATE user_notifications
+SET read_at = NOW()
+WHERE id = $1 AND user_id = $2 AND read_at IS NULL
+RETURNING id, user_id, kind, payload, read_at, created_at;
+
+-- name: MarkAllUserNotificationsRead :exec
+UPDATE user_notifications
+SET read_at = NOW()
+WHERE user_id = $1 AND read_at IS NULL;

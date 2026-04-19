@@ -200,50 +200,27 @@
   filter: brightness(0.92);
 }
 
-.contest-page-hero {
-  margin: 0 -24px 20px;
-  padding: 28px 24px 32px;
-  border-radius: 0 0 16px 16px;
-  background-size: cover;
-  background-position: center;
-  color: #fff;
-}
-
+/* Баннер «О конкурсе»: та же высота обложки, что у карточки на главной (--contest-cover-banner-height) */
 .contest-page-hero.contest-page-hero--in-overview {
   margin: 0;
-  border-radius: 0;
-  padding: 28px 0 32px;
+  padding: 0;
 }
 
-.contest-page-hero-inner {
-  max-width: 100%;
+.contest-page-hero-cover {
+  line-height: 0;
+  background: #e5e7eb;
 }
 
-.contest-page-hero-logo {
+.contest-page-hero-cover img {
+  width: 100%;
+  height: var(--contest-cover-banner-height);
+  max-height: var(--contest-cover-banner-height);
+  object-fit: cover;
   display: block;
-  max-height: 56px;
-  width: auto;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
 }
 
-.contest-page-hero-title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-}
-
-.contest-page-hero-title {
-  flex: 1 1 200px;
-  margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  color: #fff;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+.contest-page-hero-content {
+  padding: 16px 0 4px;
 }
 
 .contest-page-participate-cta {
@@ -260,15 +237,6 @@
   padding-left: 22px;
   padding-right: 22px;
   font-size: 1.05rem;
-}
-
-.contest-page-hero-tagline {
-  margin: 10px 0 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.45;
-  max-width: 40em;
-  opacity: 0.95;
 }
 
 .contest-page-schedule-block {
@@ -311,19 +279,6 @@
 /* Отступ до блока задаётся margin-bottom у номинаций; убираем дубли с .contest-jury-panel */
 .contest-page-jury-block .contest-jury-panel {
   margin: 0;
-}
-
-.contest-page-icon-on-hero {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #fff;
-  backdrop-filter: blur(6px);
-}
-
-.contest-page-icon-on-hero:hover {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: #fff;
-  color: #fff;
 }
 
 .contest-page-logo {

@@ -830,23 +830,21 @@ const ContestPage: React.FC = () => {
         {activeTab === 'about' ? (
           <section className="contest-page-overview" aria-label="О конкурсе">
         {hasHeroCover ? (
-          <div
-            className="contest-page-hero contest-page-hero--in-overview"
-            style={{
-              backgroundImage: `url(${resolvePublicAssetUrl(coverRaw)})`,
-            }}
-          >
-            <div className="contest-page-hero-inner">
-              {logoRaw ? (
-                <img className="contest-page-hero-logo" src={resolvePublicAssetUrl(logoRaw)} alt="" />
-              ) : null}
-              <div className="contest-page-hero-title-row">
-                <h1 className="contest-page-hero-title">{currentContest.title}</h1>
+          <div className="contest-page-hero contest-page-hero--in-overview">
+            <div className="contest-page-hero-cover">
+              <img src={resolvePublicAssetUrl(coverRaw)} alt="" />
+            </div>
+            <div className="contest-page-hero-content">
+              <div className="contest-page-header">
+                {logoRaw ? (
+                  <img className="contest-page-logo" src={resolvePublicAssetUrl(logoRaw)} alt="" />
+                ) : null}
+                <h1>{currentContest.title}</h1>
                 {isAdmin && (
                   <>
                     <button
                       type="button"
-                      className="contest-page-edit-button contest-page-icon-on-hero"
+                      className="contest-page-edit-button"
                       onClick={() => navigate(`/contests/${currentContest.id}/edit`)}
                       aria-label="Редактировать конкурс"
                     >
@@ -857,7 +855,7 @@ const ContestPage: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      className="contest-page-delete-button contest-page-icon-on-hero"
+                      className="contest-page-delete-button"
                       onClick={() => setIsDeleteContestModalOpen(true)}
                       aria-label="Удалить конкурс"
                     >
@@ -869,7 +867,7 @@ const ContestPage: React.FC = () => {
                   </>
                 )}
               </div>
-              {taglineRaw ? <p className="contest-page-hero-tagline">{taglineRaw}</p> : null}
+              {taglineRaw ? <p className="contest-page-tagline">{taglineRaw}</p> : null}
             </div>
           </div>
         ) : (

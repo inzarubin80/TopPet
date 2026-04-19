@@ -31,6 +31,7 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	if err != nil {
 		return nil, err
 	}
+	prevSubmission := p.SubmissionStatus
 	if !s.userCanManageContest(ctx, contest, actorID) {
 		return nil, model.ErrorForbidden
 	}
@@ -54,6 +55,33 @@ func (s *TopPetService) SetParticipantSubmissionStatus(ctx context.Context, part
 	updated.TotalVotes = totalVotes
 	if status == model.ParticipantSubmissionRejected && commentArg != nil {
 		s.postSubmissionRejectionToContestChat(ctx, contest, updated, actorID, *commentArg)
+	}
+	if prevSubmission == model.ParticipantSubmissionPending {
+		if status == model.ParticipantSubmissionAccepted {
+			entryLabel := updated.EntryTitle
+			if strings.TrimSpace(entryLabel) == "" {
+				entryLabel = updated.PetName
+			}
+			_, _ = s.CreateAndPushUserNotification(ctx, p.UserID, model.NotificationKindSubmissionAccepted, map[string]any{
+				"contest_id":      p.ContestID,
+				"contest_title":   contest.Title,
+				"participant_id": participantID,
+				"entry_title":     entryLabel,
+			})
+		}
+		if status == model.ParticipantSubmissionRejected && commentArg != nil {
+			entryLabel := updated.EntryTitle
+			if strings.TrimSpace(entryLabel) == "" {
+				entryLabel = updated.PetName
+			}
+			_, _ = s.CreateAndPushUserNotification(ctx, p.UserID, model.NotificationKindSubmissionRejected, map[string]any{
+				"contest_id":          p.ContestID,
+				"contest_title":       contest.Title,
+				"participant_id":      participantID,
+				"entry_title":         entryLabel,
+				"submission_comment": *commentArg,
+			})
+		}
 	}
 	s.broadcastParticipantUpdated(ctx, participantID)
 	return updated, nil

@@ -16,6 +16,8 @@ const (
 	MessageTypeChatMessageVoteUpdated  MessageType = "chat_message_vote_updated"
 	MessageTypeParticipantUpdated   MessageType = "participant_updated"
 	MessageTypeParticipantDeleted   MessageType = "participant_deleted"
+	MessageTypeUserNotification       MessageType = "notification"
+	MessageTypeNotificationUnread     MessageType = "notification_unread"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -75,6 +77,18 @@ type ParticipantUpdatedPayload struct {
 	Type        MessageType       `json:"type"`
 	ContestID   model.ContestID   `json:"contest_id"`
 	Participant *model.Participant `json:"participant"`
+}
+
+// NotificationUnreadSnapshot — число непрочитанных при подключении WS.
+type NotificationUnreadSnapshot struct {
+	Type        MessageType `json:"type"`
+	TotalUnread int64       `json:"total_unread"`
+}
+
+// UserNotificationEnvelope — персональное уведомление (все конкурсы пользователя).
+type UserNotificationEnvelope struct {
+	Type           MessageType            `json:"type"`
+	Notification   *model.UserNotification `json:"notification"`
 }
 
 // ParticipantDeletedPayload — заявка удалена из конкурса.

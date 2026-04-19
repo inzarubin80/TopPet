@@ -117,8 +117,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     if (!el) {
       return;
     }
+    const maxPx = parseFloat(getComputedStyle(el).maxHeight);
+    const maxHeight = Number.isFinite(maxPx) && maxPx > 0 ? maxPx : 160;
     el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    const scrollH = el.scrollHeight;
+    el.style.height = `${Math.min(scrollH, maxHeight)}px`;
+    el.style.overflowY = scrollH > maxHeight ? 'auto' : 'hidden';
   };
 
   const handleChange = (value: string) => {
@@ -216,6 +220,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     clearPendingImage();
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.overflowY = 'hidden';
     }
     setIsEmojiPickerOpen(false);
   };

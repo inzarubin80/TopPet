@@ -310,6 +310,19 @@ func (q *Queries) CountSystemAdmins(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countUnreadUserNotifications = `-- name: CountUnreadUserNotifications :one
+SELECT COUNT(*)::bigint AS cnt
+FROM user_notifications
+WHERE user_id = $1 AND read_at IS NULL
+`
+
+func (q *Queries) CountUnreadUserNotifications(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadUserNotifications, userID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT count(*)::bigint AS count FROM users
 `
@@ -1595,6 +1608,34 @@ func (q *Queries) InsertRegistrationField(ctx context.Context, arg *InsertRegist
 	return &i, err
 }
 
+const insertUserNotification = `-- name: InsertUserNotification :one
+
+INSERT INTO user_notifications (user_id, kind, payload)
+VALUES ($1, $2, $3)
+RETURNING id, user_id, kind, payload, read_at, created_at
+`
+
+type InsertUserNotificationParams struct {
+	UserID  int64
+	Kind    string
+	Payload []byte
+}
+
+// User notifications (per-user, not tied to contest WebSocket room)
+func (q *Queries) InsertUserNotification(ctx context.Context, arg *InsertUserNotificationParams) (*UserNotification, error) {
+	row := q.db.QueryRow(ctx, insertUserNotification, arg.UserID, arg.Kind, arg.Payload)
+	var i UserNotification
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.Payload,
+		&i.ReadAt,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
 const isContestJuryMember = `-- name: IsContestJuryMember :one
 SELECT EXISTS (
     SELECT 1 FROM contest_jury_members jm
@@ -2826,6 +2867,57 @@ func (q *Queries) ListStaffCommentNotificationsForUser(ctx context.Context, user
 	return items, nil
 }
 
+const listUserNotificationsForUser = `-- name: ListUserNotificationsForUser :many
+SELECT id, user_id, kind, payload, read_at, created_at
+FROM user_notifications
+WHERE user_id = $1
+  AND (
+    $3::timestamptz IS NULL
+    OR (created_at, id) < ($3::timestamptz, $4::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $2
+`
+
+type ListUserNotificationsForUserParams struct {
+	UserID          int64
+	Limit           int32
+	CursorCreatedAt pgtype.Timestamptz
+	CursorID        pgtype.UUID
+}
+
+func (q *Queries) ListUserNotificationsForUser(ctx context.Context, arg *ListUserNotificationsForUserParams) ([]*UserNotification, error) {
+	rows, err := q.db.Query(ctx, listUserNotificationsForUser,
+		arg.UserID,
+		arg.Limit,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*UserNotification
+	for rows.Next() {
+		var i UserNotification
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Kind,
+			&i.Payload,
+			&i.ReadAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersForAdmin = `-- name: ListUsersForAdmin :many
 SELECT
   u.user_id,
@@ -2938,6 +3030,17 @@ func (q *Queries) ListVotersByParticipant(ctx context.Context, arg *ListVotersBy
 	return items, nil
 }
 
+const markAllUserNotificationsRead = `-- name: MarkAllUserNotificationsRead :exec
+UPDATE user_notifications
+SET read_at = NOW()
+WHERE user_id = $1 AND read_at IS NULL
+`
+
+func (q *Queries) MarkAllUserNotificationsRead(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, markAllUserNotificationsRead, userID)
+	return err
+}
+
 const markParticipantSubmissionPending = `-- name: MarkParticipantSubmissionPending :exec
 UPDATE contest_participants
 SET submission_status = 'pending', updated_at = NOW()
@@ -2947,6 +3050,32 @@ WHERE id = $1
 func (q *Queries) MarkParticipantSubmissionPending(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markParticipantSubmissionPending, id)
 	return err
+}
+
+const markUserNotificationReadByOwner = `-- name: MarkUserNotificationReadByOwner :one
+UPDATE user_notifications
+SET read_at = NOW()
+WHERE id = $1 AND user_id = $2 AND read_at IS NULL
+RETURNING id, user_id, kind, payload, read_at, created_at
+`
+
+type MarkUserNotificationReadByOwnerParams struct {
+	ID     pgtype.UUID
+	UserID int64
+}
+
+func (q *Queries) MarkUserNotificationReadByOwner(ctx context.Context, arg *MarkUserNotificationReadByOwnerParams) (*UserNotification, error) {
+	row := q.db.QueryRow(ctx, markUserNotificationReadByOwner, arg.ID, arg.UserID)
+	var i UserNotification
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.Payload,
+		&i.ReadAt,
+		&i.CreatedAt,
+	)
+	return &i, err
 }
 
 const nextContestJurySortOrder = `-- name: NextContestJurySortOrder :one

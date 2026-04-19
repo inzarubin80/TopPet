@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"toppet/server/internal/model"
@@ -13,6 +14,7 @@ type (
 		accessTokenService  TokenService
 		refreshTokenService TokenService
 		hub                 Hub
+		userNotificationHub UserNotificationHub
 		providersUserData   map[string]ProviderUserData
 	}
 
@@ -136,6 +138,13 @@ type (
 		UpdateChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, text string) (*model.ChatMessage, error)
 		DeleteChatMessage(ctx context.Context, messageID model.ChatMessageID, userID model.UserID) (model.ContestID, error)
 		UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error)
+
+		// User notifications
+		InsertUserNotification(ctx context.Context, userID model.UserID, kind string, payload json.RawMessage) (*model.UserNotification, error)
+		CountUnreadUserNotifications(ctx context.Context, userID model.UserID) (int64, error)
+		ListUserNotificationsForUser(ctx context.Context, userID model.UserID, limit int32, cursorCreatedAt *time.Time, cursorID *model.UserNotificationID) ([]*model.UserNotification, error)
+		MarkUserNotificationReadByOwner(ctx context.Context, id model.UserNotificationID, ownerUserID model.UserID) (*model.UserNotification, error)
+		MarkAllUserNotificationsRead(ctx context.Context, userID model.UserID) error
 	}
 
 	// TokenService интерфейс для работы с JWT токенами
@@ -149,13 +158,19 @@ type (
 		BroadcastContestMessage(contestID model.ContestID, payload any) error
 		SendContestMessageToUser(contestID model.ContestID, userID model.UserID, payload any) error
 	}
+
+	// UserNotificationHub — персональные уведомления (все конкурсы пользователя, без подписки на комнату конкурса).
+	UserNotificationHub interface {
+		SendToUser(userID model.UserID, payload any) error
+	}
 )
 
 // NewTopPetService создает новый экземпляр TopPetService с указанными зависимостями
-func NewTopPetService(repository Repository, hub Hub, accessTokenService TokenService, refreshTokenService TokenService, providersUserData map[string]ProviderUserData) *TopPetService {
+func NewTopPetService(repository Repository, hub Hub, userNotificationHub UserNotificationHub, accessTokenService TokenService, refreshTokenService TokenService, providersUserData map[string]ProviderUserData) *TopPetService {
 	return &TopPetService{
 		repository:          repository,
 		hub:                 hub,
+		userNotificationHub: userNotificationHub,
 		accessTokenService:  accessTokenService,
 		refreshTokenService: refreshTokenService,
 		providersUserData:   providersUserData,

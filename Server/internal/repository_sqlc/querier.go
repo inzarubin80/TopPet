@@ -24,6 +24,7 @@ type Querier interface {
 	CountNominationsByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountParticipantsByContest(ctx context.Context, arg *CountParticipantsByContestParams) (int64, error)
 	CountSystemAdmins(ctx context.Context) (int64, error)
+	CountUnreadUserNotifications(ctx context.Context, userID int64) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountVotesByContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountVotesByContestsRow, error)
@@ -81,6 +82,8 @@ type Querier interface {
 	InsertJuryCriterion(ctx context.Context, arg *InsertJuryCriterionParams) (*ContestJuryCriterium, error)
 	InsertParticipantConsentAudit(ctx context.Context, arg *InsertParticipantConsentAuditParams) error
 	InsertRegistrationField(ctx context.Context, arg *InsertRegistrationFieldParams) (*InsertRegistrationFieldRow, error)
+	// User notifications (per-user, not tied to contest WebSocket room)
+	InsertUserNotification(ctx context.Context, arg *InsertUserNotificationParams) (*UserNotification, error)
 	IsContestJuryMember(ctx context.Context, arg *IsContestJuryMemberParams) (bool, error)
 	IsParticipantFavorite(ctx context.Context, arg *IsParticipantFavoriteParams) (bool, error)
 	IsUserBlocked(ctx context.Context, userID int64) (bool, error)
@@ -109,9 +112,12 @@ type Querier interface {
 	// Contest registration fields (поля заявки участника)
 	ListRegistrationFieldsByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListRegistrationFieldsByContestRow, error)
 	ListStaffCommentNotificationsForUser(ctx context.Context, userID int64) ([]*ListStaffCommentNotificationsForUserRow, error)
+	ListUserNotificationsForUser(ctx context.Context, arg *ListUserNotificationsForUserParams) ([]*UserNotification, error)
 	ListUsersForAdmin(ctx context.Context, arg *ListUsersForAdminParams) ([]*ListUsersForAdminRow, error)
 	ListVotersByParticipant(ctx context.Context, arg *ListVotersByParticipantParams) ([]*ListVotersByParticipantRow, error)
+	MarkAllUserNotificationsRead(ctx context.Context, userID int64) error
 	MarkParticipantSubmissionPending(ctx context.Context, id pgtype.UUID) error
+	MarkUserNotificationReadByOwner(ctx context.Context, arg *MarkUserNotificationReadByOwnerParams) (*UserNotification, error)
 	NextContestJurySortOrder(ctx context.Context, contestID pgtype.UUID) (int32, error)
 	SearchUsersByQuery(ctx context.Context, arg *SearchUsersByQueryParams) ([]*SearchUsersByQueryRow, error)
 	SetContestJuryMemberSortOrder(ctx context.Context, arg *SetContestJuryMemberSortOrderParams) error

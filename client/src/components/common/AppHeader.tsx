@@ -6,15 +6,19 @@ import { buildLoginUrl, saveProfileLoginReferrer, saveProfileReferrer } from '..
 import { canCreateContests } from '../../utils/contestPermissions';
 import { BRAND_NAME, BRAND_TAGLINE } from '../../config/brand';
 import { MessengerUserPresentation } from './MessengerUserPresentation';
+import { NotificationsPanel } from '../notifications/NotificationsPanel';
 import './AppHeader.css';
 
 export const AppHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const totalUnread = useSelector((state: RootState) => state.notifications.totalUnread);
 
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsWrapRef = useRef<HTMLDivElement | null>(null);
 
   const isSystemAdmin = user?.role === 'system_admin';
   const mayCreateContest = isAuthenticated && canCreateContests(user);
@@ -22,6 +26,7 @@ export const AppHeader: React.FC = () => {
 
   useEffect(() => {
     setAdminMenuOpen(false);
+    setNotificationsOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -45,6 +50,28 @@ export const AppHeader: React.FC = () => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [adminMenuOpen]);
+
+  useEffect(() => {
+    if (!notificationsOpen) {
+      return;
+    }
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!notificationsWrapRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [notificationsOpen]);
 
   const handleProfileClick = () => {
     if (!isAuthenticated) {
@@ -112,6 +139,33 @@ export const AppHeader: React.FC = () => {
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+            </div>
+          ) : null}
+          {isAuthenticated ? (
+            <div className="app-header-notifications-wrap" ref={notificationsWrapRef}>
+              <button
+                type="button"
+                className="app-header-notifications-trigger"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                aria-expanded={notificationsOpen}
+                aria-haspopup="dialog"
+                aria-label="Уведомления"
+              >
+                <svg className="app-header-notifications-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.1-2-5.8-5-6.3V4c0-.6-.4-1-1-1s-1 .4-1 1v.7C8 5.2 6 7.9 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.5 1.5-4.5 4-4.5s4 2 4 4.5v6z"
+                  />
+                </svg>
+                {totalUnread > 0 ? (
+                  <span className="app-header-notifications-badge">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                ) : null}
+              </button>
+              {notificationsOpen ? (
+                <NotificationsPanel open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
               ) : null}
             </div>
           ) : null}

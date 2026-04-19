@@ -27,8 +27,8 @@
 
 .contest-card-cover img {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 180px;
+  height: var(--contest-cover-banner-height);
+  max-height: var(--contest-cover-banner-height);
   object-fit: cover;
   display: block;
 }

@@ -4,6 +4,7 @@ import contestsReducer from './slices/contestsSlice';
 import participantsReducer from './slices/participantsSlice';
 import commentsReducer from './slices/commentsSlice';
 import chatReducer from './slices/chatSlice';
+import notificationsReducer from './slices/notificationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     participants: participantsReducer,
     comments: commentsReducer,
     chat: chatReducer,
+    notifications: notificationsReducer,
   },
 });
 

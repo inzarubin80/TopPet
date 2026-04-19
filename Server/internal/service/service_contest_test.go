@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -242,6 +243,21 @@ func (m *mockRepository) ListStaffCommentNotificationsForUser(ctx context.Contex
 	return nil, nil
 }
 func (m *mockRepository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {
+	return nil
+}
+func (m *mockRepository) InsertUserNotification(ctx context.Context, userID model.UserID, kind string, payload json.RawMessage) (*model.UserNotification, error) {
+	return nil, nil
+}
+func (m *mockRepository) CountUnreadUserNotifications(ctx context.Context, userID model.UserID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) ListUserNotificationsForUser(ctx context.Context, userID model.UserID, limit int32, cursorCreatedAt *time.Time, cursorID *model.UserNotificationID) ([]*model.UserNotification, error) {
+	return nil, nil
+}
+func (m *mockRepository) MarkUserNotificationReadByOwner(ctx context.Context, id model.UserNotificationID, ownerUserID model.UserID) (*model.UserNotification, error) {
+	return nil, nil
+}
+func (m *mockRepository) MarkAllUserNotificationsRead(ctx context.Context, userID model.UserID) error {
 	return nil
 }
 func (m *mockRepository) CreateChatMessage(ctx context.Context, contestID model.ContestID, userID model.UserID, text string, isSystem bool, parentID *model.ChatMessageID, imageURL string) (*model.ChatMessage, error) {

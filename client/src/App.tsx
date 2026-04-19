@@ -9,12 +9,16 @@ import { tokenStorage } from './utils/tokenStorage';
 import { ToastProvider } from './contexts/ToastContext';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
 import { logger } from './utils/logger';
+import { useUserNotificationsSocket } from './hooks/useUserNotificationsSocket';
+import { useNotificationsVisibilityRefetch } from './hooks/useNotificationsVisibilityRefetch';
 import { COOKIE_CONSENT_ACCEPTED_EVENT, hasCookieConsent } from './utils/cookieConsent';
 import './App.css';
 
 const AppContent: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  useUserNotificationsSocket();
+  useNotificationsVisibilityRefetch();
 
   useEffect(() => {
     // Load user info if we have a token but user is not loaded

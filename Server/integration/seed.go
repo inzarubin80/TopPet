@@ -105,7 +105,7 @@ func SetContestTierPro(ctx context.Context, pool *pgxpool.Pool, contestID model.
 func NewIntegrationService(repo *repository.Repository) *service.TopPetService {
 	access := tokenservice.NewTokenService([]byte("integration-access-secret-key-32bytes!!"), time.Hour, "access")
 	refresh := tokenservice.NewTokenService([]byte("integration-refresh-secret-key-32bytes!"), time.Hour, "refresh")
-	return service.NewTopPetService(repo, nil, access, refresh, nil)
+	return service.NewTopPetService(repo, nil, nil, access, refresh, nil)
 }
 
 // SeedLargeContestFlow создаёт конкурс с номинациями, критериями жюри, участниками и оценками.

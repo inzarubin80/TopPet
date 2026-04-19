@@ -54,6 +54,8 @@
   --layout-header-inner-max-width: 1200px;
   --layout-contest-inner-max-width: 960px;
   --layout-contest-gallery-padding-inline: 20px;
+  /* Обложка конкурса: карточка на главной и баннер на странице конкурса */
+  --contest-cover-banner-height: 240px;
 }
 
 body {
@@ -86,6 +88,10 @@ code {
 
 /* Responsive utilities */
 @media (max-width: 768px) {
+  :root {
+    --contest-cover-banner-height: 200px;
+  }
+
   body {
     font-size: var(--font-size-base);
   }
