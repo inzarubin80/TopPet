@@ -1,4 +1,9 @@
-import type { SubmissionModerationPayload, UserNotification } from '../types/notifications';
+import type {
+  ContestChatReplyPayload,
+  ParticipantWorkChatPayload,
+  SubmissionModerationPayload,
+  UserNotification,
+} from '../types/notifications';
 
 /** Текст для списка, тоста и подсказок по kind + payload. */
 export function getNotificationLineText(n: UserNotification): string {
@@ -10,6 +15,21 @@ export function getNotificationLineText(n: UserNotification): string {
   }
   if (n.kind === 'submission_rejected') {
     return `Заявка «${entry}» отклонена в конкурсе «${contest}»`;
+  }
+  if (n.kind === 'participant_work_chat_message') {
+    const w = n.payload as unknown as ParticipantWorkChatPayload;
+    const who = (w.author_name || '').trim() || 'Участник';
+    return `Новое сообщение в чате работы «${entry}» от ${who} (${contest})`;
+  }
+  if (n.kind === 'participant_work_chat_reply') {
+    const w = n.payload as unknown as ParticipantWorkChatPayload;
+    const who = (w.author_name || '').trim() || 'Участник';
+    return `Ответ на ваш комментарий к работе «${entry}» от ${who} (${contest})`;
+  }
+  if (n.kind === 'contest_chat_reply') {
+    const c = n.payload as unknown as ContestChatReplyPayload;
+    const who = (c.author_name || '').trim() || 'Участник';
+    return `Ответ на ваше сообщение в чате конкурса «${contest}» от ${who}`;
   }
   return 'Новое уведомление';
 }

@@ -106,6 +106,8 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 		return nil, err
 	}
 
+	s.pushContestChatReplyNotification(ctx, contest, message, parentID)
+
 	// Broadcast to all subscribers
 	if s.hub != nil {
 		payload := wsapp.NewMessagePayload{
@@ -117,6 +119,32 @@ func (s *TopPetService) CreateChatMessage(ctx context.Context, contestID model.C
 	}
 
 	return message, nil
+}
+
+func (s *TopPetService) pushContestChatReplyNotification(ctx context.Context, contest *model.Contest, message *model.ChatMessage, parentID *model.ChatMessageID) {
+	if s == nil || contest == nil || message == nil || parentID == nil || *parentID == "" {
+		return
+	}
+	parentMsg, err := s.repository.GetChatMessage(ctx, *parentID)
+	if err != nil || parentMsg == nil {
+		return
+	}
+	if parentMsg.IsSystem || parentMsg.UserID == message.UserID {
+		return
+	}
+	preview := notificationMessagePreview(message.Text, message.ImageURL)
+	authorName := strings.TrimSpace(message.UserName)
+	if authorName == "" {
+		authorName = fmt.Sprintf("Пользователь %d", message.UserID)
+	}
+	_, _ = s.CreateAndPushUserNotification(ctx, parentMsg.UserID, model.NotificationKindContestChatReply, map[string]any{
+		"contest_id":        message.ContestID,
+		"contest_title":     contest.Title,
+		"message_id":        message.ID,
+		"parent_message_id": parentMsg.ID,
+		"author_name":       authorName,
+		"message_preview":   preview,
+	})
 }
 
 func (s *TopPetService) ListChatMessages(ctx context.Context, contestID model.ContestID, viewer *model.UserID, limit, offset int) ([]*model.ChatMessage, int64, error) {

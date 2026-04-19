@@ -10,6 +10,7 @@ import { useParticipantPermissions } from '../../hooks/useParticipantPermissions
 import { patchParticipantSubmission } from '../../store/slices/participantsSlice';
 import { ParticipantGalleryNavigationState } from '../../types/participantNavigation';
 import { participantAuthorDisplayName } from '../../utils/participantDisplay';
+import { ParticipantVotersModal } from './ParticipantVotersModal';
 import './ParticipantCard.css';
 
 interface ParticipantCardProps {
@@ -37,6 +38,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const [moderationBusy, setModerationBusy] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
+  const [votersModalOpen, setVotersModalOpen] = useState(false);
   const { isOwner } = useParticipantPermissions(participant, currentUserId, contestStatus);
   const authorLabel = participantAuthorDisplayName(participant, { isOwner });
   const workTitle = participant.entry_title?.trim() || participant.pet_name;
@@ -140,9 +142,17 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
             <div className="participant-card-meta-row">
               <span className="participant-card-comments">💬 {participant.comment_count ?? 0}</span>
               <span className="participant-card-dot" aria-hidden="true">•</span>
-              <span className="participant-card-likes" aria-label={`Лайков: ${participant.total_votes ?? 0}`}>
+              <button
+                type="button"
+                className="participant-card-likes"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVotersModalOpen(true);
+                }}
+                aria-label={`Кто поставил лайк: ${participant.total_votes ?? 0}`}
+              >
                 ♥ {participant.total_votes ?? 0}
-              </span>
+              </button>
             </div>
           </div>
           {showSubmissionBadge ? (
@@ -232,6 +242,13 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         </div>
       </div>
     ) : null}
+    <ParticipantVotersModal
+      isOpen={votersModalOpen}
+      onClose={() => setVotersModalOpen(false)}
+      contestId={contestId}
+      participantId={participant.id}
+      participantName={workTitle}
+    />
     </>
   );
 };

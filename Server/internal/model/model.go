@@ -513,6 +513,11 @@ const (
 	NotificationKindSubmissionAccepted = "submission_accepted"
 	NotificationKindSubmissionRejected = "submission_rejected"
 
+	// Чат: комментарии к работе и общий чат конкурса
+	NotificationKindParticipantWorkChatMessage = "participant_work_chat_message"
+	NotificationKindParticipantWorkChatReply   = "participant_work_chat_reply"
+	NotificationKindContestChatReply             = "contest_chat_reply"
+
 	ParticipantListScopeAll  = "all"
 	ParticipantListScopeMine = "mine"
 

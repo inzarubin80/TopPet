@@ -58,12 +58,14 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 
+	var parentComment *model.Comment
 	if parentID != nil && *parentID != "" {
-		parent, err := s.repository.GetComment(ctx, *parentID)
+		var err error
+		parentComment, err = s.repository.GetComment(ctx, *parentID)
 		if err != nil {
 			return nil, err
 		}
-		if parent.ParticipantID != participantID {
+		if parentComment.ParticipantID != participantID {
 			return nil, errors.New("parent comment belongs to another participant")
 		}
 	}
@@ -75,8 +77,56 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
 		comment.IsStaffComment = contest.CreatedByUserID == userID || model.IsGlobalContestManagerRole(u.Role)
 	}
+	s.pushParticipantWorkChatNotifications(ctx, participant, contest, comment, parentComment)
 	s.broadcastParticipantUpdated(ctx, participantID)
 	return comment, nil
+}
+
+func entryTitleForNotification(p *model.Participant) string {
+	if p == nil {
+		return "Ваша работа"
+	}
+	entry := strings.TrimSpace(p.EntryTitle)
+	if entry == "" {
+		entry = strings.TrimSpace(p.PetName)
+	}
+	if entry == "" {
+		return "Ваша работа"
+	}
+	return entry
+}
+
+func (s *TopPetService) pushParticipantWorkChatNotifications(ctx context.Context, participant *model.Participant, contest *model.Contest, comment *model.Comment, parent *model.Comment) {
+	if s == nil || comment == nil || participant == nil || contest == nil {
+		return
+	}
+	preview := notificationMessagePreview(comment.Text, comment.ImageURL)
+	authorName := strings.TrimSpace(comment.UserName)
+	if authorName == "" {
+		authorName = fmt.Sprintf("Пользователь %d", comment.UserID)
+	}
+	basePayload := map[string]any{
+		"contest_id":       participant.ContestID,
+		"contest_title":    contest.Title,
+		"participant_id":   participant.ID,
+		"entry_title":      entryTitleForNotification(participant),
+		"comment_id":       comment.ID,
+		"author_name":      authorName,
+		"message_preview":  preview,
+	}
+
+	if parent != nil && parent.UserID != comment.UserID {
+		_, _ = s.CreateAndPushUserNotification(ctx, parent.UserID, model.NotificationKindParticipantWorkChatReply, basePayload)
+	}
+
+	ownerID := participant.UserID
+	if ownerID == comment.UserID {
+		return
+	}
+	if parent != nil && parent.UserID == ownerID {
+		return
+	}
+	_, _ = s.CreateAndPushUserNotification(ctx, ownerID, model.NotificationKindParticipantWorkChatMessage, basePayload)
 }
 
 func (s *TopPetService) ListComments(ctx context.Context, participantID model.ParticipantID, limit, offset int, viewer *model.UserID) ([]*model.Comment, int64, error) {

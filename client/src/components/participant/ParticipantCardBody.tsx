@@ -15,6 +15,7 @@ import { DeleteParticipantModal } from '../contest/DeleteParticipantModal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Button } from '../common/Button';
 import { VoteButton } from '../contest/VoteButton';
+import { ParticipantVotersModal } from '../contest/ParticipantVotersModal';
 import { PhotoGallery } from './PhotoGallery';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useParticipantPermissions } from '../../hooks/useParticipantPermissions';
@@ -159,6 +160,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isVotersModalOpen, setIsVotersModalOpen] = useState(false);
   const [replyToComment, setReplyToComment] = useState<ParticipantComment | null>(null);
   const [participantFetchSettled, setParticipantFetchSettled] = useState(false);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>([]);
@@ -796,6 +798,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                       appearance="statStrip"
                       totalVotes={participant.total_votes ?? 0}
                       fullWidth
+                      onViewLikes={() => setIsVotersModalOpen(true)}
                     />
                   </div>
                 ) : null}
@@ -823,6 +826,7 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                     appearance="statStrip"
                     totalVotes={participant.total_votes ?? 0}
                     fullWidth
+                    onViewLikes={() => setIsVotersModalOpen(true)}
                   />
                 </div>
               ) : null}
@@ -856,6 +860,13 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
                 navigate(`/contests/${contestId}#gallery`);
               }
             }}
+          />
+          <ParticipantVotersModal
+            isOpen={isVotersModalOpen}
+            onClose={() => setIsVotersModalOpen(false)}
+            contestId={contestId}
+            participantId={participantId}
+            participantName={displayTitle}
           />
         </>
       )}

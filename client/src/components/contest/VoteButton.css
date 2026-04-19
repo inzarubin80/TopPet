@@ -110,14 +110,80 @@
   cursor: wait;
 }
 
-.vote-button-stat-strip--readonly {
+.vote-button-stat-strip--readonly:not(.vote-button-stat-strip--split) {
   cursor: default;
   pointer-events: none;
 }
 
-.vote-button-stat-strip--readonly:hover {
+.vote-button-stat-strip--readonly:not(.vote-button-stat-strip--split):hover {
   border-color: #d1d5db;
   background: #ffffff;
+}
+
+.vote-button-stat-strip--split {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.vote-button-stat-strip--split.vote-button-stat-strip--readonly {
+  pointer-events: auto;
+}
+
+.vote-button-stat-strip-heart-area {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  border-radius: 8px;
+}
+
+.vote-button-stat-strip-heart-area:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.vote-button-stat-strip-heart-area:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.vote-button-stat-strip-heart-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vote-button-stat-strip-count-area {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.vote-button-stat-strip-count-area:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.vote-button-stat-strip-label--loading {
+  color: #64748b;
 }
 
 .vote-button-stat-strip-heart {

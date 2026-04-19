@@ -34,6 +34,8 @@ interface VoteButtonProps {
   appearance?: 'default' | 'statStrip';
   /** Число голосов (для statStrip); обновляется с карточкой участника / WebSocket */
   totalVotes?: number;
+  /** Клик по числу «N Нравится» — открыть список проголосовавших (сердце по-прежнему ставит лайк). */
+  onViewLikes?: () => void;
 }
 
 export const VoteButton: React.FC<VoteButtonProps> = ({
@@ -48,6 +50,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   fullWidth = true,
   appearance = 'default',
   totalVotes = 0,
+  onViewLikes,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,18 +155,46 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   );
 
   if (appearance === 'statStrip') {
-    const readonlyStrip = (filled: boolean) => (
-      <div
-        className="vote-button-stat-strip vote-button-stat-strip--readonly"
-        role="status"
-        aria-label={`${count} ${count === 1 ? 'лайк' : 'лайков'}`}
-      >
-        {statStripHeart(filled)}
-        <span className="vote-button-stat-strip-label">
+    const countBlock =
+      loading || voting ? (
+        <span className="vote-button-stat-strip-label vote-button-stat-strip-label--loading">{statStripLabel}</span>
+      ) : (
+        <>
           <span className="vote-button-stat-strip-count">{count}</span> Нравится
-        </span>
-      </div>
-    );
+        </>
+      );
+
+    const readonlyStrip = (filled: boolean) =>
+      onViewLikes ? (
+        <div
+          className="vote-button-stat-strip vote-button-stat-strip--split vote-button-stat-strip--readonly"
+          role="group"
+          aria-label={`${count} ${count === 1 ? 'лайк' : 'лайков'}`}
+        >
+          <span className="vote-button-stat-strip-heart-wrap" aria-hidden="true">
+            {statStripHeart(filled)}
+          </span>
+          <button
+            type="button"
+            className="vote-button-stat-strip-count-area"
+            onClick={onViewLikes}
+            aria-label={`Кто поставил лайк: ${count}`}
+          >
+            {countBlock}
+          </button>
+        </div>
+      ) : (
+        <div
+          className="vote-button-stat-strip vote-button-stat-strip--readonly"
+          role="status"
+          aria-label={`${count} ${count === 1 ? 'лайк' : 'лайков'}`}
+        >
+          {statStripHeart(filled)}
+          <span className="vote-button-stat-strip-label">
+            <span className="vote-button-stat-strip-count">{count}</span> Нравится
+          </span>
+        </div>
+      );
 
     if (!canReceiveVotes) {
       return (
@@ -188,6 +219,32 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
     }
 
     if (!isAuthenticated) {
+      if (onViewLikes) {
+        return (
+          <div
+            className="vote-button-stat-strip vote-button-stat-strip--split"
+            role="group"
+            aria-label={`Войти, чтобы голосовать. Сейчас ${count} голосов`}
+          >
+            <button
+              type="button"
+              className="vote-button-stat-strip-heart-area"
+              onClick={handleVote}
+              aria-label="Войти, чтобы поставить лайк"
+            >
+              {statStripHeart(false)}
+            </button>
+            <button
+              type="button"
+              className="vote-button-stat-strip-count-area"
+              onClick={onViewLikes}
+              aria-label={`Кто поставил лайк: ${count}`}
+            >
+              <span className="vote-button-stat-strip-count">{count}</span> Нравится
+            </button>
+          </div>
+        );
+      }
       return (
         <button
           type="button"
@@ -200,6 +257,34 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
             <span className="vote-button-stat-strip-count">{count}</span> Нравится
           </span>
         </button>
+      );
+    }
+
+    if (onViewLikes) {
+      return (
+        <div
+          className={`vote-button-stat-strip vote-button-stat-strip--split ${isVoted ? 'vote-button-stat-strip--active' : ''}`}
+          role="group"
+        >
+          <button
+            type="button"
+            className="vote-button-stat-strip-heart-area"
+            onClick={handleVote}
+            disabled={loading || voting}
+            title={isVoted ? 'Убрать лайк' : 'Поставить лайк'}
+            aria-label={statStripAria}
+          >
+            {statStripHeart(isVoted)}
+          </button>
+          <button
+            type="button"
+            className="vote-button-stat-strip-count-area"
+            onClick={onViewLikes}
+            aria-label={`Кто поставил лайк: ${count}`}
+          >
+            {countBlock}
+          </button>
+        </div>
       );
     }
 

@@ -1,6 +1,12 @@
 import { ContestID, ParticipantID } from './models';
 
-export type UserNotificationKind = 'submission_accepted' | 'submission_rejected' | string;
+export type UserNotificationKind =
+  | 'submission_accepted'
+  | 'submission_rejected'
+  | 'participant_work_chat_message'
+  | 'participant_work_chat_reply'
+  | 'contest_chat_reply'
+  | string;
 
 export interface UserNotification {
   id: string;
@@ -17,6 +23,27 @@ export interface SubmissionModerationPayload {
   participant_id: ParticipantID;
   entry_title: string;
   submission_comment?: string;
+}
+
+/** Комментарии к работе (чат заявки) */
+export interface ParticipantWorkChatPayload {
+  contest_id: ContestID;
+  contest_title: string;
+  participant_id: ParticipantID;
+  entry_title: string;
+  comment_id: string;
+  author_name: string;
+  message_preview?: string;
+}
+
+/** Ответ в общем чате конкурса */
+export interface ContestChatReplyPayload {
+  contest_id: ContestID;
+  contest_title: string;
+  message_id: string;
+  parent_message_id: string;
+  author_name: string;
+  message_preview?: string;
 }
 
 export interface NotificationsListResponse {

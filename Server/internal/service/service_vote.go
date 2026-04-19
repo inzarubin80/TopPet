@@ -126,13 +126,20 @@ func (s *TopPetService) Unvote(ctx context.Context, contestID model.ContestID, u
 	return participantID, nil
 }
 
-func (s *TopPetService) ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) ([]*model.VoterInfo, error) {
+func (s *TopPetService) ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, viewer *model.UserID) ([]*model.VoterInfo, error) {
+	participant, err := s.repository.GetParticipant(ctx, participantID)
+	if err != nil {
+		return nil, err
+	}
+	if participant.ContestID != contestID {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
+	}
 	contest, err := s.getContestForBusiness(ctx, contestID)
 	if err != nil {
 		return nil, err
 	}
-	if !s.userCanManageContest(ctx, contest, userID) {
-		return nil, model.ErrorForbidden
+	if !s.participantVisible(ctx, participant, contest, viewer) {
+		return nil, fmt.Errorf("%w", model.ErrorNotFound)
 	}
 	return s.repository.ListVotersByParticipant(ctx, contestID, participantID)
 }

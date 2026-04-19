@@ -11,17 +11,22 @@ import (
 
 type (
 	serviceParticipantVoters interface {
-		ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID) ([]*model.VoterInfo, error)
+		ListVotersForParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, viewer *model.UserID) ([]*model.VoterInfo, error)
 	}
 
 	ParticipantVotersHandler struct {
-		name    string
-		service serviceParticipantVoters
+		name        string
+		service     serviceParticipantVoters
+		authService serviceOptionalAuth
 	}
 )
 
 func NewParticipantVotersHandler(name string, service serviceParticipantVoters) *ParticipantVotersHandler {
-	return &ParticipantVotersHandler{name: name, service: service}
+	var authService serviceOptionalAuth
+	if svc, ok := service.(serviceOptionalAuth); ok {
+		authService = svc
+	}
+	return &ParticipantVotersHandler{name: name, service: service, authService: authService}
 }
 
 func (h *ParticipantVotersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,9 +42,22 @@ func (h *ParticipantVotersHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	var viewer *model.UserID
+	if userIDVal := r.Context().Value(defenitions.UserID); userIDVal != nil {
+		uid := userIDVal.(model.UserID)
+		viewer = &uid
+	} else if h.authService != nil {
+		uid, ok, authErr := getOptionalUserID(r, h.authService)
+		if authErr != nil {
+			uhttp.HandleError(w, uhttp.NewUnauthorizedError("authentication error", authErr))
+			return
+		}
+		if ok {
+			viewer = &uid
+		}
+	}
 
-	voters, err := h.service.ListVotersForParticipant(r.Context(), contestID, participantID, userID)
+	voters, err := h.service.ListVotersForParticipant(r.Context(), contestID, participantID, viewer)
 	if err != nil {
 		uhttp.HandleError(w, err)
 		return

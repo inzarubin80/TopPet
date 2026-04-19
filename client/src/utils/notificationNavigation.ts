@@ -1,5 +1,4 @@
-import type { UserNotification } from '../types/notifications';
-import type { SubmissionModerationPayload } from '../types/notifications';
+import type { ContestChatReplyPayload, SubmissionModerationPayload, UserNotification } from '../types/notifications';
 
 /**
  * Путь для react-router по текущему контракту.
@@ -12,6 +11,21 @@ export function getNotificationNavigatePath(n: UserNotification): string | null 
     const pid = String(p.participant_id || '').trim();
     if (cid && pid) {
       return `/contests/${encodeURIComponent(cid)}/participants/${encodeURIComponent(pid)}`;
+    }
+  }
+  if (n.kind === 'participant_work_chat_message' || n.kind === 'participant_work_chat_reply') {
+    const p = n.payload as unknown as SubmissionModerationPayload;
+    const cid = String(p.contest_id || '').trim();
+    const pid = String(p.participant_id || '').trim();
+    if (cid && pid) {
+      return `/contests/${encodeURIComponent(cid)}/participants/${encodeURIComponent(pid)}#participant-comments`;
+    }
+  }
+  if (n.kind === 'contest_chat_reply') {
+    const p = n.payload as unknown as ContestChatReplyPayload;
+    const cid = String(p.contest_id || '').trim();
+    if (cid) {
+      return `/contests/${encodeURIComponent(cid)}#chat`;
     }
   }
   return null;

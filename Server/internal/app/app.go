@@ -301,10 +301,7 @@ func (a *App) registerRoutes() {
 	// Participants (public)
 	a.mux.Handle("GET /api/contests/{contestId}/participants", appHttp.NewListParticipantsHandler("/api/contests/{contestId}/participants", a.service))
 	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}", appHttp.NewGetParticipantHandler("/api/contests/{contestId}/participants/{participantId}", a.service))
-	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/voters", middleware.NewAuthMiddleware(
-		appHttp.NewParticipantVotersHandler("/api/contests/{contestId}/participants/{participantId}/voters", a.service),
-		a.service,
-	))
+	a.mux.Handle("GET /api/contests/{contestId}/participants/{participantId}/voters", appHttp.NewParticipantVotersHandler("/api/contests/{contestId}/participants/{participantId}/voters", a.service))
 	a.mux.Handle("GET /api/contests/{contestId}/jury-voting-progress", middleware.NewAuthMiddleware(
 		appHttp.NewJuryVotingProgressHandler("/api/contests/{contestId}/jury-voting-progress", a.service),
 		a.service,
