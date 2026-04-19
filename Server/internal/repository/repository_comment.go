@@ -276,11 +276,11 @@ func (r *Repository) DeleteComment(ctx context.Context, commentID model.CommentI
 	return reposqlc.DeleteComment(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
 }
 
-func (r *Repository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error {
+func (r *Repository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) (model.ContestID, model.ParticipantID, int64, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	commentUUID, err := uuid.Parse(string(commentID))
 	if err != nil {
-		return err
+		return "", "", 0, err
 	}
 
 	_, err = reposqlc.UpsertCommentVote(ctx, &sqlc_repository.UpsertCommentVoteParams{
@@ -288,7 +288,20 @@ func (r *Repository) UpsertCommentVote(ctx context.Context, commentID model.Comm
 		UserID:    int64(userID),
 		Value:     value,
 	})
-	return err
+	if err != nil {
+		return "", "", 0, err
+	}
+	stats, err := reposqlc.GetCommentVoteStats(ctx, pgtype.UUID{Bytes: commentUUID, Valid: true})
+	if err != nil {
+		return "", "", 0, err
+	}
+	if !stats.ContestID.Valid || !stats.ParticipantID.Valid {
+		return "", "", 0, errors.New("comment vote stats not found")
+	}
+	return model.ContestID(uuid.UUID(stats.ContestID.Bytes).String()),
+		model.ParticipantID(uuid.UUID(stats.ParticipantID.Bytes).String()),
+		stats.Score,
+		nil
 }
 
 func (r *Repository) UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	wsapp "toppet/server/internal/app/ws"
 	"toppet/server/internal/model"
 )
 
@@ -79,6 +80,14 @@ func (s *TopPetService) CreateComment(ctx context.Context, participantID model.P
 	}
 	s.pushParticipantWorkChatNotifications(ctx, participant, contest, comment, parentComment)
 	s.broadcastParticipantUpdated(ctx, participantID)
+	if s.hub != nil {
+		payload := wsapp.ParticipantCommentCreatedPayload{
+			Type:      wsapp.MessageTypeParticipantCommentCreated,
+			ContestID: participant.ContestID,
+			Comment:   comment,
+		}
+		_ = s.hub.BroadcastContestMessage(participant.ContestID, payload)
+	}
 	return comment, nil
 }
 
@@ -175,7 +184,23 @@ func (s *TopPetService) VoteComment(ctx context.Context, commentID model.Comment
 	if !s.participantVisible(ctx, participant, contest, &userID) {
 		return fmt.Errorf("%w", model.ErrorNotFound)
 	}
-	return s.repository.UpsertCommentVote(ctx, commentID, userID, value)
+	contestID, pid, score, err := s.repository.UpsertCommentVote(ctx, commentID, userID, value)
+	if err != nil {
+		return err
+	}
+	if s.hub != nil {
+		payload := wsapp.ParticipantCommentVoteUpdatedPayload{
+			Type:          wsapp.MessageTypeParticipantCommentVoteUpdated,
+			ContestID:     contestID,
+			ParticipantID: pid,
+			CommentID:     commentID,
+			Score:         score,
+			VoterUserID:   userID,
+			VoterValue:    value,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
+	}
+	return nil
 }
 
 // MarkParticipantStaffCommentsRead — владелец заявки отмечает комментарии организатора просмотренными (колокольчик).
@@ -226,6 +251,14 @@ func (s *TopPetService) UpdateComment(ctx context.Context, commentID model.Comme
 	if u, errU := s.repository.GetUser(ctx, userID); errU == nil && u != nil {
 		updated.IsStaffComment = contest.CreatedByUserID == userID || model.IsGlobalContestManagerRole(u.Role)
 	}
+	if s.hub != nil {
+		payload := wsapp.ParticipantCommentUpdatedPayload{
+			Type:      wsapp.MessageTypeParticipantCommentUpdated,
+			ContestID: participant.ContestID,
+			Comment:   updated,
+		}
+		_ = s.hub.BroadcastContestMessage(participant.ContestID, payload)
+	}
 	return updated, nil
 }
 
@@ -250,9 +283,20 @@ func (s *TopPetService) DeleteComment(ctx context.Context, commentID model.Comme
 		}
 	}
 
+	contestID := participant.ContestID
+	participantID := comment.ParticipantID
 	if err := s.repository.DeleteComment(ctx, commentID, userID); err != nil {
 		return err
 	}
-	s.broadcastParticipantUpdated(ctx, comment.ParticipantID)
+	if s.hub != nil {
+		payload := wsapp.ParticipantCommentDeletedPayload{
+			Type:          wsapp.MessageTypeParticipantCommentDeleted,
+			ContestID:     contestID,
+			ParticipantID: participantID,
+			CommentID:     commentID,
+		}
+		_ = s.hub.BroadcastContestMessage(contestID, payload)
+	}
+	s.broadcastParticipantUpdated(ctx, participantID)
 	return nil
 }

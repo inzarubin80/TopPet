@@ -1008,6 +1008,36 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestC
 	return &i, err
 }
 
+const getCommentVoteStats = `-- name: GetCommentVoteStats :one
+SELECT
+  cc.id,
+  cc.participant_id,
+  cp.contest_id,
+  COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score
+FROM contest_comments cc
+INNER JOIN contest_participants cp ON cp.id = cc.participant_id
+WHERE cc.id = $1
+`
+
+type GetCommentVoteStatsRow struct {
+	ID            pgtype.UUID
+	ParticipantID pgtype.UUID
+	ContestID     pgtype.UUID
+	Score         int64
+}
+
+func (q *Queries) GetCommentVoteStats(ctx context.Context, id pgtype.UUID) (*GetCommentVoteStatsRow, error) {
+	row := q.db.QueryRow(ctx, getCommentVoteStats, id)
+	var i GetCommentVoteStatsRow
+	err := row.Scan(
+		&i.ID,
+		&i.ParticipantID,
+		&i.ContestID,
+		&i.Score,
+	)
+	return &i, err
+}
+
 const getContestByID = `-- name: GetContestByID :one
 SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests WHERE id = $1
 `

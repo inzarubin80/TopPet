@@ -100,6 +100,74 @@ const commentsSlice = createSlice({
         comment.score = (comment.score || 0) - prevVote + value;
       });
     },
+    /** Новый комментарий к работе с другого клиента (дедуп с собственным REST). */
+    addWorkCommentFromWebSocket: (
+      state,
+      action: PayloadAction<{ participantId: ParticipantID; comment: Comment }>
+    ) => {
+      const { participantId, comment } = action.payload;
+      if (!state.items[participantId]) {
+        return;
+      }
+      if (state.items[participantId].some((c) => c.id === comment.id)) {
+        return;
+      }
+      state.items[participantId].unshift(comment);
+      state.totals[participantId] = (state.totals[participantId] || 0) + 1;
+    },
+    updateWorkCommentFromWebSocket: (state, action: PayloadAction<{ comment: Comment }>) => {
+      const updated = action.payload.comment;
+      const pid = updated.participant_id;
+      const list = state.items[pid];
+      if (!list) {
+        return;
+      }
+      const index = list.findIndex((c) => c.id === updated.id);
+      if (index >= 0) {
+        list[index] = updated;
+      }
+    },
+    removeWorkCommentFromWebSocket: (
+      state,
+      action: PayloadAction<{ participantId: ParticipantID; commentId: CommentID }>
+    ) => {
+      const { participantId, commentId } = action.payload;
+      const list = state.items[participantId];
+      if (!list) {
+        return;
+      }
+      const before = list.length;
+      state.items[participantId] = list.filter((c) => c.id !== commentId);
+      if (state.items[participantId].length < before) {
+        state.totals[participantId] = Math.max(0, (state.totals[participantId] || 0) - 1);
+      }
+    },
+    mergeWorkCommentVoteFromWebSocket: (
+      state,
+      action: PayloadAction<{
+        participantId: ParticipantID;
+        commentId: CommentID;
+        score: number;
+        voterUserId: number;
+        voterValue: number;
+        currentUserId?: number;
+      }>
+    ) => {
+      const { participantId, commentId, score, voterUserId, voterValue, currentUserId } = action.payload;
+      const list = state.items[participantId];
+      if (!list) {
+        return;
+      }
+      const comment = list.find((c) => c.id === commentId);
+      if (!comment) {
+        return;
+      }
+      comment.score = score;
+      if (currentUserId !== undefined && voterUserId === currentUserId) {
+        const v = voterValue === -1 || voterValue === 1 ? voterValue : 0;
+        comment.user_vote = v;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -151,5 +219,12 @@ const commentsSlice = createSlice({
   },
 });
 
-export const { clearError, setCommentVote } = commentsSlice.actions;
+export const {
+  clearError,
+  setCommentVote,
+  addWorkCommentFromWebSocket,
+  updateWorkCommentFromWebSocket,
+  removeWorkCommentFromWebSocket,
+  mergeWorkCommentVoteFromWebSocket,
+} = commentsSlice.actions;
 export default commentsSlice.reducer;

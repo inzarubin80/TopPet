@@ -16,6 +16,10 @@ const (
 	MessageTypeChatMessageVoteUpdated  MessageType = "chat_message_vote_updated"
 	MessageTypeParticipantUpdated   MessageType = "participant_updated"
 	MessageTypeParticipantDeleted   MessageType = "participant_deleted"
+	MessageTypeParticipantCommentCreated     MessageType = "participant_comment_created"
+	MessageTypeParticipantCommentUpdated     MessageType = "participant_comment_updated"
+	MessageTypeParticipantCommentDeleted     MessageType = "participant_comment_deleted"
+	MessageTypeParticipantCommentVoteUpdated MessageType = "participant_comment_vote_updated"
 	MessageTypeUserNotification       MessageType = "notification"
 	MessageTypeNotificationUnread     MessageType = "notification_unread"
 )
@@ -107,6 +111,39 @@ type ChatMessageVoteUpdatedPayload struct {
 	Score       int64               `json:"score"`
 	VoterUserID model.UserID        `json:"voter_user_id"`
 	VoterValue  int16               `json:"voter_value"`
+}
+
+// ParticipantCommentCreatedPayload — новый комментарий к работе участника.
+type ParticipantCommentCreatedPayload struct {
+	Type      MessageType     `json:"type"`
+	ContestID model.ContestID `json:"contest_id"`
+	Comment   *model.Comment  `json:"comment"`
+}
+
+// ParticipantCommentUpdatedPayload — текст комментария к работе изменён.
+type ParticipantCommentUpdatedPayload struct {
+	Type      MessageType     `json:"type"`
+	ContestID model.ContestID `json:"contest_id"`
+	Comment   *model.Comment  `json:"comment"`
+}
+
+// ParticipantCommentDeletedPayload — комментарий к работе удалён.
+type ParticipantCommentDeletedPayload struct {
+	Type          MessageType         `json:"type"`
+	ContestID     model.ContestID     `json:"contest_id"`
+	ParticipantID model.ParticipantID `json:"participant_id"`
+	CommentID     model.CommentID     `json:"comment_id"`
+}
+
+// ParticipantCommentVoteUpdatedPayload — голос за комментарий к работе (сумма и голосующий).
+type ParticipantCommentVoteUpdatedPayload struct {
+	Type          MessageType         `json:"type"`
+	ContestID     model.ContestID     `json:"contest_id"`
+	ParticipantID model.ParticipantID `json:"participant_id"`
+	CommentID     model.CommentID     `json:"comment_id"`
+	Score         int64               `json:"score"`
+	VoterUserID   model.UserID        `json:"voter_user_id"`
+	VoterValue    int16               `json:"voter_value"`
 }
 
 // NewMessagePayload представляет payload для нового сообщения

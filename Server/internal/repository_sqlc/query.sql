@@ -681,6 +681,16 @@ SET text = $1, updated_at = NOW()
 WHERE id = $2 AND user_id = $3
 RETURNING *;
 
+-- name: GetCommentVoteStats :one
+SELECT
+  cc.id,
+  cc.participant_id,
+  cp.contest_id,
+  COALESCE((SELECT SUM(v.value)::bigint FROM contest_comment_votes v WHERE v.comment_id = cc.id), 0)::bigint AS score
+FROM contest_comments cc
+INNER JOIN contest_participants cp ON cp.id = cc.participant_id
+WHERE cc.id = $1;
+
 -- name: UpsertCommentVote :one
 INSERT INTO contest_comment_votes (comment_id, user_id, value)
 VALUES ($1, $2, $3)

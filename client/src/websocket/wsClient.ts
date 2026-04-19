@@ -1,6 +1,6 @@
 import { WSConnectionState, WSIncomingMessage } from '../types/ws';
 import { tokenStorage } from '../utils/tokenStorage';
-import { ChatMessage, ContestStatus, Participant } from '../types/models';
+import { ChatMessage, Comment, ContestStatus, Participant } from '../types/models';
 import { logger } from '../utils/logger';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api';
@@ -27,6 +27,21 @@ type ChatMessageVoteUpdatedHandler = (
 ) => void;
 type ParticipantUpdatedHandler = (contestId: string, participant: Participant) => void;
 type ParticipantDeletedHandler = (contestId: string, participantId: string) => void;
+type ParticipantCommentCreatedHandler = (contestId: string, comment: Comment) => void;
+type ParticipantCommentUpdatedHandler = (contestId: string, comment: Comment) => void;
+type ParticipantCommentDeletedHandler = (
+  contestId: string,
+  participantId: string,
+  commentId: string
+) => void;
+type ParticipantCommentVoteUpdatedHandler = (
+  contestId: string,
+  participantId: string,
+  commentId: string,
+  score: number,
+  voterUserId: number,
+  voterValue: number
+) => void;
 type ConnectionStateHandler = (state: WSConnectionState) => void;
 type ErrorHandler = (error: Event) => void;
 
@@ -50,6 +65,10 @@ export class WebSocketClient {
   private onChatMessageVoteUpdatedHandler: ChatMessageVoteUpdatedHandler | null = null;
   private onParticipantUpdatedHandler: ParticipantUpdatedHandler | null = null;
   private onParticipantDeletedHandler: ParticipantDeletedHandler | null = null;
+  private onParticipantCommentCreatedHandler: ParticipantCommentCreatedHandler | null = null;
+  private onParticipantCommentUpdatedHandler: ParticipantCommentUpdatedHandler | null = null;
+  private onParticipantCommentDeletedHandler: ParticipantCommentDeletedHandler | null = null;
+  private onParticipantCommentVoteUpdatedHandler: ParticipantCommentVoteUpdatedHandler | null = null;
   private onConnectionStateChange: ConnectionStateHandler | null = null;
   private onErrorHandler: ErrorHandler | null = null;
 
@@ -92,6 +111,22 @@ export class WebSocketClient {
 
   setOnParticipantDeleted(handler: ParticipantDeletedHandler): void {
     this.onParticipantDeletedHandler = handler;
+  }
+
+  setOnParticipantCommentCreated(handler: ParticipantCommentCreatedHandler): void {
+    this.onParticipantCommentCreatedHandler = handler;
+  }
+
+  setOnParticipantCommentUpdated(handler: ParticipantCommentUpdatedHandler): void {
+    this.onParticipantCommentUpdatedHandler = handler;
+  }
+
+  setOnParticipantCommentDeleted(handler: ParticipantCommentDeletedHandler): void {
+    this.onParticipantCommentDeletedHandler = handler;
+  }
+
+  setOnParticipantCommentVoteUpdated(handler: ParticipantCommentVoteUpdatedHandler): void {
+    this.onParticipantCommentVoteUpdatedHandler = handler;
   }
 
   setOnConnectionStateChange(handler: ConnectionStateHandler): void {
@@ -349,6 +384,54 @@ export class WebSocketClient {
     if (data.type === 'participant_deleted' && data.contest_id && data.participant_id) {
       if (this.onParticipantDeletedHandler) {
         this.onParticipantDeletedHandler(String(data.contest_id), String(data.participant_id));
+      }
+      return;
+    }
+    if (data.type === 'participant_comment_created' && data.contest_id && data.comment) {
+      if (this.onParticipantCommentCreatedHandler) {
+        this.onParticipantCommentCreatedHandler(String(data.contest_id), data.comment as Comment);
+      }
+      return;
+    }
+    if (data.type === 'participant_comment_updated' && data.contest_id && data.comment) {
+      if (this.onParticipantCommentUpdatedHandler) {
+        this.onParticipantCommentUpdatedHandler(String(data.contest_id), data.comment as Comment);
+      }
+      return;
+    }
+    if (
+      data.type === 'participant_comment_deleted' &&
+      data.contest_id &&
+      data.participant_id &&
+      data.comment_id
+    ) {
+      if (this.onParticipantCommentDeletedHandler) {
+        this.onParticipantCommentDeletedHandler(
+          String(data.contest_id),
+          String(data.participant_id),
+          String(data.comment_id)
+        );
+      }
+      return;
+    }
+    if (
+      data.type === 'participant_comment_vote_updated' &&
+      data.contest_id != null &&
+      data.participant_id != null &&
+      data.comment_id != null &&
+      typeof data.score === 'number' &&
+      typeof data.voter_user_id === 'number' &&
+      typeof data.voter_value === 'number'
+    ) {
+      if (this.onParticipantCommentVoteUpdatedHandler) {
+        this.onParticipantCommentVoteUpdatedHandler(
+          String(data.contest_id),
+          String(data.participant_id),
+          String(data.comment_id),
+          data.score,
+          data.voter_user_id,
+          data.voter_value
+        );
       }
       return;
     }

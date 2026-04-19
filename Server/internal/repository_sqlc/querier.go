@@ -67,6 +67,7 @@ type Querier interface {
 	GetChatMessageByID(ctx context.Context, id pgtype.UUID) (*ContestChatMessage, error)
 	GetChatMessageVoteStats(ctx context.Context, id pgtype.UUID) (*GetChatMessageVoteStatsRow, error)
 	GetCommentByID(ctx context.Context, id pgtype.UUID) (*ContestComment, error)
+	GetCommentVoteStats(ctx context.Context, id pgtype.UUID) (*GetCommentVoteStatsRow, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
 	GetContestJuryMemberWithName(ctx context.Context, arg *GetContestJuryMemberWithNameParams) (*GetContestJuryMemberWithNameRow, error)
 	GetMaxPhotoPositionByParticipant(ctx context.Context, participantID pgtype.UUID) (interface{}, error)

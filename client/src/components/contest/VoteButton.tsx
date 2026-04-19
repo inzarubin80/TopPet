@@ -180,7 +180,7 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
             onClick={onViewLikes}
             aria-label={`Кто поставил лайк: ${count}`}
           >
-            {countBlock}
+            <span className="vote-button-stat-strip-count">{count}</span> Нравится
           </button>
         </div>
       ) : (

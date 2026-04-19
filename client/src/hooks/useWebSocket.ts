@@ -22,8 +22,14 @@ import {
   removeParticipantFromWebSocket,
   updateParticipantVotes,
 } from '../store/slices/participantsSlice';
+import {
+  addWorkCommentFromWebSocket,
+  mergeWorkCommentVoteFromWebSocket,
+  removeWorkCommentFromWebSocket,
+  updateWorkCommentFromWebSocket,
+} from '../store/slices/commentsSlice';
 import { getVotes } from '../api/votesApi';
-import { ChatMessage, ContestID, ParticipantID } from '../types/models';
+import { ChatMessage, Comment, ContestID, ParticipantID } from '../types/models';
 import { WSConnectionState } from '../types/ws';
 import { RefreshTokenResponse } from '../types/api';
 import { tokenStorage } from '../utils/tokenStorage';
@@ -139,6 +145,51 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
         dispatch(removeParticipantFromWebSocket({ contestId, participantId }));
       }
     });
+
+    client.setOnParticipantCommentCreated((contestIdFromPayload, comment: Comment) => {
+      if (contestId && contestIdFromPayload === contestId && comment.participant_id) {
+        dispatch(
+          addWorkCommentFromWebSocket({
+            participantId: comment.participant_id,
+            comment,
+          })
+        );
+      }
+    });
+
+    client.setOnParticipantCommentUpdated((contestIdFromPayload, comment: Comment) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(updateWorkCommentFromWebSocket({ comment }));
+      }
+    });
+
+    client.setOnParticipantCommentDeleted((contestIdFromPayload, participantIdFromPayload, commentId) => {
+      if (contestId && contestIdFromPayload === contestId) {
+        dispatch(
+          removeWorkCommentFromWebSocket({
+            participantId: participantIdFromPayload as ParticipantID,
+            commentId,
+          })
+        );
+      }
+    });
+
+    client.setOnParticipantCommentVoteUpdated(
+      (contestIdFromPayload, participantIdFromPayload, commentId, score, voterUserId, voterValue) => {
+        if (contestId && contestIdFromPayload === contestId) {
+          dispatch(
+            mergeWorkCommentVoteFromWebSocket({
+              participantId: participantIdFromPayload as ParticipantID,
+              commentId,
+              score,
+              voterUserId,
+              voterValue,
+              currentUserId,
+            })
+          );
+        }
+      }
+    );
 
     // Set up connection state handler
     client.setOnConnectionStateChange((state: WSConnectionState) => {

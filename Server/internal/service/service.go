@@ -127,7 +127,7 @@ type (
 		ListCommentsByParticipant(ctx context.Context, participantID model.ParticipantID, viewer *model.UserID, limit, offset int) ([]*model.Comment, int64, error)
 		UpdateComment(ctx context.Context, commentID model.CommentID, userID model.UserID, text string) (*model.Comment, error)
 		DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error
-		UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error
+		UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) (model.ContestID, model.ParticipantID, int64, error)
 		ListStaffCommentNotificationsForUser(ctx context.Context, userID model.UserID) ([]*model.StaffCommentNotification, error)
 		UpdateParticipantOwnerStaffCommentReadAt(ctx context.Context, participantID model.ParticipantID, ownerUserID model.UserID) error
 

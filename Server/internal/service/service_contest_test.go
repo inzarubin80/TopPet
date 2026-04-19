@@ -236,8 +236,8 @@ func (m *mockRepository) UpdateComment(ctx context.Context, commentID model.Comm
 func (m *mockRepository) DeleteComment(ctx context.Context, commentID model.CommentID, userID model.UserID) error {
 	return nil
 }
-func (m *mockRepository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) error {
-	return nil
+func (m *mockRepository) UpsertCommentVote(ctx context.Context, commentID model.CommentID, userID model.UserID, value int16) (model.ContestID, model.ParticipantID, int64, error) {
+	return "", "", 0, nil
 }
 func (m *mockRepository) ListStaffCommentNotificationsForUser(ctx context.Context, userID model.UserID) ([]*model.StaffCommentNotification, error) {
 	return nil, nil
