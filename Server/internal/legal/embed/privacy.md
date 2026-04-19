@@ -2,7 +2,7 @@
 
 ## 1. Оператор персональных данных
 
-Оператор: TopPet. Контакт для обращений по персональным данным: [privacy@toppet.local](mailto:privacy@toppet.local).
+Оператор: https://shotcontest.ru/. Контакт для обращений по персональным данным: [prigarina_e_v@inbox.ru](prigarina_e_v@inbox.ru).
 
 ## 2. Какие данные обрабатываются
 

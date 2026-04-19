@@ -261,7 +261,7 @@ func SeedLargeContestFlow(ctx context.Context, pool *pgxpool.Pool, cfg SeedConfi
 		nid := nomIDs[nomIdx]
 		petName := fmt.Sprintf("Питомец %d", i)
 		authorLabel := fmt.Sprintf("Автор %d", i)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nid, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed")
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nid, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed", false)
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}
@@ -473,7 +473,7 @@ func SeedJuryAndAudienceFlow(ctx context.Context, pool *pgxpool.Pool) (*SeedJury
 		}
 		petName := fmt.Sprintf("Участник %d", i+1)
 		authorLabel := fmt.Sprintf("Автор %d", i)
-		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nomID, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed")
+		p, err := svc.CreateParticipant(ctx, contestID, owner.ID, petName, "описание", authorLabel, nil, &nomID, true, "seed-v1", "seed-v1", "127.0.0.1", "integration-seed", false)
 		if err != nil {
 			return nil, fmt.Errorf("CreateParticipant %d: %w", i, err)
 		}

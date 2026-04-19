@@ -15,7 +15,7 @@ import (
 
 type (
 	serviceCreateParticipant interface {
-		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, publicationConsent bool, privacyPolicyVersion, publicationPolicyVersion, ipAddress, userAgent string) (*model.Participant, error)
+		CreateParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, entryTitle, entryDescription, authorName string, registrationAnswers map[string]interface{}, nominationID *string, publicationConsent bool, privacyPolicyVersion, publicationPolicyVersion, ipAddress, userAgent string, contestRulesConsent bool) (*model.Participant, error)
 	}
 
 	CreateParticipantHandler struct {
@@ -65,6 +65,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		PolicyVersion           string `json:"policy_version"`
 		PublicationConsent      bool   `json:"publication_consent"`
 		PublicationTermsVersion string `json:"publication_terms_version"`
+		ContestRulesConsent     bool   `json:"contest_rules_consent"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -121,6 +122,7 @@ func (h *CreateParticipantHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		publicationTermsVersion,
 		clientIP,
 		userAgent,
+		req.ContestRulesConsent,
 	)
 	if err != nil {
 		logger.Error("Failed to create participant", "handler", "CreateParticipantHandler", "error", err)

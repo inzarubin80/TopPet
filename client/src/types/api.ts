@@ -92,6 +92,8 @@ export interface CreateParticipantRequest {
   policy_version?: string;
   publication_consent?: boolean;
   publication_terms_version?: string;
+  /** Обязателен true, если у конкурса задан непустой rules_text. */
+  contest_rules_consent?: boolean;
 }
 
 export interface UpdateParticipantRequest {

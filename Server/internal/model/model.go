@@ -510,6 +510,9 @@ const (
 	ParticipantSubmissionAccepted = "accepted"
 	ParticipantSubmissionRejected = "rejected"
 
+	// ContestRulesConsentPolicyVersion — значение policy_version в participant_consent_audits при consent_type=contest_rules.
+	ContestRulesConsentPolicyVersion = "accepted"
+
 	NotificationKindSubmissionAccepted = "submission_accepted"
 	NotificationKindSubmissionRejected = "submission_rejected"
 

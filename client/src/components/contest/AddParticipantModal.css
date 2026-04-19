@@ -451,3 +451,18 @@
 .add-participant-privacy-consent input {
   margin-top: 2px;
 }
+
+.add-participant-inline-rules-trigger {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  display: inline;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: #2563eb;
+  vertical-align: baseline;
+}

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
+import { MarkdownBody } from '../legal/MarkdownDocument';
+import '../legal/MarkdownDocument.css';
 import './ContestRulesViewer.css';
 
 type ContestRulesViewerProps = {
@@ -39,11 +41,12 @@ export const ContestRulesViewer: React.FC<ContestRulesViewerProps> = ({
         Правила конкурса
       </button>
       <Modal
+        className="contest-rules-modal-overlay"
         isOpen={open}
         onClose={() => setOpen(false)}
         title={contestTitle ? `Правила: ${contestTitle}` : 'Правила конкурса'}
       >
-        <div className="contest-rules-viewer-body">{body}</div>
+        <MarkdownBody markdown={body} className="markdown-document__body contest-rules-viewer-md" />
       </Modal>
     </>
   );

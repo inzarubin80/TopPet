@@ -10,13 +10,37 @@
   color: var(--contest-card-accent, #2563eb);
 }
 
-.contest-rules-viewer-body {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 15px;
-  line-height: 1.55;
-  color: #1f2937;
+.contest-rules-viewer-md {
   max-height: min(70vh, 520px);
   overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Растягивание за правый нижний угол (resize: both); прокрутка в теле модалки. */
+.contest-rules-modal-overlay .modal-content {
+  max-width: min(920px, calc(100vw - 40px));
+  width: min(640px, 100%);
+  min-width: min(280px, 100%);
+  min-height: 200px;
+  max-height: min(90vh, 900px);
+  resize: both;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.contest-rules-modal-overlay .modal-header {
+  flex-shrink: 0;
+}
+
+.contest-rules-modal-overlay .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.contest-rules-modal-overlay .contest-rules-viewer-md {
+  max-height: none;
+  overflow-y: visible;
+  padding-right: 0;
 }

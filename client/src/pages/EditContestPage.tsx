@@ -735,10 +735,10 @@ const EditContestPage: React.FC = () => {
               </label>
             </div>
             <Textarea
-              label="Правила конкурса (многострочный текст)"
+              label="Правила конкурса (Markdown)"
               value={rulesText}
               onChange={(e) => setRulesText(e.target.value)}
-              placeholder="Условия участия, критерии, запреты…"
+              placeholder="Условия участия, критерии, запреты… (поддерживается Markdown)"
               rows={10}
               disabled={saving}
               className="edit-contest-rules-textarea"

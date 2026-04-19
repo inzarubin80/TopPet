@@ -196,14 +196,18 @@ Query `sort` (опционально): `votes` — по числу голосо�
 {
   "entry_title": "string",
   "entry_description": "string",
+  "author_name": "string",
   "nomination_id": "uuid",
   "registration_answers": {},
   "privacy_consent": true,
-  "policy_version": "2026-04-14"
+  "policy_version": "2026-04-14",
+  "publication_consent": true,
+  "publication_terms_version": "2026-04-19",
+  "contest_rules_consent": true
 }
 ```
 
-`privacy_consent` должен быть `true`, `policy_version` — непустая строка версии документа.
+`privacy_consent` должен быть `true`, `policy_version` — непустая строка версии политики; `publication_consent` — `true`, `publication_terms_version` — версия пользовательского соглашения. Если у конкурса задан непустой `rules_text`, необходимо `contest_rules_consent: true`.
 
 #### PATCH /api/participants/{participantId}
 Обновить участника. Требует аутентификации.

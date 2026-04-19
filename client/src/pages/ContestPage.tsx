@@ -1111,6 +1111,8 @@ const ContestPage: React.FC = () => {
           contestMinPhotoCount={currentContest?.min_photo_count}
           contestMaxPhotoCount={currentContest?.max_photo_count}
           entryTitleHint={currentContest?.entry_title_hint}
+          contestRulesText={currentContest?.rules_text}
+          contestTitle={currentContest?.title}
         />
       )}
 

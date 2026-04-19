@@ -26,6 +26,7 @@ import type {
 } from '../../api/participantsApi';
 import { listRegistrationFields, uploadRegistrationFieldImage } from '../../api/registrationFieldsApi';
 import { listLegalDocuments } from '../../api/legalApi';
+import { ContestRulesViewer } from './ContestRulesViewer';
 import { buildLoginUrl } from '../../utils/navigation';
 import { resolvePublicAssetUrl } from '../../utils/seo';
 import './AddParticipantModal.css';
@@ -205,6 +206,10 @@ interface AddParticipantModalProps {
   contestMaxPhotoCount?: number;
   /** Подсказка организатора к полю «Наименование». */
   entryTitleHint?: string;
+  /** Текст правил конкурса (Markdown); если непустой — нужна галочка согласия. */
+  contestRulesText?: string;
+  /** Заголовок конкурса для модалки правил. */
+  contestTitle?: string;
 }
 
 export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
@@ -223,6 +228,8 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   contestMinPhotoCount,
   contestMaxPhotoCount,
   entryTitleHint,
+  contestRulesText,
+  contestTitle,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -266,6 +273,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [publicationConsent, setPublicationConsent] = useState(false);
+  const [contestRulesConsent, setContestRulesConsent] = useState(false);
   const [legalDocVersions, setLegalDocVersions] = useState<{ privacy?: string; terms?: string }>({});
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [entryTitle, setEntryTitle] = useState('');
@@ -293,6 +301,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     const max = Math.max(min, maxRaw);
     return { minPhotosRequired: min, maxPhotosAllowed: max };
   }, [contestMinPhotoCount, contestMaxPhotoCount]);
+
+  const hasContestRules = useMemo(
+    () => (contestRulesText ?? '').trim().length > 0,
+    [contestRulesText]
+  );
 
   const currentPhotoTotal = existingPhotos.length + selectedPhotos.length;
 
@@ -351,6 +364,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
     }
     setPrivacyConsent(!!participant);
     setPublicationConsent(!!participant);
+    setContestRulesConsent(!!participant);
   }, [isOpen, participant]);
 
   useEffect(() => {
@@ -563,6 +577,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       setError('Для отправки заявки необходимо согласие на публикацию материалов');
       return;
     }
+    if (!isEditMode && hasContestRules && !contestRulesConsent) {
+      setError('Для отправки заявки необходимо согласие с правилами конкурса');
+      return;
+    }
 
     const fields = registrationFields ?? [];
     if (currentPhotoTotal < minPhotosRequired) {
@@ -700,6 +718,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               policy_version: legalDocVersions.privacy ?? PRIVACY_POLICY_VERSION_FALLBACK,
               publication_consent: true,
               publication_terms_version: legalDocVersions.terms ?? USER_AGREEMENT_VERSION_FALLBACK,
+              contest_rules_consent: hasContestRules ? contestRulesConsent : false,
             },
           })
         );
@@ -1182,6 +1201,25 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                 .
               </span>
             </label>
+            {hasContestRules ? (
+              <label className="add-participant-privacy-consent">
+                <input
+                  type="checkbox"
+                  checked={contestRulesConsent}
+                  onChange={(e) => setContestRulesConsent(e.target.checked)}
+                  disabled={loading || uploadingMedia}
+                />
+                <span>
+                  Я ознакомлен(а) и согласен(а) с{' '}
+                  <ContestRulesViewer
+                    rulesText={contestRulesText}
+                    contestTitle={contestTitle}
+                    triggerClassName="add-participant-inline-rules-trigger"
+                    stopPropagation
+                  />
+                </span>
+              </label>
+            ) : null}
           </div>
         ) : null}
 
