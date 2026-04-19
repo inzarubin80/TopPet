@@ -47,6 +47,13 @@
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.6;
+
+  /* Ширины layout: отдельно шапка, главная, колонка конкурса, полноширинная галерея */
+  --layout-page-padding-inline: 24px;
+  --layout-home-max-width: 960px;
+  --layout-header-inner-max-width: 1200px;
+  --layout-contest-inner-max-width: 960px;
+  --layout-contest-gallery-padding-inline: 20px;
 }
 
 body {

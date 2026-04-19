@@ -609,6 +609,203 @@ const ContestPage: React.FC = () => {
     .map((participantId) => participants[participantId])
     .filter((p): p is Participant => p !== undefined);
 
+  const contestMenuNav = (
+    <nav className="contest-page-menu" aria-label="Меню конкурса">
+      <div className="contest-page-menu-row">
+        <div className="contest-page-menu-tabs">
+          <SegmentMenu<ContestTab>
+            variant="contest"
+            items={contestMenuItems}
+            activeKey={activeTab}
+            onChange={handleContestMenuChange}
+          />
+        </div>
+        {isAuthenticated ? (
+          <div className="contest-page-menu-ws">
+            <ConnectionStatus
+              state={connectionState}
+              onReconnect={reconnect}
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
+        ) : null}
+      </div>
+    </nav>
+  );
+
+  const contestGallerySection = (
+    <section
+      id="contest-works"
+      className="contest-page-works contest-page-works--full-bleed"
+      aria-label="Галерея работ"
+    >
+      <div className="contest-page-participants">
+        <div className="contest-page-gallery-toolbar">
+        <div className="contest-page-participants-header">
+          <div className="contest-page-participants-header-top">
+            <div className="contest-page-participants-filters">
+              <div className="contest-page-participants-filter">
+                <label htmlFor="participants-sort">Порядок</label>
+                <select
+                  id="participants-sort"
+                  className="contest-page-participants-filter-select"
+                  value={participantsSort}
+                  onChange={(e) => setParticipantsSort(e.target.value as ParticipantsListSort)}
+                >
+                  <option value="created_at">Новые</option>
+                  <option value="votes">Популярные</option>
+                  <option value="comments">Обсуждаемые</option>
+                </select>
+              </div>
+              {isAuthenticated && isAdmin ? (
+                <div className="contest-page-participants-filter">
+                  <label htmlFor="participants-submission-filter">Статус заявки</label>
+                  <select
+                    id="participants-submission-filter"
+                    className="contest-page-participants-filter-select"
+                    value={participantsSubmissionFilter}
+                    onChange={(e) =>
+                      setParticipantsSubmissionFilter(e.target.value as ParticipantsListSubmissionFilter)
+                    }
+                  >
+                    <option value="all">Все</option>
+                    <option value="accepted">Принятые</option>
+                    <option value="pending">На модерации</option>
+                    <option value="rejected">Отклонённые</option>
+                    <option value="non_accepted">Не принятые (модерация и отклонённые)</option>
+                  </select>
+                </div>
+              ) : null}
+              {showMyVotesFilter ? (
+                <label className="contest-page-participants-jury-filter">
+                  <input
+                    type="checkbox"
+                    checked={participantsVotedOnly}
+                    onChange={(e) => setParticipantsVotedOnly(e.target.checked)}
+                  />
+                  <span>Мне нравится</span>
+                </label>
+              ) : null}
+              {showParticipateCtaButton ? (
+                <div className="contest-page-participants-filter">
+                  <Button
+                    type="button"
+                    size="large"
+                    className="contest-page-add-participant-button"
+                    onClick={handleParticipateClick}
+                  >
+                    {participateNominationCtaLabel}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {contestNominations.length > 1 ? (
+            <NominationTabsBar
+              allTab={{ label: 'Все номинации', id: 'all' }}
+              tabs={contestNominations.map((n) => ({ id: n.id, label: n.title }))}
+              selectedId={participantsNominationFilter}
+              onSelect={(id) => setParticipantsNominationFilter(id as ParticipantsListNominationFilter)}
+              ariaLabel="Фильтр по номинации"
+            />
+          ) : null}
+          {showWorksParticipationChrome ? (
+            <>
+              {domainNoteEl}
+              {isAuthenticated &&
+              !blockedByEmailDomain &&
+              hasContestNominations &&
+              nominationsOpenToUser.length === 0 &&
+              contestNominations.length > 0 ? (
+                <p className="contest-page-participants-all-nominations-taken" role="status">
+                  Вы уже подали заявки во всех номинациях этого конкурса.
+                </p>
+              ) : null}
+              {isAuthenticated &&
+              !blockedByEmailDomain &&
+              !hasContestNominations &&
+              alreadyInContestWithoutNominations ? (
+                <p className="contest-page-participants-all-nominations-taken" role="status">
+                  Вы уже подали заявку в этом конкурсе.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        </div>
+        <div className="contest-page-gallery-wide">
+        {participantsLoading ? (
+          <div className="contest-page-participants-loading">
+            <LoadingSpinner size="medium" />
+          </div>
+        ) : participantIds.length === 0 ? (
+          <div className="contest-page-participants-empty">
+            {participantsVotedOnly
+              ? 'Нет понравившихся работ (с учётом выбранных фильтров).'
+              : participantsSubmissionFilter !== 'all'
+                ? participantsSubmissionFilter === 'pending'
+                  ? 'Нет заявок со статусом «На модерации»'
+                  : participantsSubmissionFilter === 'rejected'
+                    ? 'Нет отклонённых заявок'
+                    : participantsSubmissionFilter === 'accepted'
+                      ? 'Нет принятых заявок'
+                      : participantsSubmissionFilter === 'non_accepted'
+                        ? 'Нет непринятых заявок'
+                        : 'Нет участников'
+                : participantsNominationFilter !== 'all'
+                  ? 'В выбранной номинации пока нет работ'
+                  : 'Нет участников'}
+          </div>
+        ) : (
+          <div className="contest-page-participants-list">
+            {participantIds.map((participantId) => {
+              const participant = participants[participantId];
+              return participant ? (
+                <ParticipantCard
+                  key={participantId}
+                  participant={participant}
+                  contestId={id!}
+                  nominationTitle={
+                    participant.nomination_id
+                      ? nominationTitleById[participant.nomination_id]
+                      : undefined
+                  }
+                  contestStatus={currentContest.status}
+                  isContestAdmin={isAdmin}
+                  galleryNavigationState={participantGalleryNavigationState ?? undefined}
+                />
+              ) : null;
+            })}
+          </div>
+        )}
+        {participantsListPaginated && participantsListTotal > PARTICIPANTS_PAGE_SIZE ? (
+          <div className="contest-page-participants-pager" role="navigation" aria-label="Страницы списка работ">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={participantsPage <= 0}
+              onClick={() => setParticipantsPage((p) => Math.max(0, p - 1))}
+            >
+              Назад
+            </Button>
+            <span className="contest-page-participants-pager-info">
+              Страница {participantsPage + 1} из {participantsTotalPages}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={(participantsPage + 1) * PARTICIPANTS_PAGE_SIZE >= participantsListTotal}
+              onClick={() => setParticipantsPage((p) => p + 1)}
+            >
+              Вперёд
+            </Button>
+          </div>
+        ) : null}
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <div
       className={`contest-page${hasThemedAccent ? ' contest-page--themed' : ''}`}
@@ -622,28 +819,14 @@ const ContestPage: React.FC = () => {
         />
       )}
       <div className="contest-page-main">
-        <nav className="contest-page-menu" aria-label="Меню конкурса">
-          <div className="contest-page-menu-row">
-            <div className="contest-page-menu-tabs">
-              <SegmentMenu<ContestTab>
-                variant="contest"
-                items={contestMenuItems}
-                activeKey={activeTab}
-                onChange={handleContestMenuChange}
-              />
-            </div>
-            {isAuthenticated ? (
-              <div className="contest-page-menu-ws">
-                <ConnectionStatus
-                  state={connectionState}
-                  onReconnect={reconnect}
-                  isAuthenticated={isAuthenticated}
-                />
-              </div>
-            ) : null}
-          </div>
-        </nav>
-
+        {activeTab === 'gallery' ? (
+          <>
+            <div className="contest-page-inner contest-page-inner--nav-only">{contestMenuNav}</div>
+            {contestGallerySection}
+          </>
+        ) : (
+          <div className="contest-page-inner">
+            {contestMenuNav}
         {activeTab === 'about' ? (
           <section className="contest-page-overview" aria-label="О конкурсе">
         {hasHeroCover ? (
@@ -855,188 +1038,6 @@ const ContestPage: React.FC = () => {
         </section>
         ) : null}
 
-        {activeTab === 'gallery' ? (
-        <section id="contest-works" className="contest-page-works" aria-labelledby="contest-works-heading">
-        <div className="contest-page-participants">
-          <div className="contest-page-participants-header">
-            <div className="contest-page-participants-header-top">
-              <div className="contest-page-works-title-wrap">
-                <h2 id="contest-works-heading" className="contest-section-heading contest-page-works-title">
-                  Работы участников
-                </h2>
-                {participantsListTotal > 0 ? (
-                  <span className="contest-page-works-count" aria-live="polite">
-                    {participantsListTotal}{' '}
-                    {participantsListTotal % 10 === 1 && participantsListTotal % 100 !== 11
-                      ? 'работа'
-                      : participantsListTotal % 10 >= 2 &&
-                          participantsListTotal % 10 <= 4 &&
-                          (participantsListTotal % 100 < 10 || participantsListTotal % 100 >= 20)
-                        ? 'работы'
-                        : 'работ'}
-                  </span>
-                ) : null}
-              </div>
-              <div className="contest-page-participants-filters">
-                <div className="contest-page-participants-filter">
-                  <label htmlFor="participants-sort">Порядок</label>
-                  <select
-                    id="participants-sort"
-                    className="contest-page-participants-filter-select"
-                    value={participantsSort}
-                    onChange={(e) => setParticipantsSort(e.target.value as ParticipantsListSort)}
-                  >
-                    <option value="created_at">Новые</option>
-                    <option value="votes">Популярные</option>
-                    <option value="comments">Обсуждаемые</option>
-                  </select>
-                </div>
-                {isAuthenticated && isAdmin ? (
-                  <div className="contest-page-participants-filter">
-                    <label htmlFor="participants-submission-filter">Статус заявки</label>
-                    <select
-                      id="participants-submission-filter"
-                      className="contest-page-participants-filter-select"
-                      value={participantsSubmissionFilter}
-                      onChange={(e) =>
-                        setParticipantsSubmissionFilter(e.target.value as ParticipantsListSubmissionFilter)
-                      }
-                    >
-                      <option value="all">Все</option>
-                      <option value="accepted">Принятые</option>
-                      <option value="pending">На модерации</option>
-                      <option value="rejected">Отклонённые</option>
-                      <option value="non_accepted">Не принятые (модерация и отклонённые)</option>
-                    </select>
-                  </div>
-                ) : null}
-                {showMyVotesFilter ? (
-                  <label className="contest-page-participants-jury-filter">
-                    <input
-                      type="checkbox"
-                      checked={participantsVotedOnly}
-                      onChange={(e) => setParticipantsVotedOnly(e.target.checked)}
-                    />
-                    <span>Мне нравится</span>
-                  </label>
-                ) : null}
-                {showParticipateCtaButton ? (
-                  <div className="contest-page-participants-filter">
-                    <Button
-                      type="button"
-                      size="large"
-                      className="contest-page-add-participant-button"
-                      onClick={handleParticipateClick}
-                    >
-                      {participateNominationCtaLabel}
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            {contestNominations.length > 1 ? (
-              <NominationTabsBar
-                allTab={{ label: 'Все номинации', id: 'all' }}
-                tabs={contestNominations.map((n) => ({ id: n.id, label: n.title }))}
-                selectedId={participantsNominationFilter}
-                onSelect={(id) => setParticipantsNominationFilter(id as ParticipantsListNominationFilter)}
-                ariaLabel="Фильтр по номинации"
-              />
-            ) : null}
-            {showWorksParticipationChrome ? (
-              <>
-                {domainNoteEl}
-                {isAuthenticated &&
-                !blockedByEmailDomain &&
-                hasContestNominations &&
-                nominationsOpenToUser.length === 0 &&
-                contestNominations.length > 0 ? (
-                  <p className="contest-page-participants-all-nominations-taken" role="status">
-                    Вы уже подали заявки во всех номинациях этого конкурса.
-                  </p>
-                ) : null}
-                {isAuthenticated &&
-                !blockedByEmailDomain &&
-                !hasContestNominations &&
-                alreadyInContestWithoutNominations ? (
-                  <p className="contest-page-participants-all-nominations-taken" role="status">
-                    Вы уже подали заявку в этом конкурсе.
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-          </div>
-          {participantsLoading ? (
-            <div className="contest-page-participants-loading">
-              <LoadingSpinner size="medium" />
-            </div>
-          ) : participantIds.length === 0 ? (
-            <div className="contest-page-participants-empty">
-              {participantsVotedOnly
-                  ? 'Нет понравившихся работ (с учётом выбранных фильтров).'
-                  : participantsSubmissionFilter !== 'all'
-                  ? participantsSubmissionFilter === 'pending'
-                    ? 'Нет заявок со статусом «На модерации»'
-                    : participantsSubmissionFilter === 'rejected'
-                      ? 'Нет отклонённых заявок'
-                      : participantsSubmissionFilter === 'accepted'
-                        ? 'Нет принятых заявок'
-                        : participantsSubmissionFilter === 'non_accepted'
-                          ? 'Нет непринятых заявок'
-                          : 'Нет участников'
-                  : participantsNominationFilter !== 'all'
-                    ? 'В выбранной номинации пока нет работ'
-                    : 'Нет участников'}
-            </div>
-          ) : (
-            <div className="contest-page-participants-list">
-              {participantIds.map((participantId) => {
-                const participant = participants[participantId];
-                return participant ? (
-                  <ParticipantCard 
-                    key={participantId} 
-                    participant={participant} 
-                    contestId={id!}
-                    nominationTitle={
-                      participant.nomination_id
-                        ? nominationTitleById[participant.nomination_id]
-                        : undefined
-                    }
-                    contestStatus={currentContest.status}
-                    isContestAdmin={isAdmin}
-                    galleryNavigationState={participantGalleryNavigationState ?? undefined}
-                  />
-                ) : null;
-              })}
-            </div>
-          )}
-          {participantsListPaginated && participantsListTotal > PARTICIPANTS_PAGE_SIZE ? (
-            <div className="contest-page-participants-pager" role="navigation" aria-label="Страницы списка работ">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={participantsPage <= 0}
-                onClick={() => setParticipantsPage((p) => Math.max(0, p - 1))}
-              >
-                Назад
-              </Button>
-              <span className="contest-page-participants-pager-info">
-                Страница {participantsPage + 1} из {participantsTotalPages}
-              </span>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={(participantsPage + 1) * PARTICIPANTS_PAGE_SIZE >= participantsListTotal}
-                onClick={() => setParticipantsPage((p) => p + 1)}
-              >
-                Вперёд
-              </Button>
-            </div>
-          ) : null}
-        </div>
-        </section>
-        ) : null}
-
         {activeTab === 'chat' ? (
           <section className="contest-page-chat" aria-label="Чат конкурса">
             <ChatWindow contestId={currentContest.id} contestStatus={currentContest.status} />
@@ -1086,6 +1087,8 @@ const ContestPage: React.FC = () => {
             )}
           </section>
         ) : null}
+          </div>
+        )}
       </div>
 
       {id && (

@@ -1,7 +1,7 @@
 .home-page {
-  max-width: 1200px;
+  max-width: var(--layout-home-max-width);
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px var(--layout-page-padding-inline);
 }
 
 .home-page-header {

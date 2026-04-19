@@ -7,9 +7,9 @@
 }
 
 .app-header-inner {
-  max-width: 1200px;
+  max-width: var(--layout-header-inner-max-width);
   margin: 0 auto;
-  padding: 14px 24px;
+  padding: 14px var(--layout-page-padding-inline);
   display: flex;
   align-items: center;
   justify-content: space-between;

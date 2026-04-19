@@ -1,21 +1,63 @@
 .contest-page {
-  display: flex;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
   color: #1f2937;
+  /* Расстояние от нижней границы полоски меню до начала контента вкладки */
+  --contest-page-tab-gap-after-menu: 20px;
 }
 
 .contest-page-main {
-  flex: 1;
+  width: 100%;
   min-width: 0;
+}
+
+/* Узкая колонка: меню конкурса и вкладки кроме полноширинной галереи */
+.contest-page-inner {
+  max-width: var(--layout-contest-inner-max-width);
+  margin: 0 auto;
+  padding: 24px var(--layout-page-padding-inline);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.contest-page-inner--nav-only {
+  padding-bottom: 0;
+}
+
+/* Секция галереи: заголовок/фильтры — как узкая колонка конкурса; сетка — на всю ширину */
+.contest-page-works--full-bleed {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding-bottom: 28px;
+}
+
+.contest-page-works--full-bleed .contest-page-participants {
+  max-width: none;
+  margin: 0;
+}
+
+.contest-page-gallery-toolbar {
+  max-width: var(--layout-contest-inner-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--layout-page-padding-inline);
+  padding-right: var(--layout-page-padding-inline);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.contest-page-gallery-wide {
+  padding-left: var(--layout-contest-gallery-padding-inline);
+  padding-right: var(--layout-contest-gallery-padding-inline);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* Обёртка над общим SegmentMenu (variant contest): отступ снизу без двойного margin у .segment-menu--contest */
 .contest-page-menu {
   width: 100%;
-  margin: 0 0 18px;
+  margin: 0 0 var(--contest-page-tab-gap-after-menu);
 }
 
 .contest-page-menu-row {
@@ -92,6 +134,22 @@
   min-height: 200px;
 }
 
+/* Единый зазор: только margin у .contest-page-menu; убираем дублирующий отступ у корня вкладок жюри */
+.contest-page-jury-voting > .contest-jury-voting {
+  margin-top: 0;
+}
+
+/* Победители: убрать верхний padding основного блока — отступ от меню задаёт .contest-page-menu */
+.contest-page .contest-winners-section:not(.contest-winners-section--loading):not(.contest-winners-section--message) {
+  padding-top: 0;
+  padding-bottom: 24px;
+}
+
+.contest-page .contest-winners-section--loading,
+.contest-page .contest-winners-section--message {
+  padding: 24px;
+}
+
 /* «О конкурсе»: на всю ширину колонки, как меню конкурса над ним */
 .contest-page-overview {
   width: 100%;
@@ -103,7 +161,7 @@
 }
 
 .contest-page-overview-top {
-  padding: 20px 0 4px;
+  padding: 0 0 4px;
 }
 
 .contest-page-overview-body {
@@ -121,10 +179,10 @@
   margin-bottom: 0.35rem;
 }
 
-/* Блок работ: без рамки вокруг секции */
+/* Блок работ: без рамки вокруг секции; верхний отступ от меню задаётся только .contest-page-menu */
 .contest-page-works {
   scroll-margin-top: 88px;
-  padding: 22px 0 24px;
+  padding: 0 0 24px;
   border-radius: 20px;
   border: none;
   background: var(--color-surface);
@@ -136,23 +194,6 @@
 
 .contest-page-works .contest-page-participants-header {
   padding-top: 0;
-}
-
-.contest-page-works-title-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
-}
-
-.contest-page-works-count {
-  font-size: 14px;
-  font-weight: 600;
-  color: #64748b;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--color-surface);
-  border: 1px solid #e2e8f0;
 }
 
 .contest-page--themed .btn-primary:hover:not(:disabled) {
@@ -523,7 +564,7 @@
   align-items: stretch;
   gap: 16px;
   margin-bottom: 24px;
-  padding-top: 8px;
+  padding-top: 0;
 }
 
 .contest-page-participants-header-top {
@@ -556,15 +597,6 @@
   width: 16px;
   height: 16px;
   accent-color: var(--contest-accent, #2563eb);
-}
-
-.contest-page-participants-header h2,
-.contest-page-works-title {
-  margin: 0;
-}
-
-.contest-page-works .contest-page-works-title {
-  margin: 0;
 }
 
 .contest-page-participants-filter {
@@ -633,15 +665,29 @@
 
 .contest-page-participants-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
-@media (max-width: 1024px) {
-  .contest-page {
-    flex-direction: column;
+@media (max-width: 1279px) {
+  .contest-page-participants-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
 
+@media (max-width: 900px) {
+  .contest-page-participants-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .contest-page-participants-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
   .contest-page-sidebar {
     width: 100%;
     height: 500px;
@@ -666,8 +712,18 @@
 }
 
 @media (max-width: 720px) {
-  .contest-page {
-    padding: 24px 16px;
+  .contest-page-inner {
+    padding: 20px 16px;
+  }
+
+  .contest-page-gallery-toolbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .contest-page-gallery-wide {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .contest-page-chat {

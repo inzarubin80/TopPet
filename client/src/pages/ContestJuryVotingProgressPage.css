@@ -1,5 +1,5 @@
 .contest-jury-voting-progress-page {
-  max-width: 1200px;
+  max-width: var(--layout-contest-inner-max-width);
   margin: 0 auto;
   padding: 20px 16px 48px;
 }
