@@ -28,5 +28,13 @@ export function getNotificationNavigatePath(n: UserNotification): string | null 
       return `/contests/${encodeURIComponent(cid)}#chat`;
     }
   }
+  if (n.kind === 'work_liked') {
+    const p = n.payload as unknown as SubmissionModerationPayload;
+    const cid = String(p.contest_id || '').trim();
+    const pid = String(p.participant_id || '').trim();
+    if (cid && pid) {
+      return `/contests/${encodeURIComponent(cid)}/participants/${encodeURIComponent(pid)}`;
+    }
+  }
   return null;
 }

@@ -80,6 +80,7 @@ func TestVote_PassesParticipantNominationToUpsert(t *testing.T) {
 	participant := &model.Participant{
 		ID:               partID,
 		ContestID:        contestID,
+		UserID:           1,
 		NominationID:     &nomID,
 		SubmissionStatus: model.ParticipantSubmissionAccepted,
 	}
@@ -116,6 +117,7 @@ func TestVote_GeneralNominationUsesNilSlot(t *testing.T) {
 	participant := &model.Participant{
 		ID:               partID,
 		ContestID:        contestID,
+		UserID:           1,
 		NominationID:     nil,
 		SubmissionStatus: model.ParticipantSubmissionAccepted,
 	}
@@ -148,7 +150,7 @@ func TestUnvote_RejectsWhenPhaseNotRegistrationOrVoting(t *testing.T) {
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
 		contest:        contest,
-		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+		participant:    &model.Participant{ID: partID, ContestID: contestID, UserID: 1, SubmissionStatus: model.ParticipantSubmissionAccepted},
 	}
 	svc := &TopPetService{repository: repo}
 
@@ -173,7 +175,7 @@ func TestVote_RejectsWhenPhaseNotRegistrationOrVoting(t *testing.T) {
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
 		contest:        contest,
-		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+		participant:    &model.Participant{ID: partID, ContestID: contestID, UserID: 1, SubmissionStatus: model.ParticipantSubmissionAccepted},
 	}
 	svc := &TopPetService{repository: repo}
 
@@ -201,7 +203,7 @@ func TestVote_AllowsRegistrationPhase(t *testing.T) {
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
 		contest:        contest,
-		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+		participant:    &model.Participant{ID: partID, ContestID: contestID, UserID: 1, SubmissionStatus: model.ParticipantSubmissionAccepted},
 	}
 	svc := &TopPetService{repository: repo}
 
@@ -226,7 +228,7 @@ func TestVote_AllowsWhenPublicVotingDisabled(t *testing.T) {
 	repo := &voteFlowMock{
 		mockRepository: &mockRepository{},
 		contest:        contest,
-		participant:    &model.Participant{ID: partID, ContestID: contestID, SubmissionStatus: model.ParticipantSubmissionAccepted},
+		participant:    &model.Participant{ID: partID, ContestID: contestID, UserID: 1, SubmissionStatus: model.ParticipantSubmissionAccepted},
 	}
 	svc := &TopPetService{repository: repo}
 

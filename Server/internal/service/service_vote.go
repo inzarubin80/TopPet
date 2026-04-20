@@ -59,6 +59,8 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 		return nil, err
 	}
 
+	s.pushWorkLikedNotification(ctx, contest, participant, userID)
+
 	if s.hub != nil {
 		contestTotalVotes, _ := s.repository.CountVotesByContest(ctx, contestID)
 		participantTotalVotes, _ := s.repository.CountVotesByParticipant(ctx, participantID)
@@ -80,6 +82,29 @@ func (s *TopPetService) Vote(ctx context.Context, contestID model.ContestID, par
 	}
 
 	return vote, nil
+}
+
+func (s *TopPetService) pushWorkLikedNotification(ctx context.Context, contest *model.Contest, participant *model.Participant, voterID model.UserID) {
+	if s == nil || contest == nil || participant == nil {
+		return
+	}
+	if participant.UserID == voterID {
+		return
+	}
+	authorName := ""
+	if u, err := s.repository.GetUser(ctx, voterID); err == nil && u != nil {
+		authorName = strings.TrimSpace(u.Name)
+	}
+	if authorName == "" {
+		authorName = fmt.Sprintf("Пользователь %d", voterID)
+	}
+	_, _ = s.CreateAndPushUserNotification(ctx, participant.UserID, model.NotificationKindWorkLiked, map[string]any{
+		"contest_id":     contest.ID,
+		"contest_title":  contest.Title,
+		"participant_id": participant.ID,
+		"entry_title":    entryTitleForNotification(participant),
+		"author_name":    authorName,
+	})
 }
 
 func (s *TopPetService) ListUserVotesForContest(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {

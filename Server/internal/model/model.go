@@ -520,6 +520,7 @@ const (
 	NotificationKindParticipantWorkChatMessage = "participant_work_chat_message"
 	NotificationKindParticipantWorkChatReply   = "participant_work_chat_reply"
 	NotificationKindContestChatReply             = "contest_chat_reply"
+	NotificationKindWorkLiked                    = "work_liked"
 
 	ParticipantListScopeAll  = "all"
 	ParticipantListScopeMine = "mine"

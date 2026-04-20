@@ -6,6 +6,7 @@ export type UserNotificationKind =
   | 'participant_work_chat_message'
   | 'participant_work_chat_reply'
   | 'contest_chat_reply'
+  | 'work_liked'
   | string;
 
 export interface UserNotification {
@@ -44,6 +45,15 @@ export interface ContestChatReplyPayload {
   parent_message_id: string;
   author_name: string;
   message_preview?: string;
+}
+
+/** Лайк на работу участника */
+export interface WorkLikedPayload {
+  contest_id: ContestID;
+  contest_title: string;
+  participant_id: ParticipantID;
+  entry_title: string;
+  author_name: string;
 }
 
 export interface NotificationsListResponse {

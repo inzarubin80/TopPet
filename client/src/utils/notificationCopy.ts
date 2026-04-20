@@ -3,6 +3,7 @@ import type {
   ParticipantWorkChatPayload,
   SubmissionModerationPayload,
   UserNotification,
+  WorkLikedPayload,
 } from '../types/notifications';
 
 /** Текст для списка, тоста и подсказок по kind + payload. */
@@ -30,6 +31,11 @@ export function getNotificationLineText(n: UserNotification): string {
     const c = n.payload as unknown as ContestChatReplyPayload;
     const who = (c.author_name || '').trim() || 'Участник';
     return `Ответ на ваше сообщение в чате конкурса «${contest}» от ${who}`;
+  }
+  if (n.kind === 'work_liked') {
+    const w = n.payload as unknown as WorkLikedPayload;
+    const who = (w.author_name || '').trim() || 'Участник';
+    return `${who} оценил(а) работу «${entry}» (${contest})`;
   }
   return 'Новое уведомление';
 }
