@@ -1042,6 +1042,24 @@
     width: 100%;
   }
 
+  /* Одна горизонтальная полоса над превью — не три ряда по вертикали */
+  .participant-page-back-cluster--split-rail {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .participant-page-split-rail-actions {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    margin-top: 0;
+    gap: 8px;
+  }
+
   .participant-page-split-aside {
     background: #ffffff;
   }
