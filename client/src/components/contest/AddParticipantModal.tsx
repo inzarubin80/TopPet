@@ -634,10 +634,37 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       let participantId: string;
 
       if (isEditMode && participant) {
-        // Update existing participant
+        // Редактирование: сначала синхронизируем фото с сервером (удаления освобождают лимит max),
+        // затем PATCH текста — иначе сервер мог видеть 0 фото до загрузки новых.
+        participantId = participant.id;
+
+        if (photosToDelete.size > 0 || selectedPhotos.length > 0) {
+          setUploadingMedia(true);
+        }
+
+        for (const photoId of Array.from(photosToDelete)) {
+          const deleteResult = await dispatch(deletePhoto({ participantId, photoId }));
+          if (deletePhoto.rejected.match(deleteResult)) {
+            console.error('Failed to delete photo:', deleteResult.payload);
+          }
+        }
+
+        const newPhotoIds: string[] = [];
+        for (const pick of selectedPhotos) {
+          const photoResult = await dispatch(uploadPhoto({ participantId, file: pick.file }));
+          if (uploadPhoto.rejected.match(photoResult)) {
+            const msg = (photoResult.payload as string) || 'Не удалось загрузить фото';
+            setError(msg);
+            setLoading(false);
+            setUploadingMedia(false);
+            return;
+          }
+          newPhotoIds.push(photoResult.payload.photo.id);
+        }
+
         const result = await dispatch(
           updateParticipant({
-            participantId: participant.id,
+            participantId,
             data: {
               entry_title: trimmedTitle,
               entry_description: trimmedDescription,
@@ -652,50 +679,11 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           const errorMessage = result.payload as string || 'Не удалось сохранить заявку';
           setError(errorMessage);
           setLoading(false);
+          setUploadingMedia(false);
           return;
         }
 
-        participantId = participant.id;
-
-        // Delete photos marked for deletion
-        if (photosToDelete.size > 0) {
-          setUploadingMedia(true);
-          try {
-            for (const photoId of Array.from(photosToDelete)) {
-              const deleteResult = await dispatch(deletePhoto({ participantId, photoId }));
-              if (deletePhoto.rejected.match(deleteResult)) {
-                console.error('Failed to delete photo:', deleteResult.payload);
-              }
-            }
-          } catch (err) {
-            console.error('Error deleting photos:', err);
-          }
-        }
-
-        const newPhotoIds: string[] = [];
-
-        // Upload new photos
-        if (selectedPhotos.length > 0) {
-          setUploadingMedia(true);
-          try {
-            for (const pick of selectedPhotos) {
-              const photoResult = await dispatch(uploadPhoto({ participantId, file: pick.file }));
-              if (uploadPhoto.rejected.match(photoResult)) {
-                console.error('Failed to upload photo:', photoResult.payload);
-              } else {
-                newPhotoIds.push(photoResult.payload.photo.id);
-              }
-            }
-          } catch (err) {
-            console.error('Error uploading photos:', err);
-          }
-        }
-
-        // Update photo order (existing + new)
-        const orderedPhotoIds = [
-          ...existingPhotos.map((photo) => photo.id),
-          ...newPhotoIds,
-        ];
+        const orderedPhotoIds = [...existingPhotos.map((photo) => photo.id), ...newPhotoIds];
         if (orderedPhotoIds.length > 0) {
           const orderResult = await dispatch(updatePhotoOrder({ participantId, photoIds: orderedPhotoIds }));
           if (updatePhotoOrder.rejected.match(orderResult)) {

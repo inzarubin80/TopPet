@@ -483,12 +483,8 @@ func (s *TopPetService) UpdateParticipant(ctx context.Context, participantID mod
 		}
 	}
 
-	checkParticipant := *participant
-	checkParticipant.NominationID = effectiveNom
-	if err := s.ensureParticipantPhotoCountInBounds(ctx, &checkParticipant); err != nil {
-		return nil, err
-	}
-
+	// Не проверяем min/max фото здесь: при редактировании клиент сначала удаляет/загружает фото,
+	// затем обновляет текст заявки. Инвариант по числу фото — при принятии модератором и в AddParticipantPhoto (max).
 	log.Printf("[Service] UpdateParticipant: Updating participant in repository")
 	updated, err := s.repository.UpdateParticipant(ctx, participantID, entryTitle, entryDescription, authorName, merged, effectiveNom)
 	if err != nil {
