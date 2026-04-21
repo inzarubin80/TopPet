@@ -67,14 +67,7 @@ func LoadConfigFromEnv() Config {
 		cfg.SPAIndexPath = resolveDefaultSPAIndexPath()
 	}
 
-	// Initialize OAuth providers
-	oauthProviders, err := appconfig.LoadOAuthProviders()
-	if err != nil {
-		// Log error but don't fail - app can work without OAuth providers
-		fmt.Printf("Warning: Failed to load OAuth providers: %v\n", err)
-		oauthProviders = make(authinterface.MapProviderOauthConf)
-	}
-	cfg.ProvidersConf = oauthProviders
+	cfg.ProvidersConf = appconfig.LoadOAuthProviders()
 
 	return cfg
 }

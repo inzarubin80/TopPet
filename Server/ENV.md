@@ -113,6 +113,12 @@ CLIENT_SECRET_YANDEX=
 
 #### Google OAuth
 
+В [Google Cloud Console](https://console.cloud.google.com/apis/credentials) создайте OAuth client **Web application**. В **Authorized redirect URIs** добавьте URI **буквально** в виде:
+
+`{API_ROOT}/api/auth/callback?provider=google`
+
+Например при `API_ROOT=http://localhost:8080`: `http://localhost:8080/api/auth/callback?provider=google`. Несовпадение URI (включая `?provider=google`) даёт ошибку `redirect_uri_mismatch`.
+
 ```bash
 # Client ID из Google Cloud Console
 # Получить можно здесь: https://console.cloud.google.com/apis/credentials
@@ -121,6 +127,8 @@ CLIENT_ID_GOOGLE=
 # Client Secret из Google Cloud Console
 CLIENT_SECRET_GOOGLE=
 ```
+
+На стороне клиента (React) задайте базовый URL API для запросов, например `REACT_APP_API_URL=http://localhost:8080/api` в `.env` или `.env.development`, чтобы `POST /auth/login` шёл на тот же хост, что и `API_ROOT`.
 
 #### VK OAuth
 
@@ -166,6 +174,9 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 # API Root URL
 API_ROOT=http://localhost:8080
 
+# Frontend URL (OAuth callback redirect)
+FRONTEND_URL=http://localhost:3000
+
 # OAuth Providers Configuration
 
 # Yandex OAuth
@@ -184,7 +195,7 @@ CLIENT_SECRET_GOOGLE=
    - `ACCESS_TOKEN_SECRET`
    - `REFRESH_TOKEN_SECRET`
    - `STORE_SECRET`
-3. **OAuth провайдеры** - если не указаны `CLIENT_ID_*` и `CLIENT_SECRET_*`, соответствующий провайдер не будет доступен
+3. **OAuth провайдеры** - если не указаны `CLIENT_ID_*` и `CLIENT_SECRET_*`, соответствующий провайдер не будет доступен. Если задан только `CLIENT_ID_*` без секрета, этот провайдер пропускается с предупреждением в логе, остальные провайдеры продолжают работать
 4. **S3 хранилище** - если не указаны параметры S3, загрузка файлов будет недоступна
 5. **CORS** - для продакшена укажите реальные домены вашего фронтенда
 

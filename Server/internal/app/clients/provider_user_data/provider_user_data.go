@@ -204,7 +204,7 @@ func (p *ProviderUserData) parseYandexProfile(profile map[string]interface{}) (*
 
 func (p *ProviderUserData) parseGoogleProfile(profile map[string]interface{}) (*model.UserProfileFromProvider, error) {
 	displayName, _ := profile["name"].(string)
-	providerID, _ := profile["id"].(string)
+	providerID := jsonScalarToString(profile["id"])
 	email, _ := profile["email"].(string)
 	picture, _ := profile["picture"].(string)
 	firstName, _ := profile["given_name"].(string)
@@ -228,6 +228,10 @@ func (p *ProviderUserData) parseGoogleProfile(profile map[string]interface{}) (*
 		FirstName:    firstName,
 		LastName:     lastName,
 		AvatarURL:    picture,
+	}
+
+	if userData.ProviderID == "" {
+		return nil, fmt.Errorf("google profile: missing user id")
 	}
 
 	return userData, nil

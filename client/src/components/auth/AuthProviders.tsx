@@ -107,10 +107,6 @@ export const AuthProviders: React.FC<AuthProvidersProps> = ({ onProviderClick })
       const responseData = data.data || data;
       
       if (responseData.auth_url) {
-        // Сохраняем code_verifier в sessionStorage для использования в callback (только для провайдеров с PKCE)
-        if (supportsPKCE && codeVerifier) {
-          sessionStorage.setItem(`oauth_code_verifier_${provider}`, codeVerifier);
-        }
         // Сохраняем returnUrl в sessionStorage перед OAuth редиректом
         const returnUrl = getReturnUrl();
         if (returnUrl) {
