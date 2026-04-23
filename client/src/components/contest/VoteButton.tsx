@@ -64,6 +64,12 @@ export const VoteButton: React.FC<VoteButtonProps> = ({
   const [loading, setLoading] = useState(false);
   const [voting, setVoting] = useState(false);
 
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d469fa'},body:JSON.stringify({sessionId:'d469fa',runId:'run_ws_sync',hypothesisId:'H5',location:'VoteButton:isVotedState',message:'Vote button state changed',data:{contestId,participantId,isVoted,appearance,totalVotes},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [contestId, participantId, isVoted, appearance, totalVotes]);
+
   const loadVote = useCallback(async () => {
     logger.debug('[VoteButton] loadVote start', { contestId, isAuthenticated });
     try {

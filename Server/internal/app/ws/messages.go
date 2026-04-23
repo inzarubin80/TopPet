@@ -22,6 +22,9 @@ const (
 	MessageTypeParticipantCommentVoteUpdated MessageType = "participant_comment_vote_updated"
 	MessageTypeUserNotification       MessageType = "notification"
 	MessageTypeNotificationUnread     MessageType = "notification_unread"
+	MessageTypeDirectMessage          MessageType = "direct_message"
+	MessageTypeDirectMessageUpdated   MessageType = "direct_message_updated"
+	MessageTypeDirectMessageDeleted   MessageType = "direct_message_deleted"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -93,6 +96,25 @@ type NotificationUnreadSnapshot struct {
 type UserNotificationEnvelope struct {
 	Type           MessageType            `json:"type"`
 	Notification   *model.UserNotification `json:"notification"`
+}
+
+// DirectMessagePayload — новое сообщение в личном диалоге.
+type DirectMessagePayload struct {
+	Type           MessageType                `json:"type"`
+	ConversationID model.DirectConversationID `json:"conversation_id"`
+	Message        *model.DirectMessage       `json:"message"`
+}
+
+type DirectMessageUpdatedPayload struct {
+	Type           MessageType                `json:"type"`
+	ConversationID model.DirectConversationID `json:"conversation_id"`
+	Message        *model.DirectMessage       `json:"message"`
+}
+
+type DirectMessageDeletedPayload struct {
+	Type           MessageType                `json:"type"`
+	ConversationID model.DirectConversationID `json:"conversation_id"`
+	MessageID      model.DirectMessageID      `json:"message_id"`
 }
 
 // ParticipantDeletedPayload — заявка удалена из конкурса.

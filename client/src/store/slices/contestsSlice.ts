@@ -11,6 +11,8 @@ interface ContestsState {
   error: string | null;
   /** Голоса пользователя: ключ — participant_id, значение=true */
   userVoteSlots: Record<ContestID, Record<string, boolean>>;
+  /** Счетчики голосов по участникам из WebSocket (работают даже если участник не в participantsSlice). */
+  participantVoteTotals: Record<ContestID, Record<string, number>>;
   filters: {
     status?: ContestStatus;
     limit: number;
@@ -25,6 +27,7 @@ const initialState: ContestsState = {
   loading: false,
   error: null,
   userVoteSlots: {},
+  participantVoteTotals: {},
   filters: {
     limit: 20,
     offset: 0,
@@ -168,6 +171,16 @@ const contestsSlice = createSlice({
     clearUserVote: (state, action: PayloadAction<ContestID>) => {
       delete state.userVoteSlots[action.payload];
     },
+    updateParticipantVoteTotal: (
+      state,
+      action: PayloadAction<{ contestId: ContestID; participantId: string; totalVotes: number }>
+    ) => {
+      const { contestId, participantId, totalVotes } = action.payload;
+      if (!state.participantVoteTotals[contestId]) {
+        state.participantVoteTotals[contestId] = {};
+      }
+      state.participantVoteTotals[contestId][participantId] = totalVotes;
+    },
     updateContestTotalVotes: (
       state,
       action: PayloadAction<{ contestId: ContestID; totalVotes: number }>
@@ -281,6 +294,7 @@ export const {
   setUserVoteSlot,
   setUserVotesForContest,
   clearUserVote,
+  updateParticipantVoteTotal,
   updateContestTotalVotes,
 } = contestsSlice.actions;
 export default contestsSlice.reducer;

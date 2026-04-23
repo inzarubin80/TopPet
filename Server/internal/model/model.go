@@ -9,14 +9,17 @@ import (
 )
 
 type (
-	UserID        int64
-	ContestID     string
-	ParticipantID string
-	CommentID     string
-	ChatMessageID string
+	UserID             int64
+	ContestID          string
+	ParticipantID      string
+	CommentID          string
+	ChatMessageID      string
 	UserNotificationID string
+	DirectConversationID string
+	DirectMessageID      string
 
-	ContestStatus string
+	ContestStatus         string
+	ContestUserVotingMode string
 
 	UserProfileFromProvider struct {
 		ProviderID string `json:"provider_id"`
@@ -64,27 +67,28 @@ type (
 	}
 
 	Contest struct {
-		ID                  ContestID           `json:"id"`
-		CreatedByUserID     UserID              `json:"created_by_user_id"`
-		Title               string              `json:"title"`
-		Description         string              `json:"description"`
-		Status              ContestStatus       `json:"status"`
-		Tier                string              `json:"tier,omitempty"`
-		TotalVotes          int64               `json:"total_votes,omitempty"`
-		PublicVotingEnabled bool                `json:"public_voting_enabled"`
-		JuryVotingEnabled   bool                `json:"jury_voting_enabled"`
-		CoverUrl            string              `json:"cover_url,omitempty"`
-		Tagline             string              `json:"tagline,omitempty"`
-		RulesText           string              `json:"rules_text,omitempty"`
-		PrizeText           string              `json:"prize_text,omitempty"`
-		JuryPrizePlaces     []ContestPrizePlace `json:"jury_prize_places,omitempty"`
-		AudiencePrizePlaces []ContestPrizePlace `json:"audience_prize_places,omitempty"`
-		LogoUrl             string              `json:"logo_url,omitempty"`
-		ThemeColor          string              `json:"theme_color,omitempty"`
-		SponsorName         string              `json:"sponsor_name,omitempty"`
-		SponsorLogoUrl      string              `json:"sponsor_logo_url,omitempty"`
-		SponsorUrl          string              `json:"sponsor_url,omitempty"`
-		CtaLabelOverride    string              `json:"cta_label_override,omitempty"`
+		ID                  ContestID             `json:"id"`
+		CreatedByUserID     UserID                `json:"created_by_user_id"`
+		Title               string                `json:"title"`
+		Description         string                `json:"description"`
+		Status              ContestStatus         `json:"status"`
+		Tier                string                `json:"tier,omitempty"`
+		TotalVotes          int64                 `json:"total_votes,omitempty"`
+		PublicVotingEnabled bool                  `json:"public_voting_enabled"`
+		UserVotingMode      ContestUserVotingMode `json:"user_voting_mode"`
+		JuryVotingEnabled   bool                  `json:"jury_voting_enabled"`
+		CoverUrl            string                `json:"cover_url,omitempty"`
+		Tagline             string                `json:"tagline,omitempty"`
+		RulesText           string                `json:"rules_text,omitempty"`
+		PrizeText           string                `json:"prize_text,omitempty"`
+		JuryPrizePlaces     []ContestPrizePlace   `json:"jury_prize_places,omitempty"`
+		AudiencePrizePlaces []ContestPrizePlace   `json:"audience_prize_places,omitempty"`
+		LogoUrl             string                `json:"logo_url,omitempty"`
+		ThemeColor          string                `json:"theme_color,omitempty"`
+		SponsorName         string                `json:"sponsor_name,omitempty"`
+		SponsorLogoUrl      string                `json:"sponsor_logo_url,omitempty"`
+		SponsorUrl          string                `json:"sponsor_url,omitempty"`
+		CtaLabelOverride    string                `json:"cta_label_override,omitempty"`
 		// Домены e-mail; пустой список — участвовать может любой (см. подачу заявки).
 		ParticipantAllowedEmailDomains []string `json:"participant_allowed_email_domains,omitempty"`
 		// Расписание фаз (UTC, RFC3339 в JSON). Планировщик сверяет «сейчас» с датами и выставляет статус (в т.ч. откат в черновик).
@@ -134,6 +138,7 @@ type (
 		Title                          string
 		Description                    string
 		PublicVotingEnabled            bool
+		UserVotingMode                 ContestUserVotingMode
 		JuryVotingEnabled              bool
 		CoverUrl                       string
 		Tagline                        string
@@ -479,6 +484,31 @@ type (
 		UpdatedAt     time.Time      `json:"updated_at"`
 	}
 
+	DirectConversation struct {
+		ID                  DirectConversationID `json:"id"`
+		UserLowID           UserID               `json:"user_low_id"`
+		UserHighID          UserID               `json:"user_high_id"`
+		PeerUserID          UserID               `json:"peer_user_id"`
+		PeerUserName        string               `json:"peer_user_name"`
+		PeerUserAvatarURL   string               `json:"peer_user_avatar_url,omitempty"`
+		LastMessageText     string               `json:"last_message_text,omitempty"`
+		LastMessageCreatedAt *time.Time          `json:"last_message_created_at,omitempty"`
+		LastMessageAt       time.Time            `json:"last_message_at"`
+		CreatedAt           time.Time            `json:"created_at"`
+		UpdatedAt           time.Time            `json:"updated_at"`
+	}
+
+	DirectMessage struct {
+		ID                DirectMessageID      `json:"id"`
+		ConversationID    DirectConversationID `json:"conversation_id"`
+		SenderUserID      UserID               `json:"sender_user_id"`
+		SenderUserName    string               `json:"sender_user_name"`
+		SenderUserAvatarURL string             `json:"sender_user_avatar_url,omitempty"`
+		Text              string               `json:"text"`
+		CreatedAt         time.Time            `json:"created_at"`
+		UpdatedAt         time.Time            `json:"updated_at"`
+	}
+
 	AuthData struct {
 		UserID       UserID `json:"user_id"`
 		RefreshToken string `json:"refresh_token"`
@@ -502,6 +532,10 @@ const (
 	ContestStatusVoting       ContestStatus = "voting"
 	ContestStatusFinished     ContestStatus = "finished"
 
+	ContestUserVotingModeLikes            ContestUserVotingMode = "likes"
+	ContestUserVotingModeAllUsers         ContestUserVotingMode = "all_users"
+	ContestUserVotingModeParticipantsOnly ContestUserVotingMode = "participants_only"
+
 	UserRoleUser         = "user"
 	UserRoleContestAdmin = "contest_admin"
 	UserRoleSystemAdmin  = "system_admin"
@@ -519,8 +553,8 @@ const (
 	// Чат: комментарии к работе и общий чат конкурса
 	NotificationKindParticipantWorkChatMessage = "participant_work_chat_message"
 	NotificationKindParticipantWorkChatReply   = "participant_work_chat_reply"
-	NotificationKindContestChatReply             = "contest_chat_reply"
-	NotificationKindWorkLiked                    = "work_liked"
+	NotificationKindContestChatReply           = "contest_chat_reply"
+	NotificationKindWorkLiked                  = "work_liked"
 
 	ParticipantListScopeAll  = "all"
 	ParticipantListScopeMine = "mine"
@@ -554,6 +588,15 @@ func IsValidUserRole(r string) bool {
 func IsGlobalContestManagerRole(r string) bool {
 	switch r {
 	case UserRoleContestAdmin, UserRoleSystemAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsValidContestUserVotingMode(m ContestUserVotingMode) bool {
+	switch m {
+	case ContestUserVotingModeLikes, ContestUserVotingModeAllUsers, ContestUserVotingModeParticipantsOnly:
 		return true
 	default:
 		return false

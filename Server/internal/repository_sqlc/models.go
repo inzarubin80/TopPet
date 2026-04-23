@@ -60,6 +60,7 @@ type Contest struct {
 	JuryWinnersSnapshot []byte
 	// Момент сохранения/последнего пересчёта снимка результатов
 	VotingResultsComputedAt pgtype.Timestamptz
+	UserVotingMode          string
 }
 
 type ContestChatMessage struct {
@@ -132,6 +133,17 @@ type ContestParticipantPhoto struct {
 	Position      int32
 }
 
+type ContestUserVote struct {
+	ID             pgtype.UUID
+	ContestID      pgtype.UUID
+	ParticipantID  pgtype.UUID
+	NominationID   pgtype.UUID
+	UserID         int64
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	NominationSlot pgtype.UUID
+}
+
 type ContestVote struct {
 	ID             pgtype.UUID
 	ContestID      pgtype.UUID
@@ -141,6 +153,26 @@ type ContestVote struct {
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 	NominationSlot pgtype.UUID
+}
+
+// Private user-to-user conversations (no FK by project rule).
+type DirectConversation struct {
+	ID            pgtype.UUID
+	UserLowID     int64
+	UserHighID    int64
+	LastMessageAt pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+// Messages inside private conversations (no FK by project rule).
+type DirectMessage struct {
+	ID             pgtype.UUID
+	ConversationID pgtype.UUID
+	SenderUserID   int64
+	Text           string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type UserAuthProvider struct {

@@ -40,6 +40,10 @@ export type ContestOrganizerCriteriaPanelHandle = {
 interface Props {
   contest: Contest;
   isAdmin: boolean;
+  /** Скрыть заголовок блока (когда заголовок уже задан контейнером страницы). */
+  hideTitle?: boolean;
+  /** Скрыть секцию номинаций, оставить только критерии жюри. */
+  hideNominationsSection?: boolean;
   /** Только просмотр (редактирование на странице /contests/:id/edit). */
   readOnly?: boolean;
   /** Скрыть кнопку «Сохранить критерии» (общее сохранение на странице редактирования). */
@@ -111,6 +115,8 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     {
       contest,
       isAdmin,
+      hideTitle = false,
+      hideNominationsSection = false,
       readOnly = false,
       hideJuryCriteriaSaveButton = false,
       formDisabled = false,
@@ -126,15 +132,11 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
   const [criteriaDraft, setCriteriaDraft] = useState<JuryCriterionInput[]>([emptyCriterion()]);
   const [loading, setLoading] = useState(true);
   const [savingCriteria, setSavingCriteria] = useState(false);
-  const [nomTitle, setNomTitle] = useState('');
-  const [nomDesc, setNomDesc] = useState('');
-  const [editingNomId, setEditingNomId] = useState<string | null>(null);
-  const [editNomTitle, setEditNomTitle] = useState('');
-  const [editNomDesc, setEditNomDesc] = useState('');
   /** Правки названия/описания номинации применены локально; на сервер — при общем сохранении (saveJuryCriteria). */
   const [dirtyNominationIds, setDirtyNominationIds] = useState<Record<string, true>>({});
   const [logoUploadingNomId, setLogoUploadingNomId] = useState<string | null>(null);
   const [nomOrderBusy, setNomOrderBusy] = useState(false);
+  const [nomAddBusy, setNomAddBusy] = useState(false);
 
   const canEdit = !readOnly && isAdmin;
   const fieldsLocked = formDisabled || !canEdit;
@@ -186,6 +188,13 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
       const ids = Object.keys(dirtyNominationIds);
       if (ids.length === 0) {
         return true;
+      }
+      for (const id of ids) {
+        const n = nominations.find((x) => x.id === id);
+        if (n && !n.title.trim()) {
+          showError('Название номинации обязательно');
+          return false;
+        }
       }
       try {
         for (const id of ids) {
@@ -287,55 +296,52 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
     [persistJuryCriteria]
   );
 
-  const handleAddNomination = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nomTitle.trim()) {
-      showError('Название номинации обязательно');
-      return;
-    }
+  const handleAddNomination = async () => {
+    if (fieldsLocked || nomAddBusy) return;
+    /** API не принимает пустой title — даём имя по умолчанию, дальше правка в списке. */
+    const title = `Номинация ${nominations.length + 1}`;
+    setNomAddBusy(true);
     try {
       const n = await createNomination(contest.id, {
-        title: nomTitle.trim(),
-        description: nomDesc.trim(),
+        title,
+        description: '',
       });
       setNominations((prev) => [...prev, n].sort(sortNominationsByOrder));
-      setNomTitle('');
-      setNomDesc('');
       showSuccess('Номинация добавлена');
     } catch (err) {
       errorHandler.handleError(err, showError, false);
       showError('Не удалось добавить номинацию');
+    } finally {
+      setNomAddBusy(false);
     }
   };
 
-  const startEditNom = (id: string, title: string, description: string) => {
-    setEditingNomId(id);
-    setEditNomTitle(title);
-    setEditNomDesc(description || '');
-  };
-
-  const finishEditingNomination = () => {
-    if (!editingNomId || !editNomTitle.trim()) {
-      showError('Название номинации обязательно');
-      return;
-    }
-    const id = editingNomId;
-    const title = editNomTitle.trim();
-    const description = editNomDesc.trim();
-    const prev = nominations.find((x) => x.id === id);
-    setNominations((p) => p.map((x) => (x.id === id ? { ...x, title, description } : x)));
-    if (!prev || prev.title !== title || (prev.description || '') !== description) {
+  const patchNominationDraft = useCallback(
+    (id: string, patch: { title?: string; description?: string }) => {
+      if (fieldsLocked) return;
+      setNominations((prev) => {
+        const cur = prev.find((x) => x.id === id);
+        if (!cur) return prev;
+        const title = patch.title !== undefined ? patch.title : cur.title;
+        const description = patch.description !== undefined ? patch.description : cur.description ?? '';
+        return prev.map((x) => (x.id === id ? { ...x, title, description } : x));
+      });
       setDirtyNominationIds((d) => ({ ...d, [id]: true }));
-    }
-    setEditingNomId(null);
-  };
+    },
+    [fieldsLocked]
+  );
 
   const handleDeleteNom = async (nominationId: string) => {
     if (!window.confirm('Удалить номинацию?')) return;
     try {
       await deleteNomination(contest.id, nominationId);
       setNominations((prev) => prev.filter((x) => x.id !== nominationId));
-      if (editingNomId === nominationId) setEditingNomId(null);
+      setDirtyNominationIds((d) => {
+        if (!d[nominationId]) return d;
+        const next = { ...d };
+        delete next[nominationId];
+        return next;
+      });
       showSuccess('Удалено');
     } catch (e) {
       errorHandler.handleError(e, showError, false);
@@ -618,21 +624,20 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           : 'contest-organizer-criteria'
       }
     >
-      <h2 className="contest-section-heading contest-organizer-criteria-title">{sectionTitle}</h2>
-      {!readOnly ? (
+      {!hideTitle ? <h2 className="contest-section-heading contest-organizer-criteria-title">{sectionTitle}</h2> : null}
+      {!readOnly && !hideJuryCriteriaSaveButton ? (
         <p className="contest-organizer-criteria-hint">
-          {hideJuryCriteriaSaveButton
-            ? 'Добавление и удаление номинаций, порядок и логотипы в списке сохраняются сразу. Название и описание номинации после правки в списке, а также критерии жюри ниже — кнопкой «Сохранить изменения» вверху или внизу страницы.'
-            : 'Сохраните изменения кнопкой внизу блока.'}
+          Сохраните изменения кнопкой внизу блока.
         </p>
       ) : null}
-      {!audienceView && canEdit && !readOnly ? (
+      {!audienceView && canEdit && !readOnly && !hideJuryCriteriaSaveButton ? (
         <p className="contest-organizer-criteria-hint contest-organizer-criteria-hint--secondary">
           Лимит фотографий в заявке: {contest.min_photo_count ?? 1}–{contest.max_photo_count ?? 30} (настраивается в
           разделе «Фотографии в заявке» на странице редактирования конкурса).
         </p>
       ) : null}
 
+      {!hideNominationsSection ? (
       <div className="contest-organizer-criteria-block">
         {audienceView ? <h3 className="contest-section-subheading">Список категорий</h3> : null}
         {nominations.length === 0 && !canEdit ? (
@@ -649,23 +654,24 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
             }
           >
             {nominations.map((n, index) => {
-              const { primary, secondary } = nominationPrimarySecondary(n.title, n.description || '');
-              return (
-                <li key={n.id}>
-                  {canEdit && editingNomId === n.id ? (
+              if (canEdit) {
+                return (
+                  <li key={n.id}>
                     <div className="contest-organizer-criteria-edit">
                       <input
-                        value={editNomTitle}
-                        onChange={(e) => setEditNomTitle(e.target.value)}
+                        value={n.title}
+                        onChange={(e) => patchNominationDraft(n.id, { title: e.target.value })}
                         className="contest-organizer-criteria-input"
                         disabled={fieldsLocked}
+                        aria-label={`Название номинации ${index + 1}`}
                       />
                       <textarea
-                        value={editNomDesc}
-                        onChange={(e) => setEditNomDesc(e.target.value)}
+                        value={n.description || ''}
+                        onChange={(e) => patchNominationDraft(n.id, { description: e.target.value })}
                         rows={2}
                         className="contest-organizer-criteria-textarea"
                         disabled={fieldsLocked}
+                        aria-label={`Описание номинации ${index + 1}`}
                       />
                       <ContestAssetImageField
                         compact
@@ -677,130 +683,87 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
                         disabled={fieldsLocked}
                       />
                       <div className="contest-organizer-criteria-actions">
+                        {nominations.length > 1 ? (
+                          <span className="reorder-icon-actions">
+                            <button
+                              type="button"
+                              className="reorder-icon-btn"
+                              onClick={() => void moveNomination(index, -1)}
+                              disabled={fieldsLocked || nomOrderBusy || index === 0}
+                              aria-label="Переместить номинацию выше"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="reorder-icon-btn"
+                              onClick={() => void moveNomination(index, 1)}
+                              disabled={fieldsLocked || nomOrderBusy || index >= nominations.length - 1}
+                              aria-label="Переместить номинацию ниже"
+                            >
+                              ↓
+                            </button>
+                          </span>
+                        ) : null}
                         <Button
                           type="button"
-                          variant="secondary"
+                          variant="danger"
                           size="small"
-                          onClick={finishEditingNomination}
-                          disabled={fieldsLocked}
+                          onClick={() => handleDeleteNom(n.id)}
+                          disabled={fieldsLocked || nomOrderBusy}
                         >
-                          Готово
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="small"
-                          onClick={() => setEditingNomId(null)}
-                          disabled={fieldsLocked}
-                        >
-                          Отмена
+                          Удалить
                         </Button>
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      {nominationsPublicCompact ? (
-                        <div className="contest-organizer-criteria-nom-inline">
-                          <span className="contest-organizer-criteria-nom-inline-lead" aria-hidden>
+                  </li>
+                );
+              }
+
+              const { primary, secondary } = nominationPrimarySecondary(n.title, n.description || '');
+              return (
+                <li key={n.id}>
+                  <>
+                    {nominationsPublicCompact ? (
+                      <div className="contest-organizer-criteria-nom-inline">
+                        <span className="contest-organizer-criteria-nom-inline-lead" aria-hidden>
+                          {(n.logo_url || '').trim() ? (
+                            <img
+                              className="contest-organizer-criteria-nom-inline-logo"
+                              src={resolvePublicAssetUrl((n.logo_url || '').trim())}
+                              alt=""
+                            />
+                          ) : (
+                            <NominationCategoryGlyph />
+                          )}
+                        </span>
+                        <div className="contest-organizer-criteria-nom-inline-text">
+                          <span className="contest-organizer-criteria-nom-inline-title">{primary}</span>
+                          {secondary ? (
+                            <span className="contest-organizer-criteria-nom-inline-desc">{secondary}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="contest-organizer-criteria-nom-block">
+                        <div className="contest-organizer-criteria-nom-head">
+                          <div className="contest-organizer-criteria-nom-head-aside">
                             {(n.logo_url || '').trim() ? (
-                              <img
-                                className="contest-organizer-criteria-nom-inline-logo"
-                                src={resolvePublicAssetUrl((n.logo_url || '').trim())}
-                                alt=""
-                              />
-                            ) : (
-                              <NominationCategoryGlyph />
-                            )}
-                          </span>
-                          <div className="contest-organizer-criteria-nom-inline-text">
-                            <span className="contest-organizer-criteria-nom-inline-title">{primary}</span>
+                              <div className="contest-organizer-criteria-nom-logo-thumb" aria-hidden>
+                                <img src={resolvePublicAssetUrl((n.logo_url || '').trim())} alt="" />
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="contest-organizer-criteria-nom-head-text">
+                            <strong className="contest-organizer-criteria-nom-title">{primary}</strong>
                             {secondary ? (
-                              <span className="contest-organizer-criteria-nom-inline-desc">{secondary}</span>
+                              <span className="contest-organizer-criteria-desc">{secondary}</span>
                             ) : null}
                           </div>
                         </div>
-                      ) : (
-                        <div className="contest-organizer-criteria-nom-block">
-                          <div className="contest-organizer-criteria-nom-head">
-                            <div className="contest-organizer-criteria-nom-head-aside">
-                              {canEdit ? (
-                                <ContestAssetImageField
-                                  compact
-                                  legend="Логотип"
-                                  url={n.logo_url || ''}
-                                  onPickFile={(file) => void handleNominationLogoFile(n.id, file)}
-                                  onClear={() => void handleClearNominationLogo(n.id)}
-                                  uploading={logoUploadingNomId === n.id}
-                                  disabled={fieldsLocked}
-                                />
-                              ) : (n.logo_url || '').trim() ? (
-                                <div className="contest-organizer-criteria-nom-logo-thumb" aria-hidden>
-                                  <img
-                                    src={resolvePublicAssetUrl((n.logo_url || '').trim())}
-                                    alt=""
-                                  />
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="contest-organizer-criteria-nom-head-text">
-                              <strong className="contest-organizer-criteria-nom-title">{primary}</strong>
-                              {secondary ? (
-                                <span className="contest-organizer-criteria-desc">{secondary}</span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {canEdit && (
-                        <div className="contest-organizer-criteria-actions">
-                          {nominations.length > 1 ? (
-                            <span className="reorder-icon-actions">
-                              <button
-                                type="button"
-                                className="reorder-icon-btn"
-                                onClick={() => void moveNomination(index, -1)}
-                                disabled={fieldsLocked || nomOrderBusy || index === 0}
-                                aria-label="Переместить номинацию выше"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                type="button"
-                                className="reorder-icon-btn"
-                                onClick={() => void moveNomination(index, 1)}
-                                disabled={
-                                  fieldsLocked ||
-                                  nomOrderBusy ||
-                                  index >= nominations.length - 1
-                                }
-                                aria-label="Переместить номинацию ниже"
-                              >
-                                ↓
-                              </button>
-                            </span>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="small"
-                            onClick={() => startEditNom(n.id, n.title, n.description)}
-                            disabled={fieldsLocked || nomOrderBusy}
-                          >
-                            Изменить
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="small"
-                            onClick={() => handleDeleteNom(n.id)}
-                            disabled={fieldsLocked || nomOrderBusy}
-                          >
-                            Удалить
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
+                      </div>
+                    )}
+                  </>
                 </li>
               );
             })}
@@ -810,29 +773,15 @@ export const ContestOrganizerCriteriaPanel = forwardRef<ContestOrganizerCriteria
           ) : null}
           </>
         )}
-        {canEdit && (
-          <form onSubmit={handleAddNomination} className="contest-organizer-criteria-form">
-            <input
-              placeholder="Название номинации"
-              value={nomTitle}
-              onChange={(e) => setNomTitle(e.target.value)}
-              className="contest-organizer-criteria-input"
-              disabled={fieldsLocked}
-            />
-            <textarea
-              placeholder="Описание (необязательно)"
-              value={nomDesc}
-              onChange={(e) => setNomDesc(e.target.value)}
-              rows={2}
-              className="contest-organizer-criteria-textarea"
-              disabled={fieldsLocked}
-            />
-            <Button type="submit" disabled={fieldsLocked}>
+        {canEdit ? (
+          <div className="contest-organizer-criteria-form">
+            <Button type="button" disabled={fieldsLocked || nomAddBusy} onClick={() => void handleAddNomination()}>
               Добавить номинацию
             </Button>
-          </form>
-        )}
+          </div>
+        ) : null}
       </div>
+      ) : null}
 
       {juryCriteriaInPanel ? juryCriteriaBlock : null}
       {juryCriteriaPortaled ? createPortal(juryCriteriaBlock, juryCriteriaPortalHost) : null}

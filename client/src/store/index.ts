@@ -5,6 +5,7 @@ import participantsReducer from './slices/participantsSlice';
 import commentsReducer from './slices/commentsSlice';
 import chatReducer from './slices/chatSlice';
 import notificationsReducer from './slices/notificationsSlice';
+import directMessagesReducer from './slices/directMessagesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     comments: commentsReducer,
     chat: chatReducer,
     notifications: notificationsReducer,
+    directMessages: directMessagesReducer,
   },
 });
 

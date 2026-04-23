@@ -18,7 +18,11 @@ type Querier interface {
 	CountCommentsByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	CountContestJuryCriteria(ctx context.Context, contestID pgtype.UUID) (int64, error)
 	CountContestJuryMembers(ctx context.Context, contestID pgtype.UUID) (int64, error)
+	CountContestUserVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
+	CountContestUserVotesByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error)
 	CountContests(ctx context.Context, dollar_1 string) (int64, error)
+	CountDirectConversationsByUser(ctx context.Context, userID int64) (int64, error)
+	CountDirectMessagesByConversation(ctx context.Context, conversationID pgtype.UUID) (int64, error)
 	// Сколько членов жюри выставили баллы по всем критериям конкурса для каждой заявки.
 	CountJuryFullyScoredJurorsByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*CountJuryFullyScoredJurorsByParticipantIDsRow, error)
 	CountNominationsByContest(ctx context.Context, contestID pgtype.UUID) (int64, error)
@@ -35,6 +39,7 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg *CreateCommentParams) (*ContestComment, error)
 	// Contests
 	CreateContest(ctx context.Context, arg *CreateContestParams) (*Contest, error)
+	CreateDirectMessage(ctx context.Context, arg *CreateDirectMessageParams) (*DirectMessage, error)
 	// Contest nominations (категории; без шкал — шкалы только у критериев конкурса)
 	CreateNomination(ctx context.Context, arg *CreateNominationParams) (*ContestNomination, error)
 	// Contest Participants
@@ -51,8 +56,10 @@ type Querier interface {
 	DeleteContestCommentsSubtree(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error)
 	DeleteContestJuryMember(ctx context.Context, arg *DeleteContestJuryMemberParams) error
 	DeleteContestJuryMembersByUserID(ctx context.Context, userID int64) error
+	DeleteContestUserVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestUserVoteByUserAndParticipantParams) (pgtype.UUID, error)
 	DeleteContestVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestVoteByUserAndParticipantParams) (pgtype.UUID, error)
 	DeleteContestVotesByUserID(ctx context.Context, userID int64) error
+	DeleteDirectMessageByID(ctx context.Context, messageID pgtype.UUID) (*DirectMessage, error)
 	DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error
 	DeleteJuryCriterionForContest(ctx context.Context, arg *DeleteJuryCriterionForContestParams) error
 	DeleteNomination(ctx context.Context, id pgtype.UUID) error
@@ -72,8 +79,14 @@ type Querier interface {
 	GetCommentVoteStats(ctx context.Context, id pgtype.UUID) (*GetCommentVoteStatsRow, error)
 	GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error)
 	GetContestJuryMemberWithName(ctx context.Context, arg *GetContestJuryMemberWithNameParams) (*GetContestJuryMemberWithNameRow, error)
+	// Direct messages (private user-to-user chat)
+	GetDirectConversationByID(ctx context.Context, conversationID pgtype.UUID) (*DirectConversation, error)
+	GetDirectConversationByPair(ctx context.Context, arg *GetDirectConversationByPairParams) (*DirectConversation, error)
+	GetDirectConversationForUser(ctx context.Context, arg *GetDirectConversationForUserParams) (*DirectConversation, error)
+	GetDirectMessageByID(ctx context.Context, messageID pgtype.UUID) (*DirectMessage, error)
 	GetMaxPhotoPositionByParticipant(ctx context.Context, participantID pgtype.UUID) (interface{}, error)
 	GetNominationByContest(ctx context.Context, arg *GetNominationByContestParams) (*ContestNomination, error)
+	GetOrCreateDirectConversationByPair(ctx context.Context, arg *GetOrCreateDirectConversationByPairParams) (*DirectConversation, error)
 	GetParticipantByContestUserAndNomination(ctx context.Context, arg *GetParticipantByContestUserAndNominationParams) (*GetParticipantByContestUserAndNominationRow, error)
 	GetParticipantByID(ctx context.Context, id pgtype.UUID) (*GetParticipantByIDRow, error)
 	GetPhotosByParticipantID(ctx context.Context, participantID pgtype.UUID) ([]*ContestParticipantPhoto, error)
@@ -92,6 +105,8 @@ type Querier interface {
 	IsUserBlocked(ctx context.Context, userID int64) (bool, error)
 	ListAcceptedParticipantScoresForContest(ctx context.Context, contestID pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestRow, error)
 	ListAcceptedParticipantScoresForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ListAcceptedParticipantScoresForContestsRow, error)
+	ListAcceptedParticipantUserVoteScoresForContest(ctx context.Context, contestID pgtype.UUID) ([]*ListAcceptedParticipantUserVoteScoresForContestRow, error)
+	ListAcceptedParticipantUserVoteScoresForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ListAcceptedParticipantUserVoteScoresForContestsRow, error)
 	ListChatMessages(ctx context.Context, arg *ListChatMessagesParams) ([]*ListChatMessagesRow, error)
 	ListCommentsByParticipant(ctx context.Context, arg *ListCommentsByParticipantParams) ([]*ListCommentsByParticipantRow, error)
 	// Contest jury members
@@ -101,9 +116,13 @@ type Querier interface {
 	ListContestJuryScoresReportByParticipant(ctx context.Context, participantID pgtype.UUID) ([]*ListContestJuryScoresReportByParticipantRow, error)
 	// Прогресс оценивания: каждая пара (работа × член жюри) и число выставленных критериев.
 	ListContestJuryVotingProgressByContest(ctx context.Context, contestID pgtype.UUID) ([]*ListContestJuryVotingProgressByContestRow, error)
+	ListContestUserVotersByParticipant(ctx context.Context, arg *ListContestUserVotersByParticipantParams) ([]*ListContestUserVotersByParticipantRow, error)
+	ListContestUserVotesByUser(ctx context.Context, arg *ListContestUserVotesByUserParams) ([]*ContestUserVote, error)
 	ListContestVotesByUser(ctx context.Context, arg *ListContestVotesByUserParams) ([]*ContestVote, error)
 	ListContests(ctx context.Context, arg *ListContestsParams) ([]*Contest, error)
 	ListContestsForStatusAutomation(ctx context.Context) ([]*Contest, error)
+	ListDirectConversationsByUser(ctx context.Context, arg *ListDirectConversationsByUserParams) ([]*ListDirectConversationsByUserRow, error)
+	ListDirectMessagesByConversation(ctx context.Context, arg *ListDirectMessagesByConversationParams) ([]*ListDirectMessagesByConversationRow, error)
 	// Contest jury criteria (общие для всего конкурса)
 	ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error)
 	// Свод председателя: взвешенная сумма по каждой паре (заявка × член жюри).
@@ -132,12 +151,14 @@ type Querier interface {
 	SumJuryScoresByParticipantID(ctx context.Context, participantID pgtype.UUID) (float64, error)
 	SumJuryScoresByParticipantIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]*SumJuryScoresByParticipantIDsRow, error)
 	SyncNominationPhotoCountsByContest(ctx context.Context, arg *SyncNominationPhotoCountsByContestParams) error
+	TouchDirectConversation(ctx context.Context, conversationID pgtype.UUID) error
 	UpdateChatMessage(ctx context.Context, arg *UpdateChatMessageParams) (*ContestChatMessage, error)
 	UpdateComment(ctx context.Context, arg *UpdateCommentParams) (*ContestComment, error)
 	UpdateContest(ctx context.Context, arg *UpdateContestParams) (*Contest, error)
 	UpdateContestJuryMember(ctx context.Context, arg *UpdateContestJuryMemberParams) (*UpdateContestJuryMemberRow, error)
 	UpdateContestStatus(ctx context.Context, arg *UpdateContestStatusParams) (*Contest, error)
 	UpdateContestVotingResults(ctx context.Context, arg *UpdateContestVotingResultsParams) (*Contest, error)
+	UpdateDirectMessageByID(ctx context.Context, arg *UpdateDirectMessageByIDParams) (*DirectMessage, error)
 	UpdateJuryCriterion(ctx context.Context, arg *UpdateJuryCriterionParams) (*ContestJuryCriterium, error)
 	UpdateNomination(ctx context.Context, arg *UpdateNominationParams) (*ContestNomination, error)
 	UpdateNominationLogoUrl(ctx context.Context, arg *UpdateNominationLogoUrlParams) (*ContestNomination, error)
@@ -152,6 +173,7 @@ type Querier interface {
 	UpsertChatMessageVote(ctx context.Context, arg *UpsertChatMessageVoteParams) (*UpsertChatMessageVoteRow, error)
 	UpsertCommentVote(ctx context.Context, arg *UpsertCommentVoteParams) (*UpsertCommentVoteRow, error)
 	UpsertContestJuryScore(ctx context.Context, arg *UpsertContestJuryScoreParams) (*ContestJuryScore, error)
+	UpsertContestUserVote(ctx context.Context, arg *UpsertContestUserVoteParams) (*ContestUserVote, error)
 	// Contest Votes
 	UpsertContestVote(ctx context.Context, arg *UpsertContestVoteParams) (*ContestVote, error)
 	UpsertParticipantFavorite(ctx context.Context, arg *UpsertParticipantFavoriteParams) error

@@ -16,7 +16,6 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
   const coverRaw = (contest.cover_url || '').trim();
   const logoRaw = (contest.logo_url || '').trim();
   const taglineRaw = (contest.tagline || '').trim();
-  const participantDomains = (contest.participant_allowed_email_domains ?? []).filter(Boolean);
 
   const cardStyle = useMemo(
     () =>
@@ -84,11 +83,6 @@ export const ContestCard: React.FC<ContestCardProps> = ({ contest }) => {
               <h3 className="contest-card-title">{contest.title}</h3>
             </div>
             {taglineRaw ? <p className="contest-card-tagline">{taglineRaw}</p> : null}
-            {participantDomains.length > 0 ? (
-              <p className="contest-card-domain-hint" title={participantDomains.join(', ')}>
-                Участие: e-mail на {participantDomains.length === 1 ? `домене ${participantDomains[0]}` : 'указанных доменах'}
-              </p>
-            ) : null}
           </div>
           <span className={`contest-card-status ${getStatusClass(contest.status)}`}>
             {getStatusLabel(contest.status)}

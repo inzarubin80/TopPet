@@ -153,28 +153,29 @@ SET
   title = $2,
   description = $3,
   public_voting_enabled = $4,
-  jury_voting_enabled = $5,
-  cover_url = $6,
-  tagline = $7,
-  rules_text = $8,
-  prize_text = $9,
-  jury_prize_places = $10,
-  audience_prize_places = $11,
-  logo_url = $12,
-  theme_color = $13,
-  sponsor_name = $14,
-  sponsor_logo_url = $15,
-  sponsor_url = $16,
-  cta_label_override = $17,
-  publication_starts_at = $18,
-  registration_starts_at = $19,
-  voting_starts_at = $20,
-  voting_ends_at = $21,
-  participant_allowed_email_domains = $22,
-  schedule_timezone = $23,
-  min_photo_count = $24,
-  max_photo_count = $25,
-  entry_title_hint = $26,
+  user_voting_mode = $5,
+  jury_voting_enabled = $6,
+  cover_url = $7,
+  tagline = $8,
+  rules_text = $9,
+  prize_text = $10,
+  jury_prize_places = $11,
+  audience_prize_places = $12,
+  logo_url = $13,
+  theme_color = $14,
+  sponsor_name = $15,
+  sponsor_logo_url = $16,
+  sponsor_url = $17,
+  cta_label_override = $18,
+  publication_starts_at = $19,
+  registration_starts_at = $20,
+  voting_starts_at = $21,
+  voting_ends_at = $22,
+  participant_allowed_email_domains = $23,
+  schedule_timezone = $24,
+  min_photo_count = $25,
+  max_photo_count = $26,
+  entry_title_hint = $27,
   updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -591,6 +592,26 @@ LEFT JOIN (
 ) js ON js.participant_id = cp.id
 WHERE cp.contest_id = $1 AND cp.submission_status = 'accepted';
 
+-- name: ListAcceptedParticipantUserVoteScoresForContest :many
+SELECT
+    cp.id AS participant_id,
+    cp.nomination_id,
+    cp.pet_name,
+    COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
+    COALESCE(js.jury_sum, 0)::bigint AS jury_sum
+FROM contest_participants cp
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS vote_cnt
+    FROM contest_user_votes
+    GROUP BY participant_id
+) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, SUM(score)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
+WHERE cp.contest_id = $1 AND cp.submission_status = 'accepted';
+
 -- name: ListAcceptedParticipantScoresForContests :many
 SELECT
     cp.contest_id,
@@ -603,6 +624,27 @@ FROM contest_participants cp
 LEFT JOIN (
     SELECT participant_id, COUNT(*)::bigint AS vote_cnt
     FROM contest_votes
+    GROUP BY participant_id
+) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, SUM(score)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
+WHERE cp.contest_id = ANY($1::uuid[]) AND cp.submission_status = 'accepted';
+
+-- name: ListAcceptedParticipantUserVoteScoresForContests :many
+SELECT
+    cp.contest_id,
+    cp.id AS participant_id,
+    cp.nomination_id,
+    cp.pet_name,
+    COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
+    COALESCE(js.jury_sum, 0)::bigint AS jury_sum
+FROM contest_participants cp
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS vote_cnt
+    FROM contest_user_votes
     GROUP BY participant_id
 ) vc ON vc.participant_id = cp.id
 LEFT JOIN (
@@ -626,6 +668,44 @@ SELECT
     COALESCE(u.name, 'Пользователь ' || cv.user_id::text) AS user_name,
     cv.created_at
 FROM contest_votes cv
+LEFT JOIN users u ON u.user_id = cv.user_id
+WHERE cv.contest_id = $1 AND cv.participant_id = $2
+ORDER BY cv.created_at ASC;
+
+-- name: UpsertContestUserVote :one
+INSERT INTO contest_user_votes (id, contest_id, participant_id, nomination_id, user_id)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (contest_id, user_id, nomination_slot)
+DO UPDATE SET
+    participant_id = EXCLUDED.participant_id,
+    nomination_id = EXCLUDED.nomination_id,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: ListContestUserVotesByUser :many
+SELECT * FROM contest_user_votes
+WHERE contest_id = $1 AND user_id = $2
+ORDER BY created_at ASC;
+
+-- name: DeleteContestUserVoteByUserAndParticipant :one
+DELETE FROM contest_user_votes
+WHERE contest_id = @contest_id AND user_id = @user_id AND participant_id = @participant_id
+RETURNING participant_id;
+
+-- name: CountContestUserVotesByContest :one
+SELECT count(1) FROM contest_user_votes
+WHERE contest_id = $1;
+
+-- name: CountContestUserVotesByParticipant :one
+SELECT count(1) FROM contest_user_votes
+WHERE participant_id = $1;
+
+-- name: ListContestUserVotersByParticipant :many
+SELECT
+    cv.user_id,
+    COALESCE(u.name, 'Пользователь ' || cv.user_id::text) AS user_name,
+    cv.created_at
+FROM contest_user_votes cv
 LEFT JOIN users u ON u.user_id = cv.user_id
 WHERE cv.contest_id = $1 AND cv.participant_id = $2
 ORDER BY cv.created_at ASC;
@@ -1122,6 +1202,132 @@ INSERT INTO contest_registration_fields (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, contest_id, sort_order, label, field_type, required, enum_options, help_text, created_at;
 
+
+-- Direct messages (private user-to-user chat)
+
+-- name: GetDirectConversationByID :one
+SELECT *
+FROM direct_conversations
+WHERE id = @conversation_id;
+
+-- name: GetDirectConversationForUser :one
+SELECT *
+FROM direct_conversations
+WHERE id = @conversation_id
+  AND (user_low_id = @user_id OR user_high_id = @user_id);
+
+-- name: GetDirectConversationByPair :one
+SELECT *
+FROM direct_conversations
+WHERE user_low_id = LEAST(@user_a_id::bigint, @user_b_id::bigint)
+  AND user_high_id = GREATEST(@user_a_id::bigint, @user_b_id::bigint);
+
+-- name: GetOrCreateDirectConversationByPair :one
+INSERT INTO direct_conversations (user_low_id, user_high_id)
+VALUES (
+    LEAST(@user_a_id::bigint, @user_b_id::bigint),
+    GREATEST(@user_a_id::bigint, @user_b_id::bigint)
+)
+ON CONFLICT (user_low_id, user_high_id)
+DO UPDATE SET updated_at = NOW()
+RETURNING *;
+
+-- name: ListDirectConversationsByUser :many
+SELECT
+    dc.id,
+    dc.user_low_id,
+    dc.user_high_id,
+    dc.last_message_at,
+    dc.created_at,
+    dc.updated_at,
+    CASE
+        WHEN dc.user_low_id = @user_id THEN dc.user_high_id
+        ELSE dc.user_low_id
+    END AS peer_user_id,
+    COALESCE(
+        u.name,
+        'Пользователь ' || (
+            CASE
+                WHEN dc.user_low_id = @user_id THEN dc.user_high_id
+                ELSE dc.user_low_id
+            END
+        )::text
+    ) AS peer_user_name,
+    u.avatar_url AS peer_user_avatar_url,
+    COALESCE((
+        SELECT dm.text
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+        ORDER BY dm.created_at DESC, dm.id DESC
+        LIMIT 1
+    ), '') AS last_message_text,
+    (
+        SELECT dm.created_at
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+        ORDER BY dm.created_at DESC, dm.id DESC
+        LIMIT 1
+    ) AS last_message_created_at
+FROM direct_conversations dc
+LEFT JOIN users u ON u.user_id = CASE
+    WHEN dc.user_low_id = @user_id THEN dc.user_high_id
+    ELSE dc.user_low_id
+END
+WHERE dc.user_low_id = @user_id OR dc.user_high_id = @user_id
+ORDER BY dc.last_message_at DESC, dc.created_at DESC
+LIMIT @list_limit::int OFFSET @list_offset::int;
+
+-- name: CountDirectConversationsByUser :one
+SELECT COUNT(*)::bigint
+FROM direct_conversations
+WHERE user_low_id = @user_id OR user_high_id = @user_id;
+
+-- name: CreateDirectMessage :one
+INSERT INTO direct_messages (conversation_id, sender_user_id, text)
+VALUES (@conversation_id, @sender_user_id, @text)
+RETURNING *;
+
+-- name: GetDirectMessageByID :one
+SELECT *
+FROM direct_messages
+WHERE id = @message_id;
+
+-- name: UpdateDirectMessageByID :one
+UPDATE direct_messages
+SET text = @text, updated_at = NOW()
+WHERE id = @message_id
+RETURNING *;
+
+-- name: DeleteDirectMessageByID :one
+DELETE FROM direct_messages
+WHERE id = @message_id
+RETURNING *;
+
+-- name: TouchDirectConversation :exec
+UPDATE direct_conversations
+SET last_message_at = NOW(), updated_at = NOW()
+WHERE id = @conversation_id;
+
+-- name: ListDirectMessagesByConversation :many
+SELECT
+    dm.id,
+    dm.conversation_id,
+    dm.sender_user_id,
+    dm.text,
+    dm.created_at,
+    dm.updated_at,
+    COALESCE(u.name, 'Пользователь ' || dm.sender_user_id::text) AS sender_user_name,
+    u.avatar_url AS sender_user_avatar_url
+FROM direct_messages dm
+LEFT JOIN users u ON u.user_id = dm.sender_user_id
+WHERE dm.conversation_id = @conversation_id
+ORDER BY dm.created_at ASC, dm.id ASC
+LIMIT @list_limit::int OFFSET @list_offset::int;
+
+-- name: CountDirectMessagesByConversation :one
+SELECT COUNT(*)::bigint
+FROM direct_messages
+WHERE conversation_id = @conversation_id;
 
 -- User notifications (per-user, not tied to contest WebSocket room)
 

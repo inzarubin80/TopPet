@@ -450,6 +450,30 @@ func (a *App) registerRoutes() {
 		appHttp.NewUserNotificationsReadAllHandler("/api/me/notifications/read-all", a.service),
 		a.service,
 	))
+	a.mux.Handle("GET /api/me/dm/conversations", middleware.NewAuthMiddleware(
+		appHttp.NewDirectConversationsHandler("/api/me/dm/conversations", a.service),
+		a.service,
+	))
+	a.mux.Handle("POST /api/me/dm/conversations", middleware.NewAuthMiddleware(
+		appHttp.NewDirectConversationsHandler("/api/me/dm/conversations", a.service),
+		a.service,
+	))
+	a.mux.Handle("GET /api/me/dm/{conversationId}/messages", middleware.NewAuthMiddleware(
+		appHttp.NewDirectConversationMessagesHandler("/api/me/dm/{conversationId}/messages", a.service),
+		a.service,
+	))
+	a.mux.Handle("POST /api/me/dm/{conversationId}/messages", middleware.NewAuthMiddleware(
+		appHttp.NewDirectConversationMessagesHandler("/api/me/dm/{conversationId}/messages", a.service),
+		a.service,
+	))
+	a.mux.Handle("PATCH /api/me/dm/{conversationId}/messages/{messageId}", middleware.NewAuthMiddleware(
+		appHttp.NewDirectMessageHandler("/api/me/dm/{conversationId}/messages/{messageId}", a.service),
+		a.service,
+	))
+	a.mux.Handle("DELETE /api/me/dm/{conversationId}/messages/{messageId}", middleware.NewAuthMiddleware(
+		appHttp.NewDirectMessageHandler("/api/me/dm/{conversationId}/messages/{messageId}", a.service),
+		a.service,
+	))
 	a.mux.Handle("GET /api/me/notifications/ws", appHttp.NewUserNotificationsWSHandler("/api/me/notifications/ws", a.service, a.service, a.userHub))
 
 	// Chat (public)

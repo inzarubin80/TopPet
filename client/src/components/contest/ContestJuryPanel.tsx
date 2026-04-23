@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react';
-import { Contest, ContestTier, JuryMember, UserSearchHit } from '../../types/models';
+import { Contest, JuryMember, UserSearchHit } from '../../types/models';
 import {
   getContestJury,
   addJuryMember,
@@ -14,9 +14,6 @@ import '../common/ReorderIconButtons.css';
 import { useToast } from '../../contexts/ToastContext';
 import { errorHandler } from '../../utils/errorHandler';
 import './ContestJuryPanel.css';
-
-const maxJuryHint = (tier: ContestTier | undefined) =>
-  tier === 'pro' ? 'На тарифе Pro — до 50 человек.' : 'На бесплатном тарифе — до 2 человек.';
 
 export type ContestJuryPanelHandle = {
   /** Отправить на сервер несохранённые правки портфолио и описания членов жюри (общее сохранение страницы). */
@@ -71,8 +68,6 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
     }, [load]);
 
     const canEdit = isAdmin;
-    const tier = contest.tier || 'free';
-
     const juryUserIds = new Set(items.map((j) => j.user_id));
 
     useEffect(() => {
@@ -314,13 +309,6 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
           >
             Состав жюри
           </h2>
-          {canEdit ? (
-            <p className="contest-jury-hint">
-              {maxJuryHint(tier)} Состав жюри может менять организатор в любой фазе конкурса. Добавление и удаление
-              членов жюри и порядок в списке применяются сразу. Портфолио и краткое описание — вместе со страницей
-              конкурса (кнопка «Сохранить изменения»).
-            </p>
-          ) : null}
           {loading ? (
             <p className="contest-jury-muted">Загрузка…</p>
           ) : items.length === 0 ? (

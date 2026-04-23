@@ -259,10 +259,17 @@ func (s *TopPetService) GetParticipant(ctx context.Context, participantID model.
 	photos, _ := s.repository.GetPhotosByParticipantID(ctx, participantID)
 	participant.Photos = photos
 
-	// Add total votes count
-	totalVotes, err := s.repository.CountVotesByParticipant(ctx, participantID)
-	if err == nil {
-		participant.TotalVotes = totalVotes
+	// Add total votes count according to active user voting mode.
+	if isContestUserVotingModeLikes(contest.UserVotingMode) {
+		totalVotes, err := s.repository.CountVotesByParticipant(ctx, participantID)
+		if err == nil {
+			participant.TotalVotes = totalVotes
+		}
+	} else {
+		totalVotes, err := s.repository.CountContestUserVotesByParticipant(ctx, participantID)
+		if err == nil {
+			participant.TotalVotes = totalVotes
+		}
 	}
 
 	s.attachOneParticipantJuryScoreTotal(ctx, contest, viewer, participant)
@@ -351,8 +358,35 @@ func (s *TopPetService) ListParticipantsByContest(ctx context.Context, contestID
 		photos, _ := s.repository.GetPhotosByParticipantID(ctx, p.ID)
 		p.Photos = photos
 
-		totalVotes, _ := s.repository.CountVotesByParticipant(ctx, p.ID)
-		p.TotalVotes = totalVotes
+		if isContestUserVotingModeLikes(contest.UserVotingMode) {
+			totalVotes, _ := s.repository.CountVotesByParticipant(ctx, p.ID)
+			p.TotalVotes = totalVotes
+		} else {
+			totalVotes, _ := s.repository.CountContestUserVotesByParticipant(ctx, p.ID)
+			p.TotalVotes = totalVotes
+		}
+	}
+	if !isContestUserVotingModeLikes(contest.UserVotingMode) {
+		debugTotals := make([]map[string]any, 0, len(participants))
+		for i, p := range participants {
+			if i >= 8 {
+				break
+			}
+			likesCnt, _ := s.repository.CountVotesByParticipant(ctx, p.ID)
+			userVotesCnt, _ := s.repository.CountContestUserVotesByParticipant(ctx, p.ID)
+			debugTotals = append(debugTotals, map[string]any{
+				"participantId": p.ID,
+				"likesVotes":    likesCnt,
+				"userVotes":     userVotesCnt,
+				"assignedTotal": p.TotalVotes,
+			})
+		}
+		appendDebugVoteLog("H9", "service_participant:ListParticipantsByContest", "Participant totals in non-likes mode", map[string]any{
+			"contestId":       contestID,
+			"userVotingMode":  contest.UserVotingMode,
+			"participantsLen": len(participants),
+			"totalsSample":    debugTotals,
+		})
 	}
 
 	s.attachParticipantJuryScoreTotals(ctx, contest, viewer, participants)

@@ -6,9 +6,48 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
+export type UserNotificationsConnectionState =
+  | 'DISCONNECTED'
+  | 'CONNECTING'
+  | 'CONNECTED'
+  | 'RECONNECTING';
+
 export type UserNotificationIncoming =
   | { type: 'notification_unread'; total_unread: number }
-  | { type: 'notification'; notification: Record<string, unknown> };
+  | { type: 'notification'; notification: Record<string, unknown> }
+  | {
+      type: 'direct_message';
+      conversation_id: string;
+      message: {
+        id: string;
+        conversation_id: string;
+        sender_user_id: number;
+        sender_user_name: string;
+        sender_user_avatar_url?: string;
+        text: string;
+        created_at: string;
+        updated_at: string;
+      };
+    }
+  | {
+      type: 'direct_message_updated';
+      conversation_id: string;
+      message: {
+        id: string;
+        conversation_id: string;
+        sender_user_id: number;
+        sender_user_name: string;
+        sender_user_avatar_url?: string;
+        text: string;
+        created_at: string;
+        updated_at: string;
+      };
+    }
+  | {
+      type: 'direct_message_deleted';
+      conversation_id: string;
+      message_id: string;
+    };
 
 export class UserNotificationsWebSocketClient {
   private ws: WebSocket | null = null;
@@ -16,10 +55,26 @@ export class UserNotificationsWebSocketClient {
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private onMessageHandler: ((msg: UserNotificationIncoming) => void) | null = null;
+  private onStateChangeHandler: ((state: UserNotificationsConnectionState) => void) | null = null;
+  private connectionState: UserNotificationsConnectionState = 'DISCONNECTED';
   private shouldRun = false;
 
   setOnMessage(handler: (msg: UserNotificationIncoming) => void): void {
     this.onMessageHandler = handler;
+  }
+
+  setOnStateChange(handler: (state: UserNotificationsConnectionState) => void): void {
+    this.onStateChangeHandler = handler;
+  }
+
+  private setConnectionState(next: UserNotificationsConnectionState): void {
+    if (this.connectionState === next) {
+      return;
+    }
+    this.connectionState = next;
+    if (this.onStateChangeHandler) {
+      this.onStateChangeHandler(next);
+    }
   }
 
   private getUrl(): string {
@@ -40,6 +95,7 @@ export class UserNotificationsWebSocketClient {
     this.shouldRun = true;
     this.accessToken = accessToken;
     this.reconnectAttempts = 0;
+    this.setConnectionState('CONNECTING');
     this.doConnect();
   }
 
@@ -53,6 +109,7 @@ export class UserNotificationsWebSocketClient {
       this.ws.close(1000, 'client disconnect');
       this.ws = null;
     }
+    this.setConnectionState('DISCONNECTED');
   }
 
   private scheduleReconnect(): void {
@@ -64,6 +121,7 @@ export class UserNotificationsWebSocketClient {
       return;
     }
     this.reconnectAttempts += 1;
+    this.setConnectionState('RECONNECTING');
     const delay = Math.min(
       INITIAL_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1),
       MAX_RECONNECT_DELAY
@@ -99,6 +157,7 @@ export class UserNotificationsWebSocketClient {
       this.ws = new WebSocket(url);
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
+        this.setConnectionState('CONNECTED');
       };
       this.ws.onmessage = (event) => {
         try {
@@ -116,11 +175,15 @@ export class UserNotificationsWebSocketClient {
       this.ws.onclose = (ev) => {
         this.ws = null;
         if (this.shouldRun && ev.code !== 1000) {
+          this.setConnectionState('DISCONNECTED');
           this.scheduleReconnect();
+          return;
         }
+        this.setConnectionState('DISCONNECTED');
       };
     } catch (e) {
       logger.warn('[UserNotifications WS] connect failed', e);
+      this.setConnectionState('DISCONNECTED');
       this.scheduleReconnect();
     }
   }

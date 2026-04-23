@@ -125,6 +125,30 @@ func (q *Queries) CountContestJuryMembers(ctx context.Context, contestID pgtype.
 	return column_1, err
 }
 
+const countContestUserVotesByContest = `-- name: CountContestUserVotesByContest :one
+SELECT count(1) FROM contest_user_votes
+WHERE contest_id = $1
+`
+
+func (q *Queries) CountContestUserVotesByContest(ctx context.Context, contestID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countContestUserVotesByContest, contestID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countContestUserVotesByParticipant = `-- name: CountContestUserVotesByParticipant :one
+SELECT count(1) FROM contest_user_votes
+WHERE participant_id = $1
+`
+
+func (q *Queries) CountContestUserVotesByParticipant(ctx context.Context, participantID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countContestUserVotesByParticipant, participantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countContests = `-- name: CountContests :one
 SELECT count(1) FROM contests
 WHERE (COALESCE($1::text, '') = '' OR status = $1)
@@ -135,6 +159,32 @@ func (q *Queries) CountContests(ctx context.Context, dollar_1 string) (int64, er
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countDirectConversationsByUser = `-- name: CountDirectConversationsByUser :one
+SELECT COUNT(*)::bigint
+FROM direct_conversations
+WHERE user_low_id = $1 OR user_high_id = $1
+`
+
+func (q *Queries) CountDirectConversationsByUser(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countDirectConversationsByUser, userID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countDirectMessagesByConversation = `-- name: CountDirectMessagesByConversation :one
+SELECT COUNT(*)::bigint
+FROM direct_messages
+WHERE conversation_id = $1
+`
+
+func (q *Queries) CountDirectMessagesByConversation(ctx context.Context, conversationID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDirectMessagesByConversation, conversationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const countJuryFullyScoredJurorsByParticipantIDs = `-- name: CountJuryFullyScoredJurorsByParticipantIDs :many
@@ -476,7 +526,7 @@ const createContest = `-- name: CreateContest :one
 
 INSERT INTO contests (id, created_by_user_id, title, description, status)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode
 `
 
 type CreateContestParams struct {
@@ -533,6 +583,33 @@ func (q *Queries) CreateContest(ctx context.Context, arg *CreateContestParams) (
 		&i.AudienceWinnersSnapshot,
 		&i.JuryWinnersSnapshot,
 		&i.VotingResultsComputedAt,
+		&i.UserVotingMode,
+	)
+	return &i, err
+}
+
+const createDirectMessage = `-- name: CreateDirectMessage :one
+INSERT INTO direct_messages (conversation_id, sender_user_id, text)
+VALUES ($1, $2, $3)
+RETURNING id, conversation_id, sender_user_id, text, created_at, updated_at
+`
+
+type CreateDirectMessageParams struct {
+	ConversationID pgtype.UUID
+	SenderUserID   int64
+	Text           string
+}
+
+func (q *Queries) CreateDirectMessage(ctx context.Context, arg *CreateDirectMessageParams) (*DirectMessage, error) {
+	row := q.db.QueryRow(ctx, createDirectMessage, arg.ConversationID, arg.SenderUserID, arg.Text)
+	var i DirectMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.SenderUserID,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
@@ -857,6 +934,25 @@ func (q *Queries) DeleteContestJuryMembersByUserID(ctx context.Context, userID i
 	return err
 }
 
+const deleteContestUserVoteByUserAndParticipant = `-- name: DeleteContestUserVoteByUserAndParticipant :one
+DELETE FROM contest_user_votes
+WHERE contest_id = $1 AND user_id = $2 AND participant_id = $3
+RETURNING participant_id
+`
+
+type DeleteContestUserVoteByUserAndParticipantParams struct {
+	ContestID     pgtype.UUID
+	UserID        int64
+	ParticipantID pgtype.UUID
+}
+
+func (q *Queries) DeleteContestUserVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestUserVoteByUserAndParticipantParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteContestUserVoteByUserAndParticipant, arg.ContestID, arg.UserID, arg.ParticipantID)
+	var participant_id pgtype.UUID
+	err := row.Scan(&participant_id)
+	return participant_id, err
+}
+
 const deleteContestVoteByUserAndParticipant = `-- name: DeleteContestVoteByUserAndParticipant :one
 DELETE FROM contest_votes
 WHERE contest_id = $1 AND user_id = $2 AND participant_id = $3
@@ -883,6 +979,26 @@ DELETE FROM contest_votes WHERE user_id = $1
 func (q *Queries) DeleteContestVotesByUserID(ctx context.Context, userID int64) error {
 	_, err := q.db.Exec(ctx, deleteContestVotesByUserID, userID)
 	return err
+}
+
+const deleteDirectMessageByID = `-- name: DeleteDirectMessageByID :one
+DELETE FROM direct_messages
+WHERE id = $1
+RETURNING id, conversation_id, sender_user_id, text, created_at, updated_at
+`
+
+func (q *Queries) DeleteDirectMessageByID(ctx context.Context, messageID pgtype.UUID) (*DirectMessage, error) {
+	row := q.db.QueryRow(ctx, deleteDirectMessageByID, messageID)
+	var i DirectMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.SenderUserID,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
 }
 
 const deleteJuryCriteriaByContest = `-- name: DeleteJuryCriteriaByContest :exec
@@ -1114,7 +1230,7 @@ func (q *Queries) GetCommentVoteStats(ctx context.Context, id pgtype.UUID) (*Get
 }
 
 const getContestByID = `-- name: GetContestByID :one
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests WHERE id = $1
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode FROM contests WHERE id = $1
 `
 
 func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest, error) {
@@ -1156,6 +1272,7 @@ func (q *Queries) GetContestByID(ctx context.Context, id pgtype.UUID) (*Contest,
 		&i.AudienceWinnersSnapshot,
 		&i.JuryWinnersSnapshot,
 		&i.VotingResultsComputedAt,
+		&i.UserVotingMode,
 	)
 	return &i, err
 }
@@ -1213,6 +1330,100 @@ func (q *Queries) GetContestJuryMemberWithName(ctx context.Context, arg *GetCont
 	return &i, err
 }
 
+const getDirectConversationByID = `-- name: GetDirectConversationByID :one
+
+SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+FROM direct_conversations
+WHERE id = $1
+`
+
+// Direct messages (private user-to-user chat)
+func (q *Queries) GetDirectConversationByID(ctx context.Context, conversationID pgtype.UUID) (*DirectConversation, error) {
+	row := q.db.QueryRow(ctx, getDirectConversationByID, conversationID)
+	var i DirectConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserLowID,
+		&i.UserHighID,
+		&i.LastMessageAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getDirectConversationByPair = `-- name: GetDirectConversationByPair :one
+SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+FROM direct_conversations
+WHERE user_low_id = LEAST($1::bigint, $2::bigint)
+  AND user_high_id = GREATEST($1::bigint, $2::bigint)
+`
+
+type GetDirectConversationByPairParams struct {
+	UserAID int64
+	UserBID int64
+}
+
+func (q *Queries) GetDirectConversationByPair(ctx context.Context, arg *GetDirectConversationByPairParams) (*DirectConversation, error) {
+	row := q.db.QueryRow(ctx, getDirectConversationByPair, arg.UserAID, arg.UserBID)
+	var i DirectConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserLowID,
+		&i.UserHighID,
+		&i.LastMessageAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getDirectConversationForUser = `-- name: GetDirectConversationForUser :one
+SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+FROM direct_conversations
+WHERE id = $1
+  AND (user_low_id = $2 OR user_high_id = $2)
+`
+
+type GetDirectConversationForUserParams struct {
+	ConversationID pgtype.UUID
+	UserID         int64
+}
+
+func (q *Queries) GetDirectConversationForUser(ctx context.Context, arg *GetDirectConversationForUserParams) (*DirectConversation, error) {
+	row := q.db.QueryRow(ctx, getDirectConversationForUser, arg.ConversationID, arg.UserID)
+	var i DirectConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserLowID,
+		&i.UserHighID,
+		&i.LastMessageAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getDirectMessageByID = `-- name: GetDirectMessageByID :one
+SELECT id, conversation_id, sender_user_id, text, created_at, updated_at
+FROM direct_messages
+WHERE id = $1
+`
+
+func (q *Queries) GetDirectMessageByID(ctx context.Context, messageID pgtype.UUID) (*DirectMessage, error) {
+	row := q.db.QueryRow(ctx, getDirectMessageByID, messageID)
+	var i DirectMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.SenderUserID,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getMaxPhotoPositionByParticipant = `-- name: GetMaxPhotoPositionByParticipant :one
 SELECT COALESCE(MAX(position), 0) AS max_position
 FROM contest_participant_photos
@@ -1249,6 +1460,36 @@ func (q *Queries) GetNominationByContest(ctx context.Context, arg *GetNomination
 		&i.MinPhotoCount,
 		&i.LogoUrl,
 		&i.MaxPhotoCount,
+	)
+	return &i, err
+}
+
+const getOrCreateDirectConversationByPair = `-- name: GetOrCreateDirectConversationByPair :one
+INSERT INTO direct_conversations (user_low_id, user_high_id)
+VALUES (
+    LEAST($1::bigint, $2::bigint),
+    GREATEST($1::bigint, $2::bigint)
+)
+ON CONFLICT (user_low_id, user_high_id)
+DO UPDATE SET updated_at = NOW()
+RETURNING id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+`
+
+type GetOrCreateDirectConversationByPairParams struct {
+	UserAID int64
+	UserBID int64
+}
+
+func (q *Queries) GetOrCreateDirectConversationByPair(ctx context.Context, arg *GetOrCreateDirectConversationByPairParams) (*DirectConversation, error) {
+	row := q.db.QueryRow(ctx, getOrCreateDirectConversationByPair, arg.UserAID, arg.UserBID)
+	var i DirectConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserLowID,
+		&i.UserHighID,
+		&i.LastMessageAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
@@ -1903,6 +2144,119 @@ func (q *Queries) ListAcceptedParticipantScoresForContests(ctx context.Context, 
 	return items, nil
 }
 
+const listAcceptedParticipantUserVoteScoresForContest = `-- name: ListAcceptedParticipantUserVoteScoresForContest :many
+SELECT
+    cp.id AS participant_id,
+    cp.nomination_id,
+    cp.pet_name,
+    COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
+    COALESCE(js.jury_sum, 0)::bigint AS jury_sum
+FROM contest_participants cp
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS vote_cnt
+    FROM contest_user_votes
+    GROUP BY participant_id
+) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, SUM(score)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
+WHERE cp.contest_id = $1 AND cp.submission_status = 'accepted'
+`
+
+type ListAcceptedParticipantUserVoteScoresForContestRow struct {
+	ParticipantID pgtype.UUID
+	NominationID  pgtype.UUID
+	PetName       string
+	VoteCnt       int64
+	JurySum       int64
+}
+
+func (q *Queries) ListAcceptedParticipantUserVoteScoresForContest(ctx context.Context, contestID pgtype.UUID) ([]*ListAcceptedParticipantUserVoteScoresForContestRow, error) {
+	rows, err := q.db.Query(ctx, listAcceptedParticipantUserVoteScoresForContest, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAcceptedParticipantUserVoteScoresForContestRow
+	for rows.Next() {
+		var i ListAcceptedParticipantUserVoteScoresForContestRow
+		if err := rows.Scan(
+			&i.ParticipantID,
+			&i.NominationID,
+			&i.PetName,
+			&i.VoteCnt,
+			&i.JurySum,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAcceptedParticipantUserVoteScoresForContests = `-- name: ListAcceptedParticipantUserVoteScoresForContests :many
+SELECT
+    cp.contest_id,
+    cp.id AS participant_id,
+    cp.nomination_id,
+    cp.pet_name,
+    COALESCE(vc.vote_cnt, 0)::bigint AS vote_cnt,
+    COALESCE(js.jury_sum, 0)::bigint AS jury_sum
+FROM contest_participants cp
+LEFT JOIN (
+    SELECT participant_id, COUNT(*)::bigint AS vote_cnt
+    FROM contest_user_votes
+    GROUP BY participant_id
+) vc ON vc.participant_id = cp.id
+LEFT JOIN (
+    SELECT participant_id, SUM(score)::bigint AS jury_sum
+    FROM contest_jury_scores
+    GROUP BY participant_id
+) js ON js.participant_id = cp.id
+WHERE cp.contest_id = ANY($1::uuid[]) AND cp.submission_status = 'accepted'
+`
+
+type ListAcceptedParticipantUserVoteScoresForContestsRow struct {
+	ContestID     pgtype.UUID
+	ParticipantID pgtype.UUID
+	NominationID  pgtype.UUID
+	PetName       string
+	VoteCnt       int64
+	JurySum       int64
+}
+
+func (q *Queries) ListAcceptedParticipantUserVoteScoresForContests(ctx context.Context, dollar_1 []pgtype.UUID) ([]*ListAcceptedParticipantUserVoteScoresForContestsRow, error) {
+	rows, err := q.db.Query(ctx, listAcceptedParticipantUserVoteScoresForContests, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAcceptedParticipantUserVoteScoresForContestsRow
+	for rows.Next() {
+		var i ListAcceptedParticipantUserVoteScoresForContestsRow
+		if err := rows.Scan(
+			&i.ContestID,
+			&i.ParticipantID,
+			&i.NominationID,
+			&i.PetName,
+			&i.VoteCnt,
+			&i.JurySum,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listChatMessages = `-- name: ListChatMessages :many
 SELECT 
     ccm.id,
@@ -2299,6 +2653,88 @@ func (q *Queries) ListContestJuryVotingProgressByContest(ctx context.Context, co
 	return items, nil
 }
 
+const listContestUserVotersByParticipant = `-- name: ListContestUserVotersByParticipant :many
+SELECT
+    cv.user_id,
+    COALESCE(u.name, 'Пользователь ' || cv.user_id::text) AS user_name,
+    cv.created_at
+FROM contest_user_votes cv
+LEFT JOIN users u ON u.user_id = cv.user_id
+WHERE cv.contest_id = $1 AND cv.participant_id = $2
+ORDER BY cv.created_at ASC
+`
+
+type ListContestUserVotersByParticipantParams struct {
+	ContestID     pgtype.UUID
+	ParticipantID pgtype.UUID
+}
+
+type ListContestUserVotersByParticipantRow struct {
+	UserID    int64
+	UserName  string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListContestUserVotersByParticipant(ctx context.Context, arg *ListContestUserVotersByParticipantParams) ([]*ListContestUserVotersByParticipantRow, error) {
+	rows, err := q.db.Query(ctx, listContestUserVotersByParticipant, arg.ContestID, arg.ParticipantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListContestUserVotersByParticipantRow
+	for rows.Next() {
+		var i ListContestUserVotersByParticipantRow
+		if err := rows.Scan(&i.UserID, &i.UserName, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listContestUserVotesByUser = `-- name: ListContestUserVotesByUser :many
+SELECT id, contest_id, participant_id, nomination_id, user_id, created_at, updated_at, nomination_slot FROM contest_user_votes
+WHERE contest_id = $1 AND user_id = $2
+ORDER BY created_at ASC
+`
+
+type ListContestUserVotesByUserParams struct {
+	ContestID pgtype.UUID
+	UserID    int64
+}
+
+func (q *Queries) ListContestUserVotesByUser(ctx context.Context, arg *ListContestUserVotesByUserParams) ([]*ContestUserVote, error) {
+	rows, err := q.db.Query(ctx, listContestUserVotesByUser, arg.ContestID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ContestUserVote
+	for rows.Next() {
+		var i ContestUserVote
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContestID,
+			&i.ParticipantID,
+			&i.NominationID,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.NominationSlot,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listContestVotesByUser = `-- name: ListContestVotesByUser :many
 SELECT id, contest_id, participant_id, user_id, nomination_id, created_at, updated_at, nomination_slot FROM contest_votes
 WHERE contest_id = $1 AND user_id = $2
@@ -2340,7 +2776,7 @@ func (q *Queries) ListContestVotesByUser(ctx context.Context, arg *ListContestVo
 }
 
 const listContests = `-- name: ListContests :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode FROM contests
 WHERE (COALESCE($1::text, '') = '' OR status = $1)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -2397,6 +2833,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 			&i.AudienceWinnersSnapshot,
 			&i.JuryWinnersSnapshot,
 			&i.VotingResultsComputedAt,
+			&i.UserVotingMode,
 		); err != nil {
 			return nil, err
 		}
@@ -2409,7 +2846,7 @@ func (q *Queries) ListContests(ctx context.Context, arg *ListContestsParams) ([]
 }
 
 const listContestsForStatusAutomation = `-- name: ListContestsForStatusAutomation :many
-SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at FROM contests
+SELECT id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode FROM contests
 WHERE status IN ('draft', 'publication', 'registration', 'voting', 'finished')
 ORDER BY id
 `
@@ -2459,6 +2896,168 @@ func (q *Queries) ListContestsForStatusAutomation(ctx context.Context) ([]*Conte
 			&i.AudienceWinnersSnapshot,
 			&i.JuryWinnersSnapshot,
 			&i.VotingResultsComputedAt,
+			&i.UserVotingMode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDirectConversationsByUser = `-- name: ListDirectConversationsByUser :many
+SELECT
+    dc.id,
+    dc.user_low_id,
+    dc.user_high_id,
+    dc.last_message_at,
+    dc.created_at,
+    dc.updated_at,
+    CASE
+        WHEN dc.user_low_id = $1 THEN dc.user_high_id
+        ELSE dc.user_low_id
+    END AS peer_user_id,
+    COALESCE(
+        u.name,
+        'Пользователь ' || (
+            CASE
+                WHEN dc.user_low_id = $1 THEN dc.user_high_id
+                ELSE dc.user_low_id
+            END
+        )::text
+    ) AS peer_user_name,
+    u.avatar_url AS peer_user_avatar_url,
+    COALESCE((
+        SELECT dm.text
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+        ORDER BY dm.created_at DESC, dm.id DESC
+        LIMIT 1
+    ), '') AS last_message_text,
+    (
+        SELECT dm.created_at
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+        ORDER BY dm.created_at DESC, dm.id DESC
+        LIMIT 1
+    ) AS last_message_created_at
+FROM direct_conversations dc
+LEFT JOIN users u ON u.user_id = CASE
+    WHEN dc.user_low_id = $1 THEN dc.user_high_id
+    ELSE dc.user_low_id
+END
+WHERE dc.user_low_id = $1 OR dc.user_high_id = $1
+ORDER BY dc.last_message_at DESC, dc.created_at DESC
+LIMIT $3::int OFFSET $2::int
+`
+
+type ListDirectConversationsByUserParams struct {
+	UserID     int64
+	ListOffset int32
+	ListLimit  int32
+}
+
+type ListDirectConversationsByUserRow struct {
+	ID                   pgtype.UUID
+	UserLowID            int64
+	UserHighID           int64
+	LastMessageAt        pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	PeerUserID           interface{}
+	PeerUserName         string
+	PeerUserAvatarUrl    *string
+	LastMessageText      interface{}
+	LastMessageCreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListDirectConversationsByUser(ctx context.Context, arg *ListDirectConversationsByUserParams) ([]*ListDirectConversationsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listDirectConversationsByUser, arg.UserID, arg.ListOffset, arg.ListLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListDirectConversationsByUserRow
+	for rows.Next() {
+		var i ListDirectConversationsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserLowID,
+			&i.UserHighID,
+			&i.LastMessageAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PeerUserID,
+			&i.PeerUserName,
+			&i.PeerUserAvatarUrl,
+			&i.LastMessageText,
+			&i.LastMessageCreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDirectMessagesByConversation = `-- name: ListDirectMessagesByConversation :many
+SELECT
+    dm.id,
+    dm.conversation_id,
+    dm.sender_user_id,
+    dm.text,
+    dm.created_at,
+    dm.updated_at,
+    COALESCE(u.name, 'Пользователь ' || dm.sender_user_id::text) AS sender_user_name,
+    u.avatar_url AS sender_user_avatar_url
+FROM direct_messages dm
+LEFT JOIN users u ON u.user_id = dm.sender_user_id
+WHERE dm.conversation_id = $1
+ORDER BY dm.created_at ASC, dm.id ASC
+LIMIT $3::int OFFSET $2::int
+`
+
+type ListDirectMessagesByConversationParams struct {
+	ConversationID pgtype.UUID
+	ListOffset     int32
+	ListLimit      int32
+}
+
+type ListDirectMessagesByConversationRow struct {
+	ID                  pgtype.UUID
+	ConversationID      pgtype.UUID
+	SenderUserID        int64
+	Text                string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	SenderUserName      string
+	SenderUserAvatarUrl *string
+}
+
+func (q *Queries) ListDirectMessagesByConversation(ctx context.Context, arg *ListDirectMessagesByConversationParams) ([]*ListDirectMessagesByConversationRow, error) {
+	rows, err := q.db.Query(ctx, listDirectMessagesByConversation, arg.ConversationID, arg.ListOffset, arg.ListLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListDirectMessagesByConversationRow
+	for rows.Next() {
+		var i ListDirectMessagesByConversationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.SenderUserID,
+			&i.Text,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SenderUserName,
+			&i.SenderUserAvatarUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -3449,6 +4048,17 @@ func (q *Queries) SyncNominationPhotoCountsByContest(ctx context.Context, arg *S
 	return err
 }
 
+const touchDirectConversation = `-- name: TouchDirectConversation :exec
+UPDATE direct_conversations
+SET last_message_at = NOW(), updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) TouchDirectConversation(ctx context.Context, conversationID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, touchDirectConversation, conversationID)
+	return err
+}
+
 const updateChatMessage = `-- name: UpdateChatMessage :one
 UPDATE contest_chat_messages
 SET text = $1, updated_at = NOW()
@@ -3514,31 +4124,32 @@ SET
   title = $2,
   description = $3,
   public_voting_enabled = $4,
-  jury_voting_enabled = $5,
-  cover_url = $6,
-  tagline = $7,
-  rules_text = $8,
-  prize_text = $9,
-  jury_prize_places = $10,
-  audience_prize_places = $11,
-  logo_url = $12,
-  theme_color = $13,
-  sponsor_name = $14,
-  sponsor_logo_url = $15,
-  sponsor_url = $16,
-  cta_label_override = $17,
-  publication_starts_at = $18,
-  registration_starts_at = $19,
-  voting_starts_at = $20,
-  voting_ends_at = $21,
-  participant_allowed_email_domains = $22,
-  schedule_timezone = $23,
-  min_photo_count = $24,
-  max_photo_count = $25,
-  entry_title_hint = $26,
+  user_voting_mode = $5,
+  jury_voting_enabled = $6,
+  cover_url = $7,
+  tagline = $8,
+  rules_text = $9,
+  prize_text = $10,
+  jury_prize_places = $11,
+  audience_prize_places = $12,
+  logo_url = $13,
+  theme_color = $14,
+  sponsor_name = $15,
+  sponsor_logo_url = $16,
+  sponsor_url = $17,
+  cta_label_override = $18,
+  publication_starts_at = $19,
+  registration_starts_at = $20,
+  voting_starts_at = $21,
+  voting_ends_at = $22,
+  participant_allowed_email_domains = $23,
+  schedule_timezone = $24,
+  min_photo_count = $25,
+  max_photo_count = $26,
+  entry_title_hint = $27,
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode
 `
 
 type UpdateContestParams struct {
@@ -3546,6 +4157,7 @@ type UpdateContestParams struct {
 	Title                          string
 	Description                    string
 	PublicVotingEnabled            bool
+	UserVotingMode                 string
 	JuryVotingEnabled              bool
 	CoverUrl                       string
 	Tagline                        string
@@ -3576,6 +4188,7 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		arg.Title,
 		arg.Description,
 		arg.PublicVotingEnabled,
+		arg.UserVotingMode,
 		arg.JuryVotingEnabled,
 		arg.CoverUrl,
 		arg.Tagline,
@@ -3636,6 +4249,7 @@ func (q *Queries) UpdateContest(ctx context.Context, arg *UpdateContestParams) (
 		&i.AudienceWinnersSnapshot,
 		&i.JuryWinnersSnapshot,
 		&i.VotingResultsComputedAt,
+		&i.UserVotingMode,
 	)
 	return &i, err
 }
@@ -3698,7 +4312,7 @@ const updateContestStatus = `-- name: UpdateContestStatus :one
 UPDATE contests
 SET status = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode
 `
 
 type UpdateContestStatusParams struct {
@@ -3745,6 +4359,7 @@ func (q *Queries) UpdateContestStatus(ctx context.Context, arg *UpdateContestSta
 		&i.AudienceWinnersSnapshot,
 		&i.JuryWinnersSnapshot,
 		&i.VotingResultsComputedAt,
+		&i.UserVotingMode,
 	)
 	return &i, err
 }
@@ -3757,7 +4372,7 @@ SET
   voting_results_computed_at = NOW(),
   updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at
+RETURNING id, created_by_user_id, title, description, status, created_at, updated_at, tier, cover_url, registration_starts_at, voting_starts_at, voting_ends_at, require_acceptance, public_voting_enabled, jury_voting_enabled, tagline, rules_text, prize_text, logo_url, theme_color, sponsor_name, sponsor_logo_url, sponsor_url, cta_label_override, participant_allowed_email_domains, schedule_timezone, publication_starts_at, min_photo_count, max_photo_count, entry_title_hint, jury_prize_places, audience_prize_places, audience_winners_snapshot, jury_winners_snapshot, voting_results_computed_at, user_voting_mode
 `
 
 type UpdateContestVotingResultsParams struct {
@@ -3805,6 +4420,33 @@ func (q *Queries) UpdateContestVotingResults(ctx context.Context, arg *UpdateCon
 		&i.AudienceWinnersSnapshot,
 		&i.JuryWinnersSnapshot,
 		&i.VotingResultsComputedAt,
+		&i.UserVotingMode,
+	)
+	return &i, err
+}
+
+const updateDirectMessageByID = `-- name: UpdateDirectMessageByID :one
+UPDATE direct_messages
+SET text = $1, updated_at = NOW()
+WHERE id = $2
+RETURNING id, conversation_id, sender_user_id, text, created_at, updated_at
+`
+
+type UpdateDirectMessageByIDParams struct {
+	Text      string
+	MessageID pgtype.UUID
+}
+
+func (q *Queries) UpdateDirectMessageByID(ctx context.Context, arg *UpdateDirectMessageByIDParams) (*DirectMessage, error) {
+	row := q.db.QueryRow(ctx, updateDirectMessageByID, arg.Text, arg.MessageID)
+	var i DirectMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.SenderUserID,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
@@ -4314,6 +4956,47 @@ func (q *Queries) UpsertContestJuryScore(ctx context.Context, arg *UpsertContest
 		&i.Score,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const upsertContestUserVote = `-- name: UpsertContestUserVote :one
+INSERT INTO contest_user_votes (id, contest_id, participant_id, nomination_id, user_id)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (contest_id, user_id, nomination_slot)
+DO UPDATE SET
+    participant_id = EXCLUDED.participant_id,
+    nomination_id = EXCLUDED.nomination_id,
+    updated_at = NOW()
+RETURNING id, contest_id, participant_id, nomination_id, user_id, created_at, updated_at, nomination_slot
+`
+
+type UpsertContestUserVoteParams struct {
+	ID            pgtype.UUID
+	ContestID     pgtype.UUID
+	ParticipantID pgtype.UUID
+	NominationID  pgtype.UUID
+	UserID        int64
+}
+
+func (q *Queries) UpsertContestUserVote(ctx context.Context, arg *UpsertContestUserVoteParams) (*ContestUserVote, error) {
+	row := q.db.QueryRow(ctx, upsertContestUserVote,
+		arg.ID,
+		arg.ContestID,
+		arg.ParticipantID,
+		arg.NominationID,
+		arg.UserID,
+	)
+	var i ContestUserVote
+	err := row.Scan(
+		&i.ID,
+		&i.ContestID,
+		&i.ParticipantID,
+		&i.NominationID,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.NominationSlot,
 	)
 	return &i, err
 }

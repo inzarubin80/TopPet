@@ -1,7 +1,7 @@
 // API types and utilities
 
-import { Contest, Participant, Comment, ChatMessage, ContestStatus } from './models';
-import type { ContestPrizePlace } from './models';
+import { Contest, Participant, Comment, ChatMessage, ContestStatus, DirectConversation, DirectMessage } from './models';
+import type { ContestPrizePlace, ContestUserVotingMode } from './models';
 
 export interface ContestsListResponse {
   items: Contest[];
@@ -15,6 +15,16 @@ export interface CommentsListResponse {
 
 export interface ChatMessagesListResponse {
   items: ChatMessage[];
+  total: number;
+}
+
+export interface DirectConversationsListResponse {
+  items: DirectConversation[];
+  total: number;
+}
+
+export interface DirectMessagesListResponse {
+  items: DirectMessage[];
   total: number;
 }
 
@@ -39,6 +49,7 @@ export interface UpdateContestRequest {
   title?: string;
   description?: string;
   public_voting_enabled?: boolean;
+  user_voting_mode?: ContestUserVotingMode;
   jury_voting_enabled?: boolean;
   cover_url?: string;
   tagline?: string;
@@ -59,8 +70,6 @@ export interface UpdateContestRequest {
   voting_ends_at?: string;
   /** IANA, например Europe/Moscow */
   schedule_timezone?: string;
-  /** Домены e-mail участников; [] — сбросить ограничение. */
-  participant_allowed_email_domains?: string[];
   min_photo_count?: number;
   max_photo_count?: number;
   /** Подсказка для поля наименования заявки (участникам). */

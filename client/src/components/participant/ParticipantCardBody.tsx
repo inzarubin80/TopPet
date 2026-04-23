@@ -498,6 +498,18 @@ export const ParticipantCardBody: React.FC<ParticipantCardBodyProps> = ({
           <span className="participant-page-author-name">{authorDisplayLabel}</span>
         </div>
       ) : null}
+      {isAuthenticated && currentUserId && !userIdsEqual(currentUserId, participant.user_id) ? (
+        <div className="participant-page-author-message-action">
+          <Button
+            type="button"
+            size="small"
+            variant="secondary"
+            onClick={() => navigate(`/messages/${participant.user_id}`)}
+          >
+            Написать пользователю
+          </Button>
+        </div>
+      ) : null}
     </header>
   );
 

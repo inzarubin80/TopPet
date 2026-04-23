@@ -15,6 +15,8 @@ export type ContestRegistrationFieldsPanelHandle = {
 interface Props {
   contest: Contest;
   isAdmin: boolean;
+  /** Скрыть заголовок блока (когда заголовок уже задан контейнером страницы). */
+  hideTitle?: boolean;
   readOnly?: boolean;
   /** Скрыть кнопку сохранения (общее сохранение страницы). */
   hideSaveButton?: boolean;
@@ -53,7 +55,7 @@ function rowToPayload(row: DraftRegistrationFieldRow): RegistrationFieldInput {
 
 export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFieldsPanelHandle, Props>(
   function ContestRegistrationFieldsPanel(
-    { contest, isAdmin, readOnly = false, hideSaveButton = false, formDisabled = false },
+    { contest, isAdmin, hideTitle = false, readOnly = false, hideSaveButton = false, formDisabled = false },
     ref
   ) {
     const { showError, showSuccess } = useToast();
@@ -153,7 +155,7 @@ export const ContestRegistrationFieldsPanel = forwardRef<ContestRegistrationFiel
 
     return (
       <section className="contest-registration-fields">
-        <h2 className="contest-registration-fields-title">Поля заявки участника</h2>
+        {!hideTitle ? <h2 className="contest-registration-fields-title">Поля заявки участника</h2> : null}
         <p className="contest-registration-fields-hint">
           Дополнительные вопросы при подаче заявки (фото, видео и номинация — в форме участия). Типы: строка, многострочный
           текст, число, да/нет, список вариантов, картинка (файл в заявке). Пояснение к полю видно участнику под подписью при

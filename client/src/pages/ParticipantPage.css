@@ -226,6 +226,10 @@
   letter-spacing: 0;
 }
 
+.participant-page-author-message-action {
+  margin-top: 10px;
+}
+
 .participant-page-registration-details {
   margin: 0;
   border: none;

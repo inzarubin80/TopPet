@@ -52,6 +52,14 @@ func validateContestPhotoCounts(minC, maxC int) error {
 	return nil
 }
 
+func normalizeContestUserVotingMode(m model.ContestUserVotingMode) model.ContestUserVotingMode {
+	mode := model.ContestUserVotingMode(strings.TrimSpace(string(m)))
+	if mode == "" {
+		return model.ContestUserVotingModeLikes
+	}
+	return mode
+}
+
 func (s *TopPetService) broadcastContestStatus(contestID model.ContestID, status model.ContestStatus) {
 	if s.hub == nil {
 		return
@@ -184,6 +192,10 @@ func (s *TopPetService) UpdateContest(ctx context.Context, contestID model.Conte
 		return nil, fmt.Errorf("%w: schedule_timezone: %v", model.ErrBadRequest, err)
 	}
 	u.ScheduleTimezone = tz
+	u.UserVotingMode = normalizeContestUserVotingMode(u.UserVotingMode)
+	if !model.IsValidContestUserVotingMode(u.UserVotingMode) {
+		return nil, fmt.Errorf("%w: invalid user_voting_mode", model.ErrBadRequest)
+	}
 
 	if err := validateContestPhotoCounts(u.MinPhotoCount, u.MaxPhotoCount); err != nil {
 		return nil, err
@@ -205,6 +217,7 @@ func contestToUpdate(c *model.Contest) model.ContestUpdate {
 		Title:                          c.Title,
 		Description:                    c.Description,
 		PublicVotingEnabled:            c.PublicVotingEnabled,
+		UserVotingMode:                 normalizeContestUserVotingMode(c.UserVotingMode),
 		JuryVotingEnabled:              c.JuryVotingEnabled,
 		CoverUrl:                       c.CoverUrl,
 		Tagline:                        c.Tagline,

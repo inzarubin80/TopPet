@@ -27,7 +27,7 @@ import { recalculateContestVotingResults, uploadContestAsset, type ContestAssetK
 import { getErrorMessage } from '../utils/errorHandler';
 import { AxiosError } from 'axios';
 import type { UpdateContestRequest } from '../types/api';
-import type { ContestPrizePlace } from '../types/models';
+import type { ContestPrizePlace, ContestUserVotingMode } from '../types/models';
 import {
   DEFAULT_SCHEDULE_TIMEZONE,
   SCHEDULE_TIMEZONE_OPTIONS,
@@ -38,6 +38,16 @@ import './EditContestPage.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type PrizePlacesKind = 'jury' | 'audience';
+type EditContestTab = 'main' | 'stages' | 'appearance' | 'voting' | 'nominations' | 'entry-fields';
+
+const EDIT_CONTEST_TABS: Array<{ id: EditContestTab; label: string }> = [
+  { id: 'main', label: 'Основное' },
+  { id: 'nominations', label: 'Номинации' },
+  { id: 'stages', label: 'Этапы' },
+  { id: 'appearance', label: 'Оформление' },
+  { id: 'voting', label: 'Голосование' },
+  { id: 'entry-fields', label: 'Поля заявки' },
+];
 
 const emptyPrizePlace = (): ContestPrizePlace => ({ place: 1, prize: '' });
 
@@ -51,15 +61,8 @@ const EditContestSaveToolbar: React.FC<{
   saving: boolean;
   saveDisabled: boolean;
   onSave: () => void | Promise<void>;
-  variant?: 'top' | 'bottom';
-}> = ({ saving, saveDisabled, onSave, variant = 'top' }) => (
-  <div
-    className={
-      variant === 'bottom'
-        ? 'edit-contest-page-actions edit-contest-page-actions--bottom'
-        : 'edit-contest-page-actions'
-    }
-  >
+}> = ({ saving, saveDisabled, onSave }) => (
+  <div className="edit-contest-page-actions">
     <Button type="button" onClick={() => void onSave()} disabled={saving || saveDisabled}>
       {saving ? <LoadingSpinner size="small" /> : 'Сохранить изменения'}
     </Button>
@@ -81,6 +84,7 @@ const EditContestPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [publicVoting, setPublicVoting] = useState(true);
+  const [userVotingMode, setUserVotingMode] = useState<ContestUserVotingMode>('likes');
   const [juryVoting, setJuryVoting] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
   const [tagline, setTagline] = useState('');
@@ -98,7 +102,6 @@ const EditContestPage: React.FC = () => {
   const [votingStartsLocal, setVotingStartsLocal] = useState('');
   const [votingEndsLocal, setVotingEndsLocal] = useState('');
   const [scheduleTimezone, setScheduleTimezone] = useState(DEFAULT_SCHEDULE_TIMEZONE);
-  const [participantEmailDomainsText, setParticipantEmailDomainsText] = useState('');
   const [minPhotoCount, setMinPhotoCount] = useState(1);
   const [maxPhotoCount, setMaxPhotoCount] = useState(30);
   const [entryTitleHint, setEntryTitleHint] = useState('');
@@ -106,11 +109,7 @@ const EditContestPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [assetUploading, setAssetUploading] = useState<ContestAssetKind | null>(null);
   const [recalculatingResults, setRecalculatingResults] = useState(false);
-  const [juryCriteriaPortalHost, setJuryCriteriaPortalHost] = useState<HTMLDivElement | null>(null);
-
-  const handleJuryCriteriaSlotRef = useCallback((el: HTMLDivElement | null) => {
-    setJuryCriteriaPortalHost(el);
-  }, []);
+  const [activeTab, setActiveTab] = useState<EditContestTab>('main');
 
   /**
    * Синхронизирует флаг «голосование жюри» на сервере перед вызовами API жюри (добавление/порядок и т.д.),
@@ -151,21 +150,17 @@ const EditContestPage: React.FC = () => {
   }, [id, dispatch, showSuccess, showError]);
 
   useEffect(() => {
-    if (!juryVoting) {
-      setJuryCriteriaPortalHost(null);
-    }
-  }, [juryVoting]);
-
-  useEffect(() => {
     if (!id) {
       setLoadState('error');
       return;
     }
+    setActiveTab('main');
     if (id === 'new') {
       dispatch(clearCurrentContest());
       setTitle('');
       setDescription('');
       setPublicVoting(true);
+      setUserVotingMode('likes');
       setJuryVoting(false);
       setCoverUrl('');
       setTagline('');
@@ -183,7 +178,6 @@ const EditContestPage: React.FC = () => {
       setVotingStartsLocal('');
       setVotingEndsLocal('');
       setScheduleTimezone(DEFAULT_SCHEDULE_TIMEZONE);
-      setParticipantEmailDomainsText('');
       setMinPhotoCount(1);
       setMaxPhotoCount(30);
       setEntryTitleHint('');
@@ -197,6 +191,7 @@ const EditContestPage: React.FC = () => {
         setTitle(contest.title);
         setDescription(contest.description || '');
         setPublicVoting(contest.public_voting_enabled ?? true);
+        setUserVotingMode(contest.user_voting_mode ?? 'likes');
         setJuryVoting(contest.jury_voting_enabled ?? false);
         setCoverUrl(contest.cover_url ?? '');
         setTagline(contest.tagline ?? '');
@@ -215,7 +210,6 @@ const EditContestPage: React.FC = () => {
         setRegistrationStartsLocal(formatUtcIsoInTimeZone(contest.registration_starts_at, tz));
         setVotingStartsLocal(formatUtcIsoInTimeZone(contest.voting_starts_at, tz));
         setVotingEndsLocal(formatUtcIsoInTimeZone(contest.voting_ends_at, tz));
-        setParticipantEmailDomainsText((contest.participant_allowed_email_domains ?? []).join('\n'));
         setMinPhotoCount(contest.min_photo_count ?? 1);
         setMaxPhotoCount(contest.max_photo_count ?? 30);
         setEntryTitleHint(contest.entry_title_hint ?? '');
@@ -271,6 +265,7 @@ const EditContestPage: React.FC = () => {
         title: title.trim(),
         description: description.trim(),
         public_voting_enabled: publicVoting,
+        user_voting_mode: userVotingMode,
         jury_voting_enabled: juryVoting,
         cover_url: coverUrl.trim(),
         tagline: tagline.trim(),
@@ -287,10 +282,6 @@ const EditContestPage: React.FC = () => {
         registration_starts_at: scheduleField(registrationStartsLocal),
         voting_starts_at: scheduleField(votingStartsLocal),
         voting_ends_at: scheduleField(votingEndsLocal),
-        participant_allowed_email_domains: participantEmailDomainsText
-          .split(/\r?\n|,|;/)
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean),
         schedule_timezone: scheduleTimezone,
         min_photo_count: minPhotoCount,
         max_photo_count: maxPhotoCount,
@@ -467,157 +458,47 @@ const EditContestPage: React.FC = () => {
     return <Navigate to={`/contests/${id}`} replace />;
   }
 
-  return (
-    <div className="edit-contest-page">
-      <div className="edit-contest-page-inner">
-        <header className="edit-contest-page-header">
-          <Link to={`/contests/${id}`} className="edit-contest-page-back">
-            <span className="edit-contest-page-back-icon" aria-hidden>
-              ‹
-            </span>
-            К конкурсу
-          </Link>
-          <div className="edit-contest-page-heading">
-            <p className="edit-contest-page-eyebrow">Настройки</p>
-            <h1 className="edit-contest-page-title">Редактировать конкурс</h1>
-            <p className="edit-contest-page-lead">
-              Тексты, расписание, лимиты фото и флаги голосования, критерии жюри, поля заявки и правки портфолио членов
-              жюри фиксируются кнопкой «Сохранить изменения» вверху или внизу страницы. Загрузка картинок конкурса,
-              состав номинаций (добавление, порядок, логотипы) и состав жюри (добавление, порядок) сохраняются сразу при
-              действии — так проще проверить лимиты и файлы на сервере.
-            </p>
-          </div>
-        </header>
+  const activeTabLabel = EDIT_CONTEST_TABS.find((tab) => tab.id === activeTab)?.label ?? 'Раздел';
 
-        <EditContestSaveToolbar
-          saving={saving}
-          saveDisabled={!title.trim()}
-          onSave={handleSaveAll}
-        />
-
-        {error && (
-          <div className="edit-contest-page-error-banner" role="alert">
-            <ErrorMessage message={error} />
-          </div>
-        )}
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-main">
-          <h2 id="edit-section-main" className="edit-contest-page-section-label">
-            Основное
-          </h2>
-          <div className="edit-contest-page-fields">
-            <Input
-              label="Название"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например, «Весенний фотоконкурс»"
-              required
-              disabled={saving}
-            />
-            <Textarea
-              label="Описание"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Кратко опишите конкурс для участников"
-              disabled={saving}
-            />
-            <Input
-              label="Слоган (подзаголовок)"
-              type="text"
-              value={tagline}
-              onChange={(e) => setTagline(e.target.value)}
-              placeholder="Короткая строка под названием на странице конкурса"
-              disabled={saving}
-            />
-          </div>
-        </section>
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-participant-domains">
-          <h2 id="edit-section-participant-domains" className="edit-contest-page-section-label">
-            Кто может подать заявку
-          </h2>
-          <p className="edit-contest-schedule-intro">
-            Необязательно. Укажите домены корпоративной почты (по одному в строке, без символа @), например{' '}
-            <code>company.ru</code>. Заявку сможет отправить только пользователь с e-mail на один из этих доменов
-            (включая поддомены). Организаторы конкурса не ограничены. Пустое поле — участвовать может любой
-            авторизованный пользователь.
-          </p>
-          <div className="edit-contest-page-fields">
-            <Textarea
-              label="Домены e-mail"
-              value={participantEmailDomainsText}
-              onChange={(e) => setParticipantEmailDomainsText(e.target.value)}
-              placeholder={'company.ru\npartner.org'}
-              disabled={saving}
-            />
-          </div>
-        </section>
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-photo-limits">
-          <h2 id="edit-section-photo-limits" className="edit-contest-page-section-label">
-            Фотографии в заявке
-          </h2>
-          <p className="edit-contest-schedule-intro">
-            Сколько фото может быть в одной заявке участника. Одно и то же ограничение действует для всего конкурса,
-            в том числе при нескольких номинациях.
-          </p>
-          <div className="edit-contest-page-fields edit-contest-page-fields--inline">
-            <label className="edit-contest-photo-limit">
-              <span className="edit-contest-field-label">Минимум</span>
-              <select
-                className="edit-contest-control-select"
-                value={minPhotoCount}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setMinPhotoCount(v);
-                  if (maxPhotoCount < v) setMaxPhotoCount(v);
-                }}
-                disabled={saving}
-                aria-label="Минимум фотографий в заявке"
-              >
-                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="edit-contest-photo-limit">
-              <span className="edit-contest-field-label">Максимум</span>
-              <select
-                className="edit-contest-control-select"
-                value={maxPhotoCount}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setMaxPhotoCount(v);
-                  if (minPhotoCount > v) setMinPhotoCount(v);
-                }}
-                disabled={saving}
-                aria-label="Максимум фотографий в заявке"
-              >
-                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-schedule">
-          <h2 id="edit-section-schedule" className="edit-contest-page-section-label">
-            Расписание фаз
-          </h2>
-          <p className="edit-contest-schedule-intro">
-            Время ниже задаётся в выбранном часовом поясе; на сервере моменты хранятся в UTC. Пустое поле сбрасывает
-            дату. Приём заявок идёт до «Начало голосования». Фоновый процесс (интервал{' '}
-            <code>CONTEST_SCHEDULER_INTERVAL_SEC</code>, по умолчанию 60 с) сверяет текущее время с датами и выставляет
-            статус: окончание голосования → завершён; иначе начало голосования → голосование; иначе начало регистрации →
-            регистрация; иначе начало публикации → публикация; иначе → черновик (в том числе если даты перенесены в
-            будущее).
-          </p>
+  let tabContent: React.ReactNode = null;
+  if (activeTab === 'main') {
+    tabContent = (
+      <section className="edit-contest-page-card" aria-labelledby="edit-section-main">
+        <h2 id="edit-section-main" className="edit-contest-page-section-label">
+          Основное
+        </h2>
+        <div className="edit-contest-page-fields">
+          <Input
+            label="Название"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Например, «Весенний фотоконкурс»"
+            required
+            disabled={saving}
+          />
+          <Textarea
+            label="Описание"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Кратко опишите конкурс для участников"
+            disabled={saving}
+          />
+          <Input
+            label="Слоган (подзаголовок)"
+            type="text"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="Короткая строка под названием на странице конкурса"
+            disabled={saving}
+          />
+        </div>
+      </section>
+    );
+  } else if (activeTab === 'stages') {
+    tabContent = (
+      <>
+        <section className="edit-contest-page-card" aria-label="Расписание фаз">
           <div className="edit-contest-page-fields">
             <label className="edit-contest-schedule-tz">
               <span className="edit-contest-field-label">Часовой пояс</span>
@@ -668,120 +549,148 @@ const EditContestPage: React.FC = () => {
             />
           </div>
         </section>
-
-        <section
-          className="edit-contest-page-card edit-contest-page-card--organizer"
-          aria-label="Номинации"
-        >
-          <div className="edit-contest-page-organizer">
-            <ContestOrganizerCriteriaPanel
-              ref={panelRef}
-              contest={currentContest}
-              isAdmin
-              hideJuryCriteriaSaveButton
-              formDisabled={saving}
-              showJuryCriteriaSection={juryVoting}
-              juryCriteriaPortalMode={juryVoting}
-              juryCriteriaPortalHost={juryCriteriaPortalHost}
-            />
-          </div>
-        </section>
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-appearance">
-          <h2 id="edit-section-appearance" className="edit-contest-page-section-label">
-            Оформление страницы конкурса
-          </h2>
-          <p className="edit-contest-appearance-intro">
-            Баннер, логотипы и цвет акцента. Файл при выборе сразу загружается на сервер; остальное оформление (тексты,
-            ссылки, цвет) — по кнопке «Сохранить изменения». Чтобы снять картинку с публикации, нажмите «Убрать» и
-            сохраните страницу.
-          </p>
-          <div className="edit-contest-page-fields edit-contest-appearance-fields">
-            <ContestAssetImageField
-              legend="Баннер (обложка)"
-              url={coverUrl}
-              onClear={() => setCoverUrl('')}
-              onPickFile={(file) => handleContestAssetFile('cover', file)}
-              uploading={assetUploading === 'cover'}
-              disabled={saving}
-            />
-            <ContestAssetImageField
-              legend="Логотип конкурса"
-              url={logoUrl}
-              onClear={() => setLogoUrl('')}
-              onPickFile={(file) => handleContestAssetFile('logo', file)}
-              uploading={assetUploading === 'logo'}
-              disabled={saving}
-            />
-            <div className="edit-contest-theme-row">
-              <Input
-                label="Цвет акцента (HEX)"
-                type="text"
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
-                placeholder="#2563eb или пусто"
-                disabled={saving}
-              />
-              <label className="edit-contest-theme-picker-wrap">
-                <span className="edit-contest-field-label">Палитра</span>
-                <input
-                  type="color"
-                  className="edit-contest-theme-picker"
-                  value={/^#[0-9A-Fa-f]{6}$/.test(themeColor.trim()) ? themeColor.trim() : '#2563eb'}
-                  onChange={(e) => setThemeColor(e.target.value)}
-                  disabled={saving}
-                  aria-label="Выбор цвета акцента"
-                />
-              </label>
-            </div>
-            <Textarea
-              label="Правила конкурса (Markdown)"
-              value={rulesText}
-              onChange={(e) => setRulesText(e.target.value)}
-              placeholder="Условия участия, критерии, запреты… (поддерживается Markdown)"
-              rows={10}
-              disabled={saving}
-              className="edit-contest-rules-textarea"
-            />
-            <Input
-              label="Название спонсора"
-              type="text"
-              value={sponsorName}
-              onChange={(e) => setSponsorName(e.target.value)}
-              disabled={saving}
-            />
-            <ContestAssetImageField
-              legend="Логотип спонсора"
-              url={sponsorLogoUrl}
-              onClear={() => setSponsorLogoUrl('')}
-              onPickFile={(file) => handleContestAssetFile('sponsor_logo', file)}
-              uploading={assetUploading === 'sponsor_logo'}
-              disabled={saving}
-            />
-            <Input
-              label="Ссылка на сайт спонсора"
-              type="url"
-              value={sponsorUrl}
-              onChange={(e) => setSponsorUrl(e.target.value)}
-              placeholder="https://…"
-              disabled={saving}
-            />
-            <Input
-              label="Текст на кнопке голосования"
-              type="text"
-              value={ctaLabelOverride}
-              onChange={(e) => setCtaLabelOverride(e.target.value)}
-              placeholder="По умолчанию: «Проголосовать»"
-              disabled={saving}
-            />
-          </div>
-        </section>
-
-        <section className="edit-contest-page-card" aria-labelledby="edit-section-voting">
+      </>
+    );
+  } else if (activeTab === 'appearance') {
+    tabContent = (
+      <section className="edit-contest-page-card" aria-label="Оформление страницы конкурса">
+        <div className="edit-contest-page-fields edit-contest-appearance-fields">
+          <ContestAssetImageField
+            legend="Баннер (обложка)"
+            url={coverUrl}
+            onClear={() => setCoverUrl('')}
+            onPickFile={(file) => handleContestAssetFile('cover', file)}
+            uploading={assetUploading === 'cover'}
+            disabled={saving}
+          />
+          <ContestAssetImageField
+            legend="Логотип конкурса"
+            url={logoUrl}
+            onClear={() => setLogoUrl('')}
+            onPickFile={(file) => handleContestAssetFile('logo', file)}
+            uploading={assetUploading === 'logo'}
+            disabled={saving}
+          />
+          <Textarea
+            label="Правила конкурса (Markdown)"
+            value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)}
+            placeholder="Условия участия, критерии, запреты… (поддерживается Markdown)"
+            rows={10}
+            disabled={saving}
+            className="edit-contest-rules-textarea"
+          />
+          <Input
+            label="Название спонсора"
+            type="text"
+            value={sponsorName}
+            onChange={(e) => setSponsorName(e.target.value)}
+            disabled={saving}
+          />
+          <ContestAssetImageField
+            legend="Логотип спонсора"
+            url={sponsorLogoUrl}
+            onClear={() => setSponsorLogoUrl('')}
+            onPickFile={(file) => handleContestAssetFile('sponsor_logo', file)}
+            uploading={assetUploading === 'sponsor_logo'}
+            disabled={saving}
+          />
+          <Input
+            label="Ссылка на сайт спонсора"
+            type="url"
+            value={sponsorUrl}
+            onChange={(e) => setSponsorUrl(e.target.value)}
+            placeholder="https://…"
+            disabled={saving}
+          />
+          <Input
+            label="Текст на кнопке голосования"
+            type="text"
+            value={ctaLabelOverride}
+            onChange={(e) => setCtaLabelOverride(e.target.value)}
+            placeholder="По умолчанию: «Проголосовать»"
+            disabled={saving}
+          />
+        </div>
+      </section>
+    );
+  } else if (activeTab === 'voting') {
+    tabContent = (
+      <>
+        <section className="edit-contest-page-flat-section" aria-labelledby="edit-section-voting">
           <h2 id="edit-section-voting" className="edit-contest-page-section-label">
             Настройки голосования
           </h2>
           <div className="edit-contest-voting">
+            <label className="edit-contest-voting-row">
+              <input
+                type="checkbox"
+                checked={publicVoting}
+                onChange={(e) => setPublicVoting(e.target.checked)}
+                disabled={saving}
+              />
+              <span className="edit-contest-voting-text">
+                <span className="edit-contest-voting-label">Пользовательское голосование</span>
+                <p className="edit-contest-voting-hint">
+                  Включает расчёт зрительских мест. Режим ниже определяет, откуда берутся голоса для подсчёта.
+                </p>
+              </span>
+            </label>
+            <label className="edit-contest-voting-row">
+              <span className="edit-contest-voting-text">
+                <span className="edit-contest-voting-label">Режим пользовательского голосования</span>
+                <select
+                  className="edit-contest-control-select"
+                  value={userVotingMode}
+                  onChange={(e) => setUserVotingMode(e.target.value as ContestUserVotingMode)}
+                  disabled={saving}
+                  aria-label="Режим пользовательского голосования"
+                >
+                  <option value="likes">Лайки (как сейчас)</option>
+                  <option value="all_users">Голосование всех пользователей</option>
+                  <option value="participants_only">Голосование участников конкурса</option>
+                </select>
+                <p className="edit-contest-voting-hint">
+                  В режимах «все пользователи» и «участники» работает отдельная вкладка «Голосование» с выбором одной
+                  работы в категории.
+                </p>
+              </span>
+            </label>
+            <div className="edit-contest-prize-places">
+              <p className="edit-contest-field-label">Места зрительских симпатий и призы</p>
+              <div className="edit-contest-prize-places-list">
+                {audiencePrizePlaces.map((item, index) => (
+                  <div key={`audience-${index}`} className="edit-contest-prize-place-row">
+                    <Input
+                      label="Место"
+                      type="number"
+                      value={String(item.place)}
+                      onChange={(e) => updatePrizePlace('audience', index, { place: Number(e.target.value) || 0 })}
+                      disabled={saving}
+                    />
+                    <Input
+                      label="Приз"
+                      type="text"
+                      value={item.prize}
+                      onChange={(e) => updatePrizePlace('audience', index, { prize: e.target.value })}
+                      disabled={saving}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => removePrizePlace('audience', index)}
+                      disabled={saving}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="secondary" onClick={() => addPrizePlace('audience')} disabled={saving}>
+                Добавить место пользовательского голосования
+              </Button>
+            </div>
+
             <label className="edit-contest-voting-row">
               <input
                 type="checkbox"
@@ -796,24 +705,6 @@ const EditContestPage: React.FC = () => {
                 </p>
               </span>
             </label>
-            <label className="edit-contest-voting-row">
-              <input
-                type="checkbox"
-                checked={publicVoting}
-                onChange={(e) => setPublicVoting(e.target.checked)}
-                disabled={saving}
-              />
-              <span className="edit-contest-voting-text">
-                <span className="edit-contest-voting-label">Пользовательское голосование</span>
-                <p className="edit-contest-voting-hint">
-                  Лайки на работы доступны на этапах приёма заявок и голосования всегда. Этот флаг включает учёт
-                  пользовательского голосования: призовые места зрителей по числу лайков и связанные сценарии. Если
-                  выключено — только жюри (при включённом голосовании жюри), без призов «народного выбора» по лайкам.
-                </p>
-              </span>
-            </label>
-          </div>
-          <div className="edit-contest-prize-places-wrap">
             <div className="edit-contest-prize-places">
               <p className="edit-contest-field-label">Места жюри и призы</p>
               <div className="edit-contest-prize-places-list">
@@ -843,40 +734,11 @@ const EditContestPage: React.FC = () => {
                 Добавить место жюри
               </Button>
             </div>
-            <div className="edit-contest-prize-places">
-              <p className="edit-contest-field-label">Места зрительских симпатий и призы</p>
-              <div className="edit-contest-prize-places-list">
-                {audiencePrizePlaces.map((item, index) => (
-                  <div key={`audience-${index}`} className="edit-contest-prize-place-row">
-                    <Input
-                      label="Место"
-                      type="number"
-                      value={String(item.place)}
-                      onChange={(e) => updatePrizePlace('audience', index, { place: Number(e.target.value) || 0 })}
-                      disabled={saving}
-                    />
-                    <Input
-                      label="Приз"
-                      type="text"
-                      value={item.prize}
-                      onChange={(e) => updatePrizePlace('audience', index, { prize: e.target.value })}
-                      disabled={saving}
-                    />
-                    <Button type="button" variant="secondary" onClick={() => removePrizePlace('audience', index)} disabled={saving}>
-                      Удалить
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button type="button" variant="secondary" onClick={() => addPrizePlace('audience')} disabled={saving}>
-                Добавить место зрителей
-              </Button>
-            </div>
           </div>
         </section>
 
         {currentContest.status === 'finished' ? (
-          <section className="edit-contest-page-card" aria-labelledby="edit-section-voting-results-snapshot">
+          <section className="edit-contest-page-flat-section" aria-labelledby="edit-section-voting-results-snapshot">
             <h2 id="edit-section-voting-results-snapshot" className="edit-contest-page-section-label">
               Результаты голосования
             </h2>
@@ -890,7 +752,7 @@ const EditContestPage: React.FC = () => {
                 <strong>{new Date(currentContest.voting_results_computed_at).toLocaleString()}</strong>
               </p>
             ) : null}
-            <div className="edit-contest-page-actions">
+            <div className="edit-contest-page-actions edit-contest-page-actions--secondary">
               <Button
                 type="button"
                 variant="secondary"
@@ -905,7 +767,7 @@ const EditContestPage: React.FC = () => {
 
         {juryVoting ? (
           <section
-            className="edit-contest-page-card edit-contest-page-card--organizer"
+            className="edit-contest-page-flat-section"
             aria-labelledby="edit-section-jury-criteria"
           >
             <h2 id="edit-section-jury-criteria" className="edit-contest-page-section-label">
@@ -916,9 +778,15 @@ const EditContestPage: React.FC = () => {
               (кнопка «Сохранить изменения»).
             </p>
             <div className="edit-contest-page-organizer">
-              <div
-                className="edit-contest-jury-criteria-portal-host"
-                ref={handleJuryCriteriaSlotRef}
+              <ContestOrganizerCriteriaPanel
+                ref={panelRef}
+                contest={currentContest}
+                isAdmin
+                hideTitle
+                hideNominationsSection
+                hideJuryCriteriaSaveButton
+                formDisabled={saving}
+                showJuryCriteriaSection
               />
             </div>
           </section>
@@ -926,7 +794,7 @@ const EditContestPage: React.FC = () => {
 
         {juryVoting ? (
           <section
-            className="edit-contest-page-card edit-contest-page-card--organizer"
+            className="edit-contest-page-flat-section"
             aria-labelledby="edit-section-jury-members"
           >
             <h2 id="edit-section-jury-members" className="edit-contest-page-section-label">
@@ -942,11 +810,91 @@ const EditContestPage: React.FC = () => {
             </div>
           </section>
         ) : null}
+      </>
+    );
+  } else if (activeTab === 'nominations') {
+    tabContent = (
+      <section
+        className="edit-contest-page-card edit-contest-page-card--organizer"
+        aria-labelledby="edit-section-nominations"
+      >
+        <h2 id="edit-section-nominations" className="edit-contest-page-section-label">
+          Номинации
+        </h2>
+        <div className="edit-contest-page-organizer">
+          <ContestOrganizerCriteriaPanel
+            contest={currentContest}
+            isAdmin
+            hideTitle
+            hideJuryCriteriaSaveButton
+            formDisabled={saving}
+            showJuryCriteriaSection={false}
+          />
+        </div>
+      </section>
+    );
+  } else {
+    tabContent = (
+      <>
+        <section className="edit-contest-page-card" aria-labelledby="edit-section-photo-limits">
+          <h2 id="edit-section-photo-limits" className="edit-contest-page-section-label">
+            Фотографии в заявке
+          </h2>
+          <p className="edit-contest-schedule-intro">
+            Сколько фото может быть в одной заявке участника. Одно и то же ограничение действует для всего конкурса, в
+            том числе при нескольких номинациях.
+          </p>
+          <div className="edit-contest-page-fields edit-contest-page-fields--inline">
+            <label className="edit-contest-photo-limit">
+              <span className="edit-contest-field-label">Минимум</span>
+              <select
+                className="edit-contest-control-select"
+                value={minPhotoCount}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMinPhotoCount(v);
+                  if (maxPhotoCount < v) setMaxPhotoCount(v);
+                }}
+                disabled={saving}
+                aria-label="Минимум фотографий в заявке"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="edit-contest-photo-limit">
+              <span className="edit-contest-field-label">Максимум</span>
+              <select
+                className="edit-contest-control-select"
+                value={maxPhotoCount}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMaxPhotoCount(v);
+                  if (minPhotoCount > v) setMinPhotoCount(v);
+                }}
+                disabled={saving}
+                aria-label="Максимум фотографий в заявке"
+              >
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
 
         <section
           className="edit-contest-page-card edit-contest-page-card--organizer"
-          aria-label="Поля заявки участника"
+          aria-labelledby="edit-section-entry-fields"
         >
+          <h2 id="edit-section-entry-fields" className="edit-contest-page-section-label">
+            Поля заявки
+          </h2>
           <div className="edit-contest-page-organizer">
             <Textarea
               label="Подсказка к полю «Наименование» в заявке"
@@ -961,18 +909,62 @@ const EditContestPage: React.FC = () => {
               ref={registrationFieldsRef}
               contest={currentContest}
               isAdmin
+              hideTitle
               hideSaveButton
               formDisabled={saving}
             />
           </div>
         </section>
+      </>
+    );
+  }
 
-        <EditContestSaveToolbar
-          saving={saving}
-          saveDisabled={!title.trim()}
-          onSave={handleSaveAll}
-          variant="bottom"
-        />
+  return (
+    <div className="edit-contest-page">
+      <div className="edit-contest-page-inner">
+        <header className="edit-contest-page-header">
+          <Link to={`/contests/${id}`} className="edit-contest-page-back">
+            <span className="edit-contest-page-back-icon" aria-hidden>
+              ‹
+            </span>
+            К конкурсу
+          </Link>
+          <div className="edit-contest-page-heading">
+            <p className="edit-contest-page-eyebrow">Настройки</p>
+            <h1 className="edit-contest-page-title">Редактировать конкурс</h1>
+          </div>
+        </header>
+
+        {error && (
+          <div className="edit-contest-page-error-banner" role="alert">
+            <ErrorMessage message={error} />
+          </div>
+        )}
+
+        <div className="edit-contest-page-layout">
+          <aside className="edit-contest-page-sidebar" aria-label="Разделы редактирования конкурса">
+            <nav className="edit-contest-page-nav">
+              {EDIT_CONTEST_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={
+                    tab.id === activeTab ? 'edit-contest-page-nav-item edit-contest-page-nav-item--active' : 'edit-contest-page-nav-item'
+                  }
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={tab.id === activeTab ? 'page' : undefined}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <section className="edit-contest-page-content" aria-label={`Раздел: ${activeTabLabel}`}>
+            <EditContestSaveToolbar saving={saving} saveDisabled={!title.trim()} onSave={handleSaveAll} />
+            {tabContent}
+          </section>
+        </div>
       </div>
     </div>
   );

@@ -59,6 +59,16 @@
   color: #475569 !important;
 }
 
+.profile-ws-status {
+  margin-top: 10px;
+}
+
+.profile-ws-status .connection-status {
+  padding: 8px 0;
+  font-size: 14px;
+  background: transparent;
+}
+
 .profile-form {
   display: flex;
   flex-direction: column;

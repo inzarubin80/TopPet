@@ -13,6 +13,7 @@ import { getApiErrorMessage } from '../types/api';
 import { fetchCurrentUser } from '../store/slices/authSlice';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { AvatarCropModal } from '../components/profile/AvatarCropModal';
+import { ConnectionStatus } from '../components/chat/ConnectionStatus';
 import './ProfilePage.css';
 
 const SYSTEM_ROLE_LABEL: Record<string, string> = {
@@ -25,6 +26,7 @@ const ProfilePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
+  const notificationsSocketState = useSelector((state: RootState) => state.notifications.socketState);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -201,6 +203,9 @@ const ProfilePage: React.FC = () => {
             <p className="profile-system-role">
               Роль в системе: {SYSTEM_ROLE_LABEL[user?.role || 'user'] || user?.role || 'Пользователь'}
             </p>
+            <div className="profile-ws-status">
+              <ConnectionStatus state={notificationsSocketState} isAuthenticated />
+            </div>
           </div>
         </div>
 

@@ -77,21 +77,6 @@
   min-width: 0;
 }
 
-/* Вровень с пунктами меню: у .segment-menu--contest padding-top: 4px; центр по вертикали не брать — нижний отступ меню смещал индикатор */
-.contest-page-menu-ws {
-  flex-shrink: 0;
-  margin-left: auto;
-  padding-top: 4px;
-  display: flex;
-  align-items: center;
-}
-
-.contest-page-menu-ws .connection-status {
-  padding: 10px 12px;
-  font-size: 15px;
-  line-height: 1;
-}
-
 .contest-page-menu-tabs > .segment-menu--contest {
   margin-bottom: 0;
 }
@@ -114,11 +99,6 @@
 
   .contest-page-menu-tabs .segment-menu.segment-menu--contest {
     padding-bottom: 0;
-  }
-
-  .contest-page-menu-ws .connection-status {
-    padding: 9px 10px;
-    font-size: 14px;
   }
 }
 

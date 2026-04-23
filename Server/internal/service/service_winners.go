@@ -17,13 +17,23 @@ type winnerMeta struct {
 	prize string
 }
 
+func (s *TopPetService) listAcceptedParticipantScoresForContestByMode(ctx context.Context, contest *model.Contest) ([]model.ParticipantScoreForWinners, error) {
+	if contest != nil && !isContestUserVotingModeLikes(contest.UserVotingMode) {
+		return s.repository.ListAcceptedParticipantUserVoteScoresForContest(ctx, contest.ID)
+	}
+	if contest == nil {
+		return nil, nil
+	}
+	return s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+}
+
 type contestWinnerOutcome struct {
-	audienceSet map[model.ParticipantID]struct{}
-	jurySet     map[model.ParticipantID]struct{}
+	audienceSet  map[model.ParticipantID]struct{}
+	jurySet      map[model.ParticipantID]struct{}
 	audienceMeta map[model.ParticipantID]winnerMeta
-	juryMeta map[model.ParticipantID]winnerMeta
-	audience    []model.ContestWinnerBrief
-	jury        []model.ContestWinnerBrief
+	juryMeta     map[model.ParticipantID]winnerMeta
+	audience     []model.ContestWinnerBrief
+	jury         []model.ContestWinnerBrief
 }
 
 func nominationBucketKey(nominationID *string) string {
@@ -114,11 +124,11 @@ func computeTopPlaceWinners(
 		}
 		out = append(out, model.ContestWinnerBrief{
 			ParticipantID: row.ParticipantID,
-			PetName: row.PetName,
-			NominationID: nomCopy,
-			Score: score,
-			Place: placeCfg.Place,
-			Prize: placeCfg.Prize,
+			PetName:       row.PetName,
+			NominationID:  nomCopy,
+			Score:         score,
+			Place:         placeCfg.Place,
+			Prize:         placeCfg.Prize,
 		})
 	}
 	return out
@@ -127,10 +137,10 @@ func computeTopPlaceWinners(
 // computeContestWinnerOutcome — ведра по номинации; места по плотному рангу счёта (ничьи делят ступень).
 func computeContestWinnerOutcome(contest *model.Contest, rows []model.ParticipantScoreForWinners, nominationTitle func(*string) string, nominationSortOrder map[string]int) contestWinnerOutcome {
 	empty := contestWinnerOutcome{
-		audienceSet: make(map[model.ParticipantID]struct{}),
-		jurySet:     make(map[model.ParticipantID]struct{}),
+		audienceSet:  make(map[model.ParticipantID]struct{}),
+		jurySet:      make(map[model.ParticipantID]struct{}),
 		audienceMeta: make(map[model.ParticipantID]winnerMeta),
-		juryMeta: make(map[model.ParticipantID]winnerMeta),
+		juryMeta:     make(map[model.ParticipantID]winnerMeta),
 	}
 	if nominationTitle == nil {
 		nominationTitle = func(*string) string { return "" }
@@ -151,10 +161,10 @@ func computeContestWinnerOutcome(contest *model.Contest, rows []model.Participan
 	sortNominationBucketKeys(keys, nominationSortOrder)
 
 	out := contestWinnerOutcome{
-		audienceSet: make(map[model.ParticipantID]struct{}),
-		jurySet:     make(map[model.ParticipantID]struct{}),
+		audienceSet:  make(map[model.ParticipantID]struct{}),
+		jurySet:      make(map[model.ParticipantID]struct{}),
 		audienceMeta: make(map[model.ParticipantID]winnerMeta),
-		juryMeta: make(map[model.ParticipantID]winnerMeta),
+		juryMeta:     make(map[model.ParticipantID]winnerMeta),
 	}
 
 	for _, k := range keys {
@@ -216,7 +226,7 @@ func (s *TopPetService) persistVotingResultsAfterFinished(ctx context.Context, c
 	if contest.Status != model.ContestStatusFinished {
 		return contest, nil
 	}
-	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contestID)
+	rows, err := s.listAcceptedParticipantScoresForContestByMode(ctx, contest)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +264,7 @@ func (s *TopPetService) computeContestWinnerSets(ctx context.Context, contest *m
 	if contest == nil || contest.Status != model.ContestStatusFinished {
 		return empty
 	}
-	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+	rows, err := s.listAcceptedParticipantScoresForContestByMode(ctx, contest)
 	if err != nil || len(rows) == 0 {
 		return empty
 	}
@@ -273,7 +283,7 @@ func (s *TopPetService) attachParticipantWinnerFlags(ctx context.Context, contes
 	if contest.VotingResultsComputedAt != nil {
 		o = outcomeFromPersistedWinnerBriefs(contest.PersistedAudienceWinners, contest.PersistedJuryWinners)
 	} else {
-		rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+		rows, err := s.listAcceptedParticipantScoresForContestByMode(ctx, contest)
 		if err != nil || len(rows) == 0 {
 			return
 		}
@@ -309,7 +319,7 @@ func (s *TopPetService) attachOneParticipantWinnerFlags(ctx context.Context, con
 	if contest.VotingResultsComputedAt != nil {
 		o = outcomeFromPersistedWinnerBriefs(contest.PersistedAudienceWinners, contest.PersistedJuryWinners)
 	} else {
-		rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+		rows, err := s.listAcceptedParticipantScoresForContestByMode(ctx, contest)
 		if err != nil || len(rows) == 0 {
 			return
 		}
@@ -341,7 +351,7 @@ func (s *TopPetService) enrichContestWithWinners(ctx context.Context, contest *m
 		contest.JuryWinners = append([]model.ContestWinnerBrief(nil), contest.PersistedJuryWinners...)
 		return
 	}
-	rows, err := s.repository.ListAcceptedParticipantScoresForContest(ctx, contest.ID)
+	rows, err := s.listAcceptedParticipantScoresForContestByMode(ctx, contest)
 	if err != nil || len(rows) == 0 {
 		return
 	}
@@ -383,6 +393,10 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 	if err != nil || len(rows) == 0 {
 		return
 	}
+	userVoteRows, err := s.repository.ListAcceptedParticipantUserVoteScoresForContests(ctx, finishedIDs)
+	if err != nil {
+		userVoteRows = nil
+	}
 	noms, err := s.repository.ListNominationsForContests(ctx, finishedIDs)
 	if err != nil {
 		noms = nil
@@ -406,6 +420,13 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 		}
 		byContest[r.ContestID] = append(byContest[r.ContestID], r)
 	}
+	byContestUserVote := make(map[model.ContestID][]model.ParticipantScoreForWinners)
+	for _, r := range userVoteRows {
+		if r.ContestID == "" {
+			continue
+		}
+		byContestUserVote[r.ContestID] = append(byContestUserVote[r.ContestID], r)
+	}
 	for _, c := range contests {
 		if c == nil || c.Status != model.ContestStatusFinished {
 			continue
@@ -423,7 +444,11 @@ func (s *TopPetService) enrichContestsWithWinners(ctx context.Context, contests 
 		if ns == nil {
 			ns = map[string]int{}
 		}
-		o := computeContestWinnerOutcome(c, byContest[c.ID], func(nid *string) string {
+		sourceRows := byContest[c.ID]
+		if !isContestUserVotingModeLikes(c.UserVotingMode) {
+			sourceRows = byContestUserVote[c.ID]
+		}
+		o := computeContestWinnerOutcome(c, sourceRows, func(nid *string) string {
 			if nid == nil || *nid == "" {
 				return ""
 			}

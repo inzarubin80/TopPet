@@ -29,10 +29,10 @@ type (
 )
 
 var (
-	themeColorPattern = regexp.MustCompile(`^(|#[0-9A-Fa-f]{6})$`)
-	ctaLabelMaxRunes        = 64
-	contestRulesTextMaxRunes   = 80000
-	entryTitleHintMaxRunes     = 1024
+	themeColorPattern        = regexp.MustCompile(`^(|#[0-9A-Fa-f]{6})$`)
+	ctaLabelMaxRunes         = 64
+	contestRulesTextMaxRunes = 80000
+	entryTitleHintMaxRunes   = 1024
 )
 
 func NewUpdateContestHandler(name string, service serviceUpdateContest) *UpdateContestHandler {
@@ -163,33 +163,34 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req struct {
-		Title                *string `json:"title"`
-		Description          *string `json:"description"`
-		PublicVotingEnabled  *bool   `json:"public_voting_enabled"`
-		JuryVotingEnabled    *bool   `json:"jury_voting_enabled"`
-		CoverUrl             *string `json:"cover_url"`
-		Tagline              *string `json:"tagline"`
-		RulesText            *string `json:"rules_text"`
-		PrizeText            *string `json:"prize_text"`
+		Title                *string                    `json:"title"`
+		Description          *string                    `json:"description"`
+		PublicVotingEnabled  *bool                      `json:"public_voting_enabled"`
+		UserVotingMode       *string                    `json:"user_voting_mode"`
+		JuryVotingEnabled    *bool                      `json:"jury_voting_enabled"`
+		CoverUrl             *string                    `json:"cover_url"`
+		Tagline              *string                    `json:"tagline"`
+		RulesText            *string                    `json:"rules_text"`
+		PrizeText            *string                    `json:"prize_text"`
 		JuryPrizePlaces      *[]model.ContestPrizePlace `json:"jury_prize_places"`
 		AudiencePrizePlaces  *[]model.ContestPrizePlace `json:"audience_prize_places"`
-		LogoUrl              *string `json:"logo_url"`
-		ThemeColor           *string `json:"theme_color"`
-		SponsorName          *string `json:"sponsor_name"`
-		SponsorLogoUrl       *string `json:"sponsor_logo_url"`
-		SponsorUrl           *string `json:"sponsor_url"`
-		CtaLabelOverride     *string `json:"cta_label_override"`
-		PublicationStartsAt  *string `json:"publication_starts_at"`
-		RegistrationStartsAt *string `json:"registration_starts_at"`
-		VotingStartsAt       *string `json:"voting_starts_at"`
-		VotingEndsAt         *string `json:"voting_ends_at"`
+		LogoUrl              *string                    `json:"logo_url"`
+		ThemeColor           *string                    `json:"theme_color"`
+		SponsorName          *string                    `json:"sponsor_name"`
+		SponsorLogoUrl       *string                    `json:"sponsor_logo_url"`
+		SponsorUrl           *string                    `json:"sponsor_url"`
+		CtaLabelOverride     *string                    `json:"cta_label_override"`
+		PublicationStartsAt  *string                    `json:"publication_starts_at"`
+		RegistrationStartsAt *string                    `json:"registration_starts_at"`
+		VotingStartsAt       *string                    `json:"voting_starts_at"`
+		VotingEndsAt         *string                    `json:"voting_ends_at"`
 		// IANA, например Europe/Moscow; null — не менять.
 		ScheduleTimezone *string `json:"schedule_timezone"`
 		// Список доменов e-mail; null — не менять, [] — сбросить ограничение.
 		ParticipantAllowedEmailDomains *[]string `json:"participant_allowed_email_domains"`
-		MinPhotoCount *int `json:"min_photo_count"`
-		MaxPhotoCount *int `json:"max_photo_count"`
-		EntryTitleHint *string `json:"entry_title_hint"`
+		MinPhotoCount                  *int      `json:"min_photo_count"`
+		MaxPhotoCount                  *int      `json:"max_photo_count"`
+		EntryTitleHint                 *string   `json:"entry_title_hint"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -218,6 +219,7 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Title:                          contest.Title,
 		Description:                    contest.Description,
 		PublicVotingEnabled:            contest.PublicVotingEnabled,
+		UserVotingMode:                 contest.UserVotingMode,
 		JuryVotingEnabled:              contest.JuryVotingEnabled,
 		CoverUrl:                       contest.CoverUrl,
 		Tagline:                        contest.Tagline,
@@ -250,6 +252,9 @@ func (h *UpdateContestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	if req.PublicVotingEnabled != nil {
 		u.PublicVotingEnabled = *req.PublicVotingEnabled
+	}
+	if req.UserVotingMode != nil {
+		u.UserVotingMode = model.ContestUserVotingMode(strings.TrimSpace(*req.UserVotingMode))
 	}
 	if req.JuryVotingEnabled != nil {
 		u.JuryVotingEnabled = *req.JuryVotingEnabled

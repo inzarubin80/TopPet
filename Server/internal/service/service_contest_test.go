@@ -201,13 +201,28 @@ func (m *mockRepository) UpsertContestVote(ctx context.Context, contestID model.
 func (m *mockRepository) ListContestVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
 	return nil, nil
 }
+func (m *mockRepository) UpsertContestUserVote(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID, userID model.UserID, nominationID *string) (*model.Vote, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListContestUserVotesByUser(ctx context.Context, contestID model.ContestID, userID model.UserID) ([]*model.Vote, error) {
+	return nil, nil
+}
 func (m *mockRepository) DeleteContestVoteByUserAndParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error) {
+	return "", nil
+}
+func (m *mockRepository) DeleteContestUserVoteByUserAndParticipant(ctx context.Context, contestID model.ContestID, userID model.UserID, participantID model.ParticipantID) (model.ParticipantID, error) {
 	return "", nil
 }
 func (m *mockRepository) ListAcceptedParticipantScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error) {
 	return nil, nil
 }
+func (m *mockRepository) ListAcceptedParticipantUserVoteScoresForContest(ctx context.Context, contestID model.ContestID) ([]model.ParticipantScoreForWinners, error) {
+	return nil, nil
+}
 func (m *mockRepository) ListAcceptedParticipantScoresForContests(ctx context.Context, contestIDs []model.ContestID) ([]model.ParticipantScoreForWinners, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListAcceptedParticipantUserVoteScoresForContests(ctx context.Context, contestIDs []model.ContestID) ([]model.ParticipantScoreForWinners, error) {
 	return nil, nil
 }
 func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) {
@@ -217,6 +232,15 @@ func (m *mockRepository) ListVotersByParticipant(ctx context.Context, contestID 
 // CountVotesByContest, CountVotesByContests реализованы ниже с поддержкой моков
 func (m *mockRepository) CountVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) {
 	return 0, nil
+}
+func (m *mockRepository) CountContestUserVotesByContest(ctx context.Context, contestID model.ContestID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) CountContestUserVotesByParticipant(ctx context.Context, participantID model.ParticipantID) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) ListContestUserVotersByParticipant(ctx context.Context, contestID model.ContestID, participantID model.ParticipantID) ([]*model.VoterInfo, error) {
+	return nil, nil
 }
 func (m *mockRepository) CreateComment(ctx context.Context, participantID model.ParticipantID, userID model.UserID, text string, parentID *model.CommentID, imageURL string) (*model.Comment, error) {
 	return nil, nil
@@ -280,6 +304,36 @@ func (m *mockRepository) DeleteChatMessage(ctx context.Context, messageID model.
 }
 func (m *mockRepository) UpsertChatMessageVote(ctx context.Context, messageID model.ChatMessageID, userID model.UserID, value int16) (model.ContestID, int64, error) {
 	return "", 0, nil
+}
+func (m *mockRepository) GetDirectConversationByID(ctx context.Context, conversationID model.DirectConversationID) (*model.DirectConversation, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetDirectConversationForUser(ctx context.Context, conversationID model.DirectConversationID, userID model.UserID) (*model.DirectConversation, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetOrCreateDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListDirectConversationsByUser(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error) {
+	return nil, 0, nil
+}
+func (m *mockRepository) CreateDirectMessage(ctx context.Context, conversationID model.DirectConversationID, senderUserID model.UserID, text string) (*model.DirectMessage, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListDirectMessagesByConversation(ctx context.Context, conversationID model.DirectConversationID, limit, offset int) ([]*model.DirectMessage, int64, error) {
+	return nil, 0, nil
+}
+func (m *mockRepository) GetDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error) {
+	return nil, nil
+}
+func (m *mockRepository) UpdateDirectMessageByID(ctx context.Context, messageID model.DirectMessageID, text string) (*model.DirectMessage, error) {
+	return nil, nil
+}
+func (m *mockRepository) DeleteDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error) {
+	return nil, nil
 }
 
 // CountVotesByContests реализован выше с поддержкой моков

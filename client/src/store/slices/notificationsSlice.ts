@@ -4,11 +4,13 @@ import { UserNotification } from '../../types/notifications';
 import * as notificationsApi from '../../api/notificationsApi';
 import { getApiErrorMessage } from '../../types/api';
 import { logout } from './authSlice';
+import type { UserNotificationsConnectionState } from '../../websocket/userNotificationsClient';
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
 export interface NotificationsState {
   totalUnread: number;
+  socketState: UserNotificationsConnectionState;
   lastIncoming: UserNotification | null;
   listSynced: boolean;
   items: UserNotification[];
@@ -23,6 +25,7 @@ export interface NotificationsState {
 function getInitialState(): NotificationsState {
   return {
     totalUnread: 0,
+    socketState: 'DISCONNECTED',
     lastIncoming: null,
     listSynced: false,
     items: [],
@@ -143,6 +146,9 @@ const notificationsSlice = createSlice({
   reducers: {
     setTotalUnread: (state, action: PayloadAction<number>) => {
       state.totalUnread = action.payload;
+    },
+    setNotificationsSocketState: (state, action: PayloadAction<UserNotificationsConnectionState>) => {
+      state.socketState = action.payload;
     },
     pushIncomingNotification: (state, action: PayloadAction<UserNotification>) => {
       const n = action.payload;
@@ -268,7 +274,7 @@ const notificationsSlice = createSlice({
   },
 });
 
-export const { setTotalUnread, pushIncomingNotification, applyUnreadSnapshot, markAllReadLocal } =
+export const { setTotalUnread, setNotificationsSocketState, pushIncomingNotification, applyUnreadSnapshot, markAllReadLocal } =
   notificationsSlice.actions;
 
 export default notificationsSlice.reducer;

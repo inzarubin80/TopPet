@@ -5,8 +5,11 @@ export type ContestID = string;
 export type ParticipantID = string;
 export type CommentID = string;
 export type ChatMessageID = string;
+export type DirectConversationID = string;
+export type DirectMessageID = string;
 
 export type ContestStatus = 'draft' | 'publication' | 'registration' | 'voting' | 'finished';
+export type ContestUserVotingMode = 'likes' | 'all_users' | 'participants_only';
 
 /** Глобальная роль в системе (поле users.role). */
 export type UserRole = 'user' | 'contest_admin' | 'system_admin';
@@ -63,6 +66,7 @@ export interface Contest {
   total_votes?: number;
   /** Голоса посетителей за работы участников */
   public_voting_enabled?: boolean;
+  user_voting_mode?: ContestUserVotingMode;
   /** Критерии жюри и состав жюри */
   jury_voting_enabled?: boolean;
   cover_url?: string;
@@ -78,8 +82,6 @@ export interface Contest {
   sponsor_logo_url?: string;
   sponsor_url?: string;
   cta_label_override?: string;
-  /** Домены e-mail; пусто — заявку может подать любой. */
-  participant_allowed_email_domains?: string[];
   /** Старт фазы «публикация» (UTC). Планировщик сверяет время с датами и выставляет статус. */
   publication_starts_at?: string;
   /** Начало регистрации (UTC, RFC3339). */
@@ -353,6 +355,31 @@ export interface ChatMessage {
   is_system: boolean;
   score: number;
   user_vote: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DirectConversation {
+  id: DirectConversationID;
+  user_low_id: UserID;
+  user_high_id: UserID;
+  peer_user_id: UserID;
+  peer_user_name: string;
+  peer_user_avatar_url?: string;
+  last_message_text?: string;
+  last_message_created_at?: string;
+  last_message_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DirectMessage {
+  id: DirectMessageID;
+  conversation_id: DirectConversationID;
+  sender_user_id: UserID;
+  sender_user_name: string;
+  sender_user_avatar_url?: string;
+  text: string;
   created_at: string;
   updated_at: string;
 }

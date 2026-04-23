@@ -13,8 +13,8 @@ import {
 import { refreshTokenAsync } from '../store/slices/authSlice';
 import {
   fetchContest,
-  setUserVoteSlot,
   setUserVotesForContest,
+  updateParticipantVoteTotal,
   updateContestTotalVotes,
 } from '../store/slices/contestsSlice';
 import {
@@ -89,9 +89,19 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     });
 
     client.setOnVoteCountsUpdated((contestIdFromPayload, participantIdFromPayload, totalVotes, contestTotal) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d469fa'},body:JSON.stringify({sessionId:'d469fa',runId:'run_ws_sync',hypothesisId:'H1',location:'useWebSocket:onVoteCountsUpdated',message:'WS vote counts event',data:{activeContestId:contestId,payloadContestId:contestIdFromPayload,participantIdFromPayload,totalVotes,contestTotal,contestMatches:Boolean(contestId&&contestIdFromPayload===contestId)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (contestId && contestIdFromPayload === contestId) {
         if (participantIdFromPayload && typeof totalVotes === 'number') {
           dispatch(updateParticipantVotes({ participantId: participantIdFromPayload, totalVotes }));
+          dispatch(
+            updateParticipantVoteTotal({
+              contestId,
+              participantId: participantIdFromPayload,
+              totalVotes,
+            })
+          );
         }
         if (typeof contestTotal === 'number') {
           dispatch(updateContestTotalVotes({ contestId, totalVotes: contestTotal }));
@@ -99,23 +109,21 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
       }
     });
 
-    client.setOnUserVoteUpdated((contestIdFromPayload, participantIdFromPayload) => {
+    client.setOnUserVoteUpdated((contestIdFromPayload) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d469fa'},body:JSON.stringify({sessionId:'d469fa',runId:'run_ws_sync',hypothesisId:'H2',location:'useWebSocket:onUserVoteUpdated',message:'WS user vote updated event',data:{activeContestId:contestId,payloadContestId:contestIdFromPayload,contestMatches:Boolean(contestId&&contestIdFromPayload===contestId)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (contestId && contestIdFromPayload === contestId) {
-        if (!participantIdFromPayload) {
-          getVotes(contestId)
-            .then((votes) => dispatch(setUserVotesForContest({ contestId, votes })))
-            .catch(() => {
-              // Ignore resync errors; state will refresh on next explicit load.
-            });
-          return;
-        }
-        dispatch(
-          setUserVoteSlot({
-            contestId,
-            participantId: participantIdFromPayload,
-            voted: true,
+        getVotes(contestId)
+          .then((votes) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7648/ingest/f0553ada-9363-42b1-9afe-d218d34ae783',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d469fa'},body:JSON.stringify({sessionId:'d469fa',runId:'run_ws_sync',hypothesisId:'H2',location:'useWebSocket:onUserVoteUpdated:getVotes',message:'getVotes after WS update',data:{contestId,votesCount:votes.length,participantIds:votes.map((v)=>v.participant_id)},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            dispatch(setUserVotesForContest({ contestId, votes }));
           })
-        );
+          .catch(() => {
+            // Ignore resync errors; state will refresh on next explicit load.
+          });
       }
     });
 

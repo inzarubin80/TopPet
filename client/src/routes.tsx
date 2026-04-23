@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import LegalDocumentPage from './pages/LegalDocumentPage';
+import MessagesPage from './pages/MessagesPage';
 import { AppHeader } from './components/common/AppHeader';
 import { AppFooter } from './components/common/AppFooter';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -96,6 +97,22 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:userId"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
             </ProtectedRoute>
           }
         />

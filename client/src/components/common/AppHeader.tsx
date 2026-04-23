@@ -143,6 +143,22 @@ export const AppHeader: React.FC = () => {
             </div>
           ) : null}
           {isAuthenticated ? (
+            <button
+              type="button"
+              className="app-header-notifications-trigger"
+              onClick={() => navigate('/messages')}
+              aria-label="Сообщения"
+              title="Сообщения"
+            >
+              <svg className="app-header-notifications-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm1 2v9h2v1.2L8.2 16H20V7H5Z"
+                />
+              </svg>
+            </button>
+          ) : null}
+          {isAuthenticated ? (
             <div className="app-header-notifications-wrap" ref={notificationsWrapRef}>
               <button
                 type="button"

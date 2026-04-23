@@ -2,7 +2,17 @@ import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { refreshTokenAsync } from '../store/slices/authSlice';
-import { applyUnreadSnapshot, bootstrapNotifications, pushIncomingNotification } from '../store/slices/notificationsSlice';
+import {
+  applyUnreadSnapshot,
+  bootstrapNotifications,
+  pushIncomingNotification,
+  setNotificationsSocketState,
+} from '../store/slices/notificationsSlice';
+import {
+  addIncomingDirectMessage,
+  removeDirectMessageFromConversation,
+  updateDirectMessageInConversation,
+} from '../store/slices/directMessagesSlice';
 import { getUserNotificationsWebSocketClient, UserNotificationIncoming } from '../websocket/userNotificationsClient';
 import { tokenStorage } from '../utils/tokenStorage';
 import { logger } from '../utils/logger';
@@ -58,6 +68,7 @@ export const useUserNotificationsSocket = (): void => {
 
   useEffect(() => {
     if (!user) {
+      dispatch(setNotificationsSocketState('DISCONNECTED'));
       getUserNotificationsWebSocketClient().disconnect();
       return;
     }
@@ -65,6 +76,9 @@ export const useUserNotificationsSocket = (): void => {
     void dispatch(bootstrapNotifications({}));
 
     const client = getUserNotificationsWebSocketClient();
+    client.setOnStateChange((state) => {
+      dispatch(setNotificationsSocketState(state));
+    });
     client.setOnMessage((msg: UserNotificationIncoming) => {
       if (msg.type === 'notification_unread') {
         dispatch(applyUnreadSnapshot(msg.total_unread));
@@ -78,6 +92,23 @@ export const useUserNotificationsSocket = (): void => {
           (m) => toastRef.current.showInfo(m),
           n
         );
+        return;
+      }
+      if (msg.type === 'direct_message' && msg.message) {
+        dispatch(addIncomingDirectMessage(msg.message));
+        return;
+      }
+      if (msg.type === 'direct_message_updated' && msg.message) {
+        dispatch(updateDirectMessageInConversation(msg.message));
+        return;
+      }
+      if (msg.type === 'direct_message_deleted') {
+        dispatch(
+          removeDirectMessageFromConversation({
+            conversationId: msg.conversation_id,
+            messageId: msg.message_id,
+          })
+        );
       }
     });
 
@@ -87,6 +118,7 @@ export const useUserNotificationsSocket = (): void => {
       const refreshTokenValue = tokenStorage.getRefreshToken();
       if (!refreshTokenValue) {
         logger.warn('[useUserNotificationsSocket] no refresh token');
+        dispatch(setNotificationsSocketState('DISCONNECTED'));
         return;
       }
       try {
@@ -102,6 +134,7 @@ export const useUserNotificationsSocket = (): void => {
         client.connect(token);
       } catch (e) {
         logger.warn('[useUserNotificationsSocket] refresh failed', e);
+        dispatch(setNotificationsSocketState('DISCONNECTED'));
       }
     };
 

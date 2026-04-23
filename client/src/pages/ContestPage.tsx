@@ -17,7 +17,6 @@ import { ParticipantCard } from '../components/contest/ParticipantCard';
 import { AddParticipantModal } from '../components/contest/AddParticipantModal';
 import { DeleteContestModal } from '../components/contest/DeleteContestModal';
 import { ChatWindow } from '../components/chat/ChatWindow';
-import { ConnectionStatus } from '../components/chat/ConnectionStatus';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { getVotes } from '../api/votesApi';
@@ -30,8 +29,10 @@ import { ContestOrganizerCriteriaPanel } from '../components/contest/ContestOrga
 import { ContestJuryPanel } from '../components/contest/ContestJuryPanel';
 import { ContestJuryVotingTab } from '../components/contest/ContestJuryVotingTab';
 import { ContestJuryChairTab } from '../components/contest/ContestJuryChairTab';
+import { ContestUserVotingTab } from '../components/contest/ContestUserVotingTab';
 import { ContestWinnersSection } from '../components/contest/ContestWinnersSection';
 import { ContestRulesViewer } from '../components/contest/ContestRulesViewer';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { resolvePublicAssetUrl } from '../utils/seo';
 import { getContestScheduleDisplayLines } from '../utils/scheduleTimezone';
 import { listNominations } from '../api/nominationsApi';
@@ -39,7 +40,6 @@ import { sortNominationsByOrder } from '../components/contest/contestNominations
 import { getContestJury } from '../api/juryApi';
 import type { ParticipantsListSort, ParticipantsListSubmissionFilter } from '../api/participantsApi';
 import { ParticipantGalleryNavigationState } from '../types/participantNavigation';
-import { userMayRegisterForContest } from '../utils/contestParticipantDomains';
 import { buildLoginUrl } from '../utils/navigation';
 import { SegmentMenu } from '../components/common/SegmentMenu';
 import { NominationTabsBar } from '../components/common/NominationTabsBar';
@@ -47,7 +47,6 @@ import { getEffectiveContestStatus } from '../utils/contestEffectiveStatus';
 import {
   getJuryChairboardPhaseBlockedMessage,
 } from '../utils/juryChairboardAccess';
-import { useWebSocket } from '../hooks/useWebSocket';
 import '../components/contest/ContestJuryVotingTab.css';
 import './ContestPage.css';
 
@@ -55,7 +54,7 @@ const PARTICIPANTS_PAGE_SIZE = 24;
 const EMPTY_STRING_ARRAY: string[] = [];
 const EMPTY_PARTICIPANTS_ARRAY: Participant[] = [];
 
-type ContestTab = 'about' | 'chat' | 'gallery' | 'winners' | 'jury_voting' | 'jury_chair';
+type ContestTab = 'about' | 'chat' | 'gallery' | 'winners' | 'jury_voting' | 'jury_chair' | 'user_voting';
 
 const CONTEST_TAB_HASH: Record<ContestTab, string> = {
   about: '#about',
@@ -64,6 +63,7 @@ const CONTEST_TAB_HASH: Record<ContestTab, string> = {
   winners: '#winners',
   jury_voting: '#jury_voting',
   jury_chair: '#jury_chair',
+  user_voting: '#user_voting',
 };
 
 function parseContestTabFromHash(hash: string): ContestTab {
@@ -74,7 +74,8 @@ function parseContestTabFromHash(hash: string): ContestTab {
     h === 'winners' ||
     h === 'about' ||
     h === 'jury_voting' ||
-    h === 'jury_chair'
+    h === 'jury_chair' ||
+    h === 'user_voting'
   ) {
     return h;
   }
@@ -100,8 +101,6 @@ const ContestPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  /** WS для карточки конкурса (галерея, заявки, чат — одно соединение). */
-  const { connectionState, reconnect } = useWebSocket(id ?? null, null);
   const { showError } = useToast();
   const { currentContest, loading } = useSelector((state: RootState) => state.contests);
   const { items: participants, loading: participantsLoading } = useSelector(
@@ -334,6 +333,9 @@ const ContestPage: React.FC = () => {
 
 
   const { isAdmin, canManageParticipants } = useContestPermissions(currentContest, currentUser);
+  // Keep contest-level WS subscription active on all tabs (not only chat/participant cards),
+  // so vote counters and personal vote slots update in real time on #user_voting too.
+  useWebSocket(currentContest?.id ?? id ?? null, null);
   const nominationTitleById = useMemo(() => {
     const m: Record<string, string> = {};
     for (const n of contestNominations) {
@@ -361,6 +363,10 @@ const ContestPage: React.FC = () => {
     Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuror);
   const canAccessJuryChairTab =
     Boolean(currentContest?.jury_voting_enabled) && (isAdmin || isCurrentUserJuryChair);
+  const canAccessUserVotingTab =
+    (currentContest?.user_voting_mode === 'all_users' ||
+      currentContest?.user_voting_mode === 'participants_only') &&
+    (currentContest?.status === 'voting' || currentContest?.status === 'finished');
 
   const effectiveContestStatus = useMemo(
     () => (currentContest ? getEffectiveContestStatus(currentContest) : undefined),
@@ -384,8 +390,11 @@ const ContestPage: React.FC = () => {
     if (canAccessJuryChairTab) {
       items.push({ key: 'jury_chair', label: 'Председатель жюри' });
     }
+    if (canAccessUserVotingTab) {
+      items.push({ key: 'user_voting', label: 'Голосование' });
+    }
     return items;
-  }, [canAccessJuryVotingTab, canAccessJuryChairTab]);
+  }, [canAccessJuryVotingTab, canAccessJuryChairTab, canAccessUserVotingTab]);
 
   const handleContestMenuChange = (key: ContestTab) => {
     navigate(
@@ -462,6 +471,12 @@ const ContestPage: React.FC = () => {
         );
       }
     }
+    if (activeTab === 'user_voting' && !canAccessUserVotingTab) {
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: '#about' },
+        { replace: true }
+      );
+    }
   }, [
     activeTab,
     canAccessJuryVotingTab,
@@ -471,6 +486,7 @@ const ContestPage: React.FC = () => {
     id,
     isAuthenticated,
     isAdmin,
+    canAccessUserVotingTab,
     juryFetchNonce,
     navigate,
     location.pathname,
@@ -516,22 +532,11 @@ const ContestPage: React.FC = () => {
       currentContest.status === 'voting' ||
       currentContest.status === 'finished');
 
-  const participantEmailDomains = currentContest.participant_allowed_email_domains ?? [];
-  const participantEmailDomainsActive = participantEmailDomains.length > 0;
-  const mayRegisterByEmailDomains = userMayRegisterForContest(
-    currentUser?.email,
-    participantEmailDomains,
-    isAdmin
-  );
-
   const canAddParticipant = isAuthenticated && currentContest.status === 'registration';
   const participationPeriodOpen = currentContest.status === 'registration';
   const showGuestParticipationCta = !isAuthenticated && participationPeriodOpen;
   const showWorksParticipationChrome =
     canAddParticipant || canManageParticipants || showGuestParticipationCta;
-  const showDomainParticipationNote =
-    participantEmailDomainsActive && currentContest.status === 'registration';
-  const blockedByEmailDomain = showDomainParticipationNote && !mayRegisterByEmailDomains;
   const hasContestNominations = contestNominations.length > 0;
   const nominationsOpenToUser = hasContestNominations
     ? contestNominations.filter(
@@ -542,32 +547,18 @@ const ContestPage: React.FC = () => {
     !hasContestNominations &&
     userHasParticipantForNomination(myContestParticipants, currentUser?.id, null);
 
-  const domainNoteEl = showDomainParticipationNote ? (
-    <p className="contest-page-participants-domain-note" role="note">
-      Участие только для адресов e-mail на доменах:{' '}
-      <strong>{participantEmailDomains.join(', ')}</strong>.
-      {!isAuthenticated
-        ? ' Войдите с аккаунтом, у которого в профиле указана подходящая почта.'
-        : blockedByEmailDomain
-          ? ' Ваш e-mail в профиле не подходит под это ограничение.'
-          : null}
-    </p>
-  ) : null;
-
   const participateNominationCtaLabel = isAuthenticated
     ? 'Участвовать'
     : 'Зарегистрироваться для участия';
 
   const hideParticipateCta =
     isAuthenticated &&
-    !blockedByEmailDomain &&
     hasContestNominations &&
     nominationsOpenToUser.length === 0 &&
     contestNominations.length > 0;
 
   const hideParticipateCtaNoNominations =
     isAuthenticated &&
-    !blockedByEmailDomain &&
     !hasContestNominations &&
     alreadyInContestWithoutNominations;
 
@@ -620,15 +611,6 @@ const ContestPage: React.FC = () => {
             onChange={handleContestMenuChange}
           />
         </div>
-        {isAuthenticated ? (
-          <div className="contest-page-menu-ws">
-            <ConnectionStatus
-              state={connectionState}
-              onReconnect={reconnect}
-              isAuthenticated={isAuthenticated}
-            />
-          </div>
-        ) : null}
       </div>
     </nav>
   );
@@ -711,9 +693,7 @@ const ContestPage: React.FC = () => {
           ) : null}
           {showWorksParticipationChrome ? (
             <>
-              {domainNoteEl}
               {isAuthenticated &&
-              !blockedByEmailDomain &&
               hasContestNominations &&
               nominationsOpenToUser.length === 0 &&
               contestNominations.length > 0 ? (
@@ -722,7 +702,6 @@ const ContestPage: React.FC = () => {
                 </p>
               ) : null}
               {isAuthenticated &&
-              !blockedByEmailDomain &&
               !hasContestNominations &&
               alreadyInContestWithoutNominations ? (
                 <p className="contest-page-participants-all-nominations-taken" role="status">
@@ -1083,6 +1062,15 @@ const ContestPage: React.FC = () => {
                 juryPrizePlaces={juryPrizePlaces}
               />
             )}
+          </section>
+        ) : null}
+        {activeTab === 'user_voting' && canAccessUserVotingTab ? (
+          <section className="contest-page-jury-voting" aria-label="Пользовательское голосование">
+            <ContestUserVotingTab
+              contestId={currentContest.id}
+              contestStatus={currentContest.status}
+              nominations={contestNominations}
+            />
           </section>
         ) : null}
           </div>
