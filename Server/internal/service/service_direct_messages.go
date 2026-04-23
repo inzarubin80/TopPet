@@ -167,3 +167,25 @@ func (s *TopPetService) DeleteDirectMessage(ctx context.Context, userID model.Us
 	}
 	return nil
 }
+
+func (s *TopPetService) DeleteDirectConversation(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID) error {
+	conversation, err := s.repository.GetDirectConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	lowID, highID := conversation.UserLowID, conversation.UserHighID
+
+	if err := s.repository.DeleteDirectConversationWithMessages(ctx, conversationID); err != nil {
+		return err
+	}
+
+	if s.userNotificationHub != nil {
+		payload := wsapp.DirectConversationDeletedPayload{
+			Type:           wsapp.MessageTypeDirectConversationDeleted,
+			ConversationID: conversationID,
+		}
+		_ = s.userNotificationHub.SendToUser(lowID, payload)
+		_ = s.userNotificationHub.SendToUser(highID, payload)
+	}
+	return nil
+}

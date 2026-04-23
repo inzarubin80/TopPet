@@ -6,25 +6,26 @@ import "toppet/server/internal/model"
 type MessageType string
 
 const (
-	MessageTypeContestStatusUpdated MessageType = "contest_status_updated"
-	MessageTypeVoteCreated          MessageType = "vote_created"
-	MessageTypeVoteDeleted          MessageType = "vote_deleted"
-	MessageTypeUserVoteUpdated      MessageType = "user_vote_updated"
-	MessageTypeChatMessage          MessageType = "chat_message"
-	MessageTypeMessageUpdated          MessageType = "message_updated"
-	MessageTypeMessageDeleted          MessageType = "message_deleted"
-	MessageTypeChatMessageVoteUpdated  MessageType = "chat_message_vote_updated"
-	MessageTypeParticipantUpdated   MessageType = "participant_updated"
-	MessageTypeParticipantDeleted   MessageType = "participant_deleted"
+	MessageTypeContestStatusUpdated          MessageType = "contest_status_updated"
+	MessageTypeVoteCreated                   MessageType = "vote_created"
+	MessageTypeVoteDeleted                   MessageType = "vote_deleted"
+	MessageTypeUserVoteUpdated               MessageType = "user_vote_updated"
+	MessageTypeChatMessage                   MessageType = "chat_message"
+	MessageTypeMessageUpdated                MessageType = "message_updated"
+	MessageTypeMessageDeleted                MessageType = "message_deleted"
+	MessageTypeChatMessageVoteUpdated        MessageType = "chat_message_vote_updated"
+	MessageTypeParticipantUpdated            MessageType = "participant_updated"
+	MessageTypeParticipantDeleted            MessageType = "participant_deleted"
 	MessageTypeParticipantCommentCreated     MessageType = "participant_comment_created"
 	MessageTypeParticipantCommentUpdated     MessageType = "participant_comment_updated"
 	MessageTypeParticipantCommentDeleted     MessageType = "participant_comment_deleted"
 	MessageTypeParticipantCommentVoteUpdated MessageType = "participant_comment_vote_updated"
-	MessageTypeUserNotification       MessageType = "notification"
-	MessageTypeNotificationUnread     MessageType = "notification_unread"
-	MessageTypeDirectMessage          MessageType = "direct_message"
-	MessageTypeDirectMessageUpdated   MessageType = "direct_message_updated"
-	MessageTypeDirectMessageDeleted   MessageType = "direct_message_deleted"
+	MessageTypeUserNotification              MessageType = "notification"
+	MessageTypeNotificationUnread            MessageType = "notification_unread"
+	MessageTypeDirectMessage                 MessageType = "direct_message"
+	MessageTypeDirectMessageUpdated          MessageType = "direct_message_updated"
+	MessageTypeDirectMessageDeleted          MessageType = "direct_message_deleted"
+	MessageTypeDirectConversationDeleted     MessageType = "direct_conversation_deleted"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -36,8 +37,8 @@ type ContestStatusUpdatedPayload struct {
 
 // VotePayload представляет payload для голосования
 type VotePayload struct {
-	Type          MessageType     `json:"type"`
-	ContestID     model.ContestID `json:"contest_id"`
+	Type          MessageType         `json:"type"`
+	ContestID     model.ContestID     `json:"contest_id"`
 	ParticipantID model.ParticipantID `json:"participant_id,omitempty"`
 }
 
@@ -50,19 +51,19 @@ type ChatMessagePayload struct {
 
 // VoteCountsUpdatedPayload представляет payload для обновления счетчиков голосов
 type VoteCountsUpdatedPayload struct {
-	Type                MessageType     `json:"type"`
-	ContestID           model.ContestID `json:"contest_id"`
-	ParticipantID       model.ParticipantID `json:"participant_id"`
-	ParticipantTotalVotes int64         `json:"participant_total_votes"`
-	ContestTotalVotes   int64           `json:"contest_total_votes"`
+	Type                  MessageType         `json:"type"`
+	ContestID             model.ContestID     `json:"contest_id"`
+	ParticipantID         model.ParticipantID `json:"participant_id"`
+	ParticipantTotalVotes int64               `json:"participant_total_votes"`
+	ContestTotalVotes     int64               `json:"contest_total_votes"`
 }
 
 // UserVoteUpdatedPayload представляет payload для обновления голоса пользователя
 type UserVoteUpdatedPayload struct {
-	Type          MessageType     `json:"type"`
-	ContestID     model.ContestID `json:"contest_id"`
+	Type          MessageType         `json:"type"`
+	ContestID     model.ContestID     `json:"contest_id"`
 	ParticipantID model.ParticipantID `json:"participant_id"`
-	NominationID  *string         `json:"nomination_id,omitempty"`
+	NominationID  *string             `json:"nomination_id,omitempty"`
 }
 
 // MessageUpdatedPayload представляет payload для обновления сообщения
@@ -74,15 +75,15 @@ type MessageUpdatedPayload struct {
 
 // MessageDeletedPayload представляет payload для удаления сообщения
 type MessageDeletedPayload struct {
-	Type      MessageType     `json:"type"`
-	ContestID model.ContestID `json:"contest_id"`
+	Type      MessageType         `json:"type"`
+	ContestID model.ContestID     `json:"contest_id"`
 	MessageID model.ChatMessageID `json:"message_id"`
 }
 
 // ParticipantUpdatedPayload — снимок заявки для галереи (как в списке участников).
 type ParticipantUpdatedPayload struct {
-	Type        MessageType       `json:"type"`
-	ContestID   model.ContestID   `json:"contest_id"`
+	Type        MessageType        `json:"type"`
+	ContestID   model.ContestID    `json:"contest_id"`
 	Participant *model.Participant `json:"participant"`
 }
 
@@ -94,8 +95,8 @@ type NotificationUnreadSnapshot struct {
 
 // UserNotificationEnvelope — персональное уведомление (все конкурсы пользователя).
 type UserNotificationEnvelope struct {
-	Type           MessageType            `json:"type"`
-	Notification   *model.UserNotification `json:"notification"`
+	Type         MessageType             `json:"type"`
+	Notification *model.UserNotification `json:"notification"`
 }
 
 // DirectMessagePayload — новое сообщение в личном диалоге.
@@ -117,11 +118,17 @@ type DirectMessageDeletedPayload struct {
 	MessageID      model.DirectMessageID      `json:"message_id"`
 }
 
+// DirectConversationDeletedPayload — личный диалог удалён (все сообщения и запись диалога).
+type DirectConversationDeletedPayload struct {
+	Type           MessageType                `json:"type"`
+	ConversationID model.DirectConversationID `json:"conversation_id"`
+}
+
 // ParticipantDeletedPayload — заявка удалена из конкурса.
 type ParticipantDeletedPayload struct {
-	Type            MessageType         `json:"type"`
-	ContestID       model.ContestID     `json:"contest_id"`
-	ParticipantID   model.ParticipantID `json:"participant_id"`
+	Type          MessageType         `json:"type"`
+	ContestID     model.ContestID     `json:"contest_id"`
+	ParticipantID model.ParticipantID `json:"participant_id"`
 }
 
 // ChatMessageVoteUpdatedPayload — обновление суммы голосов сообщения чата (для всех подписчиков).

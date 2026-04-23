@@ -981,6 +981,19 @@ func (q *Queries) DeleteContestVotesByUserID(ctx context.Context, userID int64) 
 	return err
 }
 
+const deleteDirectConversationByID = `-- name: DeleteDirectConversationByID :execrows
+DELETE FROM direct_conversations
+WHERE id = $1
+`
+
+func (q *Queries) DeleteDirectConversationByID(ctx context.Context, conversationID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDirectConversationByID, conversationID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteDirectMessageByID = `-- name: DeleteDirectMessageByID :one
 DELETE FROM direct_messages
 WHERE id = $1
@@ -999,6 +1012,16 @@ func (q *Queries) DeleteDirectMessageByID(ctx context.Context, messageID pgtype.
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const deleteDirectMessagesForConversation = `-- name: DeleteDirectMessagesForConversation :exec
+DELETE FROM direct_messages
+WHERE conversation_id = $1
+`
+
+func (q *Queries) DeleteDirectMessagesForConversation(ctx context.Context, conversationID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteDirectMessagesForConversation, conversationID)
+	return err
 }
 
 const deleteJuryCriteriaByContest = `-- name: DeleteJuryCriteriaByContest :exec

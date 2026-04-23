@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"toppet/server/internal/model"
@@ -45,17 +46,17 @@ func directConversationFromRow(row *sqlc_repository.DirectConversation, peerUser
 	}
 
 	return &model.DirectConversation{
-		ID:                  model.DirectConversationID(id),
-		UserLowID:           model.UserID(row.UserLowID),
-		UserHighID:          model.UserID(row.UserHighID),
-		PeerUserID:          peerUserID,
-		PeerUserName:        peerName,
-		PeerUserAvatarURL:   peerAvatarURL,
-		LastMessageText:     lastMessageText,
+		ID:                   model.DirectConversationID(id),
+		UserLowID:            model.UserID(row.UserLowID),
+		UserHighID:           model.UserID(row.UserHighID),
+		PeerUserID:           peerUserID,
+		PeerUserName:         peerName,
+		PeerUserAvatarURL:    peerAvatarURL,
+		LastMessageText:      lastMessageText,
 		LastMessageCreatedAt: lastMessageCreatedAt,
-		LastMessageAt:       row.LastMessageAt.Time,
-		CreatedAt:           row.CreatedAt.Time,
-		UpdatedAt:           row.UpdatedAt.Time,
+		LastMessageAt:        row.LastMessageAt.Time,
+		CreatedAt:            row.CreatedAt.Time,
+		UpdatedAt:            row.UpdatedAt.Time,
 	}
 }
 
@@ -65,6 +66,22 @@ func buildDirectConversationForUser(row *sqlc_repository.DirectConversation, use
 		peerID = model.UserID(row.UserHighID)
 	}
 	return directConversationFromRow(row, peerID, fmt.Sprintf("Пользователь %d", peerID), "", "", nil)
+}
+
+// withPeerProfile replaces placeholder peer display with data from users (name, avatar).
+func (r *Repository) withPeerProfile(ctx context.Context, conv *model.DirectConversation) *model.DirectConversation {
+	if conv == nil {
+		return nil
+	}
+	user, err := r.GetUser(ctx, conv.PeerUserID)
+	if err != nil || user == nil {
+		return conv
+	}
+	if strings.TrimSpace(user.Name) != "" {
+		conv.PeerUserName = user.Name
+	}
+	conv.PeerUserAvatarURL = userAvatarURLFromUser(user)
+	return conv
 }
 
 func (r *Repository) GetDirectConversationByID(ctx context.Context, conversationID model.DirectConversationID) (*model.DirectConversation, error) {
@@ -80,7 +97,7 @@ func (r *Repository) GetDirectConversationByID(ctx context.Context, conversation
 		}
 		return nil, err
 	}
-	return buildDirectConversationForUser(row, model.UserID(row.UserLowID)), nil
+	return r.withPeerProfile(ctx, buildDirectConversationForUser(row, model.UserID(row.UserLowID))), nil
 }
 
 func (r *Repository) GetDirectConversationForUser(ctx context.Context, conversationID model.DirectConversationID, userID model.UserID) (*model.DirectConversation, error) {
@@ -99,7 +116,7 @@ func (r *Repository) GetDirectConversationForUser(ctx context.Context, conversat
 		}
 		return nil, err
 	}
-	return buildDirectConversationForUser(row, userID), nil
+	return r.withPeerProfile(ctx, buildDirectConversationForUser(row, userID)), nil
 }
 
 func (r *Repository) GetDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error) {
@@ -114,7 +131,7 @@ func (r *Repository) GetDirectConversationByPair(ctx context.Context, userAID, u
 		}
 		return nil, err
 	}
-	return buildDirectConversationForUser(row, userAID), nil
+	return r.withPeerProfile(ctx, buildDirectConversationForUser(row, userAID)), nil
 }
 
 func (r *Repository) GetOrCreateDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error) {
@@ -126,7 +143,7 @@ func (r *Repository) GetOrCreateDirectConversationByPair(ctx context.Context, us
 	if err != nil {
 		return nil, err
 	}
-	return buildDirectConversationForUser(row, userAID), nil
+	return r.withPeerProfile(ctx, buildDirectConversationForUser(row, userAID)), nil
 }
 
 func (r *Repository) ListDirectConversationsByUser(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error) {
@@ -151,17 +168,17 @@ func (r *Repository) ListDirectConversationsByUser(ctx context.Context, userID m
 			lastCreatedAt = &t
 		}
 		out = append(out, &model.DirectConversation{
-			ID:                  model.DirectConversationID(uuid.UUID(row.ID.Bytes).String()),
-			UserLowID:           model.UserID(row.UserLowID),
-			UserHighID:          model.UserID(row.UserHighID),
-			PeerUserID:          model.UserID(int64FromInterface(row.PeerUserID)),
-			PeerUserName:        row.PeerUserName,
-			PeerUserAvatarURL:   optionalUserAvatarURL(row.PeerUserAvatarUrl),
-			LastMessageText:     stringFromInterface(row.LastMessageText),
+			ID:                   model.DirectConversationID(uuid.UUID(row.ID.Bytes).String()),
+			UserLowID:            model.UserID(row.UserLowID),
+			UserHighID:           model.UserID(row.UserHighID),
+			PeerUserID:           model.UserID(int64FromInterface(row.PeerUserID)),
+			PeerUserName:         row.PeerUserName,
+			PeerUserAvatarURL:    optionalUserAvatarURL(row.PeerUserAvatarUrl),
+			LastMessageText:      stringFromInterface(row.LastMessageText),
 			LastMessageCreatedAt: lastCreatedAt,
-			LastMessageAt:       row.LastMessageAt.Time,
-			CreatedAt:           row.CreatedAt.Time,
-			UpdatedAt:           row.UpdatedAt.Time,
+			LastMessageAt:        row.LastMessageAt.Time,
+			CreatedAt:            row.CreatedAt.Time,
+			UpdatedAt:            row.UpdatedAt.Time,
 		})
 	}
 	return out, total, nil
@@ -320,4 +337,35 @@ func (r *Repository) DeleteDirectMessageByID(ctx context.Context, messageID mode
 		return nil, model.ErrorNotFound
 	}
 	return msg, nil
+}
+
+// DeleteDirectConversationWithMessages removes all messages and the conversation row (both participants).
+func (r *Repository) DeleteDirectConversationWithMessages(ctx context.Context, conversationID model.DirectConversationID) error {
+	b, ok := r.conn.(pgxBeginner)
+	if !ok {
+		return fmt.Errorf("repository does not support transactions")
+	}
+	tx, err := b.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	q := sqlc_repository.New(tx)
+	conversationUUID, err := uuid.Parse(string(conversationID))
+	if err != nil {
+		return err
+	}
+	cid := pgtype.UUID{Bytes: conversationUUID, Valid: true}
+	if err := q.DeleteDirectMessagesForConversation(ctx, cid); err != nil {
+		return err
+	}
+	n, err := q.DeleteDirectConversationByID(ctx, cid)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return model.ErrorNotFound
+	}
+	return tx.Commit(ctx)
 }

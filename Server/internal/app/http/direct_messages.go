@@ -18,6 +18,7 @@ type serviceDirectMessages interface {
 	CreateDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, text string) (*model.DirectMessage, error)
 	UpdateDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, messageID model.DirectMessageID, text string) (*model.DirectMessage, error)
 	DeleteDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, messageID model.DirectMessageID) error
+	DeleteDirectConversation(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID) error
 }
 
 type DirectConversationsHandler struct {
@@ -134,6 +135,35 @@ type DirectConversationMessagesHandler struct {
 
 func NewDirectConversationMessagesHandler(name string, service serviceDirectMessages) *DirectConversationMessagesHandler {
 	return &DirectConversationMessagesHandler{name: name, service: service}
+}
+
+type DirectConversationDeleteHandler struct {
+	name    string
+	service serviceDirectMessages
+}
+
+func NewDirectConversationDeleteHandler(name string, service serviceDirectMessages) *DirectConversationDeleteHandler {
+	return &DirectConversationDeleteHandler{name: name, service: service}
+}
+
+func (h *DirectConversationDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("method not allowed", nil))
+		return
+	}
+	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	conversationID := model.DirectConversationID(r.PathValue("conversationId"))
+	if conversationID == "" {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("conversationId is required", nil))
+		return
+	}
+	if err := h.service.DeleteDirectConversation(r.Context(), userID, conversationID); err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	if err := uhttp.SendSuccess(w, map[string]bool{"ok": true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+	}
 }
 
 func (h *DirectConversationMessagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

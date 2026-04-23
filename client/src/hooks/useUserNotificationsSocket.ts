@@ -10,6 +10,7 @@ import {
 } from '../store/slices/notificationsSlice';
 import {
   addIncomingDirectMessage,
+  removeConversation,
   removeDirectMessageFromConversation,
   updateDirectMessageInConversation,
 } from '../store/slices/directMessagesSlice';
@@ -109,6 +110,11 @@ export const useUserNotificationsSocket = (): void => {
             messageId: msg.message_id,
           })
         );
+        return;
+      }
+      if (msg.type === 'direct_conversation_deleted') {
+        dispatch(removeConversation(msg.conversation_id));
+        return;
       }
     });
 

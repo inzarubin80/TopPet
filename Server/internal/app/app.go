@@ -474,6 +474,10 @@ func (a *App) registerRoutes() {
 		appHttp.NewDirectMessageHandler("/api/me/dm/{conversationId}/messages/{messageId}", a.service),
 		a.service,
 	))
+	a.mux.Handle("DELETE /api/me/dm/{conversationId}", middleware.NewAuthMiddleware(
+		appHttp.NewDirectConversationDeleteHandler("/api/me/dm/{conversationId}", a.service),
+		a.service,
+	))
 	a.mux.Handle("GET /api/me/notifications/ws", appHttp.NewUserNotificationsWSHandler("/api/me/notifications/ws", a.service, a.service, a.userHub))
 
 	// Chat (public)

@@ -91,6 +91,15 @@ const directMessagesSlice = createSlice({
     setActiveDirectConversation(state, action: PayloadAction<DirectConversationID | null>) {
       state.activeConversationId = action.payload;
     },
+    removeConversation(state, action: PayloadAction<DirectConversationID>) {
+      const id = action.payload;
+      state.conversations = state.conversations.filter((c) => c.id !== id);
+      delete state.messagesByConversation[id];
+      delete state.totalsByConversation[id];
+      if (state.activeConversationId === id) {
+        state.activeConversationId = state.conversations[0]?.id ?? null;
+      }
+    },
   },
 });
 
@@ -102,6 +111,7 @@ export const {
   updateDirectMessageInConversation,
   removeDirectMessageFromConversation,
   setActiveDirectConversation,
+  removeConversation,
 } = directMessagesSlice.actions;
 
 export default directMessagesSlice.reducer;

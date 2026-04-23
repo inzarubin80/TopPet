@@ -59,7 +59,9 @@ type Querier interface {
 	DeleteContestUserVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestUserVoteByUserAndParticipantParams) (pgtype.UUID, error)
 	DeleteContestVoteByUserAndParticipant(ctx context.Context, arg *DeleteContestVoteByUserAndParticipantParams) (pgtype.UUID, error)
 	DeleteContestVotesByUserID(ctx context.Context, userID int64) error
+	DeleteDirectConversationByID(ctx context.Context, conversationID pgtype.UUID) (int64, error)
 	DeleteDirectMessageByID(ctx context.Context, messageID pgtype.UUID) (*DirectMessage, error)
+	DeleteDirectMessagesForConversation(ctx context.Context, conversationID pgtype.UUID) error
 	DeleteJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) error
 	DeleteJuryCriterionForContest(ctx context.Context, arg *DeleteJuryCriterionForContestParams) error
 	DeleteNomination(ctx context.Context, id pgtype.UUID) error

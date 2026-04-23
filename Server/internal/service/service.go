@@ -164,6 +164,7 @@ type (
 		GetDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error)
 		UpdateDirectMessageByID(ctx context.Context, messageID model.DirectMessageID, text string) (*model.DirectMessage, error)
 		DeleteDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error)
+		DeleteDirectConversationWithMessages(ctx context.Context, conversationID model.DirectConversationID) error
 
 		// User notifications
 		InsertUserNotification(ctx context.Context, userID model.UserID, kind string, payload json.RawMessage) (*model.UserNotification, error)

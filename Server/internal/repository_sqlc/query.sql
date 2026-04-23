@@ -1308,6 +1308,14 @@ UPDATE direct_conversations
 SET last_message_at = NOW(), updated_at = NOW()
 WHERE id = @conversation_id;
 
+-- name: DeleteDirectMessagesForConversation :exec
+DELETE FROM direct_messages
+WHERE conversation_id = @conversation_id;
+
+-- name: DeleteDirectConversationByID :execrows
+DELETE FROM direct_conversations
+WHERE id = @conversation_id;
+
 -- name: ListDirectMessagesByConversation :many
 SELECT
     dm.id,

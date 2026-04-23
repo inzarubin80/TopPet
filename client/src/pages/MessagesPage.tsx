@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MessageInput, MessageSendPayload } from '../components/chat/MessageInput';
 import { MessageList } from '../components/chat/MessageList';
 import { MessengerUserPresentation } from '../components/common/MessengerUserPresentation';
@@ -11,6 +11,7 @@ import {
   sendDirectMessage,
   updateDirectMessage,
   deleteDirectMessage,
+  deleteDirectConversation,
 } from '../api/directMessagesApi';
 import { searchUsers } from '../api/usersApi';
 import { RootState } from '../store';
@@ -21,6 +22,7 @@ import {
   upsertConversation,
   updateDirectMessageInConversation,
   removeDirectMessageFromConversation,
+  removeConversation,
 } from '../store/slices/directMessagesSlice';
 import { useToast } from '../contexts/ToastContext';
 import type { UserSearchHit } from '../types/models';
@@ -28,6 +30,7 @@ import './MessagesPage.css';
 
 const MessagesPage: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { userId } = useParams<{ userId?: string }>();
   const { showError } = useToast();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.id);
@@ -41,6 +44,9 @@ const MessagesPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<UserSearchHit[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserSearchHit | null>(null);
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const [channelMenuOpen, setChannelMenuOpen] = useState(false);
+  const [deletingChannel, setDeletingChannel] = useState(false);
+  const hadPeerConversationRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +100,29 @@ const MessagesPage: React.FC = () => {
       cancelled = true;
     };
   }, [dispatch, showError, userId]);
+
+  useEffect(() => {
+    hadPeerConversationRef.current = false;
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || loadingConversations) {
+      return;
+    }
+    const pid = Number(userId);
+    if (!Number.isFinite(pid) || pid <= 0) {
+      return;
+    }
+    const match = conversations.some((c) => c.peer_user_id === pid);
+    if (match) {
+      hadPeerConversationRef.current = true;
+      return;
+    }
+    if (hadPeerConversationRef.current) {
+      navigate('/messages', { replace: true });
+      hadPeerConversationRef.current = false;
+    }
+  }, [conversations, userId, loadingConversations, navigate]);
 
   useEffect(() => {
     const q = searchValue.trim();
@@ -225,6 +254,45 @@ const MessagesPage: React.FC = () => {
     }
   };
 
+  const handleDeleteChannel = async () => {
+    if (!activeConversation || !activeConversationId) {
+      return;
+    }
+    if (!window.confirm('Удалить диалог? Все сообщения будут удалены у обоих участников.')) {
+      setChannelMenuOpen(false);
+      return;
+    }
+    const convId = activeConversationId;
+    const peerId = activeConversation.peer_user_id;
+    try {
+      setDeletingChannel(true);
+      await deleteDirectConversation(convId);
+      dispatch(removeConversation(convId));
+      setChannelMenuOpen(false);
+      if (userId && Number(userId) === peerId) {
+        navigate('/messages', { replace: true });
+      }
+    } catch {
+      showError('Не удалось удалить диалог');
+    } finally {
+      setDeletingChannel(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!channelMenuOpen) {
+      return;
+    }
+    const close = (e: MouseEvent) => {
+      const el = document.querySelector('[data-messages-channel-menu="1"]');
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setChannelMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [channelMenuOpen]);
+
   const handleCreateConversation = async () => {
     if (!selectedUser) {
       return;
@@ -322,7 +390,50 @@ const MessagesPage: React.FC = () => {
       <section className="messages-page-chat">
         {activeConversation ? (
           <>
-            <div className="messages-page-chat-header">{activeConversation.peer_user_name}</div>
+            <div className="messages-page-chat-header">
+              <span className="messages-page-chat-header-title">{activeConversation.peer_user_name}</span>
+              <div className="messages-page-channel-menu" data-messages-channel-menu="1">
+                <button
+                  type="button"
+                  className="messages-page-channel-menu-trigger"
+                  onClick={() => setChannelMenuOpen((v) => !v)}
+                  aria-expanded={channelMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="Меню канала"
+                  disabled={deletingChannel}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <path
+                      d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                {channelMenuOpen ? (
+                  <div className="messages-page-channel-menu-dropdown" role="menu">
+                    <button
+                      type="button"
+                      className="messages-page-channel-menu-item messages-page-channel-menu-item--danger"
+                      role="menuitem"
+                      disabled={deletingChannel}
+                      onClick={() => void handleDeleteChannel()}
+                    >
+                      {deletingChannel ? 'Удаление…' : 'Удалить'}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
             <div className="messages-page-chat-list">
               {loadingMessages ? (
                 <div className="messages-page-empty">Загрузка сообщений...</div>

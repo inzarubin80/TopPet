@@ -47,6 +47,10 @@ export type UserNotificationIncoming =
       type: 'direct_message_deleted';
       conversation_id: string;
       message_id: string;
+    }
+  | {
+      type: 'direct_conversation_deleted';
+      conversation_id: string;
     };
 
 export class UserNotificationsWebSocketClient {

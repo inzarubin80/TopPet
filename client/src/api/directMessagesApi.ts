@@ -14,6 +14,10 @@ export const ensureDirectConversation = async (userId: number): Promise<DirectCo
   return response.data;
 };
 
+export const deleteDirectConversation = async (conversationId: DirectConversationID): Promise<void> => {
+  await axiosClient.delete(`/me/dm/${conversationId}`);
+};
+
 export const listDirectMessages = async (
   conversationId: DirectConversationID,
   limit = 50,

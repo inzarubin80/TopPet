@@ -335,6 +335,9 @@ func (m *mockRepository) UpdateDirectMessageByID(ctx context.Context, messageID 
 func (m *mockRepository) DeleteDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error) {
 	return nil, nil
 }
+func (m *mockRepository) DeleteDirectConversationWithMessages(ctx context.Context, conversationID model.DirectConversationID) error {
+	return nil
+}
 
 // CountVotesByContests реализован выше с поддержкой моков
 
