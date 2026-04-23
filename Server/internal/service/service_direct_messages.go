@@ -111,6 +111,20 @@ func (s *TopPetService) ListDirectMessages(ctx context.Context, userID model.Use
 	return s.repository.ListDirectMessagesByConversation(ctx, conversationID, limit, offset)
 }
 
+func (s *TopPetService) MarkDirectConversationRead(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID) error {
+	if _, err := s.repository.GetDirectConversationForUser(ctx, conversationID, userID); err != nil {
+		return err
+	}
+	blocked, err := s.repository.IsUserBlocked(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return model.ErrorForbidden
+	}
+	return s.repository.MarkDirectConversationReadForUser(ctx, conversationID, userID)
+}
+
 func (s *TopPetService) CreateDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, text string) (*model.DirectMessage, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {

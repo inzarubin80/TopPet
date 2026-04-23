@@ -1354,8 +1354,15 @@ func (q *Queries) GetContestJuryMemberWithName(ctx context.Context, arg *GetCont
 }
 
 const getDirectConversationByID = `-- name: GetDirectConversationByID :one
-
-SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE id = $1
 `
@@ -1371,12 +1378,22 @@ func (q *Queries) GetDirectConversationByID(ctx context.Context, conversationID 
 		&i.LastMessageAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReadAtUserLow,
+		&i.LastReadAtUserHigh,
 	)
 	return &i, err
 }
 
 const getDirectConversationByPair = `-- name: GetDirectConversationByPair :one
-SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE user_low_id = LEAST($1::bigint, $2::bigint)
   AND user_high_id = GREATEST($1::bigint, $2::bigint)
@@ -1397,12 +1414,22 @@ func (q *Queries) GetDirectConversationByPair(ctx context.Context, arg *GetDirec
 		&i.LastMessageAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReadAtUserLow,
+		&i.LastReadAtUserHigh,
 	)
 	return &i, err
 }
 
 const getDirectConversationForUser = `-- name: GetDirectConversationForUser :one
-SELECT id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE id = $1
   AND (user_low_id = $2 OR user_high_id = $2)
@@ -1423,6 +1450,8 @@ func (q *Queries) GetDirectConversationForUser(ctx context.Context, arg *GetDire
 		&i.LastMessageAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReadAtUserLow,
+		&i.LastReadAtUserHigh,
 	)
 	return &i, err
 }
@@ -1488,14 +1517,16 @@ func (q *Queries) GetNominationByContest(ctx context.Context, arg *GetNomination
 }
 
 const getOrCreateDirectConversationByPair = `-- name: GetOrCreateDirectConversationByPair :one
-INSERT INTO direct_conversations (user_low_id, user_high_id)
+INSERT INTO direct_conversations (user_low_id, user_high_id, last_read_at_user_low, last_read_at_user_high)
 VALUES (
     LEAST($1::bigint, $2::bigint),
-    GREATEST($1::bigint, $2::bigint)
+    GREATEST($1::bigint, $2::bigint),
+    NOW(),
+    NOW()
 )
 ON CONFLICT (user_low_id, user_high_id)
 DO UPDATE SET updated_at = NOW()
-RETURNING id, user_low_id, user_high_id, last_message_at, created_at, updated_at
+RETURNING id, user_low_id, user_high_id, last_message_at, created_at, updated_at, last_read_at_user_low, last_read_at_user_high
 `
 
 type GetOrCreateDirectConversationByPairParams struct {
@@ -1513,8 +1544,48 @@ func (q *Queries) GetOrCreateDirectConversationByPair(ctx context.Context, arg *
 		&i.LastMessageAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReadAtUserLow,
+		&i.LastReadAtUserHigh,
 	)
 	return &i, err
+}
+
+const markDirectConversationReadForUser = `-- name: MarkDirectConversationReadForUser :exec
+UPDATE direct_conversations dc
+SET
+    last_read_at_user_low = CASE
+        WHEN dc.user_low_id = $2 THEN GREATEST(
+            COALESCE(dc.last_read_at_user_low, TIMESTAMPTZ '-infinity'),
+            COALESCE(
+                (SELECT MAX(dm.created_at) FROM direct_messages dm WHERE dm.conversation_id = dc.id),
+                dc.last_message_at
+            )
+        )
+        ELSE dc.last_read_at_user_low
+    END,
+    last_read_at_user_high = CASE
+        WHEN dc.user_high_id = $2 THEN GREATEST(
+            COALESCE(dc.last_read_at_user_high, TIMESTAMPTZ '-infinity'),
+            COALESCE(
+                (SELECT MAX(dm.created_at) FROM direct_messages dm WHERE dm.conversation_id = dc.id),
+                dc.last_message_at
+            )
+        )
+        ELSE dc.last_read_at_user_high
+    END,
+    updated_at = NOW()
+WHERE dc.id = $1
+  AND (dc.user_low_id = $2 OR dc.user_high_id = $2)
+`
+
+type MarkDirectConversationReadForUserParams struct {
+	ConversationID pgtype.UUID
+	ViewerUserID   int64
+}
+
+func (q *Queries) MarkDirectConversationReadForUser(ctx context.Context, arg *MarkDirectConversationReadForUserParams) error {
+	_, err := q.db.Exec(ctx, markDirectConversationReadForUser, arg.ConversationID, arg.ViewerUserID)
+	return err
 }
 
 const getParticipantByContestUserAndNomination = `-- name: GetParticipantByContestUserAndNomination :one
@@ -2996,7 +3067,20 @@ SELECT
         WHERE dm.conversation_id = dc.id
         ORDER BY dm.created_at DESC, dm.id DESC
         LIMIT 1
-    ) AS last_message_created_at
+    ) AS last_message_created_at,
+    (
+        SELECT COUNT(*)::bigint
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+          AND dm.sender_user_id <> $1
+          AND dm.created_at > COALESCE(
+              CASE
+                  WHEN dc.user_low_id = $1 THEN dc.last_read_at_user_low
+                  ELSE dc.last_read_at_user_high
+              END,
+              '-infinity'::timestamptz
+          )
+    ) AS unread_count
 FROM direct_conversations dc
 LEFT JOIN users u ON u.user_id = CASE
     WHEN dc.user_low_id = $1 THEN dc.user_high_id
@@ -3025,6 +3109,7 @@ type ListDirectConversationsByUserRow struct {
 	PeerUserAvatarUrl    *string
 	LastMessageText      interface{}
 	LastMessageCreatedAt pgtype.Timestamptz
+	UnreadCount          int64
 }
 
 func (q *Queries) ListDirectConversationsByUser(ctx context.Context, arg *ListDirectConversationsByUserParams) ([]*ListDirectConversationsByUserRow, error) {
@@ -3048,6 +3133,7 @@ func (q *Queries) ListDirectConversationsByUser(ctx context.Context, arg *ListDi
 			&i.PeerUserAvatarUrl,
 			&i.LastMessageText,
 			&i.LastMessageCreatedAt,
+			&i.UnreadCount,
 		); err != nil {
 			return nil, err
 		}

@@ -370,6 +370,8 @@ export interface DirectConversation {
   peer_user_avatar_url?: string;
   /** Собеседник с открытым WS уведомлений (вкладка в сети). */
   peer_user_online?: boolean;
+  /** Входящие от собеседника после last_read (GET /me/dm/conversations). */
+  unread_count?: number;
   last_message_text?: string;
   last_message_created_at?: string;
   last_message_at: string;

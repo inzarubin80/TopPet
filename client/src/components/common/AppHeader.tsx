@@ -14,6 +14,9 @@ export const AppHeader: React.FC = () => {
   const location = useLocation();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const totalUnread = useSelector((state: RootState) => state.notifications.totalUnread);
+  const dmUnreadTotal = useSelector((state: RootState) =>
+    state.directMessages.conversations.reduce((acc, c) => acc + (c.unread_count ?? 0), 0)
+  );
 
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement | null>(null);
@@ -147,8 +150,10 @@ export const AppHeader: React.FC = () => {
               type="button"
               className="app-header-notifications-trigger"
               onClick={() => navigate('/messages')}
-              aria-label="Сообщения"
-              title="Сообщения"
+              aria-label={
+                dmUnreadTotal > 0 ? `Сообщения, непрочитано: ${dmUnreadTotal}` : 'Сообщения'
+              }
+              title={dmUnreadTotal > 0 ? `Непрочитанных: ${dmUnreadTotal}` : 'Сообщения'}
             >
               <svg className="app-header-notifications-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -156,6 +161,11 @@ export const AppHeader: React.FC = () => {
                   d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm1 2v9h2v1.2L8.2 16H20V7H5Z"
                 />
               </svg>
+              {dmUnreadTotal > 0 ? (
+                <span className="app-header-notifications-badge app-header-dm-unread-badge">
+                  {dmUnreadTotal > 99 ? '99+' : dmUnreadTotal}
+                </span>
+              ) : null}
             </button>
           ) : null}
           {isAuthenticated ? (

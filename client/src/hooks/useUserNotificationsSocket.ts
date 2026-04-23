@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../store';
+import { AppDispatch, RootState, store } from '../store';
 import { refreshTokenAsync } from '../store/slices/authSlice';
 import {
   applyUnreadSnapshot,
@@ -11,11 +11,13 @@ import {
 import {
   addIncomingDirectMessage,
   applyPeerPresenceSnapshot,
+  markConversationReadLocal,
   removeConversation,
   removeDirectMessageFromConversation,
   setPeerPresence,
   updateDirectMessageInConversation,
 } from '../store/slices/directMessagesSlice';
+import { markDirectConversationRead } from '../api/directMessagesApi';
 import { getUserNotificationsWebSocketClient, UserNotificationIncoming } from '../websocket/userNotificationsClient';
 import { tokenStorage } from '../utils/tokenStorage';
 import { logger } from '../utils/logger';
@@ -109,6 +111,15 @@ export const useUserNotificationsSocket = (): void => {
           toastRef.current.showInfo(`Личные: ${who} — ${short}`);
         }
         dispatch(addIncomingDirectMessage({ message: msg.message, viewerUserId: selfId }));
+        const activeId = store.getState().directMessages.activeConversationId;
+        const cid = msg.message.conversation_id;
+        if (fromOther && activeId === cid) {
+          void markDirectConversationRead(cid)
+            .then(() => {
+              store.dispatch(markConversationReadLocal(cid));
+            })
+            .catch(() => {});
+        }
         return;
       }
       if (msg.type === 'direct_message_updated' && msg.message) {

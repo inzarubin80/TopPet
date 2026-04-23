@@ -52,6 +52,7 @@ func directConversationFromRow(row *sqlc_repository.DirectConversation, peerUser
 		PeerUserID:           peerUserID,
 		PeerUserName:         peerName,
 		PeerUserAvatarURL:    peerAvatarURL,
+		UnreadCount:          0,
 		LastMessageText:      lastMessageText,
 		LastMessageCreatedAt: lastMessageCreatedAt,
 		LastMessageAt:        row.LastMessageAt.Time,
@@ -174,6 +175,7 @@ func (r *Repository) ListDirectConversationsByUser(ctx context.Context, userID m
 			PeerUserID:           model.UserID(int64FromInterface(row.PeerUserID)),
 			PeerUserName:         row.PeerUserName,
 			PeerUserAvatarURL:    optionalUserAvatarURL(row.PeerUserAvatarUrl),
+			UnreadCount:          row.UnreadCount,
 			LastMessageText:      stringFromInterface(row.LastMessageText),
 			LastMessageCreatedAt: lastCreatedAt,
 			LastMessageAt:        row.LastMessageAt.Time,
@@ -182,6 +184,18 @@ func (r *Repository) ListDirectConversationsByUser(ctx context.Context, userID m
 		})
 	}
 	return out, total, nil
+}
+
+func (r *Repository) MarkDirectConversationReadForUser(ctx context.Context, conversationID model.DirectConversationID, userID model.UserID) error {
+	reposqlc := sqlc_repository.New(r.conn)
+	conversationUUID, err := uuid.Parse(string(conversationID))
+	if err != nil {
+		return err
+	}
+	return reposqlc.MarkDirectConversationReadForUser(ctx, &sqlc_repository.MarkDirectConversationReadForUserParams{
+		ConversationID: pgtype.UUID{Bytes: conversationUUID, Valid: true},
+		ViewerUserID:   int64(userID),
+	})
 }
 
 func (r *Repository) ListDirectConversationPeerUserIDsByUser(ctx context.Context, userID model.UserID) ([]model.UserID, error) {

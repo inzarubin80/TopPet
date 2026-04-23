@@ -32,13 +32,28 @@ const directMessagesSlice = createSlice({
       const next = action.payload;
       const idx = state.conversations.findIndex((c) => c.id === next.id);
       if (idx >= 0) {
-        state.conversations[idx] = next;
+        const prev = state.conversations[idx];
+        state.conversations[idx] = {
+          ...prev,
+          ...next,
+          unread_count:
+            next.unread_count !== undefined ? next.unread_count : (prev.unread_count ?? 0),
+        };
       } else {
-        state.conversations.push(next);
+        state.conversations.push({
+          ...next,
+          unread_count: next.unread_count ?? 0,
+        });
       }
       state.conversations.sort(
         (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
       );
+    },
+    markConversationReadLocal(state, action: PayloadAction<DirectConversationID>) {
+      const row = state.conversations.find((c) => c.id === action.payload);
+      if (row) {
+        row.unread_count = 0;
+      }
     },
     setMessages(
       state,
@@ -65,11 +80,15 @@ const directMessagesSlice = createSlice({
         conv.last_message_text = message.text;
         conv.last_message_created_at = message.created_at;
         conv.last_message_at = message.created_at;
+        if (message.sender_user_id !== viewerUserId && state.activeConversationId !== conversationId) {
+          conv.unread_count = (conv.unread_count ?? 0) + 1;
+        }
       } else if (message.sender_user_id !== viewerUserId) {
         const low = Math.min(message.sender_user_id, viewerUserId);
         const high = Math.max(message.sender_user_id, viewerUserId);
         const peerName =
           message.sender_user_name?.trim() || `Пользователь ${message.sender_user_id}`;
+        const isViewing = state.activeConversationId === conversationId;
         conv = {
           id: conversationId,
           user_low_id: low,
@@ -78,6 +97,7 @@ const directMessagesSlice = createSlice({
           peer_user_name: peerName,
           peer_user_avatar_url: message.sender_user_avatar_url,
           peer_user_online: false,
+          unread_count: isViewing ? 0 : 1,
           last_message_text: message.text,
           last_message_created_at: message.created_at,
           last_message_at: message.created_at,
@@ -146,6 +166,7 @@ export const {
   upsertConversation,
   setMessages,
   addIncomingDirectMessage,
+  markConversationReadLocal,
   updateDirectMessageInConversation,
   removeDirectMessageFromConversation,
   setActiveDirectConversation,

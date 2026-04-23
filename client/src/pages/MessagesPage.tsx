@@ -12,6 +12,7 @@ import {
   updateDirectMessage,
   deleteDirectMessage,
   deleteDirectConversation,
+  markDirectConversationRead,
 } from '../api/directMessagesApi';
 import { searchUsers } from '../api/usersApi';
 import { RootState } from '../store';
@@ -20,6 +21,7 @@ import {
   setConversations,
   setMessages,
   upsertConversation,
+  markConversationReadLocal,
   updateDirectMessageInConversation,
   removeDirectMessageFromConversation,
   removeConversation,
@@ -178,6 +180,14 @@ const MessagesPage: React.FC = () => {
               total: response.total || 0,
             })
           );
+          try {
+            await markDirectConversationRead(activeConversationId);
+            if (!cancelled) {
+              dispatch(markConversationReadLocal(activeConversationId));
+            }
+          } catch {
+            /* оставляем счётчик до следующего обновления списка */
+          }
         }
       } catch {
         if (!cancelled) {
@@ -375,15 +385,25 @@ const MessagesPage: React.FC = () => {
               }`}
               onClick={() => dispatch(setActiveDirectConversation(conversation.id))}
             >
-              <MessengerUserPresentation
-                userId={conversation.peer_user_id}
-                name={conversation.peer_user_name}
-                avatarUrl={conversation.peer_user_avatar_url}
-                subtitle={conversation.last_message_text || 'Нет сообщений'}
-                size="sm"
-                className="messages-page-conversation-user"
-                showOnline={conversation.peer_user_online === true}
-              />
+              <span className="messages-page-conversation-inner">
+                <MessengerUserPresentation
+                  userId={conversation.peer_user_id}
+                  name={conversation.peer_user_name}
+                  avatarUrl={conversation.peer_user_avatar_url}
+                  subtitle={conversation.last_message_text || 'Нет сообщений'}
+                  size="sm"
+                  className="messages-page-conversation-user"
+                  showOnline={conversation.peer_user_online === true}
+                />
+                {(conversation.unread_count ?? 0) > 0 ? (
+                  <span
+                    className="messages-page-unread-badge"
+                    aria-label={`Непрочитанных сообщений: ${conversation.unread_count}`}
+                  >
+                    {(conversation.unread_count ?? 0) > 99 ? '99+' : conversation.unread_count}
+                  </span>
+                ) : null}
+              </span>
             </button>
           ))}
         </div>

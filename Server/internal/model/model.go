@@ -498,6 +498,8 @@ type (
 		PeerUserAvatarURL   string               `json:"peer_user_avatar_url,omitempty"`
 		// PeerUserOnline — есть ли у собеседника активное WS-подключение уведомлений (вкладка открыта).
 		PeerUserOnline      bool                 `json:"peer_user_online"`
+		// UnreadCount — сколько входящих от собеседника после last_read (только в списке GET /me/dm/conversations).
+		UnreadCount         int64                `json:"unread_count"`
 		LastMessageText     string               `json:"last_message_text,omitempty"`
 		LastMessageCreatedAt *time.Time          `json:"last_message_created_at,omitempty"`
 		LastMessageAt       time.Time            `json:"last_message_at"`

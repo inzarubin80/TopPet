@@ -1206,31 +1206,84 @@ RETURNING id, contest_id, sort_order, label, field_type, required, enum_options,
 -- Direct messages (private user-to-user chat)
 
 -- name: GetDirectConversationByID :one
-SELECT *
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE id = @conversation_id;
 
 -- name: GetDirectConversationForUser :one
-SELECT *
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE id = @conversation_id
   AND (user_low_id = @user_id OR user_high_id = @user_id);
 
 -- name: GetDirectConversationByPair :one
-SELECT *
+SELECT
+    id,
+    user_low_id,
+    user_high_id,
+    last_message_at,
+    created_at,
+    updated_at,
+    last_read_at_user_low,
+    last_read_at_user_high
 FROM direct_conversations
 WHERE user_low_id = LEAST(@user_a_id::bigint, @user_b_id::bigint)
   AND user_high_id = GREATEST(@user_a_id::bigint, @user_b_id::bigint);
 
 -- name: GetOrCreateDirectConversationByPair :one
-INSERT INTO direct_conversations (user_low_id, user_high_id)
+INSERT INTO direct_conversations (user_low_id, user_high_id, last_read_at_user_low, last_read_at_user_high)
 VALUES (
     LEAST(@user_a_id::bigint, @user_b_id::bigint),
-    GREATEST(@user_a_id::bigint, @user_b_id::bigint)
+    GREATEST(@user_a_id::bigint, @user_b_id::bigint),
+    NOW(),
+    NOW()
 )
 ON CONFLICT (user_low_id, user_high_id)
 DO UPDATE SET updated_at = NOW()
 RETURNING *;
+
+-- name: MarkDirectConversationReadForUser :exec
+UPDATE direct_conversations dc
+SET
+    last_read_at_user_low = CASE
+        WHEN dc.user_low_id = @viewer_user_id THEN GREATEST(
+            COALESCE(dc.last_read_at_user_low, TIMESTAMPTZ '-infinity'),
+            COALESCE(
+                (SELECT MAX(dm.created_at) FROM direct_messages dm WHERE dm.conversation_id = dc.id),
+                dc.last_message_at
+            )
+        )
+        ELSE dc.last_read_at_user_low
+    END,
+    last_read_at_user_high = CASE
+        WHEN dc.user_high_id = @viewer_user_id THEN GREATEST(
+            COALESCE(dc.last_read_at_user_high, TIMESTAMPTZ '-infinity'),
+            COALESCE(
+                (SELECT MAX(dm.created_at) FROM direct_messages dm WHERE dm.conversation_id = dc.id),
+                dc.last_message_at
+            )
+        )
+        ELSE dc.last_read_at_user_high
+    END,
+    updated_at = NOW()
+WHERE dc.id = @conversation_id
+  AND (dc.user_low_id = @viewer_user_id OR dc.user_high_id = @viewer_user_id);
 
 -- name: ListDirectConversationsByUser :many
 SELECT
@@ -1267,7 +1320,20 @@ SELECT
         WHERE dm.conversation_id = dc.id
         ORDER BY dm.created_at DESC, dm.id DESC
         LIMIT 1
-    ) AS last_message_created_at
+    ) AS last_message_created_at,
+    (
+        SELECT COUNT(*)::bigint
+        FROM direct_messages dm
+        WHERE dm.conversation_id = dc.id
+          AND dm.sender_user_id <> @user_id
+          AND dm.created_at > COALESCE(
+              CASE
+                  WHEN dc.user_low_id = @user_id THEN dc.last_read_at_user_low
+                  ELSE dc.last_read_at_user_high
+              END,
+              '-infinity'::timestamptz
+          )
+    ) AS unread_count
 FROM direct_conversations dc
 LEFT JOIN users u ON u.user_id = CASE
     WHEN dc.user_low_id = @user_id THEN dc.user_high_id

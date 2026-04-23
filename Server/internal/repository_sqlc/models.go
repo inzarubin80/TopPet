@@ -157,12 +157,14 @@ type ContestVote struct {
 
 // Private user-to-user conversations (no FK by project rule).
 type DirectConversation struct {
-	ID            pgtype.UUID
-	UserLowID     int64
-	UserHighID    int64
-	LastMessageAt pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID                   pgtype.UUID
+	UserLowID            int64
+	UserHighID           int64
+	LastMessageAt        pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	LastReadAtUserLow    pgtype.Timestamptz
+	LastReadAtUserHigh   pgtype.Timestamptz
 }
 
 // Messages inside private conversations (no FK by project rule).

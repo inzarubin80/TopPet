@@ -320,6 +320,9 @@ func (m *mockRepository) GetOrCreateDirectConversationByPair(ctx context.Context
 func (m *mockRepository) ListDirectConversationsByUser(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error) {
 	return nil, 0, nil
 }
+func (m *mockRepository) MarkDirectConversationReadForUser(ctx context.Context, conversationID model.DirectConversationID, userID model.UserID) error {
+	return nil
+}
 func (m *mockRepository) ListDirectConversationPeerUserIDsByUser(ctx context.Context, userID model.UserID) ([]model.UserID, error) {
 	return nil, nil
 }

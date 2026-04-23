@@ -125,6 +125,7 @@ type Querier interface {
 	ListContestsForStatusAutomation(ctx context.Context) ([]*Contest, error)
 	ListDirectConversationPeerUserIDsByUser(ctx context.Context, userID int64) ([]int64, error)
 	ListDirectConversationsByUser(ctx context.Context, arg *ListDirectConversationsByUserParams) ([]*ListDirectConversationsByUserRow, error)
+	MarkDirectConversationReadForUser(ctx context.Context, arg *MarkDirectConversationReadForUserParams) error
 	ListDirectMessagesByConversation(ctx context.Context, arg *ListDirectMessagesByConversationParams) ([]*ListDirectMessagesByConversationRow, error)
 	// Contest jury criteria (общие для всего конкурса)
 	ListJuryCriteriaByContest(ctx context.Context, contestID pgtype.UUID) ([]*ContestJuryCriterium, error)

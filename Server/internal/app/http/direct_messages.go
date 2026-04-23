@@ -14,6 +14,7 @@ import (
 type serviceDirectMessages interface {
 	EnsureDirectConversationWithUser(ctx context.Context, ownerUserID, peerUserID model.UserID) (*model.DirectConversation, error)
 	ListMyDirectConversations(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error)
+	MarkDirectConversationRead(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID) error
 	ListDirectMessages(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, limit, offset int) ([]*model.DirectMessage, int64, error)
 	CreateDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, text string) (*model.DirectMessage, error)
 	UpdateDirectMessage(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, messageID model.DirectMessageID, text string) (*model.DirectMessage, error)
@@ -144,6 +145,35 @@ type DirectConversationDeleteHandler struct {
 
 func NewDirectConversationDeleteHandler(name string, service serviceDirectMessages) *DirectConversationDeleteHandler {
 	return &DirectConversationDeleteHandler{name: name, service: service}
+}
+
+type DirectConversationReadHandler struct {
+	name    string
+	service serviceDirectMessages
+}
+
+func NewDirectConversationReadHandler(name string, service serviceDirectMessages) *DirectConversationReadHandler {
+	return &DirectConversationReadHandler{name: name, service: service}
+}
+
+func (h *DirectConversationReadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("method not allowed", nil))
+		return
+	}
+	userID := r.Context().Value(defenitions.UserID).(model.UserID)
+	conversationID := model.DirectConversationID(r.PathValue("conversationId"))
+	if conversationID == "" {
+		uhttp.HandleError(w, uhttp.NewBadRequestError("conversationId is required", nil))
+		return
+	}
+	if err := h.service.MarkDirectConversationRead(r.Context(), userID, conversationID); err != nil {
+		uhttp.HandleError(w, err)
+		return
+	}
+	if err := uhttp.SendSuccess(w, map[string]bool{"ok": true}); err != nil {
+		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
+	}
 }
 
 func (h *DirectConversationDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
