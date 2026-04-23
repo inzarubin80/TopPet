@@ -57,6 +57,8 @@ export type MessengerUserPresentationProps = {
   subtitle?: React.ReactNode;
   size?: 'sm' | 'md';
   className?: string;
+  /** Зелёная точка на аватаре (например, собеседник в сети по WS). */
+  showOnline?: boolean;
 };
 
 /**
@@ -69,6 +71,7 @@ export const MessengerUserPresentation: React.FC<MessengerUserPresentationProps>
   subtitle,
   size = 'sm',
   className = '',
+  showOnline = false,
 }) => {
   const root = ['messenger-user-presentation', `messenger-user-presentation--${size}`, className]
     .filter(Boolean)
@@ -76,7 +79,12 @@ export const MessengerUserPresentation: React.FC<MessengerUserPresentationProps>
 
   return (
     <div className={root}>
-      <MessengerUserAvatar userId={userId} userName={name} userAvatarUrl={avatarUrl} size={size} />
+      <div className="messenger-user-avatar-wrap">
+        <MessengerUserAvatar userId={userId} userName={name} userAvatarUrl={avatarUrl} size={size} />
+        {showOnline ? (
+          <span className="messenger-user-online-dot" title="В сети" aria-label="В сети" />
+        ) : null}
+      </div>
       <div className="messenger-user-presentation-text">
         <span className="messenger-user-presentation-name">{name}</span>
         {subtitle != null && subtitle !== '' ? (

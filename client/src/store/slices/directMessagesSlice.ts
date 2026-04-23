@@ -100,6 +100,19 @@ const directMessagesSlice = createSlice({
         state.activeConversationId = state.conversations[0]?.id ?? null;
       }
     },
+    setPeerPresence(state, action: PayloadAction<{ userId: number; online: boolean }>) {
+      const { userId, online } = action.payload;
+      const row = state.conversations.find((c) => c.peer_user_id === userId);
+      if (row) {
+        row.peer_user_online = online;
+      }
+    },
+    applyPeerPresenceSnapshot(state, action: PayloadAction<number[]>) {
+      const onlineSet = new Set(action.payload);
+      for (const c of state.conversations) {
+        c.peer_user_online = onlineSet.has(c.peer_user_id);
+      }
+    },
   },
 });
 
@@ -112,6 +125,8 @@ export const {
   removeDirectMessageFromConversation,
   setActiveDirectConversation,
   removeConversation,
+  setPeerPresence,
+  applyPeerPresenceSnapshot,
 } = directMessagesSlice.actions;
 
 export default directMessagesSlice.reducer;

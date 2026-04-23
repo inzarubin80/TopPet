@@ -24,6 +24,9 @@ type UserHub struct {
 	unregister    chan *UserNotificationClient
 	broadcast     chan *userNotificationMessage
 	mu            sync.RWMutex
+
+	presenceMu       sync.Mutex
+	presenceOnChange func(userID model.UserID, online bool)
 }
 
 type userNotificationMessage struct {
@@ -75,26 +78,66 @@ func (h *UserHub) SendToUser(userID model.UserID, payload any) error {
 	return nil
 }
 
+// SetPresenceOnChange задаёт callback при первом подключении WS пользователя и при отключении последнего сокета.
+func (h *UserHub) SetPresenceOnChange(fn func(userID model.UserID, online bool)) {
+	h.presenceMu.Lock()
+	h.presenceOnChange = fn
+	h.presenceMu.Unlock()
+}
+
+// IsUserOnline true, если у пользователя есть хотя бы одно активное WS-подключение уведомлений.
+func (h *UserHub) IsUserOnline(userID model.UserID) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	clients, ok := h.clientsByUser[userID]
+	return ok && len(clients) > 0
+}
+
+func (h *UserHub) firePresenceAsync(userID model.UserID, online bool) {
+	h.presenceMu.Lock()
+	fn := h.presenceOnChange
+	h.presenceMu.Unlock()
+	if fn == nil {
+		return
+	}
+	go func(uid model.UserID, on bool) {
+		fn(uid, on)
+	}(userID, online)
+}
+
 func (h *UserHub) addClient(c *UserNotificationClient) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.clientsByUser[c.UserID]; !ok {
+	clients, existed := h.clientsByUser[c.UserID]
+	firstConnection := !existed || len(clients) == 0
+	if !existed {
 		h.clientsByUser[c.UserID] = make(map[*UserNotificationClient]struct{})
 	}
 	h.clientsByUser[c.UserID][c] = struct{}{}
-	log.Printf("[UserHub] user %d connected (sockets: %d)", c.UserID, len(h.clientsByUser[c.UserID]))
+	n := len(h.clientsByUser[c.UserID])
+	h.mu.Unlock()
+	log.Printf("[UserHub] user %d connected (sockets: %d)", c.UserID, n)
+	if firstConnection {
+		h.firePresenceAsync(c.UserID, true)
+	}
 }
 
 func (h *UserHub) removeClient(c *UserNotificationClient) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if clients, ok := h.clientsByUser[c.UserID]; ok {
-		delete(clients, c)
-		remaining := len(clients)
-		if remaining == 0 {
-			delete(h.clientsByUser, c.UserID)
-		}
-		log.Printf("[UserHub] user %d disconnected (remaining sockets: %d)", c.UserID, remaining)
+	clients, ok := h.clientsByUser[c.UserID]
+	if !ok {
+		h.mu.Unlock()
+		return
+	}
+	delete(clients, c)
+	remaining := len(clients)
+	wentOffline := remaining == 0
+	if wentOffline {
+		delete(h.clientsByUser, c.UserID)
+	}
+	h.mu.Unlock()
+	log.Printf("[UserHub] user %d disconnected (remaining sockets: %d)", c.UserID, remaining)
+	if wentOffline {
+		h.firePresenceAsync(c.UserID, false)
 	}
 }
 

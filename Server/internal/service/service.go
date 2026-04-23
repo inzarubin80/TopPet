@@ -159,6 +159,7 @@ type (
 		GetDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error)
 		GetOrCreateDirectConversationByPair(ctx context.Context, userAID, userBID model.UserID) (*model.DirectConversation, error)
 		ListDirectConversationsByUser(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error)
+		ListDirectConversationPeerUserIDsByUser(ctx context.Context, userID model.UserID) ([]model.UserID, error)
 		CreateDirectMessage(ctx context.Context, conversationID model.DirectConversationID, senderUserID model.UserID, text string) (*model.DirectMessage, error)
 		ListDirectMessagesByConversation(ctx context.Context, conversationID model.DirectConversationID, limit, offset int) ([]*model.DirectMessage, int64, error)
 		GetDirectMessageByID(ctx context.Context, messageID model.DirectMessageID) (*model.DirectMessage, error)
@@ -189,6 +190,7 @@ type (
 	// UserNotificationHub — персональные уведомления (все конкурсы пользователя, без подписки на комнату конкурса).
 	UserNotificationHub interface {
 		SendToUser(userID model.UserID, payload any) error
+		IsUserOnline(userID model.UserID) bool
 	}
 )
 

@@ -10,8 +10,10 @@ import {
 } from '../store/slices/notificationsSlice';
 import {
   addIncomingDirectMessage,
+  applyPeerPresenceSnapshot,
   removeConversation,
   removeDirectMessageFromConversation,
+  setPeerPresence,
   updateDirectMessageInConversation,
 } from '../store/slices/directMessagesSlice';
 import { getUserNotificationsWebSocketClient, UserNotificationIncoming } from '../websocket/userNotificationsClient';
@@ -21,6 +23,7 @@ import { useToast } from '../contexts/ToastContext';
 import type { RefreshTokenResponse } from '../types/api';
 import type { UserNotification } from '../types/notifications';
 import { getNotificationLineText } from '../utils/notificationCopy';
+import { playIncomingMessageSound } from '../utils/playIncomingMessageSound';
 
 function toastForNotification(
   showSuccess: (m: string) => void,
@@ -96,6 +99,10 @@ export const useUserNotificationsSocket = (): void => {
         return;
       }
       if (msg.type === 'direct_message' && msg.message) {
+        const selfId = user?.id;
+        if (selfId == null || msg.message.sender_user_id !== selfId) {
+          playIncomingMessageSound();
+        }
         dispatch(addIncomingDirectMessage(msg.message));
         return;
       }
@@ -114,6 +121,14 @@ export const useUserNotificationsSocket = (): void => {
       }
       if (msg.type === 'direct_conversation_deleted') {
         dispatch(removeConversation(msg.conversation_id));
+        return;
+      }
+      if (msg.type === 'peer_presence') {
+        dispatch(setPeerPresence({ userId: msg.user_id, online: msg.online }));
+        return;
+      }
+      if (msg.type === 'peer_presence_snapshot') {
+        dispatch(applyPeerPresenceSnapshot(msg.online_peer_user_ids));
         return;
       }
     });

@@ -1282,6 +1282,15 @@ SELECT COUNT(*)::bigint
 FROM direct_conversations
 WHERE user_low_id = @user_id OR user_high_id = @user_id;
 
+-- name: ListDirectConversationPeerUserIDsByUser :many
+SELECT DISTINCT
+    CASE
+        WHEN dc.user_low_id = @user_id THEN dc.user_high_id
+        ELSE dc.user_low_id
+    END::bigint AS peer_user_id
+FROM direct_conversations dc
+WHERE dc.user_low_id = @user_id OR dc.user_high_id = @user_id;
+
 -- name: CreateDirectMessage :one
 INSERT INTO direct_messages (conversation_id, sender_user_id, text)
 VALUES (@conversation_id, @sender_user_id, @text)

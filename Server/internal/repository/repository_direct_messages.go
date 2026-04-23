@@ -184,6 +184,19 @@ func (r *Repository) ListDirectConversationsByUser(ctx context.Context, userID m
 	return out, total, nil
 }
 
+func (r *Repository) ListDirectConversationPeerUserIDsByUser(ctx context.Context, userID model.UserID) ([]model.UserID, error) {
+	reposqlc := sqlc_repository.New(r.conn)
+	raw, err := reposqlc.ListDirectConversationPeerUserIDsByUser(ctx, int64(userID))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.UserID, 0, len(raw))
+	for _, id := range raw {
+		out = append(out, model.UserID(id))
+	}
+	return out, nil
+}
+
 func (r *Repository) CreateDirectMessage(ctx context.Context, conversationID model.DirectConversationID, senderUserID model.UserID, text string) (*model.DirectMessage, error) {
 	reposqlc := sqlc_repository.New(r.conn)
 	conversationUUID, err := uuid.Parse(string(conversationID))

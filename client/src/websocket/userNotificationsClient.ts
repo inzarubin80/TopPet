@@ -51,6 +51,15 @@ export type UserNotificationIncoming =
   | {
       type: 'direct_conversation_deleted';
       conversation_id: string;
+    }
+  | {
+      type: 'peer_presence';
+      user_id: number;
+      online: boolean;
+    }
+  | {
+      type: 'peer_presence_snapshot';
+      online_peer_user_ids: number[];
     };
 
 export class UserNotificationsWebSocketClient {

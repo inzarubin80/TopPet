@@ -26,6 +26,8 @@ const (
 	MessageTypeDirectMessageUpdated          MessageType = "direct_message_updated"
 	MessageTypeDirectMessageDeleted          MessageType = "direct_message_deleted"
 	MessageTypeDirectConversationDeleted     MessageType = "direct_conversation_deleted"
+	MessageTypePeerPresence                  MessageType = "peer_presence"
+	MessageTypePeerPresenceSnapshot          MessageType = "peer_presence_snapshot"
 )
 
 // ContestStatusUpdatedPayload представляет payload для обновления статуса конкурса
@@ -122,6 +124,19 @@ type DirectMessageDeletedPayload struct {
 type DirectConversationDeletedPayload struct {
 	Type           MessageType                `json:"type"`
 	ConversationID model.DirectConversationID `json:"conversation_id"`
+}
+
+// PeerPresencePayload — собеседник по ЛС подключился или отключился от WS уведомлений.
+type PeerPresencePayload struct {
+	Type   MessageType `json:"type"`
+	UserID model.UserID `json:"user_id"`
+	Online bool        `json:"online"`
+}
+
+// PeerPresenceSnapshotPayload — при подключении WS: какие из известных собеседников сейчас в сети.
+type PeerPresenceSnapshotPayload struct {
+	Type              MessageType   `json:"type"`
+	OnlinePeerUserIDs []model.UserID `json:"online_peer_user_ids"`
 }
 
 // ParticipantDeletedPayload — заявка удалена из конкурса.

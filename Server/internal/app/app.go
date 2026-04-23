@@ -16,6 +16,7 @@ import (
 	tokenservice "toppet/server/internal/app/token_service"
 	"toppet/server/internal/app/ws"
 	"toppet/server/internal/legal"
+	"toppet/server/internal/model"
 	"toppet/server/internal/repository"
 	"toppet/server/internal/service"
 	"toppet/server/internal/storage/objectstorage"
@@ -97,6 +98,9 @@ func NewApp(ctx context.Context, config Config, dbConn *pgxpool.Pool) (*App, err
 
 	// Build service
 	topPetService := service.NewTopPetService(repo, hub, userHub, accessTokenService, refreshTokenService, providersMap, legalStore)
+	userHub.SetPresenceOnChange(func(uid model.UserID, online bool) {
+		_ = topPetService.BroadcastDirectMessagePeerPresence(context.Background(), uid, online)
+	})
 
 	// Build object storage uploader
 	var uploader *objectstorage.Uploader

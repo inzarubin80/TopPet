@@ -231,7 +231,7 @@
 }
 
 .messages-page-chat-input {
-  border-top: 1px solid var(--color-border);
+  /* Разделитель — только у .message-input-composer (border-top), иначе двойная линия */
   padding: 8px 10px;
 }
 

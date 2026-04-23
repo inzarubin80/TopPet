@@ -382,6 +382,7 @@ const MessagesPage: React.FC = () => {
                 subtitle={conversation.last_message_text || 'Нет сообщений'}
                 size="sm"
                 className="messages-page-conversation-user"
+                showOnline={conversation.peer_user_online === true}
               />
             </button>
           ))}

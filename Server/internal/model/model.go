@@ -491,6 +491,8 @@ type (
 		PeerUserID          UserID               `json:"peer_user_id"`
 		PeerUserName        string               `json:"peer_user_name"`
 		PeerUserAvatarURL   string               `json:"peer_user_avatar_url,omitempty"`
+		// PeerUserOnline — есть ли у собеседника активное WS-подключение уведомлений (вкладка открыта).
+		PeerUserOnline      bool                 `json:"peer_user_online"`
 		LastMessageText     string               `json:"last_message_text,omitempty"`
 		LastMessageCreatedAt *time.Time          `json:"last_message_created_at,omitempty"`
 		LastMessageAt       time.Time            `json:"last_message_at"`

@@ -37,7 +37,19 @@ func (s *TopPetService) EnsureDirectConversationWithUser(ctx context.Context, ow
 	if _, err := s.repository.GetUser(ctx, peerUserID); err != nil {
 		return nil, err
 	}
-	return s.repository.GetOrCreateDirectConversationByPair(ctx, ownerUserID, peerUserID)
+	conv, err := s.repository.GetOrCreateDirectConversationByPair(ctx, ownerUserID, peerUserID)
+	if err != nil {
+		return nil, err
+	}
+	s.applyPeerOnline(conv)
+	return conv, nil
+}
+
+func (s *TopPetService) applyPeerOnline(conv *model.DirectConversation) {
+	if conv == nil || s.userNotificationHub == nil {
+		return
+	}
+	conv.PeerUserOnline = s.userNotificationHub.IsUserOnline(conv.PeerUserID)
 }
 
 func (s *TopPetService) ListMyDirectConversations(ctx context.Context, userID model.UserID, limit, offset int) ([]*model.DirectConversation, int64, error) {
@@ -45,7 +57,47 @@ func (s *TopPetService) ListMyDirectConversations(ctx context.Context, userID mo
 	if offset < 0 {
 		offset = 0
 	}
-	return s.repository.ListDirectConversationsByUser(ctx, userID, limit, offset)
+	items, total, err := s.repository.ListDirectConversationsByUser(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, c := range items {
+		s.applyPeerOnline(c)
+	}
+	return items, total, nil
+}
+
+// BroadcastDirectMessagePeerPresence рассылает peer_presence собеседникам и peer_presence_snapshot подключившемуся пользователю.
+func (s *TopPetService) BroadcastDirectMessagePeerPresence(ctx context.Context, userID model.UserID, online bool) error {
+	if s.userNotificationHub == nil {
+		return nil
+	}
+	peerIDs, err := s.repository.ListDirectConversationPeerUserIDsByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	payload := wsapp.PeerPresencePayload{
+		Type:   wsapp.MessageTypePeerPresence,
+		UserID: userID,
+		Online: online,
+	}
+	for _, pid := range peerIDs {
+		_ = s.userNotificationHub.SendToUser(pid, payload)
+	}
+	if online {
+		onlinePeers := make([]model.UserID, 0, len(peerIDs))
+		for _, pid := range peerIDs {
+			if s.userNotificationHub.IsUserOnline(pid) {
+				onlinePeers = append(onlinePeers, pid)
+			}
+		}
+		snap := wsapp.PeerPresenceSnapshotPayload{
+			Type:              wsapp.MessageTypePeerPresenceSnapshot,
+			OnlinePeerUserIDs: onlinePeers,
+		}
+		_ = s.userNotificationHub.SendToUser(userID, snap)
+	}
+	return nil
 }
 
 func (s *TopPetService) ListDirectMessages(ctx context.Context, userID model.UserID, conversationID model.DirectConversationID, limit, offset int) ([]*model.DirectMessage, int64, error) {

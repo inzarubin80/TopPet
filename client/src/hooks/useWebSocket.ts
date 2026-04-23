@@ -34,6 +34,7 @@ import { WSConnectionState } from '../types/ws';
 import { RefreshTokenResponse } from '../types/api';
 import { tokenStorage } from '../utils/tokenStorage';
 import { logger } from '../utils/logger';
+import { playIncomingMessageSound } from '../utils/playIncomingMessageSound';
 
 let wsClientInstance: WebSocketClient | null = null;
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -66,6 +67,11 @@ export const useWebSocket = (contestId: ContestID | null, participantId?: Partic
     // Set up message handler
     client.setOnMessage((message: ChatMessage) => {
       if (contestId && message.contest_id === contestId) {
+        const fromOther =
+          !message.is_system && (!currentUserId || message.user_id !== currentUserId);
+        if (fromOther) {
+          playIncomingMessageSound();
+        }
         dispatch(addMessage({ contestId, message }));
       }
     });
