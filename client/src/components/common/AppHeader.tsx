@@ -162,7 +162,7 @@ export const AppHeader: React.FC = () => {
                 />
               </svg>
               {dmUnreadTotal > 0 ? (
-                <span className="app-header-notifications-badge app-header-dm-unread-badge">
+                <span className="app-header-notifications-badge">
                   {dmUnreadTotal > 99 ? '99+' : dmUnreadTotal}
                 </span>
               ) : null}

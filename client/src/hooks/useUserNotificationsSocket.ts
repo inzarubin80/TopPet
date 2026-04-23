@@ -14,10 +14,11 @@ import {
   markConversationReadLocal,
   removeConversation,
   removeDirectMessageFromConversation,
+  setConversations,
   setPeerPresence,
   updateDirectMessageInConversation,
 } from '../store/slices/directMessagesSlice';
-import { markDirectConversationRead } from '../api/directMessagesApi';
+import { listDirectConversations, markDirectConversationRead } from '../api/directMessagesApi';
 import { getUserNotificationsWebSocketClient, UserNotificationIncoming } from '../websocket/userNotificationsClient';
 import { tokenStorage } from '../utils/tokenStorage';
 import { logger } from '../utils/logger';
@@ -75,11 +76,19 @@ export const useUserNotificationsSocket = (): void => {
   useEffect(() => {
     if (!user) {
       dispatch(setNotificationsSocketState('DISCONNECTED'));
+      dispatch(setConversations([]));
       getUserNotificationsWebSocketClient().disconnect();
       return;
     }
 
     void dispatch(bootstrapNotifications({}));
+    void listDirectConversations(50, 0)
+      .then((res) => {
+        dispatch(setConversations(res.items || []));
+      })
+      .catch(() => {
+        /* шапка без бейджа до первого захода в «Сообщения» */
+      });
 
     const client = getUserNotificationsWebSocketClient();
     client.setOnStateChange((state) => {

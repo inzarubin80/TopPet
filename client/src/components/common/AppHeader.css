@@ -66,10 +66,7 @@
   font-weight: 700;
   line-height: 18px;
   text-align: center;
-}
-
-.app-header-dm-unread-badge {
-  background: #16a34a;
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .app-header-admin-wrap {
