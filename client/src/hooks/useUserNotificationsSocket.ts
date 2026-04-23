@@ -99,11 +99,16 @@ export const useUserNotificationsSocket = (): void => {
         return;
       }
       if (msg.type === 'direct_message' && msg.message) {
-        const selfId = user?.id;
-        if (selfId == null || msg.message.sender_user_id !== selfId) {
+        const selfId = user.id;
+        const fromOther = msg.message.sender_user_id !== selfId;
+        if (fromOther) {
           playIncomingMessageSound();
+          const preview = msg.message.text?.trim() || 'Новое сообщение';
+          const short = preview.length > 90 ? `${preview.slice(0, 90)}…` : preview;
+          const who = msg.message.sender_user_name?.trim() || 'Сообщения';
+          toastRef.current.showInfo(`Личные: ${who} — ${short}`);
         }
-        dispatch(addIncomingDirectMessage(msg.message));
+        dispatch(addIncomingDirectMessage({ message: msg.message, viewerUserId: selfId }));
         return;
       }
       if (msg.type === 'direct_message_updated' && msg.message) {

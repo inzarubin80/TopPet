@@ -48,8 +48,11 @@ const directMessagesSlice = createSlice({
       state.messagesByConversation[conversationId] = sortByCreatedAtAsc(items);
       state.totalsByConversation[conversationId] = total;
     },
-    addIncomingDirectMessage(state, action: PayloadAction<DirectMessage>) {
-      const message = action.payload;
+    addIncomingDirectMessage(
+      state,
+      action: PayloadAction<{ message: DirectMessage; viewerUserId: number }>
+    ) {
+      const { message, viewerUserId } = action.payload;
       const conversationId = message.conversation_id;
       const current = state.messagesByConversation[conversationId] || [];
       const exists = current.some((m) => m.id === message.id);
@@ -57,11 +60,33 @@ const directMessagesSlice = createSlice({
         state.messagesByConversation[conversationId] = sortByCreatedAtAsc([...current, message]);
         state.totalsByConversation[conversationId] = (state.totalsByConversation[conversationId] || current.length) + 1;
       }
-      const conv = state.conversations.find((c) => c.id === conversationId);
+      let conv = state.conversations.find((c) => c.id === conversationId);
       if (conv) {
         conv.last_message_text = message.text;
         conv.last_message_created_at = message.created_at;
         conv.last_message_at = message.created_at;
+      } else if (message.sender_user_id !== viewerUserId) {
+        const low = Math.min(message.sender_user_id, viewerUserId);
+        const high = Math.max(message.sender_user_id, viewerUserId);
+        const peerName =
+          message.sender_user_name?.trim() || `Пользователь ${message.sender_user_id}`;
+        conv = {
+          id: conversationId,
+          user_low_id: low,
+          user_high_id: high,
+          peer_user_id: message.sender_user_id,
+          peer_user_name: peerName,
+          peer_user_avatar_url: message.sender_user_avatar_url,
+          peer_user_online: false,
+          last_message_text: message.text,
+          last_message_created_at: message.created_at,
+          last_message_at: message.created_at,
+          created_at: message.created_at,
+          updated_at: message.updated_at,
+        };
+        state.conversations.push(conv);
+      }
+      if (conv) {
         state.conversations.sort(
           (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
         );
