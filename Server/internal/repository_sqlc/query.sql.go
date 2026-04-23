@@ -3849,7 +3849,7 @@ func (q *Queries) NextContestJurySortOrder(ctx context.Context, contestID pgtype
 }
 
 const searchUsersByQuery = `-- name: SearchUsersByQuery :many
-SELECT user_id, name, email
+SELECT user_id, name
 FROM users
 WHERE (
     $1::text = '' OR
@@ -3869,7 +3869,6 @@ type SearchUsersByQueryParams struct {
 type SearchUsersByQueryRow struct {
 	UserID int64
 	Name   string
-	Email  *string
 }
 
 func (q *Queries) SearchUsersByQuery(ctx context.Context, arg *SearchUsersByQueryParams) ([]*SearchUsersByQueryRow, error) {
@@ -3881,7 +3880,7 @@ func (q *Queries) SearchUsersByQuery(ctx context.Context, arg *SearchUsersByQuer
 	var items []*SearchUsersByQueryRow
 	for rows.Next() {
 		var i SearchUsersByQueryRow
-		if err := rows.Scan(&i.UserID, &i.Name, &i.Email); err != nil {
+		if err := rows.Scan(&i.UserID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)

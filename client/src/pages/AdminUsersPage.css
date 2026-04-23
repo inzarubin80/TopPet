@@ -43,6 +43,29 @@
   color: #64748b;
 }
 
+.admin-users-online-col {
+  width: 4.5rem;
+  text-align: center;
+}
+
+.admin-users-online-cell {
+  text-align: center;
+  vertical-align: middle;
+  color: #94a3b8;
+}
+
+.admin-users-online-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #fff;
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  vertical-align: middle;
+}
+
 .admin-users-phone {
   max-width: 10rem;
   word-break: break-word;

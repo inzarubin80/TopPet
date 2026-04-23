@@ -40,6 +40,12 @@ func TestTopPetService_ListUsersForSystemAdmin_requiresSystemAdmin(t *testing.T)
 	if total != 1 || len(items) != 1 {
 		t.Fatalf("system_admin: want total=1 len=1, got total=%d len=%d", total, len(items))
 	}
+	if items[0].User == nil || items[0].User.Name != "a" {
+		t.Fatalf("system_admin: unexpected embedded user: %+v", items[0].User)
+	}
+	if items[0].Online {
+		t.Fatalf("system_admin: want online=false without hub, got true")
+	}
 }
 
 func TestTopPetService_SetUserRoleBySystemAdmin_requiresSystemAdmin(t *testing.T) {

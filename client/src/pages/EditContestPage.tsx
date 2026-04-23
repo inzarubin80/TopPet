@@ -646,7 +646,7 @@ const EditContestPage: React.FC = () => {
                   disabled={saving}
                   aria-label="Режим пользовательского голосования"
                 >
-                  <option value="likes">Лайки (как сейчас)</option>
+                  <option value="likes">Лайки</option>
                   <option value="all_users">Голосование всех пользователей</option>
                   <option value="participants_only">Голосование участников конкурса</option>
                 </select>

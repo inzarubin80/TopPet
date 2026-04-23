@@ -10,7 +10,7 @@ import (
 )
 
 // ListUsersForSystemAdmin возвращает страницу пользователей (только system_admin).
-func (s *TopPetService) ListUsersForSystemAdmin(ctx context.Context, actorID model.UserID, limit, offset int) ([]*model.User, int64, error) {
+func (s *TopPetService) ListUsersForSystemAdmin(ctx context.Context, actorID model.UserID, limit, offset int) ([]*model.AdminUserListItem, int64, error) {
 	dbCtx, cancel := appcontext.WithDatabaseTimeout(ctx)
 	defer cancel()
 
@@ -35,7 +35,12 @@ func (s *TopPetService) ListUsersForSystemAdmin(ctx context.Context, actorID mod
 	if err != nil {
 		return nil, 0, err
 	}
-	return items, total, nil
+	out := make([]*model.AdminUserListItem, 0, len(items))
+	for _, u := range items {
+		online := s.userNotificationHub != nil && s.userNotificationHub.IsUserOnline(u.ID)
+		out = append(out, &model.AdminUserListItem{User: u, Online: online})
+	}
+	return out, total, nil
 }
 
 // SetUserRoleBySystemAdmin выставляет роль пользователю (только system_admin).

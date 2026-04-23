@@ -66,7 +66,7 @@ WHERE user_id = $1
 RETURNING user_id, name, created_at, email, role, is_blocked, date_of_birth, phone, avatar_url;
 
 -- name: SearchUsersByQuery :many
-SELECT user_id, name, email
+SELECT user_id, name
 FROM users
 WHERE (
     $1::text = '' OR

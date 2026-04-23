@@ -28,12 +28,14 @@ export interface User {
   created_at: string;
   /** Только ответ GET /api/admin/users — OAuth-провайдеры, привязанные к аккаунту. */
   auth_providers?: string[];
+  /** Только ответ GET /api/admin/users — активное WS уведомлений (/api/me/notifications/ws). */
+  online?: boolean;
 }
 
+/** Результат GET /users/search — без email (приватность). */
 export interface UserSearchHit {
   id: UserID;
   name: string;
-  email?: string;
 }
 
 export type ContestTier = 'free' | 'pro';

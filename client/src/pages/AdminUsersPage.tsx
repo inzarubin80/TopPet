@@ -127,6 +127,7 @@ const AdminUsersPage: React.FC = () => {
                 <thead>
                   <tr>
                     <th>ID</th>
+                    <th className="admin-users-online-col">Онлайн</th>
                     <th>Имя</th>
                     <th>Email</th>
                     <th>Телефон</th>
@@ -141,6 +142,13 @@ const AdminUsersPage: React.FC = () => {
                   {items.map((u) => (
                     <tr key={u.id}>
                       <td>{u.id}</td>
+                      <td
+                        className="admin-users-online-cell"
+                        title={u.online ? 'В сети' : 'Не в сети'}
+                        aria-label={u.online ? 'В сети' : 'Не в сети'}
+                      >
+                        {u.online ? <span className="admin-users-online-dot" aria-hidden="true" /> : '—'}
+                      </td>
                       <td>{u.name}</td>
                       <td>{u.email || '—'}</td>
                       <td className="admin-users-phone">{u.phone?.trim() || '—'}</td>

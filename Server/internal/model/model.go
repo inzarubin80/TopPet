@@ -50,6 +50,12 @@ type (
 		AuthProviders []string `json:"auth_providers,omitempty"`
 	}
 
+	// AdminUserListItem — элемент GET /api/admin/users: поля User + online (активное WS /api/me/notifications/ws).
+	AdminUserListItem struct {
+		*User
+		Online bool `json:"online"`
+	}
+
 	// CurrentUserPatch — частичное обновление профиля (PATCH /api/auth/me). Поле nil = не менять.
 	CurrentUserPatch struct {
 		Name        *string `json:"name"`
@@ -319,11 +325,10 @@ type (
 		Assignments []JuryChairAssignmentInput `json:"assignments"`
 	}
 
-	// UserSearchHit — результат поиска пользователя (имя / email).
+	// UserSearchHit — результат GET /api/users/search (только id и имя; почта в ответ не включается).
 	UserSearchHit struct {
-		ID    UserID `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email,omitempty"`
+		ID   UserID `json:"id"`
+		Name string `json:"name"`
 	}
 
 	// RegistrationField — дополнительное поле заявки участника (настраивает организатор).

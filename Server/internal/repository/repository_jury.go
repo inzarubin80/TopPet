@@ -260,14 +260,9 @@ func (r *Repository) SearchUsersByQuery(ctx context.Context, q string, limit int
 	}
 	out := make([]*model.UserSearchHit, len(rows))
 	for i, row := range rows {
-		email := ""
-		if row.Email != nil {
-			email = *row.Email
-		}
 		out[i] = &model.UserSearchHit{
-			ID:    model.UserID(row.UserID),
-			Name:  row.Name,
-			Email: email,
+			ID:   model.UserID(row.UserID),
+			Name: row.Name,
 		}
 	}
 	return out, nil

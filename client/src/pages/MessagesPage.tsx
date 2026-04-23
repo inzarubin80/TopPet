@@ -329,7 +329,7 @@ const MessagesPage: React.FC = () => {
               setSearchValue(next);
               setSelectedUser(null);
             }}
-            placeholder="Имя, email или телефон"
+            placeholder="Имя или телефон (от 2 символов)"
           />
           {searchLoading ? <div className="messages-page-search-hint">Поиск...</div> : null}
           {!searchLoading && searchValue.trim().length >= 2 && searchResults.length === 0 ? (
@@ -347,7 +347,7 @@ const MessagesPage: React.FC = () => {
                   onClick={() => setSelectedUser(user)}
                 >
                   <span>{user.name}</span>
-                  {user.email ? <small>{user.email}</small> : null}
+                  <small>id {user.id}</small>
                 </button>
               ))}
             </div>

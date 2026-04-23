@@ -382,10 +382,10 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
           {canEdit && (
             <div className="contest-jury-add contest-jury-section">
               <label htmlFor="jury-search-name" className="contest-jury-label">
-                Добавить в жюри — поиск по email или имени
+                Добавить в жюри — поиск пользователя
               </label>
               <p className="contest-jury-search-explainer">
-                Введите часть почты или имени (от 2 символов). В списке — имя, email и id.
+                Введите не менее 2 символов (имя, телефон или часть почты для поиска). В списке — имя и id.
               </p>
               <div className="contest-jury-search-wrap" ref={searchWrapRef}>
                 <input
@@ -395,7 +395,7 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
                   value={nameQuery}
                   onChange={(e) => setNameQuery(e.target.value)}
                   onFocus={() => setPickerOpen(nameQuery.trim().length >= 2 && searchHits.length > 0)}
-                  placeholder="Email или имя (от 2 символов)"
+                  placeholder="Имя или телефон (от 2 символов)"
                   disabled={submitting}
                   autoComplete="off"
                 />
@@ -411,13 +411,6 @@ export const ContestJuryPanel = forwardRef<ContestJuryPanelHandle, ContestJuryPa
                         >
                           <span className="contest-jury-search-option-main">
                             <span className="contest-jury-search-option-name">{h.name}</span>
-                            {h.email ? (
-                              <span className="contest-jury-search-option-email">{h.email}</span>
-                            ) : (
-                              <span className="contest-jury-search-option-email contest-jury-search-option-email-missing">
-                                почта не указана
-                              </span>
-                            )}
                           </span>
                           <span className="contest-jury-search-option-id">id {h.id}</span>
                         </button>

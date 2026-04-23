@@ -14,7 +14,7 @@ import (
 
 type (
 	serviceAdminUsers interface {
-		ListUsersForSystemAdmin(ctx context.Context, actorID model.UserID, limit, offset int) ([]*model.User, int64, error)
+		ListUsersForSystemAdmin(ctx context.Context, actorID model.UserID, limit, offset int) ([]*model.AdminUserListItem, int64, error)
 		PatchUserBySystemAdmin(ctx context.Context, actorID model.UserID, targetUserID model.UserID, role *string, blocked *bool) (*model.User, error)
 	}
 
@@ -64,8 +64,8 @@ func (h *AdminUsersListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	type response struct {
-		Items []*model.User `json:"items"`
-		Total int64         `json:"total"`
+		Items []*model.AdminUserListItem `json:"items"`
+		Total int64                      `json:"total"`
 	}
 	if err := uhttp.SendSuccess(w, response{Items: items, Total: total}); err != nil {
 		uhttp.HandleError(w, uhttp.NewInternalServerError("failed to send response", err))
